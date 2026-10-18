@@ -1,0 +1,16 @@
+{
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "hypothesis": "Compare a fitted log-price level at the selected expiry against the actual entry quote; do not translate the entire forecast to eliminate its current residual.",
+  "singleChange": "expectedLogMove = selected.predict(horizonMs/1000), replacing selected.predict(horizonMs/1000)-selected.predict(0). Both baseline and wide searches share this change.",
+  "unchanged": ["period searches", "admission rules", "final structural routes", "model selector", "holding duration", "one-shot lifecycle", "bot", "production source"],
+  "development": "Previously inspected 15 Forex and 9 crypto windows; their results are development only.",
+  "validationRegisteredBeforeOutcomes": {
+    "dates": ["2025-10-18", "2025-10-19", "2025-10-20"],
+    "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    "startUtc": "15:00:00",
+    "durationMinutes": 30,
+    "source": "Official Binance 1s OHLC closing observations at second completion; not broker OTC.",
+    "rule": "Freeze the single formula change. Evaluate all complete windows; do not tune after seeing validation. Report all windows, ties, coverage, corrected/spoiled entries and latency. Improvement on development alone is insufficient."
+  },
+  "acceptance": "Require a positive paired change in completed 30s outcomes on both known markets and separately on validation, no new entry wait, no changed active-window direction, and no production changes. Any improvement remains external evidence, not validated OTC performance."
+}

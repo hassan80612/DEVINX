@@ -1,0 +1,395 @@
+{
+  "kind": "previously-inspected-video-not-independent-validation",
+  "name": "known-user-video-six-decimal-extraction",
+  "metrics": [
+    {
+      "win": 11,
+      "loss": 3,
+      "tie": 0,
+      "missing": 1,
+      "completed": 14,
+      "winRate": 0.7857142857142857,
+      "maxLossStreak": 2
+    },
+    {
+      "win": 9,
+      "loss": 5,
+      "tie": 0,
+      "missing": 1,
+      "completed": 14,
+      "winRate": 0.6428571428571429,
+      "maxLossStreak": 2
+    }
+  ],
+  "comparisons": [
+    {
+      "sameEntries": false,
+      "corrected": 0,
+      "spoiled": 2,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0
+    }
+  ],
+  "candidateDiagnostics": [
+    null
+  ],
+  "sameEntries": false,
+  "correctedAtSameTime": 0,
+  "spoiledAtSameTime": 2,
+  "removedBaseWins": 0,
+  "newCandidateEntries": 0,
+  "overriddenObservations": 0,
+  "timings": [
+    {
+      "medianMs": 1.8595439999999996,
+      "p95Ms": 10.487224999999853
+    },
+    {
+      "medianMs": 1.8010669999994207,
+      "p95Ms": 10.485212000000047
+    }
+  ],
+  "overrideExamples": [],
+  "entries": [
+    [
+      {
+        "at": 1792169410500,
+        "side": "CALL",
+        "price": 0.842995,
+        "dueAt": 1792169440500,
+        "result": "win"
+      },
+      {
+        "at": 1792169450000,
+        "side": "PUT",
+        "price": 0.843185,
+        "dueAt": 1792169480000,
+        "result": "win"
+      },
+      {
+        "at": 1792169513500,
+        "side": "CALL",
+        "price": 0.843305,
+        "dueAt": 1792169543500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169543500,
+        "side": "CALL",
+        "price": 0.843255,
+        "dueAt": 1792169573500,
+        "result": "win"
+      },
+      {
+        "at": 1792169574500,
+        "side": "CALL",
+        "price": 0.843285,
+        "dueAt": 1792169604500,
+        "result": "win"
+      },
+      {
+        "at": 1792169605500,
+        "side": "PUT",
+        "price": 0.843325,
+        "dueAt": 1792169635500,
+        "result": "win"
+      },
+      {
+        "at": 1792169652500,
+        "side": "PUT",
+        "price": 0.843205,
+        "dueAt": 1792169682500,
+        "result": "win"
+      },
+      {
+        "at": 1792169682500,
+        "side": "PUT",
+        "price": 0.843095,
+        "dueAt": 1792169712500,
+        "result": "win"
+      },
+      {
+        "at": 1792169712500,
+        "side": "CALL",
+        "price": 0.842865,
+        "dueAt": 1792169742500,
+        "result": "win"
+      },
+      {
+        "at": 1792169743000,
+        "side": "PUT",
+        "price": 0.842945,
+        "dueAt": 1792169773000,
+        "result": "win"
+      },
+      {
+        "at": 1792169773500,
+        "side": "PUT",
+        "price": 0.842985,
+        "dueAt": 1792169803500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169804500,
+        "side": "PUT",
+        "price": 0.843105,
+        "dueAt": 1792169834500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169834500,
+        "side": "PUT",
+        "price": 0.843155,
+        "dueAt": 1792169864500,
+        "result": "win"
+      },
+      {
+        "at": 1792169864500,
+        "side": "CALL",
+        "price": 0.842755,
+        "dueAt": 1792169894500,
+        "result": "win"
+      },
+      {
+        "at": 1792169915500,
+        "side": "PUT",
+        "price": 0.842895,
+        "dueAt": 1792169945500,
+        "result": "missing"
+      }
+    ],
+    [
+      {
+        "at": 1792169410500,
+        "side": "CALL",
+        "price": 0.842995,
+        "dueAt": 1792169440500,
+        "result": "win"
+      },
+      {
+        "at": 1792169450000,
+        "side": "PUT",
+        "price": 0.843185,
+        "dueAt": 1792169480000,
+        "result": "win"
+      },
+      {
+        "at": 1792169513500,
+        "side": "CALL",
+        "price": 0.843305,
+        "dueAt": 1792169543500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169543500,
+        "side": "CALL",
+        "price": 0.843255,
+        "dueAt": 1792169573500,
+        "result": "win"
+      },
+      {
+        "at": 1792169574500,
+        "side": "CALL",
+        "price": 0.843285,
+        "dueAt": 1792169604500,
+        "result": "win"
+      },
+      {
+        "at": 1792169605500,
+        "side": "CALL",
+        "price": 0.843325,
+        "dueAt": 1792169635500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169652500,
+        "side": "PUT",
+        "price": 0.843205,
+        "dueAt": 1792169682500,
+        "result": "win"
+      },
+      {
+        "at": 1792169682500,
+        "side": "CALL",
+        "price": 0.843095,
+        "dueAt": 1792169712500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169712500,
+        "side": "CALL",
+        "price": 0.842865,
+        "dueAt": 1792169742500,
+        "result": "win"
+      },
+      {
+        "at": 1792169743000,
+        "side": "PUT",
+        "price": 0.842945,
+        "dueAt": 1792169773000,
+        "result": "win"
+      },
+      {
+        "at": 1792169773500,
+        "side": "PUT",
+        "price": 0.842985,
+        "dueAt": 1792169803500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169804500,
+        "side": "PUT",
+        "price": 0.843105,
+        "dueAt": 1792169834500,
+        "result": "loss"
+      },
+      {
+        "at": 1792169834500,
+        "side": "PUT",
+        "price": 0.843155,
+        "dueAt": 1792169864500,
+        "result": "win"
+      },
+      {
+        "at": 1792169864500,
+        "side": "CALL",
+        "price": 0.842755,
+        "dueAt": 1792169894500,
+        "result": "win"
+      },
+      {
+        "at": 1792169915500,
+        "side": "PUT",
+        "price": 0.842895,
+        "dueAt": 1792169945500,
+        "result": "missing"
+      }
+    ]
+  ],
+  "entryReasons": [
+    [
+      {
+        "at": 1792169410500,
+        "reason": "closed-structure-and-live-impulse"
+      },
+      {
+        "at": 1792169450000,
+        "reason": "bootstrap-expiry-penalized-fit"
+      },
+      {
+        "at": 1792169513500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169543500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169574500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169605500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169652500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169682500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169712500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169743000,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169773500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169804500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169834500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169864500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169915500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      }
+    ],
+    [
+      {
+        "at": 1792169410500,
+        "reason": "closed-structure-and-live-impulse"
+      },
+      {
+        "at": 1792169450000,
+        "reason": "bootstrap-expiry-penalized-fit"
+      },
+      {
+        "at": 1792169513500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169543500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169574500,
+        "reason": "completed-expiry-outcomes-adaptive-cycle"
+      },
+      {
+        "at": 1792169605500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169652500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169682500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169712500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169743000,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169773500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169804500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169834500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169864500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      },
+      {
+        "at": 1792169915500,
+        "reason": "observed-trend-and-30s-cycle-projection"
+      }
+    ]
+  ]
+}

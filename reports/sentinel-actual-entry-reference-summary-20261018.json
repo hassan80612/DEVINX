@@ -1,0 +1,1518 @@
+{
+  "disposition": "REJECTED_AS_GENERAL_ACCURACY_FIX",
+  "productionCoreFilesVerifiedUnchanged": 75,
+  "runtimeTests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "sets": {
+    "known": {
+      "totals": [
+        {
+          "win": 306,
+          "loss": 318,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.49038461538461536,
+          "worstWindowLossStreak": 7
+        },
+        {
+          "win": 308,
+          "loss": 316,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.4935897435897436,
+          "worstWindowLossStreak": 7
+        }
+      ],
+      "improved": 1,
+      "worsened": 0,
+      "pairedCorrected": 3,
+      "pairedSpoiled": 1,
+      "removedBaseWins": 0,
+      "newEntries": 0,
+      "forecastOnly": [
+        {
+          "win": 5,
+          "loss": 9,
+          "tie": 0,
+          "missing": 0,
+          "completed": 14,
+          "winRate": 0.35714285714285715,
+          "maxLossStreak": 4,
+          "unavailable": 629
+        },
+        {
+          "win": 6,
+          "loss": 8,
+          "tie": 0,
+          "missing": 0,
+          "completed": 14,
+          "winRate": 0.42857142857142855,
+          "maxLossStreak": 4,
+          "unavailable": 629
+        }
+      ],
+      "windows": [
+        {
+          "name": "development-08-utc",
+          "metrics": [
+            {
+              "win": 27,
+              "loss": 27,
+              "tie": 0,
+              "missing": 0,
+              "completed": 54,
+              "winRate": 0.5,
+              "maxLossStreak": 6
+            },
+            {
+              "win": 27,
+              "loss": 27,
+              "tie": 0,
+              "missing": 0,
+              "completed": 54,
+              "winRate": 0.5,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.9408180000000357,
+              "p95Ms": 2.2433090000000107
+            },
+            {
+              "medianMs": 0.930121999999983,
+              "p95Ms": 2.2210759999999823
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "validation-14-utc",
+          "metrics": [
+            {
+              "win": 22,
+              "loss": 31,
+              "tie": 0,
+              "missing": 0,
+              "completed": 53,
+              "winRate": 0.41509433962264153,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 22,
+              "loss": 31,
+              "tie": 0,
+              "missing": 0,
+              "completed": 53,
+              "winRate": 0.41509433962264153,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.776625999999851,
+              "p95Ms": 1.698765000000094
+            },
+            {
+              "medianMs": 0.7831749999995736,
+              "p95Ms": 1.7558399999998073
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "reserved-19-utc",
+          "metrics": [
+            {
+              "win": 21,
+              "loss": 22,
+              "tie": 1,
+              "missing": 0,
+              "completed": 43,
+              "winRate": 0.4883720930232558,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 21,
+              "loss": 22,
+              "tie": 1,
+              "missing": 0,
+              "completed": 43,
+              "winRate": 0.4883720930232558,
+              "maxLossStreak": 4
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.3678219999992507,
+              "p95Ms": 0.6568790000001172
+            },
+            {
+              "medianMs": 0.3684030000003986,
+              "p95Ms": 0.6752759999999398
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "second-validation-10-utc",
+          "metrics": [
+            {
+              "win": 21,
+              "loss": 19,
+              "tie": 2,
+              "missing": 0,
+              "completed": 40,
+              "winRate": 0.525,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 21,
+              "loss": 19,
+              "tie": 2,
+              "missing": 0,
+              "completed": 40,
+              "winRate": 0.525,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.540606999999909,
+              "p95Ms": 1.0363089999991644
+            },
+            {
+              "medianMs": 0.5382040000004054,
+              "p95Ms": 1.0258929999999964
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "second-validation-16-utc",
+          "metrics": [
+            {
+              "win": 25,
+              "loss": 23,
+              "tie": 2,
+              "missing": 0,
+              "completed": 48,
+              "winRate": 0.5208333333333334,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 25,
+              "loss": 23,
+              "tie": 2,
+              "missing": 0,
+              "completed": 48,
+              "winRate": 0.5208333333333334,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.4200890000010986,
+              "p95Ms": 0.7538320000003296
+            },
+            {
+              "medianMs": 0.4222620000000461,
+              "p95Ms": 0.7244079999982205
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "second-validation-21-utc",
+          "metrics": [
+            {
+              "win": 0,
+              "loss": 0,
+              "tie": 0,
+              "missing": 0,
+              "completed": 0,
+              "winRate": null,
+              "maxLossStreak": 0
+            },
+            {
+              "win": 0,
+              "loss": 0,
+              "tie": 0,
+              "missing": 0,
+              "completed": 0,
+              "winRate": null,
+              "maxLossStreak": 0
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.09452999999848544,
+              "p95Ms": 0.28916599999865866
+            },
+            {
+              "medianMs": 0.08553599999868311,
+              "p95Ms": 0.33973100000002887
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "third-validation-09-utc",
+          "metrics": [
+            {
+              "win": 24,
+              "loss": 26,
+              "tie": 1,
+              "missing": 0,
+              "completed": 50,
+              "winRate": 0.48,
+              "maxLossStreak": 6
+            },
+            {
+              "win": 24,
+              "loss": 26,
+              "tie": 1,
+              "missing": 0,
+              "completed": 50,
+              "winRate": 0.48,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.5371329999998125,
+              "p95Ms": 0.9090109999997367
+            },
+            {
+              "medianMs": 0.54262000000017,
+              "p95Ms": 0.900127999999313
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "third-validation-12-utc",
+          "metrics": [
+            {
+              "win": 23,
+              "loss": 23,
+              "tie": 3,
+              "missing": 0,
+              "completed": 46,
+              "winRate": 0.5,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 23,
+              "loss": 23,
+              "tie": 3,
+              "missing": 0,
+              "completed": 46,
+              "winRate": 0.5,
+              "maxLossStreak": 4
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.631031000000803,
+              "p95Ms": 1.1746729999995296
+            },
+            {
+              "medianMs": 0.6262129999995523,
+              "p95Ms": 1.1580480000011448
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "third-validation-15-utc",
+          "metrics": [
+            {
+              "win": 23,
+              "loss": 32,
+              "tie": 0,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.41818181818181815,
+              "maxLossStreak": 7
+            },
+            {
+              "win": 23,
+              "loss": 32,
+              "tie": 0,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.41818181818181815,
+              "maxLossStreak": 7
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.682636999999886,
+              "p95Ms": 1.7826700000005076
+            },
+            {
+              "medianMs": 0.6764880000009725,
+              "p95Ms": 1.9405729999998584
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "third-validation-18-utc",
+          "metrics": [
+            {
+              "win": 17,
+              "loss": 7,
+              "tie": 4,
+              "missing": 0,
+              "completed": 24,
+              "winRate": 0.7083333333333334,
+              "maxLossStreak": 1
+            },
+            {
+              "win": 17,
+              "loss": 7,
+              "tie": 4,
+              "missing": 0,
+              "completed": 24,
+              "winRate": 0.7083333333333334,
+              "maxLossStreak": 1
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.30419899999833433,
+              "p95Ms": 0.6134249999995518
+            },
+            {
+              "medianMs": 0.30421900000146707,
+              "p95Ms": 0.6093779999973776
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "fourth-validation-11-utc",
+          "metrics": [
+            {
+              "win": 23,
+              "loss": 23,
+              "tie": 0,
+              "missing": 0,
+              "completed": 46,
+              "winRate": 0.5,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 23,
+              "loss": 23,
+              "tie": 0,
+              "missing": 0,
+              "completed": 46,
+              "winRate": 0.5,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.462522000001627,
+              "p95Ms": 0.8301339999998163
+            },
+            {
+              "medianMs": 0.46952199999941513,
+              "p95Ms": 0.8394780000016908
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "fourth-validation-13-utc",
+          "metrics": [
+            {
+              "win": 23,
+              "loss": 32,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.41818181818181815,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 25,
+              "loss": 30,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.45454545454545453,
+              "maxLossStreak": 4
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.881109000001743,
+              "p95Ms": 7.004681999998866
+            },
+            {
+              "medianMs": 0.8836039999987406,
+              "p95Ms": 6.9333259999984875
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 3,
+            "spoiled": 1,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "fourth-validation-17-utc",
+          "metrics": [
+            {
+              "win": 19,
+              "loss": 20,
+              "tie": 4,
+              "missing": 0,
+              "completed": 39,
+              "winRate": 0.48717948717948717,
+              "maxLossStreak": 6
+            },
+            {
+              "win": 19,
+              "loss": 20,
+              "tie": 4,
+              "missing": 0,
+              "completed": 39,
+              "winRate": 0.48717948717948717,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.2942040000016277,
+              "p95Ms": 0.48809000000255764
+            },
+            {
+              "medianMs": 0.29326299999956973,
+              "p95Ms": 0.48019899999781046
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "fourth-validation-20-utc",
+          "metrics": [
+            {
+              "win": 10,
+              "loss": 11,
+              "tie": 0,
+              "missing": 0,
+              "completed": 21,
+              "winRate": 0.47619047619047616,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 10,
+              "loss": 11,
+              "tie": 0,
+              "missing": 0,
+              "completed": 21,
+              "winRate": 0.47619047619047616,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.17012099999919883,
+              "p95Ms": 0.3637060000000929
+            },
+            {
+              "medianMs": 0.17081099999995786,
+              "p95Ms": 0.35003599999981816
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "available-official-2020-03-31-1829-utc",
+          "metrics": [
+            {
+              "win": 28,
+              "loss": 22,
+              "tie": 1,
+              "missing": 0,
+              "completed": 50,
+              "winRate": 0.56,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 28,
+              "loss": 22,
+              "tie": 1,
+              "missing": 0,
+              "completed": 50,
+              "winRate": 0.56,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 0.5105330000005779,
+              "p95Ms": 0.9977020000005723
+            },
+            {
+              "medianMs": 0.5072379999983241,
+              "p95Ms": 0.9564509999981965
+            }
+          ],
+          "comparison": {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        }
+      ]
+    },
+    "crypto": {
+      "totals": [
+        {
+          "win": 300,
+          "loss": 228,
+          "tie": 3,
+          "missing": 0,
+          "completed": 528,
+          "winRate": 0.5681818181818182,
+          "worstWindowLossStreak": 6
+        },
+        {
+          "win": 300,
+          "loss": 230,
+          "tie": 1,
+          "missing": 0,
+          "completed": 530,
+          "winRate": 0.5660377358490566,
+          "worstWindowLossStreak": 7
+        }
+      ],
+      "improved": 4,
+      "worsened": 5,
+      "pairedCorrected": 9,
+      "pairedSpoiled": 6,
+      "removedBaseWins": 108,
+      "newEntries": 194,
+      "forecastOnly": [
+        {
+          "win": 255,
+          "loss": 273,
+          "tie": 3,
+          "missing": 0,
+          "completed": 528,
+          "winRate": 0.48295454545454547,
+          "maxLossStreak": 5,
+          "unavailable": 0
+        },
+        {
+          "win": 248,
+          "loss": 280,
+          "tie": 3,
+          "missing": 0,
+          "completed": 528,
+          "winRate": 0.4696969696969697,
+          "maxLossStreak": 9,
+          "unavailable": 0
+        }
+      ],
+      "windows": [
+        {
+          "name": "binance-btcusdt-2025-10-15-1500-utc",
+          "metrics": [
+            {
+              "win": 31,
+              "loss": 28,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.5254237288135594,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 36,
+              "loss": 23,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.6101694915254238,
+              "maxLossStreak": 4
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.524263999999675,
+              "p95Ms": 10.5149190000011
+            },
+            {
+              "medianMs": 6.5273590000001604,
+              "p95Ms": 10.622374000000491
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 1,
+            "removedBaseWins": 16,
+            "newCandidateEntries": 35
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-15-1500-utc",
+          "metrics": [
+            {
+              "win": 36,
+              "loss": 23,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.6101694915254238,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 33,
+              "loss": 26,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.559322033898305,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.534704999998212,
+              "p95Ms": 9.366084000001138
+            },
+            {
+              "medianMs": 6.547617000000173,
+              "p95Ms": 9.751392999998643
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 1,
+            "removedBaseWins": 12,
+            "newCandidateEntries": 20
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-15-1500-utc",
+          "metrics": [
+            {
+              "win": 28,
+              "loss": 32,
+              "tie": 0,
+              "missing": 0,
+              "completed": 60,
+              "winRate": 0.4666666666666667,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 31,
+              "loss": 29,
+              "tie": 0,
+              "missing": 0,
+              "completed": 60,
+              "winRate": 0.5166666666666667,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.527568999998039,
+              "p95Ms": 7.62234499999613
+            },
+            {
+              "medianMs": 6.550083000001905,
+              "p95Ms": 7.706960000003164
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 3,
+            "spoiled": 0,
+            "removedBaseWins": 1,
+            "newCandidateEntries": 1
+          }
+        },
+        {
+          "name": "binance-btcusdt-2025-10-16-1500-utc",
+          "metrics": [
+            {
+              "win": 33,
+              "loss": 25,
+              "tie": 1,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.5689655172413793,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 32,
+              "loss": 27,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.5423728813559322,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.508677999998326,
+              "p95Ms": 7.97885099999985
+            },
+            {
+              "medianMs": 6.555008000002999,
+              "p95Ms": 8.010567000004812
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 31,
+            "newCandidateEntries": 56
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-16-1500-utc",
+          "metrics": [
+            {
+              "win": 35,
+              "loss": 24,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.5932203389830508,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 34,
+              "loss": 25,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.576271186440678,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.51951199999894,
+              "p95Ms": 11.15578899999673
+            },
+            {
+              "medianMs": 6.5568809999967925,
+              "p95Ms": 11.188192000001436
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 1,
+            "removedBaseWins": 9,
+            "newCandidateEntries": 12
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-16-1500-utc",
+          "metrics": [
+            {
+              "win": 29,
+              "loss": 30,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.4915254237288136,
+              "maxLossStreak": 6
+            },
+            {
+              "win": 27,
+              "loss": 32,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.4576271186440678,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.529446000000462,
+              "p95Ms": 10.993052999998326
+            },
+            {
+              "medianMs": 6.559489999999641,
+              "p95Ms": 10.68473599999561
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 3,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "binance-btcusdt-2025-10-17-1500-utc",
+          "metrics": [
+            {
+              "win": 38,
+              "loss": 21,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.6440677966101694,
+              "maxLossStreak": 2
+            },
+            {
+              "win": 40,
+              "loss": 19,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.6779661016949152,
+              "maxLossStreak": 2
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.582502999997814,
+              "p95Ms": 11.22311800000898
+            },
+            {
+              "medianMs": 6.612636999998358,
+              "p95Ms": 11.244713000007323
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 3,
+            "spoiled": 0,
+            "removedBaseWins": 5,
+            "newCandidateEntries": 8
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-17-1500-utc",
+          "metrics": [
+            {
+              "win": 36,
+              "loss": 22,
+              "tie": 0,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.6206896551724138,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 38,
+              "loss": 20,
+              "tie": 0,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.6551724137931034,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.581051999994088,
+              "p95Ms": 11.120048000011593
+            },
+            {
+              "medianMs": 6.630265000014333,
+              "p95Ms": 11.148171999986516
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 14,
+            "newCandidateEntries": 26
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-17-1500-utc",
+          "metrics": [
+            {
+              "win": 34,
+              "loss": 23,
+              "tie": 2,
+              "missing": 0,
+              "completed": 57,
+              "winRate": 0.5964912280701754,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 29,
+              "loss": 29,
+              "tie": 1,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.5,
+              "maxLossStreak": 7
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.512007999990601,
+              "p95Ms": 10.269053000025451
+            },
+            {
+              "medianMs": 6.5714980000047944,
+              "p95Ms": 9.142840999993496
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 20,
+            "newCandidateEntries": 36
+          }
+        }
+      ]
+    },
+    "validation": {
+      "totals": [
+        {
+          "win": 254,
+          "loss": 251,
+          "tie": 6,
+          "missing": 0,
+          "completed": 505,
+          "winRate": 0.502970297029703,
+          "worstWindowLossStreak": 8
+        },
+        {
+          "win": 263,
+          "loss": 240,
+          "tie": 6,
+          "missing": 0,
+          "completed": 503,
+          "winRate": 0.5228628230616302,
+          "worstWindowLossStreak": 7
+        }
+      ],
+      "improved": 5,
+      "worsened": 3,
+      "pairedCorrected": 9,
+      "pairedSpoiled": 5,
+      "removedBaseWins": 62,
+      "newEntries": 124,
+      "forecastOnly": [
+        {
+          "win": 265,
+          "loss": 240,
+          "tie": 6,
+          "missing": 0,
+          "completed": 505,
+          "winRate": 0.5247524752475248,
+          "maxLossStreak": 9,
+          "unavailable": 0
+        },
+        {
+          "win": 251,
+          "loss": 254,
+          "tie": 6,
+          "missing": 0,
+          "completed": 505,
+          "winRate": 0.497029702970297,
+          "maxLossStreak": 10,
+          "unavailable": 0
+        }
+      ],
+      "windows": [
+        {
+          "name": "binance-btcusdt-2025-10-18-1500-utc",
+          "metrics": [
+            {
+              "win": 25,
+              "loss": 27,
+              "tie": 0,
+              "missing": 0,
+              "completed": 52,
+              "winRate": 0.4807692307692308,
+              "maxLossStreak": 4
+            },
+            {
+              "win": 27,
+              "loss": 24,
+              "tie": 0,
+              "missing": 0,
+              "completed": 51,
+              "winRate": 0.5294117647058824,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.014482999999927,
+              "p95Ms": 7.889908999999534
+            },
+            {
+              "medianMs": 6.008314000000013,
+              "p95Ms": 7.864389999998821
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 2,
+            "spoiled": 0,
+            "removedBaseWins": 4,
+            "newCandidateEntries": 5
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-18-1500-utc",
+          "metrics": [
+            {
+              "win": 32,
+              "loss": 24,
+              "tie": 0,
+              "missing": 0,
+              "completed": 56,
+              "winRate": 0.5714285714285714,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 34,
+              "loss": 21,
+              "tie": 0,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.6181818181818182,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 2.6538779999973485,
+              "p95Ms": 8.227850999999646
+            },
+            {
+              "medianMs": 2.6361309999992955,
+              "p95Ms": 8.690332999998645
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 2,
+            "spoiled": 0,
+            "removedBaseWins": 5,
+            "newCandidateEntries": 8
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-18-1500-utc",
+          "metrics": [
+            {
+              "win": 25,
+              "loss": 30,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.45454545454545453,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 25,
+              "loss": 30,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.45454545454545453,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 3.323636000000988,
+              "p95Ms": 11.16333499999746
+            },
+            {
+              "medianMs": 3.2355360000001383,
+              "p95Ms": 11.186359999999695
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 4,
+            "newCandidateEntries": 8
+          }
+        },
+        {
+          "name": "binance-btcusdt-2025-10-19-1500-utc",
+          "metrics": [
+            {
+              "win": 31,
+              "loss": 25,
+              "tie": 1,
+              "missing": 0,
+              "completed": 56,
+              "winRate": 0.5535714285714286,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 32,
+              "loss": 24,
+              "tie": 1,
+              "missing": 0,
+              "completed": 56,
+              "winRate": 0.5714285714285714,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 2.6106829999989714,
+              "p95Ms": 8.962256999999227
+            },
+            {
+              "medianMs": 2.5887710000024526,
+              "p95Ms": 9.037637999994331
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-19-1500-utc",
+          "metrics": [
+            {
+              "win": 28,
+              "loss": 29,
+              "tie": 0,
+              "missing": 0,
+              "completed": 57,
+              "winRate": 0.49122807017543857,
+              "maxLossStreak": 5
+            },
+            {
+              "win": 27,
+              "loss": 30,
+              "tie": 0,
+              "missing": 0,
+              "completed": 57,
+              "winRate": 0.47368421052631576,
+              "maxLossStreak": 5
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.646359000005759,
+              "p95Ms": 11.135678999999072
+            },
+            {
+              "medianMs": 6.656113000004552,
+              "p95Ms": 11.131387000001268
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 1,
+            "removedBaseWins": 5,
+            "newCandidateEntries": 7
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-19-1500-utc",
+          "metrics": [
+            {
+              "win": 24,
+              "loss": 33,
+              "tie": 2,
+              "missing": 0,
+              "completed": 57,
+              "winRate": 0.42105263157894735,
+              "maxLossStreak": 7
+            },
+            {
+              "win": 22,
+              "loss": 35,
+              "tie": 2,
+              "missing": 0,
+              "completed": 57,
+              "winRate": 0.38596491228070173,
+              "maxLossStreak": 7
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.511627999992925,
+              "p95Ms": 11.066831999996793
+            },
+            {
+              "medianMs": 6.536667000007583,
+              "p95Ms": 11.109123999995063
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 1,
+            "removedBaseWins": 10,
+            "newCandidateEntries": 23
+          }
+        },
+        {
+          "name": "binance-btcusdt-2025-10-20-1500-utc",
+          "metrics": [
+            {
+              "win": 33,
+              "loss": 22,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.6,
+              "maxLossStreak": 3
+            },
+            {
+              "win": 32,
+              "loss": 23,
+              "tie": 1,
+              "missing": 0,
+              "completed": 55,
+              "winRate": 0.5818181818181818,
+              "maxLossStreak": 3
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.536294999998063,
+              "p95Ms": 8.538437999988673
+            },
+            {
+              "medianMs": 6.563095000004978,
+              "p95Ms": 8.823237999997218
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 1,
+            "spoiled": 2,
+            "removedBaseWins": 18,
+            "newCandidateEntries": 30
+          }
+        },
+        {
+          "name": "binance-ethusdt-2025-10-20-1500-utc",
+          "metrics": [
+            {
+              "win": 24,
+              "loss": 35,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.4067796610169492,
+              "maxLossStreak": 8
+            },
+            {
+              "win": 31,
+              "loss": 28,
+              "tie": 0,
+              "missing": 0,
+              "completed": 59,
+              "winRate": 0.5254237288135594,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.474965000001248,
+              "p95Ms": 7.711910000012722
+            },
+            {
+              "medianMs": 6.507532999996329,
+              "p95Ms": 7.7554740000050515
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 14,
+            "newCandidateEntries": 40
+          }
+        },
+        {
+          "name": "binance-solusdt-2025-10-20-1500-utc",
+          "metrics": [
+            {
+              "win": 32,
+              "loss": 26,
+              "tie": 1,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.5517241379310345,
+              "maxLossStreak": 8
+            },
+            {
+              "win": 33,
+              "loss": 25,
+              "tie": 1,
+              "missing": 0,
+              "completed": 58,
+              "winRate": 0.5689655172413793,
+              "maxLossStreak": 6
+            }
+          ],
+          "timings": [
+            {
+              "medianMs": 6.437357999995584,
+              "p95Ms": 8.005791999981739
+            },
+            {
+              "medianMs": 6.478379000007408,
+              "p95Ms": 7.98841699998593
+            }
+          ],
+          "comparison": {
+            "sameEntries": false,
+            "corrected": 2,
+            "spoiled": 1,
+            "removedBaseWins": 2,
+            "newCandidateEntries": 3
+          }
+        }
+      ]
+    }
+  },
+  "knownVideo": {
+    "metrics": [
+      {
+        "win": 11,
+        "loss": 3,
+        "tie": 0,
+        "missing": 1,
+        "completed": 14,
+        "winRate": 0.7857142857142857,
+        "maxLossStreak": 2
+      },
+      {
+        "win": 9,
+        "loss": 5,
+        "tie": 0,
+        "missing": 1,
+        "completed": 14,
+        "winRate": 0.6428571428571429,
+        "maxLossStreak": 2
+      }
+    ],
+    "comparisons": [
+      {
+        "sameEntries": false,
+        "corrected": 0,
+        "spoiled": 2,
+        "removedBaseWins": 0,
+        "newCandidateEntries": 0
+      }
+    ]
+  },
+  "reason": "Fails the registered positive-change requirement on both known markets; worsens the already-known broker-video extraction. Fresh external validation improves only modestly and does not establish OTC performance."
+}

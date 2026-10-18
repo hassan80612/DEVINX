@@ -1,0 +1,152 @@
+"""Audit the frozen experiment outputs and write its disposition. No broker access."""
+from pathlib import Path
+import json, hashlib, gzip
+
+R = Path(__file__).resolve().parents[1]
+load = lambda path: json.loads((R / path).read_text())
+spec = load('reports/sentinel-actual-entry-reference-spec-20261018.json')
+reports = {mode: load(f'reports/sentinel-actual-entry-reference-ab-20261018-{mode}.json')
+           for mode in ['known', 'crypto', 'validation']}
+manifest = load('reports/sentinel-actual-entry-reference-data-20261018.json')
+assert not manifest['failures']
+registered = spec['validationRegisteredBeforeOutcomes']
+assert {(w['date'], w['asset']) for w in manifest['windows']} == {
+    (d, a) for d in registered['dates'] for a in registered['assets']}
+assert len(manifest['windows']) == 9
+assert {w['name'] for w in manifest['windows']} == {
+    r['name'] for r in reports['validation']['results']}
+
+def blob_sha(data):
+    return hashlib.sha1(f'blob {len(data)}\0'.encode() + data).hexdigest()
+
+baseline = load('reports/sentinel-actual-entry-reference-core-hashes-20261018.json')
+core = [p for p in baseline if p.startswith('sentinel-trading-lab/agent/src/core/')]
+assert len(core) == 75
+assert all(blob_sha((R / p).read_bytes()) == baseline[p] for p in core)
+for mode, report in reports.items():
+    for result in report['results']:
+        name = result['name']
+        path = R / 'tests/fixtures/external' / ((name if name.startswith('binance-') else 'dukascopy-eurusd-' + name) + '.json')
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == result['fixtureSha256']
+        for entries in result['entries']:
+            assert all(e['dueAt'] - e['at'] == 30000 for e in entries)
+            assert all(b['at'] - a['at'] >= 30000 for a, b in zip(entries, entries[1:]))
+    for i in [0, 1]:
+        entries = [e for r in report['results'] for e in r['entries'][i]]
+        for key in ['win', 'loss', 'tie', 'missing']:
+            assert sum(e['result'] == key for e in entries) == report['summary']['totals'][i][key]
+    for i, f in enumerate(report['summary']['forecastOnly']):
+        rows = [x for r in report['results'] for x in r['forecastAtBaseEntries']]
+        f['unavailable'] = sum(x['outcomes'][i] == 'unavailable' for x in rows)
+    # Enrich the report with availability counts; no model, rule or outcome changes.
+    (R / f'reports/sentinel-actual-entry-reference-ab-20261018-{mode}.json').write_text(json.dumps(report, indent=2) + '\n')
+assert [(reports[m]['summary']['totals'][0]['win'], reports[m]['summary']['totals'][0]['loss'])
+        for m in ['known', 'crypto']] == [(306, 318), (300, 228)]
+
+video = load('reports/sentinel-actual-entry-reference-video-20261018.json')
+fmt = lambda value: f'{100 * value:.2f}%'.replace('.', ',')
+row = lambda title, x: f"| {title} | {x[0]['win']}/{x[0]['loss']}/{x[0]['tie']} | {fmt(x[0]['winRate'])} | {x[1]['win']}/{x[1]['loss']}/{x[1]['tie']} | {fmt(x[1]['winRate'])} |"
+table = '\n'.join(row(title, reports[mode]['summary']['totals']) for mode, title in [
+    ('known', '15 trechos de Forex conhecidos'), ('crypto', '9 trechos de cripto conhecidos'),
+    ('validation', '9 trechos de cripto novos')])
+window_rows = '\n'.join(row(r['name'].replace('binance-', '').replace('-1500-utc', ''), r['metrics'])
+                        for r in reports['validation']['results'])
+comparison_rows = '\n'.join(
+    f"| {mode} | {s['improved']} | {s['worsened']} | {s['pairedCorrected']} | {s['pairedSpoiled']} | {s['removedBaseWins']} | {s['newEntries']} |"
+    for mode in reports for s in [reports[mode]['summary']])
+forecast_rows = '\n'.join(
+    f"| {mode} | {s[0]['win']}/{s[0]['loss']} | {s[1]['win']}/{s[1]['loss']} | {s[0]['unavailable']} | {s[1]['unavailable']} |"
+    for mode in reports for s in [reports[mode]['summary']['forecastOnly']])
+summary = {
+    'disposition': 'REJECTED_AS_GENERAL_ACCURACY_FIX',
+    'productionCoreFilesVerifiedUnchanged': len(core),
+    'runtimeTests': {'passed': 8, 'failed': 0},
+    'sets': {m: r['summary'] for m, r in reports.items()},
+    'knownVideo': {'metrics': video['metrics'], 'comparisons': video['comparisons']},
+    'reason': 'Fails the registered positive-change requirement on both known markets; worsens the already-known broker-video extraction. Fresh external validation improves only modestly and does not establish OTC performance.'
+}
+(R / 'reports/sentinel-actual-entry-reference-summary-20261018.json').write_text(json.dumps(summary, indent=2) + '\n')
+hashes = []
+for mode in reports:
+    p = R / f'reports/sentinel-actual-entry-reference-ab-20261018-{mode}.json'
+    raw = gzip.compress(p.read_bytes(), mtime=0)
+    out = p.with_suffix('.json.gz')
+    out.write_bytes(raw)
+    hashes.append(f'- `{out.name}` — SHA256 `{hashlib.sha256(raw).hexdigest()}`.')
+
+text = f'''# Projeção de 30s e cotação real de entrada — hipótese não aprovada
+
+**A assertividade ainda não foi resolvida. A mudança melhora modestamente os nove trechos novos, mas falha na exigência registrada de melhorar os dois mercados conhecidos e piora o vídeo conhecido da corretora. Nenhuma publicação ou operação financeira foi feita.**
+
+Base: 13.9.43, commit `32ba17004713a085ac8f0e16adc28da739896634`. Oito testes passaram. Os 75 arquivos do núcleo publicado foram conferidos por hash Git e continuam intactos; a implementação experimental só cria e remove uma cópia temporária do núcleo. Bot, site, instalador e controles não foram modificados. A preservação do rollback original não depende desta pesquisa.
+
+## Hipótese única, fixada antes da validação
+
+O modelo ajusta níveis de log-preço relativos à cotação real atual. A regra publicada calcula `f(t+30) - f(t)`, deslocando a projeção pelo resíduo presente. A candidata calcula apenas `f(t+30)`, comparando o nível ajustado de vencimento diretamente com a cotação real de entrada. A mesma alteração alcança as buscas estreita e ampla de períodos. Não há parâmetro reajustado, indicador, temporizador ou filtro novo.
+
+Isso testa duas hipóteses sobre o desvio entre o preço e a curva: preservá-lo na projeção ou removê-lo. A fórmula antiga não foi classificada como erro matemático comprovado: um desvio pode persistir. Os testes de mercado são justamente necessários para decidir se a alternativa melhora a previsão. Um exemplo controlado em que uma fórmula perde e a outra ganha não demonstra vantagem real.
+
+Admissões e rotas históricas conservam seu código. Seus resultados podem mudar porque a direção da projeção participa dos conflitos, alterando a oportunidade de entrada e as seguintes. Por isso foi reexecutado o ciclo completo; não se selecionaram apenas operações que a mudança teria corrigido.
+
+## Resultado completo
+
+Contagens no formato acertos/erros/empates; percentuais excluem empates. Nenhum vencimento ficou sem cotação nesses três conjuntos.
+
+| Conjunto | Atual A/E/T | Atual | Candidata A/E/T | Candidata |
+|---|---:|---:|---:|---:|
+{table}
+
+Na cripto conhecida, a maior sequência de erros por trecho aumentou de 6 para 7. Na validação nova, diminuiu de 8 para 7. No Forex conhecido permaneceu em 7.
+
+O vídeo já usado de EUR/GBP OTC, extraído por OCR a 2Hz e não por ticks nativos, caiu de 11 acertos/3 erros para 9/5, nos mesmos 14 vencimentos completos. Uma última entrada não tinha vencimento disponível em ambas as variantes. É uma única gravação conhecida, não validação nova nem recibo de liquidação. Não foi somada como outra sessão de ticks.
+
+## Validação nova e proveniência
+
+Antes de observar os resultados foram registrados BTCUSDT, ETHUSDT e SOLUSDT, nos dias 18, 19 e 20/10/2025, sempre 15:00–15:30 UTC. Os nove arquivos oficiais Binance foram obtidos, com hashes verificados contra seus CHECKSUM publicados. Não houve janela descartada. O preço é o fechamento observado de cada segundo, disponível após o segundo completar; não se interpola o caminho intrassegundo. Candles de um minuto usam apenas segundos completos e entram após fechar o minuto.
+
+Esses dados não reproduzem IQ/Exnova OTC, transporte do Windows, clique, payout ou liquidação. Ganhar cerca de dois pontos percentuais neste conjunto não comprova a meta do usuário nem desempenho na corretora.
+
+| Trecho novo | Atual A/E/T | Atual | Candidata A/E/T | Candidata |
+|---|---:|---:|---:|---:|
+{window_rows}
+
+## Entradas e contrafactuais
+
+Comparações pareadas usam somente instantes comuns. As entradas que deixam de coincidir no tempo não são tratadas automaticamente como perdas evitadas ou acertos corrigidos.
+
+| Conjunto | Trechos melhores | Piores | Erros corrigidos no mesmo instante | Acertos estragados no mesmo instante | Acertos originais sem entrada no mesmo instante | Entradas candidatas em novos instantes |
+|---|---:|---:|---:|---:|---:|---:|
+{comparison_rows}
+
+Também foram avaliadas as duas projeções isoladamente nos instantes originais de entrada, mantendo referência e vencimento fixos. Essa análise é diagnóstica, não um segundo teste de estratégia: a projeção pode estar indisponível enquanto uma rota estrutural autoriza o sinal.
+
+| Conjunto | Projeção atual A/E | Projeção candidata A/E | Atual indisponível | Candidata indisponível |
+|---|---:|---:|---:|---:|
+{forecast_rows}
+
+No conjunto novo a projeção isolada piorou de 265/240 para 251/254, embora o motor completo tenha melhorado. A interação com os instantes de admissão importa; não é correto atribuir o ganho agregado a uma previsão de 30s comprovadamente melhor.
+
+## Funcionamento e decisão
+
+Oito testes cobrem desvio de preço nos dois sentidos, preservação da rejeição por variação insuficiente, exclusão de preços futuros ou recebidos tarde, prazo explícito, entradas inválidas, imutabilidade da direção durante os 30s e preservação das decisões em outros horizontes. O relatório também verifica hashes de fixtures, todas as entradas com duração de 30s e ausência de sobreposição de sinais. As contagens da base reproduzem os resultados previamente preservados nos dois conjuntos conhecidos.
+
+Não há espera intencional adicional ou consulta à corretora: a mudança troca uma expressão após o mesmo ajuste. Tempos de replay estão nos arquivos brutos, por janela e variante; não medem execução no PC do usuário. Passar em testes de software não significa melhorar a previsão.
+
+**Candidata rejeitada como correção geral.** A próxima evidência necessária é uma sequência de cotações e sinais nativos do ativo em que o usuário está perdendo. Os snapshots remotos atuais resumem o mercado e não transportam o histórico completo necessário para reproduzir essas entradas. Repetir filtros já rejeitados ou publicar esta alteração como solução não atende ao resultado pedido.
+
+## Reprodução e dados brutos
+
+1. `python scripts/sentinel-actual-entry-reference-fetch-20261018.py`
+2. `node --test tests/sentinel-actual-entry-reference-20261018.test.mjs`
+3. `SENTINEL_REFERENCE_SET=known node scripts/sentinel-actual-entry-reference-ab-20261018.mjs`
+4. Repetir o comando anterior com `crypto` e `validation`.
+5. `node scripts/sentinel-actual-entry-reference-video-20261018.mjs`
+6. `python scripts/sentinel-actual-entry-reference-report-20261018.py`
+
+As fixtures conhecidas são as mesmas da pesquisa anterior. As novas são reproduzíveis pelos URLs e hashes do manifesto. O avaliador só consulta o vencimento depois de as duas funções de decisão retornarem. O bruto contém preços de entrada, direções, prazos, motivos e resultados; não contém credenciais, saldo ou ordens da sessão atual do usuário.
+
+{chr(10).join(hashes)}
+'''
+(R / 'reports/sentinel-actual-entry-reference-20261018.md').write_text(text)
+print(json.dumps({'disposition': summary['disposition'], 'verifiedCoreFiles': len(core), 'sets': {
+    m: x['totals'] for m, x in summary['sets'].items()}}, indent=2))
