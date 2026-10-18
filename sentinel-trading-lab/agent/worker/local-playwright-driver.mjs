@@ -914,7 +914,7 @@ export class LocalPlaywrightDriver{
         client.on('Network.webSocketFrameReceived',event=>{
           const response=event?.response,payload=response?.payloadData;
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
-            !/balance|profile|option|position-changed|order-changed/.test(payload))return;
+            (!/balance|profile/.test(payload)&&(!this.executionObserver||!/option|position-changed|order-changed/.test(payload))))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
           if(this.executionObserver&&isExecutionFrame(frame))this.observeExecution(provider,frame,'page-in');
           else if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');

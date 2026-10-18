@@ -97,7 +97,9 @@ test('broker native and restored socket observers deliver order events once, wit
  const page={on:(event,fn)=>{if(event==='websocket')fn({on:(event,fn)=>ws[event]=fn});},context:()=>({newCDPSession:async()=>({on:(event,fn)=>cdp[event]=fn,send:async cmd=>commands.push(cmd)})})};
  await d.attachNetwork('exnova',page);
  const frame={name:'option',request_id:'r1',msg:{id:99}},raw=JSON.stringify(frame);
- cdp['Network.webSocketFrameReceived']({response:{opcode:1,payloadData:raw}});assert.equal(observed.length,0,'disabled executor has no observer work');
+ let parses=0;const originalParse=JSON.parse;JSON.parse=(...args)=>{parses++;return originalParse(...args);};
+ try{cdp['Network.webSocketFrameReceived']({response:{opcode:1,payloadData:raw}});}finally{JSON.parse=originalParse;}
+ assert.equal(observed.length,0,'disabled executor has no observer work');assert.equal(parses,0,'disabled bot does not decode order frames');
  d.setExecutionObserver((...args)=>observed.push(args));
  cdp['Network.webSocketFrameReceived']({response:{opcode:1,payloadData:raw}});ws.framereceived({payload:raw});assert.equal(observed.length,1);
  page.__sentinelAccountCdpReady=false;ws.framereceived({payload:raw});assert.equal(observed.length,2);
