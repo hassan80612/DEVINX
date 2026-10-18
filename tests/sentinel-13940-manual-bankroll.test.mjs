@@ -56,7 +56,7 @@ test('manual stop wins a race before an asynchronous click; quote loop is never 
  assert.equal(x.calls.length,0);assert.equal(x.context.state,'running');
 });
 test('paused analyst, lost license and analyst context changes disarm locally',async()=>{
- for(const patch of [{state:'paused'},{licensed:false},{provider:'exnova'},{asset:'GBP/USD'},{durationMs:15000},{engine:'trend'}]){
+ for(const patch of [{state:'paused'},{licensed:false},{provider:'exnova'},{asset:'GBP/USD'},{durationMs:15000}]){
   const x=setup();await x.bot.start({confirmedMode:'demo'});Object.assign(x.context,patch);x.fire();x.bot.pulse();assert.equal(x.bot.enabled,false,JSON.stringify(patch));assert.equal(x.calls.length,0);
  }
 });

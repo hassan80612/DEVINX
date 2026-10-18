@@ -1,6 +1,6 @@
 {
-  "version": "13.9.42",
-  "build": "13.9.42-broker-canvas-call-put",
+  "version": "13.9.43",
+  "build": "13.9.43-live-settings-broker-balance",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

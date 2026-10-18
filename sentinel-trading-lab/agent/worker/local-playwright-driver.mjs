@@ -344,7 +344,12 @@ function rememberBalanceChange(st,id,type,amount){
   if([1,4].includes(type))row.type=type;
   st.lastBalances=index>=0?rows.map((old,i)=>i===index?row:old):[...rows,row].slice(-50);
 }
-function applyKnownBalance(st){
+function markObservedBalance(st){
+  if(st.balanceId==null||!Number.isFinite(st.balance)||st.balance<0)return;
+  st.balanceRevision=Number(st.balanceRevision||0)+1;
+  st.balanceObservation={accountId:String(st.balanceId),amount:st.balance,receivedAt:Date.now(),revision:st.balanceRevision,source:st.balanceSource};
+}
+function applyKnownBalance(st,{observed=false}={}){
   const arr=Array.isArray(st.lastBalances)?st.lastBalances:[];if(!arr.length)return false;
   // A mudança de conta no PC pode chegar pelo cabeçalho antes do perfil.
   // Nesse caso o saldo/ID antigos não podem prevalecer sobre a conta selecionada.
@@ -354,7 +359,7 @@ function applyKnownBalance(st){
   if(!selected&&st.balanceId!=null)selected=arr.find(x=>n(x?.id)===n(st.balanceId))||null;
   if(!selected&&st.mode)selected=arr.find(x=>(st.mode==='real'&&Number(x?.type)===1)||(st.mode==='demo'&&Number(x?.type)===4));
   const eligible=arr.filter(x=>[1,4].includes(Number(x?.type)));if(!selected&&eligible.length===1)selected=eligible[0];
-  if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';return true}return false
+  if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';if(observed)markObservedBalance(st);return true}return false
 }
 function appendQuoteSample(st,ts,price){
   const t=Number(ts),p=Number(price);if(!Number.isFinite(t)||!Number.isFinite(p)||p<=0)return;
@@ -444,11 +449,11 @@ function protocolScan(data,st,direction='in'){
     if(!selected&&eligible.length===1)selected=eligible[0];
     const typ=Number(selected?.type??([1,4].includes(explicitType)?explicitType:NaN));
     if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
-    const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile'}else applyKnownBalance(st)
+    const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile';markObservedBalance(st)}else applyKnownBalance(st,{observed:true})
   }
   if(outer==='balances'){
     const arr=Array.isArray(data.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.balances)?data.msg.balances:[];
-    if(arr.length){st.lastBalances=arr.slice(0,50);applyKnownBalance(st)}
+    if(arr.length){st.lastBalances=arr.slice(0,50);applyKnownBalance(st,{observed:true})}
   }
   if(/balance-changed/i.test(outer)||/balance-changed/i.test(inner)){
     // The observer already accepts named event envelopes. Read the event's
@@ -465,7 +470,7 @@ function protocolScan(data,st,direction='in'){
     if(matchesKnown||(st.balanceId==null&&matchesMode)){
       if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
       if(st.balanceId==null&&id!=null)st.balanceId=id;
-      if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed'}
+      if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed';markObservedBalance(st)}
     }
   }
   if(outer==='candles'){
@@ -1304,6 +1309,13 @@ export class LocalPlaywrightDriver{
     const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
+  accountBalanceSnapshot(provider){
+    const st=this.state(provider),value=st.balanceObservation;
+    if(!value||st.balanceId==null||String(st.balanceId)!==value.accountId)return null;
+    const selected=(st.lastBalances||[]).find(row=>String(row.id)===value.accountId);
+    if(selected&&st.visibleAccountMode&&((Number(selected.type)===1&&st.visibleAccountMode!=='real')||(Number(selected.type)===4&&st.visibleAccountMode!=='demo')))return null;
+    return{provider,...value};
+  }
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
@@ -1341,9 +1353,9 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.9.42'){el?.__sentinelResizeObserver?.disconnect();host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.43'){el?.__sentinelResizeObserver?.disconnect();host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.42';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.43';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
@@ -1770,7 +1782,7 @@ export class LocalPlaywrightDriver{
           const run=async payload=>{
             const msg=el.querySelector('[data-sentinel-control-msg]');if(msg)msg.textContent='Aplicando…';
             const botAction=String(payload.action||'').startsWith('executor-');
-            const showBot=text=>{if(!botAction)return;el.dataset.executorActionMessage=text;const target=el.querySelector('[data-sentinel-executor-action-msg]');if(target)target.textContent=text;};
+            const showBot=text=>{if(!botAction)return;el.dataset.executorActionMessage=text;el.dataset.executorActionAt=String(Date.now());const target=el.querySelector('[data-sentinel-executor-action-msg]');if(target)target.textContent=text;};
             showBot('Aplicando…');
             try{
               if(typeof window.__sentinelOverlayAction!=='function')throw Error('Conexão com o Agent indisponível. Reconecte a corretora pelo Agent.');
@@ -2195,7 +2207,7 @@ export class LocalPlaywrightDriver{
         };
         reconcile(el,template.content);
         const executorActionMsg=el.querySelector('[data-sentinel-executor-action-msg]');
-        if(executorActionMsg)executorActionMsg.textContent=el.dataset.executorActionMessage||'';
+        if(executorActionMsg)executorActionMsg.textContent=Date.now()-Number(el.dataset.executorActionAt||0)<5000?el.dataset.executorActionMessage||'':'';
         // Clock updates in the overlay DOM without re-running the motor,
         // polling Supabase, regenerating cards, or adjusting entry signals.
         // Its target is precisely the current selected motor forecast receipt.

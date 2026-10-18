@@ -1,0 +1,34 @@
+{
+  "actualBrokerTested": false,
+  "nativeWindowsTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "receivedBalance": true,
+      "runningEdits": true,
+      "stoppedPendingEdits": true,
+      "unknownResultUnlock": true,
+      "strategyContinues": true,
+      "nativeStopLoss": true,
+      "clicks": [
+        "CALL",
+        "PUT"
+      ],
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "receivedBalance": true,
+      "runningEdits": true,
+      "stoppedPendingEdits": true,
+      "unknownResultUnlock": true,
+      "strategyContinues": true,
+      "nativeStopLoss": true,
+      "clicks": [
+        "CALL",
+        "PUT"
+      ],
+      "pageErrors": []
+    }
+  ]
+}
