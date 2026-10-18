@@ -1,0 +1,74 @@
+{
+  "actualBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "canvasOnly": true,
+      "mappingClicksReachBroker": false,
+      "targets": {
+        "CALL": {
+          "x": 1150,
+          "y": 310
+        },
+        "PUT": {
+          "x": 1150,
+          "y": 440
+        }
+      },
+      "executionClicks": [
+        {
+          "name": "click",
+          "x": 1150,
+          "y": 310
+        },
+        {
+          "name": "click",
+          "x": 1150,
+          "y": 440
+        }
+      ],
+      "duplicateSignalClicks": 0,
+      "resizeRequiresRemapping": true,
+      "escapeCancels": true,
+      "overlayRemainsVisible": true,
+      "noBrokerMetadataRead": true,
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "canvasOnly": true,
+      "mappingClicksReachBroker": false,
+      "targets": {
+        "CALL": {
+          "x": 1080,
+          "y": 390
+        },
+        "PUT": {
+          "x": 1080,
+          "y": 530
+        }
+      },
+      "executionClicks": [
+        {
+          "name": "click",
+          "x": 1080,
+          "y": 390
+        },
+        {
+          "name": "click",
+          "x": 1080,
+          "y": 530
+        }
+      ],
+      "duplicateSignalClicks": 0,
+      "resizeRequiresRemapping": true,
+      "escapeCancels": true,
+      "overlayRemainsVisible": true,
+      "noBrokerMetadataRead": true,
+      "pageErrors": []
+    }
+  ],
+  "separatePersistentMappings": true,
+  "crossBrokerMappingRejected": true,
+  "nestedHtmlControlsPassed": true
+}

@@ -1341,9 +1341,9 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.9.41'){el?.__sentinelResizeObserver?.disconnect();host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.42'){el?.__sentinelResizeObserver?.disconnect();host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.41';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.42';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');

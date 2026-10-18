@@ -1,6 +1,6 @@
 {
-  "version": "13.9.41",
-  "build": "13.9.41-analyst-call-put-only",
+  "version": "13.9.42",
+  "build": "13.9.42-broker-canvas-call-put",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

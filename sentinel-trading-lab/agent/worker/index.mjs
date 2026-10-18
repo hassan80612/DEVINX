@@ -43,12 +43,19 @@ const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter(
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
+const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[]};}
 const uiExecutor=new BrokerUiExecutor(driver);
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 async function executorAction(action,payload={}){
  if(action==='executor-stop'){const result=executor.stop();if(!executor.pending)driver.setExecutionObserver?.(null);return{ok:true,message:result.message};}
  assertLicensedAccess();
+ if(action==='executor-map'||action==='executor-map-save'){
+  if(executor.enabled||executor.arming||executor.pending)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
+  if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL e depois PUT no painel da corretora. Os cliques de indicação não operam.'};}
+  const bindings=await uiExecutor.saveBinding(activeProvider,payload.binding);await mkdir(dirname(executorTargetsFile),{recursive:true});await writeFile(executorTargetsFile+'.tmp',JSON.stringify(bindings),{mode:0o600});await rename(executorTargetsFile+'.tmp',executorTargetsFile);
+  executor.message='CALL/PUT mapeados para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · pronto para ligar';return{ok:true,message:executor.message};
+ }
  if(action==='executor-config'){executor.configure(payload.patch||{});await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile,JSON.stringify(executor.config),{mode:0o600});return{ok:true,message:'Configuração do bot aplicada'};}
  if(action==='executor-start'){try{await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
@@ -278,6 +285,7 @@ async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_F
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
 try{executor.configure(JSON.parse(await readFile(executorSettingsFile,'utf8')))}catch{}
+try{uiExecutor.restoreBindings(JSON.parse(await readFile(executorTargetsFile,'utf8')))}catch{}
 // The bot ALWAYS starts disarmed, including after an Agent update/restart.
 // Product now presents Continuous only. Migrate a saved Selective choice
 // once, without modifying any Continuous forecast rule or old signal history.
@@ -492,7 +500,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       state:view.state,
       demoAutopilot:view.autopilot?.enabled===true,
       executionReady:view.autopilot?.eligible===true,
-      agentVersion:VERSION,autoExecutor:executor.status()
+      agentVersion:VERSION,autoExecutor:{...executor.status(),provider:activeProvider,controlsMapped:!!uiExecutor.canvasBindings[activeProvider]}
     },{urgent:urgentOverlay});
     }
     }
