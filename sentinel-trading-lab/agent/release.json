@@ -1,6 +1,6 @@
 {
-  "version": "13.9.38",
-  "build": "13.9.38-quote-provenance-market-isolation",
+  "version": "13.9.39",
+  "build": "13.9.39-local-signal-executor",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

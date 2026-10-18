@@ -1,0 +1,19 @@
+const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const words={
+ pt:['Bot automático','Valor por entrada','Intervalo entre entradas','Parar em (min)','Stop loss','Conta','Ligar bot','Parar bot','0 = sem limite','Resultado confirmado','Duração da operação segue o analista. O intervalo só pula sinais.'],
+ en:['Automatic bot','Amount per trade','Entry interval','Stop after (min)','Stop loss','Account','Start bot','Stop bot','0 = no limit','Confirmed result','Trade duration follows the analyst. The interval only skips signals.'],
+ es:['Bot automático','Importe por operación','Intervalo de entradas','Parar en (min)','Stop loss','Cuenta','Iniciar bot','Parar bot','0 = sin límite','Resultado confirmado','La duración sigue al analista. El intervalo solo omite señales.'],
+ fr:['Bot automatique','Montant par opération','Intervalle des entrées','Arrêt après (min)','Stop loss','Compte','Démarrer','Arrêter','0 = sans limite','Résultat confirmé','La durée suit l’analyste. L’intervalle saute uniquement des signaux.'],
+ ar:['التداول الآلي','قيمة العملية','الفاصل بين الدخول','التوقف بعد (دقيقة)','حد الخسارة','الحساب','تشغيل','إيقاف','0 = بدون حد','النتيجة المؤكدة','مدة العملية تتبع المحلل. الفاصل يتخطى الإشارات فقط.']
+};
+export function executorPanel(state,language='pt'){
+ if(!state)return'';const w=words[language]||words.pt,c=state.config||{},disabled=state.enabled||state.arming||state.pending?' disabled':'';
+ const input=(key,label,value,step='1')=>'<label style="display:grid;gap:3px">'+label+'<input data-sentinel-executor-setting="'+key+'" type="number" min="0" step="'+step+'" value="'+escape(value)+'"'+disabled+' style="width:100%;min-width:0;box-sizing:border-box;background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px"></label>';
+ return '<details data-sentinel-preserve-open="1" data-sentinel-executor-panel style="margin:8px 0;padding:9px;border:1px solid #a88c47;border-radius:9px;font-size:11px;color:inherit"><summary style="cursor:pointer;font-weight:750">'+w[0]+' · '+escape(state.config.accountMode.toUpperCase())+' · '+(state.enabled?'ON':'OFF')+'</summary><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px">'+
+ input('amount',w[1],c.amount,'0.01')+
+ '<label style="display:grid;gap:3px">'+w[2]+'<select data-sentinel-executor-setting="intervalMs"'+disabled+' style="background:#0a272b;color:#fff;padding:5px;border:1px solid #8a7848;border-radius:5px">'+[5000,10000,15000,30000,60000,120000,300000].map(n=>'<option value="'+n+'"'+(c.intervalMs===n?' selected':'')+'>'+(n<60000?n/1000+' s':n/60000+' min')+'</option>').join('')+'</select></label>'+
+ input('stopAfterMinutes',w[3],c.stopAfterMinutes)+input('stopLoss',w[4],c.stopLoss,'0.01')+
+ '<label>'+w[5]+' <select data-sentinel-executor-setting="accountMode"'+disabled+' style="background:#0a272b;color:#fff;padding:4px"><option value="demo"'+(c.accountMode==='demo'?' selected':'')+'>DEMO</option><option value="real"'+(c.accountMode==='real'?' selected':'')+'>REAL</option></select></label><span>'+w[8]+'</span></div>'+
+ '<div style="margin:8px 0;line-height:1.4">'+w[10]+'</div><div style="display:flex;gap:7px"><button data-sentinel-executor-action="start"'+disabled+' style="background:#c5a557;color:#121c20;border:0;border-radius:6px;padding:7px;font-weight:750">'+w[6]+' · '+escape(c.accountMode.toUpperCase())+'</button><button data-sentinel-executor-action="stop" style="background:#50282e;color:#fff;border:1px solid #a55;border-radius:6px;padding:7px">'+w[7]+'</button></div>'+
+ '<div role="status" style="margin-top:7px;overflow-wrap:anywhere">'+escape(state.message)+'</div><div style="margin-top:4px">'+w[9]+': '+Number(state.netPnl||0).toFixed(2)+' · '+state.executed+' / '+state.closed+'</div></details>';
+}

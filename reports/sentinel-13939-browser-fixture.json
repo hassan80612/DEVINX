@@ -1,0 +1,39 @@
+{
+  "actualBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "fixture": true,
+      "clicks": [
+        {
+          "direction": "CALL",
+          "amount": "10"
+        },
+        {
+          "direction": "PUT",
+          "amount": "10"
+        }
+      ],
+      "interval": "alternate-skipped",
+      "durationMismatch": "no-click",
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "fixture": true,
+      "clicks": [
+        {
+          "direction": "CALL",
+          "amount": "10"
+        },
+        {
+          "direction": "PUT",
+          "amount": "10"
+        }
+      ],
+      "interval": "alternate-skipped",
+      "durationMismatch": "no-click",
+      "pageErrors": []
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import {SignalExecutor} from './signal-executor.mjs';
+import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
@@ -40,6 +42,18 @@ const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOv
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
+const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
+function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,accountId:st?.balanceId,activeId:st?.activeId,mode:st?.mode,asset:st?.symbol,balance:st?.balance,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis};}
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:id=>executor.sent(id),onAccepted:e=>executor.accepted(e),onRejected:e=>executor.rejected(e),onSettlement:e=>executor.settle(e),onUnexpectedOrder:()=>executor.stop('Bot parado · operação externa detectada')});
+const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
+async function executorAction(action,payload={}){
+ if(action==='executor-stop'){const result=executor.stop();if(!executor.pending)driver.setExecutionObserver?.(null);return{ok:true,message:result.message};}
+ assertLicensedAccess();
+ if(action==='executor-config'){executor.configure(payload.patch||{});await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile,JSON.stringify(executor.config),{mode:0o600});return{ok:true,message:'Configuração do bot aplicada'};}
+ if(action==='executor-start'){driver.setExecutionObserver?.((...args)=>uiExecutor.observe(...args));try{await executor.start({confirmedMode:payload.confirmedMode});}catch(e){if(!executor.pending)driver.setExecutionObserver?.(null);throw e;}return{ok:true,message:executor.message};}
+ throw Error('Comando do bot inválido.');
+}
+
 function chooseLive(){
   if(activeProvider){
     const activePeek=driver.peek?.(activeProvider);
@@ -155,6 +169,7 @@ async function ensureLocalCockpitBroker(provider){
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
+  if(action.startsWith('executor-')){if(action!=='executor-stop'&&provider!==activeProvider)throw Error('Selecione a corretora ativa.');return executorAction(action,payload);}
   if(!['pause','stop'].includes(action))assertLicensedAccess();
   if(action==='start'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
@@ -167,8 +182,8 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     return{ok:true,message:'Análise iniciada · operação manual somente'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
-  if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Analista parado · execução automática desativada'}}
+  if(action==='pause'){executor.stop('Bot parado · analista pausado');localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){executor.stop('Bot parado · analista parado');localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Analista parado · execução automática desativada'}}
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
@@ -262,6 +277,8 @@ async function enforceAccessLease(){
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
+try{executor.configure(JSON.parse(await readFile(executorSettingsFile,'utf8')))}catch{}
+// The bot ALWAYS starts disarmed, including after an Agent update/restart.
 // Product now presents Continuous only. Migrate a saved Selective choice
 // once, without modifying any Continuous forecast rule or old signal history.
 if(runtime.settings.forecastMode==='selective'){
@@ -325,6 +342,7 @@ function scheduleBrokerMaintenance(provider){
 }
 let shuttingDown=false;
 let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
+  executor.watch();
   const licensed=await enforceAccessLease();
   if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
   if(activeProvider){
@@ -342,6 +360,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   void publishLiveFrame();
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
+  executor.pulse();
   // Deliver a confirmed decision immediately, BEFORE timing diagnostics,
   // broker overlay rendering, journals or any other optional work.
   void publishLiveFrame();
@@ -473,7 +492,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       state:view.state,
       demoAutopilot:view.autopilot?.enabled===true,
       executionReady:view.autopilot?.eligible===true,
-      agentVersion:VERSION
+      agentVersion:VERSION,autoExecutor:executor.status()
     },{urgent:urgentOverlay});
     }
     }
@@ -639,6 +658,7 @@ server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening o
 let shutdownPromise=null;
 function shutdownWorker(){
   if(shutdownPromise)return shutdownPromise;
+  executor.stop('Agente encerrado');
   shuttingDown=true;
   shutdownPromise=(async()=>{
     // Stop all Agent loops before disposing browser contexts opened by it.

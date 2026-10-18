@@ -1,5 +1,7 @@
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm} from 'node:fs/promises';
+import {executorPanel} from './executor-panel.mjs';
+import {isExecutionFrame} from './broker-ui-executor.mjs';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {scenarioViewFromRuntime} from './scenario-view.mjs';
@@ -587,6 +589,8 @@ function recursiveScan(obj,out,hint=''){
 export class LocalPlaywrightDriver{
   constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
+  setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
+  observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
   state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,screenCandidateSymbol:null,validatedAt:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],predictionCandles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
@@ -851,6 +855,7 @@ export class LocalPlaywrightDriver{
     // Preserve outbound active-tab selection without decoding inbound
     // high-frequency market traffic or costly broker HTTP response bodies.
     const observeSent=payload=>{
+      if(this.executionObserver&&typeof payload==='string'&&payload.length<=12000&&/open-option|place-digital-option|buyV3/i.test(payload)){try{this.observeExecution(provider,JSON.parse(payload),'page-out')}catch{}}
       if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
       this.ingest(provider,payload,'page-out');
     };
@@ -865,6 +870,7 @@ export class LocalPlaywrightDriver{
         const payload=typeof raw==='string'?raw:(Buffer.isBuffer(raw)&&raw.length<=120000?raw.toString('utf8'):null);
         if(!payload||payload.length>120000)return;
         let frame;try{frame=JSON.parse(payload)}catch{return}
+        if(this.executionObserver&&isExecutionFrame(frame)){if(!page.__sentinelAccountCdpReady)this.observeExecution(provider,frame,'page-in');return;}
         // Settlement/account events are low frequency and must not wait for
         // the next get-balances poll or share the sampled market-data slot.
         if(isAccountFrame(frame)){
@@ -908,9 +914,10 @@ export class LocalPlaywrightDriver{
         client.on('Network.webSocketFrameReceived',event=>{
           const response=event?.response,payload=response?.payloadData;
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
-            !/balance|profile/.test(payload))return;
+            !/balance|profile|option|position-changed|order-changed/.test(payload))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
-          if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');
+          if(this.executionObserver&&isExecutionFrame(frame))this.observeExecution(provider,frame,'page-in');
+          else if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');
         });
         await client.send('Network.enable');
         page.__sentinelAccountCdpReady=true;
@@ -1322,6 +1329,7 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
+      payload.executorPanelHtml=executorPanel(payload.autoExecutor,payload.uiLanguage);
       // Stable presentation slots only: no broker analysis, caching or extra timer.
       payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
@@ -1550,7 +1558,7 @@ export class LocalPlaywrightDriver{
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
-        const pilotLabel=operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
+        const pilotLabel=d.autoExecutor?.enabled?'BOT ATIVO · '+String(d.autoExecutor.config?.accountMode||'').toUpperCase():operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
         const displayCandidate=candidateOutlook;
         const formingSide=(plannerReadable||runtimeView.projectionOnly===true)&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
         const outlook=formingSide||((runtimeView.hasSetup||timingClosed)?runtimeOperationalSide:null)||'AGUARDAR';
@@ -1764,9 +1772,12 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
+            const ex=ev.target?.closest?.('[data-sentinel-executor-setting]');
+            if(ex){const key=ex.getAttribute('data-sentinel-executor-setting');run({action:'executor-config',patch:{[key]:key==='accountMode'?ex.value:Number(ex.value)}});setTimeout(()=>{el.dataset.selectLock='0';ex.blur?.()},160);return;}
+
             const tt=ev.target?.closest?.('[data-sentinel-total-threshold]');
             if(tt){
               const kind=String(tt.getAttribute('data-sentinel-total-threshold')||''),value=Math.max(50,Math.min(95,Math.round(Number(tt.value)||60)));
@@ -1810,6 +1821,9 @@ export class LocalPlaywrightDriver{
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
           });
           el.addEventListener('click',ev=>{
+            const botButton=ev.target?.closest?.('[data-sentinel-executor-action]');
+            if(botButton){ev.preventDefault();ev.stopPropagation();run({action:'executor-'+botButton.getAttribute('data-sentinel-executor-action'),confirmedMode:window.__sentinelLastOverlayData?.autoExecutor?.config?.accountMode});return;}
+
             const theme=ev.target?.closest?.('[data-sentinel-theme]');
             if(theme){ev.preventDefault();ev.stopPropagation();const next=theme.getAttribute('data-sentinel-theme')==='light'?'light':'dark';el.dataset.themePreference=next;el.dataset.theme=next;try{localStorage.setItem('sentinel-overlay-theme-v1',next)}catch{}queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return}
             const rp=ev.target?.closest?.('[data-sentinel-reading-pause]');
@@ -1989,6 +2003,7 @@ export class LocalPlaywrightDriver{
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
               <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
             </div>
+            ${d.executorPanelHtml||''}
             <div data-sentinel-control-msg style="margin-top:5px;color:${goldSoft};min-height:13px;font-size:10px;font-weight:700"></div>
             <details style="margin-top:10px;padding:7px;border:1px solid ${panelBorder};border-radius:8px">
               <summary style="font-size:10px;font-weight:750;cursor:pointer;color:${muted}">${tr('Detalhes da previsão')}</summary>
@@ -2026,6 +2041,7 @@ export class LocalPlaywrightDriver{
             ${validatedAsset&&validatedAsset!=='—'?'<b style="color:'+callTone+';font-weight:750">ATIVO VALIDADO · '+esc(validatedAsset)+' ✓</b><span style="color:'+(uiTheme==='light'?'#3d4650':'#ffffff')+'"> · </span>':''}<span style="color:${uiTheme==='light'?'#20252b':'#ffffff'};font-weight:700">Para trocar, feche o ativo atual e abra o novo pelo botão + da corretora.</span>
           </div>
 
+          ${d.executorPanelHtml||''}
           <div data-sentinel-pilot-status style="margin-top:7px;font-size:9.5px;font-weight:700;color:${goldSoft};line-height:1.4">${esc(pilotLabel)}</div>
           <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${entryPanelBorder};background:${entryPanelBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:24px;overflow:visible">
@@ -2163,7 +2179,7 @@ export class LocalPlaywrightDriver{
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
             // Preserve the editor and its live DOM/options while focused;
             // update every other part of the overlay in the same frame.
-            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
+            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]')&&
               (current===focused||el.dataset.selectLock==='1'))continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(attr.name==='open'&&current.matches?.('details[data-sentinel-preserve-open]')))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
