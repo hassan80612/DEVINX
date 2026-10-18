@@ -1,0 +1,36 @@
+{
+  "actualBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "buttonsOnly": true,
+      "legacyOverlayReplaced": true,
+      "realDriverBridge": true,
+      "singleStartHandler": true,
+      "noNativeOrderAckNeeded": true,
+      "clicks": [
+        "CALL",
+        "PUT"
+      ],
+      "analystCalculationPassed": true,
+      "errorShownInsideBot": true,
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "buttonsOnly": true,
+      "legacyOverlayReplaced": true,
+      "realDriverBridge": true,
+      "singleStartHandler": true,
+      "noNativeOrderAckNeeded": true,
+      "clicks": [
+        "CALL",
+        "PUT"
+      ],
+      "analystCalculationPassed": true,
+      "errorShownInsideBot": true,
+      "pageErrors": []
+    }
+  ],
+  "failedBridgeRetryPassed": true
+}

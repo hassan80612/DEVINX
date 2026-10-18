@@ -719,8 +719,8 @@ export class LocalPlaywrightDriver{
   }
   async installBridge(page,provider=null){
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
+      await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
       page.__sentinelOverlayControlExposed=true;
-      try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
     }
     if(provider&&!page.__sentinelAssetBridgeExposed){
       page.__sentinelAssetBridgeExposed=true;
@@ -1341,9 +1341,9 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.9.35'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.41'){el?.__sentinelResizeObserver?.disconnect();host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.35';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.41';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
@@ -1769,8 +1769,13 @@ export class LocalPlaywrightDriver{
           el.dataset.controlReady='1';
           const run=async payload=>{
             const msg=el.querySelector('[data-sentinel-control-msg]');if(msg)msg.textContent='Aplicando…';
-            try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
-            catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
+            const botAction=String(payload.action||'').startsWith('executor-');
+            const showBot=text=>{if(!botAction)return;el.dataset.executorActionMessage=text;const target=el.querySelector('[data-sentinel-executor-action-msg]');if(target)target.textContent=text;};
+            showBot('Aplicando…');
+            try{
+              if(typeof window.__sentinelOverlayAction!=='function')throw Error('Conexão com o Agent indisponível. Reconecte a corretora pelo Agent.');
+              const res=await window.__sentinelOverlayAction(payload);if(msg)msg.textContent=res?.message||'Aplicado';showBot(res?.message||'Aplicado');
+            }catch(e){const text='Erro: '+String(e?.message||e);if(msg)msg.textContent=text;showBot(text);}
           };
           el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))el.dataset.selectLock='1'},true);
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
@@ -2189,6 +2194,8 @@ export class LocalPlaywrightDriver{
           while(parent.childNodes.length>nextChildren.length)parent.lastChild.remove();
         };
         reconcile(el,template.content);
+        const executorActionMsg=el.querySelector('[data-sentinel-executor-action-msg]');
+        if(executorActionMsg)executorActionMsg.textContent=el.dataset.executorActionMessage||'';
         // Clock updates in the overlay DOM without re-running the motor,
         // polling Supabase, regenerating cards, or adjusting entry signals.
         // Its target is precisely the current selected motor forecast receipt.

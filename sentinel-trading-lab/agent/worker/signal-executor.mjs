@@ -84,12 +84,13 @@ export class SignalExecutor{
   const order=this.pending;
   const valid=()=>this.enabled&&generation===this.generation&&this.pending===order&&this.sameContext(this.session,this.context())&&this.context().state==='running'&&this.context().licensed===true&&this.clock()-queued.at<=1500&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   const captureEntry=()=>{
-   const snapshot=this.context();order.clickedAt=this.clock();order.exitAt=order.clickedAt+order.durationMs;
+   const snapshot=this.context();order.clickedAt=this.clock();
    if(num(snapshot.quote)&&Number(snapshot.quote)>0&&Number(snapshot.quoteAt)>0&&order.clickedAt-Number(snapshot.quoteAt)>=0&&order.clickedAt-Number(snapshot.quoteAt)<=2500){order.entryPrice=Number(snapshot.quote);order.entryQuoteAt=Number(snapshot.quoteAt);}
   };
   this.inflight=Promise.resolve().then(async()=>{
    if(!valid())throw Error('Entrada cancelada antes do clique.');
    const result=await this.driver.execute(c.provider,Object.assign(order,{isValid:valid,captureEntry}));
+   if(result?.clicked===true&&result.clickId){this.accepted({provider:c.provider,orderId:result.clickId,source:'ui-click'});return;}
    if(result?.accepted!==true||!result.orderId)throw Error('Entrada sem confirmação da corretora · não será repetida.');
    this.accepted({...result,provider:c.provider});
   }).catch(e=>{
@@ -105,7 +106,8 @@ export class SignalExecutor{
   p.state='accepted';p.clicked=true;p.orderId=String(event.orderId);p.requestId=event.requestId??p.requestId;p.accountId=event.accountId??p.accountId;
   if(Number(event.exitAt)>p.at)p.exitAt=Number(event.exitAt);
   if(num(event.entryPrice)&&Number(event.entryPrice)>0)p.entryPrice=Number(event.entryPrice);
-  this.executed++;if(this.enabled)this.message=p.side+' aberto · saldo calculado com seus parâmetros';
+  p.executionSource=event.source||'broker';
+  this.executed++;if(this.enabled)this.message=event.source==='ui-click'?p.side+' · clique enviado; cálculo pelo analista':p.side+' aberto · saldo calculado com seus parâmetros';
  }
  settle(event){
   const key=event.provider+'|'+event.orderId;

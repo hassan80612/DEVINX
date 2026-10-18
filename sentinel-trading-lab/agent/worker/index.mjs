@@ -44,13 +44,13 @@ const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[]};}
-const uiExecutor=new BrokerUiExecutor(driver,{onSent:id=>executor.sent(id),onAccepted:e=>executor.accepted(e),onRejected:e=>executor.rejected(e),onSettlement:e=>executor.settle(e),onUnexpectedOrder:()=>executor.stop('Bot parado · operação externa detectada')});
+const uiExecutor=new BrokerUiExecutor(driver);
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 async function executorAction(action,payload={}){
  if(action==='executor-stop'){const result=executor.stop();if(!executor.pending)driver.setExecutionObserver?.(null);return{ok:true,message:result.message};}
  assertLicensedAccess();
  if(action==='executor-config'){executor.configure(payload.patch||{});await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile,JSON.stringify(executor.config),{mode:0o600});return{ok:true,message:'Configuração do bot aplicada'};}
- if(action==='executor-start'){driver.setExecutionObserver?.((...args)=>uiExecutor.observe(...args));try{await executor.start();}catch(e){if(!executor.pending)driver.setExecutionObserver?.(null);throw e;}return{ok:true,message:executor.message};}
+ if(action==='executor-start'){try{await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
 }
 

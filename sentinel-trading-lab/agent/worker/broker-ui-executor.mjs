@@ -24,7 +24,8 @@ export function settlementFromFrame(provider,frame,known){
 }
 
 // Executed inside the broker page only at activation / selected entry.
-// This scans controls, not chart/candles/body text. No timer is installed.
+// Only locates the direction buttons. Stake and duration are set by the user
+// on the broker; the bot's corresponding values are for local accounting.
 export function inspectTradeControls({marker}){
  const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'&&!e.closest('[aria-hidden="true"]');};
  const text=e=>[e.getAttribute('aria-label'),e.getAttribute('title'),e.getAttribute('data-test'),e.getAttribute('data-testid'),e.name,e.id,e.textContent].filter(Boolean).join(' ').trim();
@@ -34,23 +35,9 @@ export function inspectTradeControls({marker}){
   return new RegExp('(?:^|[\\s_-])(?:'+words+')(?:$|[\\s_-])','i').test(t)&&!/(?:payout|layout|setup|input|group|dropdown)/i.test(t)&&!e.disabled&&e.getAttribute('aria-disabled')!=='true';
  });
  const call=choose('CALL'),put=choose('PUT');
- if(call.length!==1||put.length!==1){
-  const next=buttons.filter(e=>/^(?:nova opera[çc][ãa]o|new (?:option|trade|operation)|nueva operaci[oó]n)$/i.test(String(e.textContent||'').trim()));
-  if(next.length===1){next[0].setAttribute('data-sentinel-execution-next',marker);return{nextSelector:'[data-sentinel-execution-next="'+marker+'"]'};}
-  return{error:'Botões CALL/PUT da corretora não identificados de forma única.'};
- }
- let root=call[0].parentElement;
- for(let i=0;i<9&&root&&!root.contains(put[0]);i++)root=root.parentElement;
- if(!root)return{error:'Painel de negociação não identificado.'};
- const controls=[...root.querySelectorAll('input,select,[role="spinbutton"],[data-test],[data-testid]')].filter(visible);
- const description=e=>{
-  const labels=e.labels?[...e.labels].map(l=>l.textContent).join(' '):'';
-  return [e.getAttribute('aria-label'),e.getAttribute('title'),e.getAttribute('data-test'),e.getAttribute('data-testid'),e.getAttribute('placeholder'),e.name,e.id,labels].filter(Boolean).join(' ').toLowerCase();
- };
- const amounts=controls.filter(e=>e.matches('input,[role="spinbutton"]')&&/(?:amount|investment|investimento|valor|montante)/.test(description(e))&&!e.disabled);
- if(amounts.length!==1)return{error:'Campo de valor da corretora não identificado de forma única.'};
- call[0].setAttribute('data-sentinel-execution-call',marker);put[0].setAttribute('data-sentinel-execution-put',marker);amounts[0].setAttribute('data-sentinel-execution-amount',marker);
- return{callSelector:'[data-sentinel-execution-call="'+marker+'"]',putSelector:'[data-sentinel-execution-put="'+marker+'"]',amountSelector:'[data-sentinel-execution-amount="'+marker+'"]'};
+ if(call.length!==1||put.length!==1)return{error:'Botões CALL/PUT da corretora não identificados de forma única.'};
+ call[0].setAttribute('data-sentinel-execution-call',marker);put[0].setAttribute('data-sentinel-execution-put',marker);
+ return{callSelector:'[data-sentinel-execution-call="'+marker+'"]',putSelector:'[data-sentinel-execution-put="'+marker+'"]'};
 }
 
 export class BrokerUiExecutor{
@@ -60,13 +47,13 @@ export class BrokerUiExecutor{
  async controls(provider){
   const page=this.driver.sessions.get(provider)?.page;
   if(!page||page.isClosed?.())throw errorBefore('Janela da corretora não está conectada.');
-  let found=null,frame=null;
+  let found=null,frame=null,reason=null;
   for(const f of page.frames()){
    let v;try{v=await f.evaluate(inspectTradeControls,{marker:randomUUID()});}catch{continue;}
-   if(v?.callSelector||v?.nextSelector){if(found)throw errorBefore('Mais de um painel de negociação aberto.');found=v;frame=f;}
+   if(v?.error)reason=v.error;
+   if(v?.callSelector){if(found)throw errorBefore('Mais de um painel de negociação aberto.');found=v;frame=f;}
   }
-  if(!found)throw errorBefore('CALL/PUT, valor ou duração não identificados. Confira o painel da corretora.');
-  if(found.nextSelector){await frame.locator(found.nextSelector).click({timeout:700});found=await frame.evaluate(inspectTradeControls,{marker:randomUUID()});}
+  if(!found)throw errorBefore(reason||'Botões CALL/PUT não identificados. Abra o painel de negociação.');
   if(found?.error||!found?.callSelector)throw errorBefore(found?.error||'Aguardando painel da nova operação.');
   return{frame,...found};
  }
@@ -76,24 +63,14 @@ export class BrokerUiExecutor{
  }
  async prepare(provider,expected){this.checkContext(provider,expected);await this.controls(provider);return{ready:true};}
  async execute(provider,order){
-  if(this.attempt)throw errorBefore('Já existe uma entrada aguardando confirmação.');
   this.checkContext(provider,order);
   const c=await this.controls(provider);
-  const input=c.frame.locator(c.amountSelector);await input.fill(String(order.amount),{timeout:500});
-  const entered=String(await input.inputValue({timeout:300})).replace(/\s/g,'').replace(',','.');
-  if(!finite(entered)||Math.abs(Number(entered)-order.amount)>0.000001)throw errorBefore('O valor não foi aceito pela corretora.');
   this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
-  let resolve,reject;const confirmation=new Promise((yes,no)=>{resolve=yes;reject=no;});
-  // Attach a rejection handler immediately, before awaiting the browser click.
-  confirmation.catch(()=>{});
-  const attempt={provider,order,resolve,reject,requestId:null,at:Date.now()};this.attempt=attempt;
-  const timer=setTimeout(()=>reject(new Error('Corretora não confirmou a entrada · bot parado, sem repetir clique.')),4500);
-  try{
-   order.captureEntry?.();
-   order.clicked=true;
-   await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});
-   return await confirmation;
-  }finally{clearTimeout(timer);if(this.attempt===attempt)this.attempt=null;}
+  order.captureEntry?.();order.clicked=true;
+  await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});
+  // A completed UI click is not a broker order acknowledgement. The unique
+  // local ID is used only for the analyst-based result calculation.
+  return{clicked:true,clickId:'ui-click-'+randomUUID()};
  }
  observe(provider,frame,direction){
   if(!isExecutionFrame(frame))return;
