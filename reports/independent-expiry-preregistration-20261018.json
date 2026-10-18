@@ -1,0 +1,11 @@
+{
+  "createdBeforeEvaluation": true,
+  "production": "13.9.42 / fd7e026ce4b981a53e7da62722306e1eae364c60",
+  "hypothesis": "Five-second trials with thirty-second outcomes are correlated. Opening a forecast-comparison trial only after the previous trial expires may reduce spurious adaptation without delaying or blocking actual analyst entries.",
+  "singleChange": "CompletedExpiryDirection issues the next training trial at or after the previous trial's actual dueAt, replacing the fixed 5000ms trial cadence. Keep forecasts, loss weights, bootstrap, thresholds, historical level routes and real-entry lifecycle unchanged.",
+  "knownDevelopment": ["development-08-utc", "validation-14-utc", "reserved-19-utc"],
+  "newValidation": {"days": ["2020-04-01", "2020-04-02"], "timeUTC": "14:00:00 through 14:30:00", "historyStartsUTC": "12:00:00", "source": "Dukascopy official EURUSD bid tick archives", "expiryQuotePolicy": "asof-complete-bid-stream"},
+  "fallbackIfDownloadsFail": "Do not replace missing independent days with previously evaluated windows and call that validation. Report unavailable data explicitly.",
+  "decisionRule": "No publication if known-data regressions occur, if either new day worsens win rate, if aggregate improvement is indistinguishable from noise, or if validation is unavailable. Passing software tests alone cannot establish forecast quality.",
+  "limitations": ["External Forex is not IQ Option or Exnova OTC.", "No broker orders, settlement or real click latency are modeled.", "Two days are insufficient to establish a durable trading advantage even if they improve."]
+}

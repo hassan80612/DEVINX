@@ -1,0 +1,45 @@
+{
+  "decoderMatchedBids": 5364,
+  "archives": [
+    {
+      "name": "2020-04-01-12",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/01/12h_ticks.bi5",
+      "error": "The read operation timed out"
+    },
+    {
+      "name": "2020-04-01-13",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/01/13h_ticks.bi5",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "name": "2020-04-01-14",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/01/14h_ticks.bi5",
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "name": "2020-04-02-12",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/02/12h_ticks.bi5",
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "name": "2020-04-02-13",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/02/13h_ticks.bi5",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "name": "2020-04-02-14",
+      "url": "https://datafeed.dukascopy.com/datafeed/EURUSD/2020/03/02/14h_ticks.bi5",
+      "error": "The read operation timed out"
+    }
+  ],
+  "windows": [
+    {
+      "day": "2020-04-01",
+      "unavailable": true
+    },
+    {
+      "day": "2020-04-02",
+      "unavailable": true
+    }
+  ]
+}
