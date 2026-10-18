@@ -287,10 +287,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
 // Analysis can run on every quote while the previous signal is locked.
 // At expiry only a fresh AFTER-expiry quote can authorize the next signal.
 export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now(),
- quoteAt=null,asset='UNKNOWN',engineId='automatic',durationMs=30000}={}){
+ quoteAt=null,asset='UNKNOWN',provider=null,engineId='automatic',durationMs=30000}={}){
  const horizon=Number(durationMs);
  if(!(horizon>=5000&&horizon<=3600000))return null;
- const key=[String(asset).toUpperCase(),String(engineId),horizon].join('|');
+ const key=[...(provider==null?[]:[String(provider).toLowerCase()]),String(asset).toUpperCase(),String(engineId),horizon].join('|');
  const old=previous?.context===key?previous:null;
  const fresh=Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500;
  if(old?.phase==='fired'&&now<old.exitAt)

@@ -982,7 +982,7 @@ export class DemoTradingRuntime{
         observation;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
-        asset:settings.asset,engineId:settings.engine,durationMs:settings.orderDurationMs
+        asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
       });
       const old=this.vnextWindowState;
       this.vnextWindowState=next;
@@ -990,7 +990,7 @@ export class DemoTradingRuntime{
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
       if(freshSignal){
         this.vnextWindowOutcomes.push({
-          windowId:next.entryTriggeredAt,asset:next.asset,
+          windowId:next.entryTriggeredAt,asset:next.asset,provider:snap.provider??null,entryReason:observation.reason,
           engineId:next.engineId,forecastMode:'now',
           periodSeconds:next.holdingSeconds,side:next.side,
           entryAt:next.entryAt,exitAt:next.exitAt,
@@ -1001,9 +1001,11 @@ export class DemoTradingRuntime{
       // Score observed quote at expiry, never fabricate broker settlement.
       for(const outcome of this.vnextWindowOutcomes){
         if(outcome.verified||Number(outcome.exitAt)>now)continue;
+        if(String(outcome.asset).toUpperCase()!==String(settings.asset).toUpperCase()||
+          String(outcome.provider??'').toLowerCase()!==String(snap.provider??'').toLowerCase())continue;
         const point=observedExpiryQuote({quoteHistory:snap.quoteHistory,currentQuote:{ts:Number(snap.quoteTs),price:Number(snap.price),receivedAt:now},dueAt:outcome.exitAt,now});
         if(!point||!(Number(outcome.entryPrice)>0))continue;
-        outcome.verified=true;outcome.observedExitPrice=Number(point.price);
+        outcome.verified=true;outcome.observedExitPrice=Number(point.price);outcome.observedExitAt=Number(point.ts);
         outcome.correct=outcome.observedExitPrice===outcome.entryPrice?null:
           (outcome.observedExitPrice>outcome.entryPrice?'CALL':'PUT')===outcome.side;
       }
@@ -1015,6 +1017,10 @@ export class DemoTradingRuntime{
       }:null;
       this.vnextFutureEntryAnchor=anchor;
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
+      const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
+        String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
+        String(x.provider??'').toLowerCase()===String(snap.provider??'').toLowerCase()&&
+        x.engineId===settings.engine&&Number(x.periodSeconds)===Number(settings.orderDurationMs)/1000);
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
         computedStatus:observation.ready?'observed-confirmation':'observing-now',
@@ -1034,13 +1040,13 @@ export class DemoTradingRuntime{
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
-        windowOutcomes:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now').length,
+        windowOutcomes:currentWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now').length,
         outcomeQuality:{
           source:'observed-broker-quotes-not-trade-settlements',
-          completed:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct!==null).length,
-          correct:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===true).length,
-          failed:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===false).length,
-          excludedTies:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===null).length,
+          completed:currentWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct!==null).length,
+          correct:currentWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===true).length,
+          failed:currentWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===false).length,
+          excludedTies:currentWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===null).length,
           activeStrategy:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000
         }
       };

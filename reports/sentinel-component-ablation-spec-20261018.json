@@ -1,0 +1,49 @@
+{
+  "baseCommit": "21f43a9587e2a4f6cdb23933226b4b0f0520e466",
+  "variants": [
+    "released",
+    "no-wide-selector",
+    "no-cycle-projection",
+    "no-analogue-override",
+    "closed-structure-base",
+    "no-candle-override"
+  ],
+  "development": "All 14 previously inspected 2020-03-30 target windows plus the known fine video. Exclude March 31 from selecting the winner.",
+  "selectionBeforeOutcomes": {
+    "minimumExternalCompletedFraction": 0.7,
+    "maximumMedianGapRatio": 1.5,
+    "maximumWorstGapRatio": 1.5,
+    "minimumVideoWins": 10,
+    "maximumVideoLosses": 3,
+    "minimumExternalRateGain": 0.02,
+    "choice": "Among qualifying variants choose greatest external rate gain; tie-break by more completed outcomes then declared variant order. If none qualifies, do not evaluate reserved outcomes or change production."
+  },
+  "reservedBeforeOutcomes": [
+    {
+      "name": "ablation-reserved-03-utc",
+      "from": "2020-03-30T03:00:00Z",
+      "to": "2020-03-30T03:29:25Z"
+    },
+    {
+      "name": "ablation-reserved-1735-utc",
+      "from": "2020-03-30T17:35:00Z",
+      "to": "2020-03-30T17:59:25Z"
+    },
+    {
+      "name": "ablation-reserved-2035-utc",
+      "from": "2020-03-30T20:35:00Z",
+      "to": "2020-03-30T20:59:25Z"
+    },
+    {
+      "name": "ablation-official-20200331-1755-utc",
+      "from": "2020-03-31T17:55:00Z",
+      "to": "2020-03-31T18:24:25Z"
+    }
+  ],
+  "limits": [
+    "All March 30 raw source data were already accessible. Reserved TARGET blocks, not a wholly new source, have not previously been outcome-evaluated.",
+    "External Forex, not user broker OTC. One source day for development does not demonstrate general market performance.",
+    "Component removals change subsequent entry times; compare complete runtime replays, not only retained historical entries.",
+    "No parameter changes after selection or reserved evaluation."
+  ]
+}

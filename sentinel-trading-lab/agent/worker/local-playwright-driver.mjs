@@ -373,6 +373,29 @@ function appendQuoteSample(st,ts,price){
   if(expired)st.quoteHistory.splice(0,expired);
   if(st.quoteHistory.length>6000)st.quoteHistory=compactObservedQuoteHistory(st.quoteHistory)
 }
+function applyObservedCandleQuote(st,candle,raw){
+  const now=Date.now(),explicit=epochMs(raw.at??raw.quote_time??raw.timestamp??raw.time);
+  const from=epochMs(candle.from),to=epochMs(candle.to);
+  let ts=explicit,known=true;
+  if(ts==null){
+    if(to!=null&&to<=now)ts=to;
+    else if(from!=null&&from<=now&&to!=null&&to>now){
+      // A forming candle without its event timestamp cannot supersede a
+      // healthy timestamped quote. Candle-only feeds retain the live fallback.
+      if(st.quote!=null&&st.lastQuoteTimeKnown!==false&&now-Number(st.lastQuoteAt||0)<=1500)return false;
+      ts=now;known=false;
+    }else return false;
+  }
+  const knownAt=Number(st.knownQuoteActiveId)===Number(st.activeId)?Number(st.lastKnownQuoteAt||0):0;
+  if(!(ts>0)||ts>now+5000||ts<=knownAt||
+    (ts<Number(st.lastQuoteAt||0)&&st.lastQuoteTimeKnown!==false))return false;
+  // Replace receipt-time fallback points if a genuinely timestamped source
+  // catches up behind that receipt clock. Never remove newer known events.
+  if(ts<Number(st.lastQuoteAt||0))st.quoteHistory=(st.quoteHistory||[]).filter(q=>q.ts<=ts);
+  st.quote=Number(candle.close);st.lastQuoteAt=ts;st.lastQuoteTimeKnown=known;
+  if(known){st.lastKnownQuoteAt=ts;st.knownQuoteActiveId=st.activeId;}
+  appendQuoteSample(st,ts,st.quote);return true;
+}
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
   const outer=String(data.name||data.event||'');
@@ -490,8 +513,7 @@ function protocolScan(data,st,direction='in'){
       if(Number(data?.msg?.size)===1&&Number(st.candleSize||60)!==1){
         const tickPrice=Number(candle.close);
         if(Number.isFinite(tickPrice)&&tickPrice>0&&(!st.candles.length||candleSeriesIntegrity(st.candles,tickPrice).ok)){
-          st.quote=tickPrice;st.lastQuoteAt=Date.now();st.lastTickQuoteAt=st.lastQuoteAt;
-          appendQuoteSample(st,st.lastQuoteAt,tickPrice);
+          if(applyObservedCandleQuote(st,candle,data.msg))st.lastTickQuoteAt=st.lastQuoteAt;
         }
         return;
       }
@@ -499,11 +521,9 @@ function protocolScan(data,st,direction='in'){
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Candle rejeitada por inconsistência de ativo'}
       else{
         st.predictionCandles=mergeForecastCandles(st.predictionCandles,[candle]);st.candles=candidate;st.lastCandleAt=Date.now();
-        // An old candle event must not override a fresher broker-page quote.
-        if(direction==='page-in'||Date.now()-Number(st.lastQuoteAt||0)>1500){
-          st.quote=Number(candle.close);st.lastQuoteAt=Date.now();
-          appendQuoteSample(st,st.lastQuoteAt,st.quote);
-        }
+        // Page and direct sockets obey the same source-event ordering. A
+        // delayed closed candle is historical evidence, not a new quote now.
+        applyObservedCandleQuote(st,candle,data.msg);
         const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
@@ -520,8 +540,11 @@ function protocolScan(data,st,direction='in'){
       // Do not roll the live price backward on a delayed feed frame.
       // A delayed packet may be useful for history, but cannot roll the live
       // price/forecast clock back even by 500ms and create a false reversal.
-      if(ts<Number(st.lastQuoteAt||0)||ts>Date.now()+5000)continue;
-      st.quote=Number(q);st.lastQuoteAt=ts;appendQuoteSample(st,ts,st.quote)
+      const knownAt=Number(st.knownQuoteActiveId)===Number(st.activeId)?Number(st.lastKnownQuoteAt||0):0;
+      if(ts<knownAt||(ts<Number(st.lastQuoteAt||0)&&st.lastQuoteTimeKnown!==false)||ts>Date.now()+5000)continue;
+      if(ts<Number(st.lastQuoteAt||0))st.quoteHistory=(st.quoteHistory||[]).filter(q=>q.ts<=ts);
+      st.quote=Number(q);st.lastQuoteAt=ts;st.lastQuoteTimeKnown=true;st.lastKnownQuoteAt=ts;st.knownQuoteActiveId=st.activeId;
+      appendQuoteSample(st,ts,st.quote)
     }
   }
 }

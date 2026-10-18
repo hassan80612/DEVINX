@@ -1,0 +1,33 @@
+{
+  "trainBefore": "2020-03-30T12:00:00Z",
+  "validationFrom": "2020-03-30T12:00:00Z",
+  "validationUntil": "2020-03-30T15:00:00Z",
+  "models": {
+    "logistic": {
+      "C": 1,
+      "max_iter": 1000,
+      "standardize": true
+    },
+    "randomForest": {
+      "n_estimators": 128,
+      "max_depth": 4,
+      "min_samples_leaf": 30,
+      "random_state": 20261018,
+      "n_jobs": 2
+    }
+  },
+  "overrideThreshold": 0.6,
+  "selection": {
+    "minimumValidationGain": 0.02,
+    "minimumOverriddenEntries": 10,
+    "maximumValidationBrier": 0.25
+  },
+  "rule": "Train directly on completed 30s bid outcomes at nonoverlapping actual quoted origins, before noon. Features use only previous 180s quotes and 50 received closed 1m candles. Validate on original runtime entries from noon to 15h. Select once, then evaluate later periods. Strong predictions can change side, never readiness, entry price, time or duration. No model parameter or threshold optimization.",
+  "limits": [
+    "One known Forex day for training, not broker OTC.",
+    "Validation outcomes are previously inspected research data.",
+    "Later-period and different-day tests are out of the model training interval, but the source streams were already accessible.",
+    "Probability outputs are model estimates; a .6 threshold is not a demonstrated 60% or 90% hit rate.",
+    "No lookahead, time-of-day or fabricated volume features."
+  ]
+}
