@@ -1,0 +1,1396 @@
+{
+  "spec": {
+    "version": "current-13.9.43-final-conflict-audit",
+    "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+    "mode": "known",
+    "hypothesis": "Keep only explicit historical conflict rejections terminal instead of permitting later candle/sequence writers to reactivate. No general forecast agreement gate, no indicator or threshold tuning. Research only; not presumed better.",
+    "samples": [
+      "development-08-utc",
+      "validation-14-utc",
+      "reserved-19-utc",
+      "second-validation-10-utc",
+      "second-validation-16-utc",
+      "second-validation-21-utc",
+      "third-validation-09-utc",
+      "third-validation-12-utc",
+      "third-validation-15-utc",
+      "third-validation-18-utc",
+      "fourth-validation-11-utc",
+      "fourth-validation-13-utc",
+      "fourth-validation-17-utc",
+      "fourth-validation-20-utc",
+      "available-official-2020-03-31-1829-utc"
+    ],
+    "durationMs": 30000,
+    "payoutIllustration": 86,
+    "limits": [
+      "All external windows were previously inspected; no untouched validation or user broker OTC session.",
+      "Scoring exact observed prices does not model execution, broker settlement, spread, latency or profit.",
+      "No access to the user live trial signals, assets or recorded outcomes. Reported account loss is not an observed win-rate sample.",
+      "Full runtime streams are compared; withholding a signal may change later entry timestamps."
+    ]
+  },
+  "summary": {
+    "baseline": {
+      "win": 306,
+      "loss": 318,
+      "tie": 19,
+      "missing": 0,
+      "completed": 624,
+      "winRate": 0.49038461538461536
+    },
+    "terminalConflict": {
+      "win": 306,
+      "loss": 318,
+      "tie": 19,
+      "missing": 0,
+      "completed": 624,
+      "winRate": 0.49038461538461536
+    },
+    "reactivated": {
+      "win": 1,
+      "loss": 0,
+      "tie": 0,
+      "missing": 0,
+      "completed": 1,
+      "winRate": 1
+    },
+    "withoutReactivation": {
+      "win": 305,
+      "loss": 318,
+      "tie": 19,
+      "missing": 0,
+      "completed": 623,
+      "winRate": 0.4895666131621188
+    },
+    "opposedToForecast": {
+      "win": 5,
+      "loss": 0,
+      "tie": 0,
+      "missing": 0,
+      "completed": 5,
+      "winRate": 1
+    },
+    "forecastAtSameOpposedEntries": {
+      "win": 0,
+      "loss": 5,
+      "tie": 0,
+      "missing": 0,
+      "completed": 5,
+      "winRate": 0
+    },
+    "windowsImproved": 0,
+    "windowsWorsened": 0,
+    "examples": [
+      {
+        "at": 1585576862852,
+        "side": "CALL",
+        "price": 1.10359,
+        "dueAt": 1585576892852,
+        "result": "win",
+        "reason": "failed-breakout-structure-change",
+        "trace": {
+          "original": {
+            "ready": false,
+            "side": null,
+            "reason": "choppy-sideways-structure"
+          },
+          "narrow": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "observed-trend-and-30s-cycle-projection"
+          },
+          "selected": {
+            "ready": false,
+            "side": null,
+            "reason": "choppy-sideways-structure"
+          },
+          "expiryForecast": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "observed-trend-and-30s-cycle-projection"
+          },
+          "historical": {
+            "ready": false,
+            "side": null,
+            "reason": "historical-level-versus-expiry-conflict"
+          },
+          "candle": {
+            "ready": false,
+            "side": null,
+            "reason": "historical-level-versus-expiry-conflict"
+          },
+          "final": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "failed-breakout-structure-change"
+          },
+          "rejectedForConflict": true,
+          "conflictReactivated": true,
+          "candleDiscardsProjection": null,
+          "finalOpposesForecast": true,
+          "sequenceKind": "failed-breakout-structure-change"
+        },
+        "forecastCounterfactualResult": "loss"
+      }
+    ],
+    "byFinalReason": {
+      "break-retest-continuation": {
+        "win": 22,
+        "loss": 15,
+        "tie": 0,
+        "missing": 0,
+        "completed": 37,
+        "winRate": 0.5945945945945946
+      },
+      "failed-breakout-structure-change": {
+        "win": 22,
+        "loss": 20,
+        "tie": 0,
+        "missing": 0,
+        "completed": 42,
+        "winRate": 0.5238095238095238
+      },
+      "historical-level-rejection": {
+        "win": 110,
+        "loss": 101,
+        "tie": 10,
+        "missing": 0,
+        "completed": 211,
+        "winRate": 0.5213270142180095
+      },
+      "multiscale-candle-rejection": {
+        "win": 69,
+        "loss": 82,
+        "tie": 3,
+        "missing": 0,
+        "completed": 151,
+        "winRate": 0.45695364238410596
+      },
+      "causal-expiry-analogue": {
+        "win": 34,
+        "loss": 43,
+        "tie": 4,
+        "missing": 0,
+        "completed": 77,
+        "winRate": 0.44155844155844154
+      },
+      "closed-structure-and-live-impulse": {
+        "win": 21,
+        "loss": 20,
+        "tie": 0,
+        "missing": 0,
+        "completed": 41,
+        "winRate": 0.5121951219512195
+      },
+      "historical-level-breakout": {
+        "win": 15,
+        "loss": 16,
+        "tie": 1,
+        "missing": 0,
+        "completed": 31,
+        "winRate": 0.4838709677419355
+      },
+      "closed-range-extreme-reversal-confirmed": {
+        "win": 11,
+        "loss": 15,
+        "tie": 1,
+        "missing": 0,
+        "completed": 26,
+        "winRate": 0.4230769230769231
+      },
+      "bootstrap-expiry-penalized-fit": {
+        "win": 0,
+        "loss": 1,
+        "tie": 0,
+        "missing": 0,
+        "completed": 1,
+        "winRate": 0
+      },
+      "historical-trend-and-live-forecast": {
+        "win": 1,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 1,
+        "winRate": 1
+      },
+      "observed-trend-and-30s-cycle-projection": {
+        "win": 1,
+        "loss": 3,
+        "tie": 0,
+        "missing": 0,
+        "completed": 4,
+        "winRate": 0.25
+      },
+      "completed-expiry-outcomes-adaptive-cycle": {
+        "win": 0,
+        "loss": 2,
+        "tie": 0,
+        "missing": 0,
+        "completed": 2,
+        "winRate": 0
+      }
+    },
+    "changedEntryWindows": 1,
+    "removedEntryTimestamps": 2,
+    "newEntryTimestamps": 2
+  },
+  "windows": [
+    {
+      "name": "development-08-utc",
+      "sourceSha256": "92502fde4a93a848549c890b8ac95d0d0e4f71f71b3851d4c5cecbf72773a729",
+      "metrics": [
+        {
+          "win": 27,
+          "loss": 27,
+          "tie": 0,
+          "missing": 0,
+          "completed": 54,
+          "winRate": 0.5,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 27,
+          "loss": 27,
+          "tie": 0,
+          "missing": 0,
+          "completed": 54,
+          "winRate": 0.5,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 27,
+          "loss": 27,
+          "tie": 0,
+          "missing": 0,
+          "completed": 54,
+          "winRate": 0.5,
+          "maxLossStreak": 6
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 27,
+        "loss": 27,
+        "tie": 0,
+        "missing": 0,
+        "completed": 54,
+        "winRate": 0.5
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 54,
+        "candidateEntries": 54,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 31.856,
+        "baselineMaxGapSeconds": 48.394,
+        "candidateMedianGapSeconds": 31.856,
+        "candidateMaxGapSeconds": 48.394
+      }
+    },
+    {
+      "name": "validation-14-utc",
+      "sourceSha256": "ddb7cb9c5f5d2b240a1cbd5bc68d8ed04c6e8e1bcbde3e92edf5912744465bd1",
+      "metrics": [
+        {
+          "win": 22,
+          "loss": 31,
+          "tie": 0,
+          "missing": 0,
+          "completed": 53,
+          "winRate": 0.41509433962264153,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 22,
+          "loss": 31,
+          "tie": 0,
+          "missing": 0,
+          "completed": 53,
+          "winRate": 0.41509433962264153,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 22,
+          "loss": 31,
+          "tie": 0,
+          "missing": 0,
+          "completed": 53,
+          "winRate": 0.41509433962264153,
+          "maxLossStreak": 5
+        }
+      ],
+      "reactivated": {
+        "win": 1,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 1,
+        "winRate": 1
+      },
+      "withoutReactivation": {
+        "win": 21,
+        "loss": 31,
+        "tie": 0,
+        "missing": 0,
+        "completed": 52,
+        "winRate": 0.40384615384615385
+      },
+      "opposedToForecast": {
+        "win": 2,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 2,
+        "winRate": 1
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 2,
+        "tie": 0,
+        "missing": 0,
+        "completed": 2,
+        "winRate": 0
+      },
+      "entryComparison": {
+        "identicalEntries": false,
+        "baselineEntries": 53,
+        "candidateEntries": 53,
+        "removedEntryTimestamps": 2,
+        "newEntryTimestamps": 2,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 31.328,
+        "baselineMaxGapSeconds": 125.646,
+        "candidateMedianGapSeconds": 31.328,
+        "candidateMaxGapSeconds": 125.646
+      }
+    },
+    {
+      "name": "reserved-19-utc",
+      "sourceSha256": "458aba59405dae6f733279dd86caa810267384701694a0e309c3b2e911f19391",
+      "metrics": [
+        {
+          "win": 21,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 43,
+          "winRate": 0.4883720930232558,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 21,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 43,
+          "winRate": 0.4883720930232558,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 21,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 43,
+          "winRate": 0.4883720930232558,
+          "maxLossStreak": 4
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 21,
+        "loss": 22,
+        "tie": 1,
+        "missing": 0,
+        "completed": 43,
+        "winRate": 0.4883720930232558
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 44,
+        "candidateEntries": 44,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 35.506,
+        "baselineMaxGapSeconds": 106.106,
+        "candidateMedianGapSeconds": 35.506,
+        "candidateMaxGapSeconds": 106.106
+      }
+    },
+    {
+      "name": "second-validation-10-utc",
+      "sourceSha256": "6ce1e956e72d74fc37639e06f53f12e7db7f8f809197898a00e86c1322ed3dcf",
+      "metrics": [
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 21,
+        "loss": 19,
+        "tie": 2,
+        "missing": 0,
+        "completed": 40,
+        "winRate": 0.525
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 42,
+        "candidateEntries": 42,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 37.071,
+        "baselineMaxGapSeconds": 94.08,
+        "candidateMedianGapSeconds": 37.071,
+        "candidateMaxGapSeconds": 94.08
+      }
+    },
+    {
+      "name": "second-validation-16-utc",
+      "sourceSha256": "cd50c228e95956c1ac84e4266e1bc72218d462efcc11d313f69aad87b0ad345e",
+      "metrics": [
+        {
+          "win": 25,
+          "loss": 23,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5208333333333334,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 25,
+          "loss": 23,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5208333333333334,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 25,
+          "loss": 23,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5208333333333334,
+          "maxLossStreak": 5
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 25,
+        "loss": 23,
+        "tie": 2,
+        "missing": 0,
+        "completed": 48,
+        "winRate": 0.5208333333333334
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 50,
+        "candidateEntries": 50,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 32.278,
+        "baselineMaxGapSeconds": 51.015,
+        "candidateMedianGapSeconds": 32.278,
+        "candidateMaxGapSeconds": 51.015
+      }
+    },
+    {
+      "name": "second-validation-21-utc",
+      "sourceSha256": "497afeb32ba25905ada0ee60d8eec1588df1457ed27a8ef0fbdb89e489597614",
+      "metrics": [
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 0,
+        "candidateEntries": 0,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": null,
+        "baselineMaxGapSeconds": null,
+        "candidateMedianGapSeconds": null,
+        "candidateMaxGapSeconds": null
+      }
+    },
+    {
+      "name": "third-validation-09-utc",
+      "sourceSha256": "d265902365914fce4203cfb55437d641d0cb7b2c40d947d0955ca1014eaee9df",
+      "metrics": [
+        {
+          "win": 24,
+          "loss": 26,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.48,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 24,
+          "loss": 26,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.48,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 24,
+          "loss": 26,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.48,
+          "maxLossStreak": 6
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 24,
+        "loss": 26,
+        "tie": 1,
+        "missing": 0,
+        "completed": 50,
+        "winRate": 0.48
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 51,
+        "candidateEntries": 51,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 32.008,
+        "baselineMaxGapSeconds": 100.366,
+        "candidateMedianGapSeconds": 32.008,
+        "candidateMaxGapSeconds": 100.366
+      }
+    },
+    {
+      "name": "third-validation-12-utc",
+      "sourceSha256": "2d595d423107e6245eb1a4609c424594910e2e20672f95965235074925438714",
+      "metrics": [
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 3,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 3,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 3,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 4
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 23,
+        "loss": 23,
+        "tie": 3,
+        "missing": 0,
+        "completed": 46,
+        "winRate": 0.5
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 49,
+        "candidateEntries": 49,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 32.906,
+        "baselineMaxGapSeconds": 84.632,
+        "candidateMedianGapSeconds": 32.906,
+        "candidateMaxGapSeconds": 84.632
+      }
+    },
+    {
+      "name": "third-validation-15-utc",
+      "sourceSha256": "fc8bd64ed5e03954e7211df35897ba9f40675db925a2f49953a696935d20013c",
+      "metrics": [
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 0,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 7
+        },
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 0,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 7
+        },
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 0,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 7
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 23,
+        "loss": 32,
+        "tie": 0,
+        "missing": 0,
+        "completed": 55,
+        "winRate": 0.41818181818181815
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 55,
+        "candidateEntries": 55,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 31.185,
+        "baselineMaxGapSeconds": 52.779,
+        "candidateMedianGapSeconds": 31.185,
+        "candidateMaxGapSeconds": 52.779
+      }
+    },
+    {
+      "name": "third-validation-18-utc",
+      "sourceSha256": "eaa690de47e2dd69f08aef9d0fe2389308a68a64367f3457bef756e315fcec3b",
+      "metrics": [
+        {
+          "win": 17,
+          "loss": 7,
+          "tie": 4,
+          "missing": 0,
+          "completed": 24,
+          "winRate": 0.7083333333333334,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 17,
+          "loss": 7,
+          "tie": 4,
+          "missing": 0,
+          "completed": 24,
+          "winRate": 0.7083333333333334,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 17,
+          "loss": 7,
+          "tie": 4,
+          "missing": 0,
+          "completed": 24,
+          "winRate": 0.7083333333333334,
+          "maxLossStreak": 1
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 17,
+        "loss": 7,
+        "tie": 4,
+        "missing": 0,
+        "completed": 24,
+        "winRate": 0.7083333333333334
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 28,
+        "candidateEntries": 28,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 39.969,
+        "baselineMaxGapSeconds": 329.368,
+        "candidateMedianGapSeconds": 39.969,
+        "candidateMaxGapSeconds": 329.368
+      }
+    },
+    {
+      "name": "fourth-validation-11-utc",
+      "sourceSha256": "46d86048a1d6a23367f6110183088c39e7e5e717bd92b7e159106d079c836ff3",
+      "metrics": [
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 0,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 0,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 23,
+          "loss": 23,
+          "tie": 0,
+          "missing": 0,
+          "completed": 46,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 23,
+        "loss": 23,
+        "tie": 0,
+        "missing": 0,
+        "completed": 46,
+        "winRate": 0.5
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 46,
+        "candidateEntries": 46,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 33.017,
+        "baselineMaxGapSeconds": 117.55,
+        "candidateMedianGapSeconds": 33.017,
+        "candidateMaxGapSeconds": 117.55
+      }
+    },
+    {
+      "name": "fourth-validation-13-utc",
+      "sourceSha256": "355af99a0eb112561563ed2f35b765693abfcc3822addec2d0ceed02f15c37c3",
+      "metrics": [
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 1,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 1,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 23,
+          "loss": 32,
+          "tie": 1,
+          "missing": 0,
+          "completed": 55,
+          "winRate": 0.41818181818181815,
+          "maxLossStreak": 4
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 23,
+        "loss": 32,
+        "tie": 1,
+        "missing": 0,
+        "completed": 55,
+        "winRate": 0.41818181818181815
+      },
+      "opposedToForecast": {
+        "win": 3,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 3,
+        "winRate": 1
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 3,
+        "tie": 0,
+        "missing": 0,
+        "completed": 3,
+        "winRate": 0
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 56,
+        "candidateEntries": 56,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 31.024,
+        "baselineMaxGapSeconds": 48.015,
+        "candidateMedianGapSeconds": 31.024,
+        "candidateMaxGapSeconds": 48.015
+      }
+    },
+    {
+      "name": "fourth-validation-17-utc",
+      "sourceSha256": "3241c869b172a69c62483ba92900f84386b6f7bd011867a05af0de8fff8bb724",
+      "metrics": [
+        {
+          "win": 19,
+          "loss": 20,
+          "tie": 4,
+          "missing": 0,
+          "completed": 39,
+          "winRate": 0.48717948717948717,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 19,
+          "loss": 20,
+          "tie": 4,
+          "missing": 0,
+          "completed": 39,
+          "winRate": 0.48717948717948717,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 19,
+          "loss": 20,
+          "tie": 4,
+          "missing": 0,
+          "completed": 39,
+          "winRate": 0.48717948717948717,
+          "maxLossStreak": 6
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 19,
+        "loss": 20,
+        "tie": 4,
+        "missing": 0,
+        "completed": 39,
+        "winRate": 0.48717948717948717
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 43,
+        "candidateEntries": 43,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 37.758,
+        "baselineMaxGapSeconds": 111.212,
+        "candidateMedianGapSeconds": 37.758,
+        "candidateMaxGapSeconds": 111.212
+      }
+    },
+    {
+      "name": "fourth-validation-20-utc",
+      "sourceSha256": "73e372cd7ae9e6b25a0917389f682884e6c4c25be126e10470c037b20b71a02b",
+      "metrics": [
+        {
+          "win": 10,
+          "loss": 11,
+          "tie": 0,
+          "missing": 0,
+          "completed": 21,
+          "winRate": 0.47619047619047616,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 10,
+          "loss": 11,
+          "tie": 0,
+          "missing": 0,
+          "completed": 21,
+          "winRate": 0.47619047619047616,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 10,
+          "loss": 11,
+          "tie": 0,
+          "missing": 0,
+          "completed": 21,
+          "winRate": 0.47619047619047616,
+          "maxLossStreak": 5
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 10,
+        "loss": 11,
+        "tie": 0,
+        "missing": 0,
+        "completed": 21,
+        "winRate": 0.47619047619047616
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 21,
+        "candidateEntries": 21,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 85.197,
+        "baselineMaxGapSeconds": 194.063,
+        "candidateMedianGapSeconds": 85.197,
+        "candidateMaxGapSeconds": 194.063
+      }
+    },
+    {
+      "name": "available-official-2020-03-31-1829-utc",
+      "sourceSha256": "92637cc17f5323c6fde7a4c10a83e816d1cc23046996befe39813fd73aec1f66",
+      "metrics": [
+        {
+          "win": 28,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.56,
+          "maxLossStreak": 3
+        },
+        {
+          "win": 28,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.56,
+          "maxLossStreak": 3
+        },
+        {
+          "win": 28,
+          "loss": 22,
+          "tie": 1,
+          "missing": 0,
+          "completed": 50,
+          "winRate": 0.56,
+          "maxLossStreak": 3
+        }
+      ],
+      "reactivated": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "withoutReactivation": {
+        "win": 28,
+        "loss": 22,
+        "tie": 1,
+        "missing": 0,
+        "completed": 50,
+        "winRate": 0.56
+      },
+      "opposedToForecast": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "forecastAtSameOpposedEntries": {
+        "win": 0,
+        "loss": 0,
+        "tie": 0,
+        "missing": 0,
+        "completed": 0,
+        "winRate": null
+      },
+      "entryComparison": {
+        "identicalEntries": true,
+        "baselineEntries": 51,
+        "candidateEntries": 51,
+        "removedEntryTimestamps": 0,
+        "newEntryTimestamps": 0,
+        "changedSideAtSameTimestamp": 0,
+        "baselineMedianGapSeconds": 32.961,
+        "baselineMaxGapSeconds": 58.689,
+        "candidateMedianGapSeconds": 32.961,
+        "candidateMaxGapSeconds": 58.689
+      }
+    }
+  ]
+}

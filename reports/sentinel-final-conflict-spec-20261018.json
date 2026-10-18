@@ -1,0 +1,31 @@
+{
+  "version": "current-13.9.43-final-conflict-audit",
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "mode": "known",
+  "hypothesis": "Keep only explicit historical conflict rejections terminal instead of permitting later candle/sequence writers to reactivate. No general forecast agreement gate, no indicator or threshold tuning. Research only; not presumed better.",
+  "samples": [
+    "development-08-utc",
+    "validation-14-utc",
+    "reserved-19-utc",
+    "second-validation-10-utc",
+    "second-validation-16-utc",
+    "second-validation-21-utc",
+    "third-validation-09-utc",
+    "third-validation-12-utc",
+    "third-validation-15-utc",
+    "third-validation-18-utc",
+    "fourth-validation-11-utc",
+    "fourth-validation-13-utc",
+    "fourth-validation-17-utc",
+    "fourth-validation-20-utc",
+    "available-official-2020-03-31-1829-utc"
+  ],
+  "durationMs": 30000,
+  "payoutIllustration": 86,
+  "limits": [
+    "All external windows were previously inspected; no untouched validation or user broker OTC session.",
+    "Scoring exact observed prices does not model execution, broker settlement, spread, latency or profit.",
+    "No access to the user live trial signals, assets or recorded outcomes. Reported account loss is not an observed win-rate sample.",
+    "Full runtime streams are compared; withholding a signal may change later entry timestamps."
+  ]
+}
