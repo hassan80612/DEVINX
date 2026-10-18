@@ -1,0 +1,240 @@
+{
+  "source": "already-known external price replay, not user trade settlements",
+  "pathDiagnostic": {
+    "known": {
+      "entries": 643,
+      "win": 306,
+      "loss": 318,
+      "lossesNeverFavorable": 75,
+      "lossesFavorableAt5s": 92,
+      "lossesFavorableAt15s": 75,
+      "winsAdverseAt5s": 107,
+      "winsAdverseAt15s": 65,
+      "horizon": {
+        "2": {
+          "favorable": 212,
+          "adverse": 286,
+          "tie": 145,
+          "missing": 0
+        },
+        "5": {
+          "favorable": 261,
+          "adverse": 314,
+          "tie": 68,
+          "missing": 0
+        },
+        "10": {
+          "favorable": 286,
+          "adverse": 318,
+          "tie": 39,
+          "missing": 0
+        },
+        "15": {
+          "favorable": 308,
+          "adverse": 311,
+          "tie": 24,
+          "missing": 0
+        },
+        "20": {
+          "favorable": 312,
+          "adverse": 306,
+          "tie": 25,
+          "missing": 0
+        },
+        "30": {
+          "favorable": 306,
+          "adverse": 318,
+          "tie": 19,
+          "missing": 0
+        }
+      }
+    },
+    "crypto": {
+      "entries": 531,
+      "win": 300,
+      "loss": 228,
+      "lossesNeverFavorable": 59,
+      "lossesFavorableAt5s": 82,
+      "lossesFavorableAt15s": 49,
+      "winsAdverseAt5s": 97,
+      "winsAdverseAt15s": 70,
+      "horizon": {
+        "2": {
+          "favorable": 275,
+          "adverse": 223,
+          "tie": 33,
+          "missing": 0
+        },
+        "5": {
+          "favorable": 276,
+          "adverse": 237,
+          "tie": 18,
+          "missing": 0
+        },
+        "10": {
+          "favorable": 276,
+          "adverse": 247,
+          "tie": 8,
+          "missing": 0
+        },
+        "15": {
+          "favorable": 280,
+          "adverse": 248,
+          "tie": 3,
+          "missing": 0
+        },
+        "20": {
+          "favorable": 293,
+          "adverse": 237,
+          "tie": 1,
+          "missing": 0
+        },
+        "30": {
+          "favorable": 300,
+          "adverse": 228,
+          "tie": 3,
+          "missing": 0
+        }
+      }
+    },
+    "validation": {
+      "entries": 511,
+      "win": 254,
+      "loss": 251,
+      "lossesNeverFavorable": 90,
+      "lossesFavorableAt5s": 68,
+      "lossesFavorableAt15s": 49,
+      "winsAdverseAt5s": 67,
+      "winsAdverseAt15s": 56,
+      "horizon": {
+        "2": {
+          "favorable": 177,
+          "adverse": 188,
+          "tie": 146,
+          "missing": 0
+        },
+        "5": {
+          "favorable": 213,
+          "adverse": 216,
+          "tie": 82,
+          "missing": 0
+        },
+        "10": {
+          "favorable": 242,
+          "adverse": 232,
+          "tie": 37,
+          "missing": 0
+        },
+        "15": {
+          "favorable": 238,
+          "adverse": 246,
+          "tie": 27,
+          "missing": 0
+        },
+        "20": {
+          "favorable": 235,
+          "adverse": 258,
+          "tie": 18,
+          "missing": 0
+        },
+        "30": {
+          "favorable": 254,
+          "adverse": 251,
+          "tie": 6,
+          "missing": 0
+        }
+      }
+    },
+    "video": {
+      "entries": 15,
+      "win": 11,
+      "loss": 3,
+      "lossesNeverFavorable": 1,
+      "lossesFavorableAt5s": 2,
+      "lossesFavorableAt15s": 0,
+      "winsAdverseAt5s": 3,
+      "winsAdverseAt15s": 1,
+      "horizon": {
+        "2": {
+          "favorable": 10,
+          "adverse": 4,
+          "tie": 1,
+          "missing": 0
+        },
+        "5": {
+          "favorable": 9,
+          "adverse": 5,
+          "tie": 1,
+          "missing": 0
+        },
+        "10": {
+          "favorable": 7,
+          "adverse": 5,
+          "tie": 1,
+          "missing": 2
+        },
+        "15": {
+          "favorable": 9,
+          "adverse": 4,
+          "tie": 0,
+          "missing": 2
+        },
+        "20": {
+          "favorable": 10,
+          "adverse": 4,
+          "tie": 0,
+          "missing": 1
+        },
+        "30": {
+          "favorable": 11,
+          "adverse": 3,
+          "tie": 0,
+          "missing": 1
+        }
+      }
+    }
+  },
+  "pullbackScreen": {
+    "known": {
+      "entries": 643,
+      "identifiedTrend": 21,
+      "withheld": 4,
+      "withheldWins": 2,
+      "withheldLosses": 2,
+      "withheldTies": 0,
+      "withheldMissing": 0
+    },
+    "crypto": {
+      "entries": 531,
+      "identifiedTrend": 152,
+      "withheld": 18,
+      "withheldWins": 11,
+      "withheldLosses": 7,
+      "withheldTies": 0,
+      "withheldMissing": 0
+    },
+    "validation": {
+      "entries": 511,
+      "identifiedTrend": 142,
+      "withheld": 15,
+      "withheldWins": 4,
+      "withheldLosses": 11,
+      "withheldTies": 0,
+      "withheldMissing": 0
+    },
+    "video": {
+      "entries": 15,
+      "identifiedTrend": 2,
+      "withheld": 0,
+      "withheldWins": 0,
+      "withheldLosses": 0,
+      "withheldTies": 0,
+      "withheldMissing": 0
+    }
+  },
+  "developmentPassed": false,
+  "independentValidationRun": false,
+  "functionalTestsPassed": 9,
+  "productionCoreFilesUnchanged": 75,
+  "digitalFinding": "Current directional price-at-entry +30s score does not by itself grade a Digital contract with a different strike or fixed deadline. Controlled mismatch examples are not evidence that actual user losses have this cause."
+}

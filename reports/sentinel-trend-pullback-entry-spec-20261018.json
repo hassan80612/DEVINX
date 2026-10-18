@@ -1,0 +1,20 @@
+{
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "hypothesis": "A trend-following signal can be premature if a material observed 6s pullback is still opposing an established prior trend, even though the latest 2s reaction agrees with the signal.",
+  "fixedRule": {
+    "durationMs": 30000,
+    "priorTrend": "Received source observations from t-90s through t-6s, one actual quote per source second, at least 40 observations and 60s coverage, no gap over 3s.",
+    "strongTrend": "Log-price/time linear R-squared >=0.70, reusing the released range detector's strong-trend boundary.",
+    "pullback": "Signed last-6s log move against the prior trend larger than twice the median positive absolute prior one-step log move, using the released swing detector's two-change scale.",
+    "action": "At the final output only, withhold a ready signal only when its side follows that strong prior trend while the pullback still opposes it. Preserve all countertrend, range, unknown and other-duration decisions. Admit nothing new; add no timer; active signals remain immutable.",
+    "developmentGoNoGo": "Screen original entries before full replay: must remove more losses than wins in EACH of known Forex and both known crypto lots; if not, reject at development and do not consume the new validation set. This screen alone never validates shifted runtime admissions."
+  },
+  "validationRegisteredBeforeOutcomes": {
+    "dates": ["2025-10-21", "2025-10-22", "2025-10-23"],
+    "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    "startUtc": "15:00:00",
+    "durationMinutes": 30,
+    "source": "Official Binance 1s closing observations, not broker Digital/OTC settlements. Only evaluate if development screen passes unchanged."
+  },
+  "caveats": ["No guarantee of improvement or 30s foresight.", "All development data are already known.", "Price-path diagnostic uses future prices only after the original decision and cannot be used as a real-time signal."]
+}
