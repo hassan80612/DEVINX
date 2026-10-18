@@ -1,0 +1,15 @@
+{
+  "baseCommit": "21f43a9587e2a4f6cdb23933226b4b0f0520e466",
+  "rule": "Central resolver for historical reaction, candle rejection and confirmed sequence. Preserve base without verified context. ADX14 on at most 100 received closed candles classifies trend>=25, range<20; +DI/-DI gives direction. Only high/rising ADX countertrend rejections without a confirmed structure-change/retest event abstain. No timer or new history. Control with regimePolicy:false must reproduce all released entries.",
+  "reservedBeforeEvaluation": [
+    "2020-03-30T02:00:00Z/02:30:00Z",
+    "2020-03-30T05:00:00Z/05:30:00Z",
+    "2020-03-30T23:00:00Z/23:30:00Z"
+  ],
+  "limitations": [
+    "Development windows are already inspected.",
+    "Reserved time blocks share an already-inspected Forex day; they are not independent broker sessions.",
+    "No live trade, click latency, profit or broker OTC accuracy modeled.",
+    "No tuning of the rule after outcome inspection."
+  ]
+}

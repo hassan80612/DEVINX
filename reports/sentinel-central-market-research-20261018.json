@@ -1,0 +1,1120 @@
+{
+  "baseCommit": "21f43a9587e2a4f6cdb23933226b4b0f0520e466",
+  "productionChanged": false,
+  "regimeRuleDecision": "Do not activate: aggregate accuracy regressed. Preserve central resolver as an unshipped, behavior-preserving control and candidate for further work.",
+  "sources": [
+    {
+      "name": "CME — reversões e confirmação de estrutura",
+      "url": "https://www.cmegroup.com/education/courses/technical-analysis/technical-patterns-reversals",
+      "application": "Separar um toque/rejeição de um rompimento confirmado da estrutura."
+    },
+    {
+      "name": "CME — suporte e resistência",
+      "url": "https://www.cmegroup.com/education/courses/technical-analysis/support-and-resistance",
+      "application": "Usar níveis históricos e médias como localização, sem pressupor que sempre seguram."
+    },
+    {
+      "name": "Fidelity — DMI",
+      "url": "https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/DMI",
+      "application": "ADX mede força; +DI e -DI indicam direção. Referências usuais: ADX>=25 e ADX<20."
+    },
+    {
+      "name": "Freqtrade — exemplo oficial",
+      "url": "https://github.com/freqtrade/freqtrade/blob/develop/freqtrade/templates/sample_strategy.py",
+      "application": "Exemplo aberto contém ADX; não é evidência de alto acerto. Usa escala de 5 minutos, não previsão binária de 30 segundos."
+    },
+    {
+      "name": "Freqtrade — validação",
+      "url": "https://www.freqtrade.io/en/stable/strategy-101/",
+      "application": "Separar teste histórico de funcionamento real e verificar dados futuros."
+    },
+    {
+      "name": "TA-Lib — ADX",
+      "url": "https://github.com/TA-Lib/ta-lib/blob/main/src/ta_func/ta_ADX.c",
+      "application": "Conferir inicialização e suavização de Wilder. Fixture numérico de 4 barras e período 2: ADX=48,48484848."
+    }
+  ],
+  "tests": {
+    "passed": 9,
+    "failed": 0
+  },
+  "benchmark": {
+    "external": [
+      {
+        "win": 306,
+        "loss": 318,
+        "tie": 19,
+        "missing": 0,
+        "completed": 624,
+        "winRate": 0.49038461538461536
+      },
+      {
+        "win": 306,
+        "loss": 318,
+        "tie": 19,
+        "missing": 0,
+        "completed": 624,
+        "winRate": 0.49038461538461536
+      },
+      {
+        "win": 299,
+        "loss": 314,
+        "tie": 18,
+        "missing": 0,
+        "completed": 613,
+        "winRate": 0.48776508972267535
+      }
+    ],
+    "windows": [
+      {
+        "name": "sentinel-user-video-broker-6dp-20261016.json",
+        "metrics": [
+          {
+            "win": 11,
+            "loss": 3,
+            "tie": 0,
+            "missing": 1,
+            "completed": 14,
+            "winRate": 0.7857142857142857,
+            "maxLossStreak": 2
+          },
+          {
+            "win": 11,
+            "loss": 3,
+            "tie": 0,
+            "missing": 1,
+            "completed": 14,
+            "winRate": 0.7857142857142857,
+            "maxLossStreak": 2
+          },
+          {
+            "win": 11,
+            "loss": 3,
+            "tie": 0,
+            "missing": 1,
+            "completed": 14,
+            "winRate": 0.7857142857142857,
+            "maxLossStreak": 2
+          }
+        ],
+        "selection": [
+          {
+            "entries": 15,
+            "medianGapSeconds": 31,
+            "maxGapSeconds": 63.5
+          },
+          {
+            "entries": 15,
+            "medianGapSeconds": 31,
+            "maxGapSeconds": 63.5
+          },
+          {
+            "entries": 15,
+            "medianGapSeconds": 31,
+            "maxGapSeconds": 63.5
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "development-08-utc",
+        "metrics": [
+          {
+            "win": 27,
+            "loss": 27,
+            "tie": 0,
+            "missing": 0,
+            "completed": 54,
+            "winRate": 0.5,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 27,
+            "loss": 27,
+            "tie": 0,
+            "missing": 0,
+            "completed": 54,
+            "winRate": 0.5,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 27,
+            "loss": 27,
+            "tie": 0,
+            "missing": 0,
+            "completed": 54,
+            "winRate": 0.5,
+            "maxLossStreak": 6
+          }
+        ],
+        "selection": [
+          {
+            "entries": 54,
+            "medianGapSeconds": 31.856,
+            "maxGapSeconds": 48.394
+          },
+          {
+            "entries": 54,
+            "medianGapSeconds": 31.856,
+            "maxGapSeconds": 48.394
+          },
+          {
+            "entries": 54,
+            "medianGapSeconds": 31.856,
+            "maxGapSeconds": 48.394
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "validation-14-utc",
+        "metrics": [
+          {
+            "win": 22,
+            "loss": 31,
+            "tie": 0,
+            "missing": 0,
+            "completed": 53,
+            "winRate": 0.41509433962264153,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 22,
+            "loss": 31,
+            "tie": 0,
+            "missing": 0,
+            "completed": 53,
+            "winRate": 0.41509433962264153,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 22,
+            "loss": 31,
+            "tie": 0,
+            "missing": 0,
+            "completed": 53,
+            "winRate": 0.41509433962264153,
+            "maxLossStreak": 5
+          }
+        ],
+        "selection": [
+          {
+            "entries": 53,
+            "medianGapSeconds": 31.328,
+            "maxGapSeconds": 125.646
+          },
+          {
+            "entries": 53,
+            "medianGapSeconds": 31.328,
+            "maxGapSeconds": 125.646
+          },
+          {
+            "entries": 53,
+            "medianGapSeconds": 31.328,
+            "maxGapSeconds": 125.646
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "reserved-19-utc",
+        "metrics": [
+          {
+            "win": 21,
+            "loss": 22,
+            "tie": 1,
+            "missing": 0,
+            "completed": 43,
+            "winRate": 0.4883720930232558,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 21,
+            "loss": 22,
+            "tie": 1,
+            "missing": 0,
+            "completed": 43,
+            "winRate": 0.4883720930232558,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 19,
+            "loss": 18,
+            "tie": 1,
+            "missing": 0,
+            "completed": 37,
+            "winRate": 0.5135135135135135,
+            "maxLossStreak": 4
+          }
+        ],
+        "selection": [
+          {
+            "entries": 44,
+            "medianGapSeconds": 35.506,
+            "maxGapSeconds": 106.106
+          },
+          {
+            "entries": 44,
+            "medianGapSeconds": 35.506,
+            "maxGapSeconds": 106.106
+          },
+          {
+            "entries": 38,
+            "medianGapSeconds": 39.011,
+            "maxGapSeconds": 135.441
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 8,
+            "newCandidateEntries": 11
+          }
+        ]
+      },
+      {
+        "name": "second-validation-10-utc",
+        "metrics": [
+          {
+            "win": 21,
+            "loss": 19,
+            "tie": 2,
+            "missing": 0,
+            "completed": 40,
+            "winRate": 0.525,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 21,
+            "loss": 19,
+            "tie": 2,
+            "missing": 0,
+            "completed": 40,
+            "winRate": 0.525,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 21,
+            "loss": 19,
+            "tie": 2,
+            "missing": 0,
+            "completed": 40,
+            "winRate": 0.525,
+            "maxLossStreak": 5
+          }
+        ],
+        "selection": [
+          {
+            "entries": 42,
+            "medianGapSeconds": 37.071,
+            "maxGapSeconds": 94.08
+          },
+          {
+            "entries": 42,
+            "medianGapSeconds": 37.071,
+            "maxGapSeconds": 94.08
+          },
+          {
+            "entries": 42,
+            "medianGapSeconds": 37.071,
+            "maxGapSeconds": 94.08
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "second-validation-16-utc",
+        "metrics": [
+          {
+            "win": 25,
+            "loss": 23,
+            "tie": 2,
+            "missing": 0,
+            "completed": 48,
+            "winRate": 0.5208333333333334,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 25,
+            "loss": 23,
+            "tie": 2,
+            "missing": 0,
+            "completed": 48,
+            "winRate": 0.5208333333333334,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 23,
+            "loss": 25,
+            "tie": 2,
+            "missing": 0,
+            "completed": 48,
+            "winRate": 0.4791666666666667,
+            "maxLossStreak": 5
+          }
+        ],
+        "selection": [
+          {
+            "entries": 50,
+            "medianGapSeconds": 32.278,
+            "maxGapSeconds": 51.015
+          },
+          {
+            "entries": 50,
+            "medianGapSeconds": 32.278,
+            "maxGapSeconds": 51.015
+          },
+          {
+            "entries": 50,
+            "medianGapSeconds": 32.278,
+            "maxGapSeconds": 51.015
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 2,
+            "newCandidateEntries": 2
+          }
+        ]
+      },
+      {
+        "name": "second-validation-21-utc",
+        "metrics": [
+          {
+            "win": 0,
+            "loss": 0,
+            "tie": 0,
+            "missing": 0,
+            "completed": 0,
+            "winRate": null,
+            "maxLossStreak": 0
+          },
+          {
+            "win": 0,
+            "loss": 0,
+            "tie": 0,
+            "missing": 0,
+            "completed": 0,
+            "winRate": null,
+            "maxLossStreak": 0
+          },
+          {
+            "win": 0,
+            "loss": 0,
+            "tie": 0,
+            "missing": 0,
+            "completed": 0,
+            "winRate": null,
+            "maxLossStreak": 0
+          }
+        ],
+        "selection": [
+          {
+            "entries": 0,
+            "medianGapSeconds": null,
+            "maxGapSeconds": null
+          },
+          {
+            "entries": 0,
+            "medianGapSeconds": null,
+            "maxGapSeconds": null
+          },
+          {
+            "entries": 0,
+            "medianGapSeconds": null,
+            "maxGapSeconds": null
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "third-validation-09-utc",
+        "metrics": [
+          {
+            "win": 24,
+            "loss": 26,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.48,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 24,
+            "loss": 26,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.48,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 24,
+            "loss": 26,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.48,
+            "maxLossStreak": 6
+          }
+        ],
+        "selection": [
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.008,
+            "maxGapSeconds": 100.366
+          },
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.008,
+            "maxGapSeconds": 100.366
+          },
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.008,
+            "maxGapSeconds": 100.366
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "third-validation-12-utc",
+        "metrics": [
+          {
+            "win": 23,
+            "loss": 23,
+            "tie": 3,
+            "missing": 0,
+            "completed": 46,
+            "winRate": 0.5,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 23,
+            "loss": 23,
+            "tie": 3,
+            "missing": 0,
+            "completed": 46,
+            "winRate": 0.5,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 22,
+            "loss": 23,
+            "tie": 3,
+            "missing": 0,
+            "completed": 45,
+            "winRate": 0.4888888888888889,
+            "maxLossStreak": 6
+          }
+        ],
+        "selection": [
+          {
+            "entries": 49,
+            "medianGapSeconds": 32.906,
+            "maxGapSeconds": 84.632
+          },
+          {
+            "entries": 49,
+            "medianGapSeconds": 32.906,
+            "maxGapSeconds": 84.632
+          },
+          {
+            "entries": 48,
+            "medianGapSeconds": 32.748,
+            "maxGapSeconds": 128.017
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 1,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "third-validation-15-utc",
+        "metrics": [
+          {
+            "win": 23,
+            "loss": 32,
+            "tie": 0,
+            "missing": 0,
+            "completed": 55,
+            "winRate": 0.41818181818181815,
+            "maxLossStreak": 7
+          },
+          {
+            "win": 23,
+            "loss": 32,
+            "tie": 0,
+            "missing": 0,
+            "completed": 55,
+            "winRate": 0.41818181818181815,
+            "maxLossStreak": 7
+          },
+          {
+            "win": 23,
+            "loss": 32,
+            "tie": 0,
+            "missing": 0,
+            "completed": 55,
+            "winRate": 0.41818181818181815,
+            "maxLossStreak": 7
+          }
+        ],
+        "selection": [
+          {
+            "entries": 55,
+            "medianGapSeconds": 31.185,
+            "maxGapSeconds": 52.779
+          },
+          {
+            "entries": 55,
+            "medianGapSeconds": 31.185,
+            "maxGapSeconds": 52.779
+          },
+          {
+            "entries": 55,
+            "medianGapSeconds": 31.185,
+            "maxGapSeconds": 52.779
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "third-validation-18-utc",
+        "metrics": [
+          {
+            "win": 17,
+            "loss": 7,
+            "tie": 4,
+            "missing": 0,
+            "completed": 24,
+            "winRate": 0.7083333333333334,
+            "maxLossStreak": 1
+          },
+          {
+            "win": 17,
+            "loss": 7,
+            "tie": 4,
+            "missing": 0,
+            "completed": 24,
+            "winRate": 0.7083333333333334,
+            "maxLossStreak": 1
+          },
+          {
+            "win": 16,
+            "loss": 5,
+            "tie": 3,
+            "missing": 0,
+            "completed": 21,
+            "winRate": 0.7619047619047619,
+            "maxLossStreak": 1
+          }
+        ],
+        "selection": [
+          {
+            "entries": 28,
+            "medianGapSeconds": 39.969,
+            "maxGapSeconds": 329.368
+          },
+          {
+            "entries": 28,
+            "medianGapSeconds": 39.969,
+            "maxGapSeconds": 329.368
+          },
+          {
+            "entries": 24,
+            "medianGapSeconds": 39.969,
+            "maxGapSeconds": 367.887
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 2,
+            "newCandidateEntries": 1
+          }
+        ]
+      },
+      {
+        "name": "fourth-validation-11-utc",
+        "metrics": [
+          {
+            "win": 23,
+            "loss": 23,
+            "tie": 0,
+            "missing": 0,
+            "completed": 46,
+            "winRate": 0.5,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 23,
+            "loss": 23,
+            "tie": 0,
+            "missing": 0,
+            "completed": 46,
+            "winRate": 0.5,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 25,
+            "loss": 21,
+            "tie": 0,
+            "missing": 0,
+            "completed": 46,
+            "winRate": 0.5434782608695652,
+            "maxLossStreak": 5
+          }
+        ],
+        "selection": [
+          {
+            "entries": 46,
+            "medianGapSeconds": 33.017,
+            "maxGapSeconds": 117.55
+          },
+          {
+            "entries": 46,
+            "medianGapSeconds": 33.017,
+            "maxGapSeconds": 117.55
+          },
+          {
+            "entries": 46,
+            "medianGapSeconds": 33.017,
+            "maxGapSeconds": 117.55
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 1,
+            "newCandidateEntries": 3
+          }
+        ]
+      },
+      {
+        "name": "fourth-validation-13-utc",
+        "metrics": [
+          {
+            "win": 23,
+            "loss": 32,
+            "tie": 1,
+            "missing": 0,
+            "completed": 55,
+            "winRate": 0.41818181818181815,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 23,
+            "loss": 32,
+            "tie": 1,
+            "missing": 0,
+            "completed": 55,
+            "winRate": 0.41818181818181815,
+            "maxLossStreak": 4
+          },
+          {
+            "win": 20,
+            "loss": 34,
+            "tie": 1,
+            "missing": 0,
+            "completed": 54,
+            "winRate": 0.37037037037037035,
+            "maxLossStreak": 4
+          }
+        ],
+        "selection": [
+          {
+            "entries": 56,
+            "medianGapSeconds": 31.024,
+            "maxGapSeconds": 48.015
+          },
+          {
+            "entries": 56,
+            "medianGapSeconds": 31.024,
+            "maxGapSeconds": 48.015
+          },
+          {
+            "entries": 55,
+            "medianGapSeconds": 31.171,
+            "maxGapSeconds": 48.015
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": false,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 5,
+            "newCandidateEntries": 6
+          }
+        ]
+      },
+      {
+        "name": "fourth-validation-17-utc",
+        "metrics": [
+          {
+            "win": 19,
+            "loss": 20,
+            "tie": 4,
+            "missing": 0,
+            "completed": 39,
+            "winRate": 0.48717948717948717,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 19,
+            "loss": 20,
+            "tie": 4,
+            "missing": 0,
+            "completed": 39,
+            "winRate": 0.48717948717948717,
+            "maxLossStreak": 6
+          },
+          {
+            "win": 19,
+            "loss": 20,
+            "tie": 4,
+            "missing": 0,
+            "completed": 39,
+            "winRate": 0.48717948717948717,
+            "maxLossStreak": 6
+          }
+        ],
+        "selection": [
+          {
+            "entries": 43,
+            "medianGapSeconds": 37.758,
+            "maxGapSeconds": 111.212
+          },
+          {
+            "entries": 43,
+            "medianGapSeconds": 37.758,
+            "maxGapSeconds": 111.212
+          },
+          {
+            "entries": 43,
+            "medianGapSeconds": 37.758,
+            "maxGapSeconds": 111.212
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "fourth-validation-20-utc",
+        "metrics": [
+          {
+            "win": 10,
+            "loss": 11,
+            "tie": 0,
+            "missing": 0,
+            "completed": 21,
+            "winRate": 0.47619047619047616,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 10,
+            "loss": 11,
+            "tie": 0,
+            "missing": 0,
+            "completed": 21,
+            "winRate": 0.47619047619047616,
+            "maxLossStreak": 5
+          },
+          {
+            "win": 10,
+            "loss": 11,
+            "tie": 0,
+            "missing": 0,
+            "completed": 21,
+            "winRate": 0.47619047619047616,
+            "maxLossStreak": 5
+          }
+        ],
+        "selection": [
+          {
+            "entries": 21,
+            "medianGapSeconds": 85.197,
+            "maxGapSeconds": 194.063
+          },
+          {
+            "entries": 21,
+            "medianGapSeconds": 85.197,
+            "maxGapSeconds": 194.063
+          },
+          {
+            "entries": 21,
+            "medianGapSeconds": 85.197,
+            "maxGapSeconds": 194.063
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      },
+      {
+        "name": "available-official-2020-03-31-1829-utc",
+        "metrics": [
+          {
+            "win": 28,
+            "loss": 22,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.56,
+            "maxLossStreak": 3
+          },
+          {
+            "win": 28,
+            "loss": 22,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.56,
+            "maxLossStreak": 3
+          },
+          {
+            "win": 28,
+            "loss": 22,
+            "tie": 1,
+            "missing": 0,
+            "completed": 50,
+            "winRate": 0.56,
+            "maxLossStreak": 3
+          }
+        ],
+        "selection": [
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.961,
+            "maxGapSeconds": 58.689
+          },
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.961,
+            "maxGapSeconds": 58.689
+          },
+          {
+            "entries": 51,
+            "medianGapSeconds": 32.961,
+            "maxGapSeconds": 58.689
+          }
+        ],
+        "comparisons": [
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          },
+          {
+            "sameEntries": true,
+            "corrected": 0,
+            "spoiled": 0,
+            "removedBaseWins": 0,
+            "newCandidateEntries": 0
+          }
+        ]
+      }
+    ],
+    "improvedExternalWindows": 3,
+    "regressedExternalWindows": 3
+  },
+  "controlInvariant": "All baseline entries, prices, sides, due dates and independent outcomes exactly reproduced by the central resolver with regimePolicy=false in all 16 replays.",
+  "validationLimits": [
+    "All 15 external target windows were already inspected. No new untouched validation was run after this failure.",
+    "The known video extraction has no verified historical candles; unchanged results do not validate the regime rule.",
+    "Historic external Forex does not establish user OTC performance or profitability.",
+    "No Windows/native broker UI or live account session tested."
+  ]
+}
