@@ -1,0 +1,15 @@
+{
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "request": "Invert final analyst CALL/PUT in oscillation/retracement conditions; preserve continuous one-direction movement.",
+  "ruleFrozenBeforeScoring": {
+    "durationMs": 30000,
+    "observedBars": "Four completed 10-second quote bars ending at the last closed clock boundary; these are internal observation bars, not a guessed broker chart timeframe.",
+    "mixed": "Both positive and negative closed-bar body directions appear: invert.",
+    "pullback": "All nonflat closed bars share one direction, but last 6-second actual move is opposite: invert.",
+    "preserve": "Continuous one-sided movement, flat market, incomplete/stale observations, unsupported duration, no authorized base signal or already-inverted decision.",
+    "location": "Exactly once, after every final structural override and before the immutable signal lifecycle.",
+    "noChange": ["admission", "entry price/time", "expiry", "forecast fitting", "existing learning", "bot controls", "production", "rollback"]
+  },
+  "evaluation": "All 15 known Forex and 18 known crypto windows plus one known video extraction. Every dataset has already been inspected: exploratory replay, not new independent validation. Same-entry counterfactual on all windows, plus full runtime equivalence checks on representative windows.",
+  "priorRelatedFailure": "The older mixed-range-label-only inverse modestly improved known Forex but worsened the known video. This is a different explicit candle/pullback rule requested by the user, with no claim of prior success. No tuning after these results."
+}

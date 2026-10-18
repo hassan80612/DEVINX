@@ -1,0 +1,200 @@
+{
+  "implementation": "USER_REQUESTED_CONDITIONAL_INVERSE_RESEARCH_ONLY",
+  "testsPassed": 9,
+  "fullRuntimeWindowsVerified": 4,
+  "productionCoreFilesUnchanged": 75,
+  "summary": {
+    "known": {
+      "windows": 15,
+      "metrics": [
+        {
+          "win": 306,
+          "loss": 318,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.49038461538461536
+        },
+        {
+          "win": 313,
+          "loss": 311,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.5016025641025641
+        }
+      ],
+      "selected": [
+        {
+          "win": 148,
+          "loss": 155,
+          "tie": 4,
+          "missing": 0,
+          "completed": 303,
+          "winRate": 0.4884488448844885
+        },
+        {
+          "win": 155,
+          "loss": 148,
+          "tie": 4,
+          "missing": 0,
+          "completed": 303,
+          "winRate": 0.5115511551155115
+        }
+      ],
+      "changed": 307,
+      "corrected": 155,
+      "spoiled": 148,
+      "improved": 8,
+      "worsened": 4,
+      "worstWindowLossStreak": [
+        7,
+        7
+      ]
+    },
+    "crypto": {
+      "windows": 9,
+      "metrics": [
+        {
+          "win": 300,
+          "loss": 228,
+          "tie": 3,
+          "missing": 0,
+          "completed": 528,
+          "winRate": 0.5681818181818182
+        },
+        {
+          "win": 222,
+          "loss": 306,
+          "tie": 3,
+          "missing": 0,
+          "completed": 528,
+          "winRate": 0.42045454545454547
+        }
+      ],
+      "selected": [
+        {
+          "win": 278,
+          "loss": 200,
+          "tie": 2,
+          "missing": 0,
+          "completed": 478,
+          "winRate": 0.5815899581589958
+        },
+        {
+          "win": 200,
+          "loss": 278,
+          "tie": 2,
+          "missing": 0,
+          "completed": 478,
+          "winRate": 0.41841004184100417
+        }
+      ],
+      "changed": 480,
+      "corrected": 200,
+      "spoiled": 278,
+      "improved": 1,
+      "worsened": 7,
+      "worstWindowLossStreak": [
+        6,
+        9
+      ]
+    },
+    "validation": {
+      "windows": 9,
+      "metrics": [
+        {
+          "win": 254,
+          "loss": 251,
+          "tie": 6,
+          "missing": 0,
+          "completed": 505,
+          "winRate": 0.502970297029703
+        },
+        {
+          "win": 275,
+          "loss": 230,
+          "tie": 6,
+          "missing": 0,
+          "completed": 505,
+          "winRate": 0.5445544554455446
+        }
+      ],
+      "selected": [
+        {
+          "win": 206,
+          "loss": 227,
+          "tie": 4,
+          "missing": 0,
+          "completed": 433,
+          "winRate": 0.47575057736720555
+        },
+        {
+          "win": 227,
+          "loss": 206,
+          "tie": 4,
+          "missing": 0,
+          "completed": 433,
+          "winRate": 0.5242494226327945
+        }
+      ],
+      "changed": 437,
+      "corrected": 227,
+      "spoiled": 206,
+      "improved": 5,
+      "worsened": 3,
+      "worstWindowLossStreak": [
+        8,
+        9
+      ]
+    },
+    "video": {
+      "windows": 1,
+      "metrics": [
+        {
+          "win": 11,
+          "loss": 3,
+          "tie": 0,
+          "missing": 1,
+          "completed": 14,
+          "winRate": 0.7857142857142857
+        },
+        {
+          "win": 4,
+          "loss": 10,
+          "tie": 0,
+          "missing": 1,
+          "completed": 14,
+          "winRate": 0.2857142857142857
+        }
+      ],
+      "selected": [
+        {
+          "win": 10,
+          "loss": 3,
+          "tie": 0,
+          "missing": 1,
+          "completed": 13,
+          "winRate": 0.7692307692307693
+        },
+        {
+          "win": 3,
+          "loss": 10,
+          "tie": 0,
+          "missing": 1,
+          "completed": 13,
+          "winRate": 0.23076923076923078
+        }
+      ],
+      "changed": 14,
+      "corrected": 3,
+      "spoiled": 10,
+      "improved": 0,
+      "worsened": 1,
+      "worstWindowLossStreak": [
+        2,
+        5
+      ]
+    }
+  }
+}
