@@ -56,7 +56,7 @@ test('ties and missing deadline quotes do not manufacture a training success',()
 test('observed runtime score uses the same deadline reference and remains quote-based',()=>{
  const run=Constructor=>{
   const r=new Constructor({enableVNext:true,forecastModel:'now-structural-v1'});
-  r.vnextWindowOutcomes=[{windowId:T,asset:'EUR/USD',engineId:'automatic',forecastMode:'now',
+  r.vnextWindowOutcomes=[{windowId:T,provider:'iq_option',asset:'EUR/USD',engineId:'automatic',forecastMode:'now',
    periodSeconds:30,side:'CALL',entryAt:T,exitAt:due,entryPrice:100,verified:false}];
   return r._signalValidationGate({analysis:{asset:'EUR/USD'},settings:r.settings,now:due+500,
    snap:{provider:'iq_option',price:99,quoteTs:due+500,quoteHistory:[q(due-100,101),q(due+500,99)],candles:[]}}).analysis.vnext.outcomeQuality;
