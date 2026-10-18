@@ -1,0 +1,15 @@
+{
+  "baseCommit": "21f43a9587e2a4f6cdb23933226b4b0f0520e466",
+  "rule": "Keep the released analogue features, 180s window, distances, weights and .4 admission threshold. Sort by feature distance; admit only non-neutral examples with shortDiff<=1 whose 30s outcome intervals do not overlap any already-selected example. Require at least 3 selected; otherwise immediately use existing structural fallback. No additional history, clock reading or waiting timer.",
+  "reservedBeforeEvaluation": [
+    "2020-03-30T02:00:00Z/02:30:00Z",
+    "2020-03-30T05:00:00Z/05:30:00Z",
+    "2020-03-30T23:00:00Z/23:30:00Z"
+  ],
+  "limitations": [
+    "Development windows are already inspected.",
+    "Reserved time blocks share an already-inspected Forex day; they are not independent broker sessions.",
+    "No live trade, click latency, profit or broker OTC accuracy modeled.",
+    "No tuning of the rule after outcome inspection."
+  ]
+}
