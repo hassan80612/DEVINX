@@ -3,25 +3,57 @@ import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targ
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
-export function isExecutionFrame(frame){return /option|position-changed|order-changed|buyv3|^error$/i.test(String(frame?.msg?.name||frame?.name||''));}
+// Recognize individually identified and grouped close events. A single frame
+// can contain more than one Martingale order; each still needs its own ID.
+const frameNames=frame=>[frame?.msg?.name,frame?.name,frame?.msg?.body?.name,frame?.body?.name]
+  .filter(x=>typeof x==='string').map(x=>x.toLowerCase());
+const closingKind=frame=>{
+ const names=frameNames(frame);
+ if(names.some(n=>n.endsWith('option-closed')))return'option';
+ if(names.some(n=>n.endsWith('position-changed')||n.endsWith('positions-changed')))return'position';
+ return null;
+};
+export function isExecutionFrame(frame){
+ return frameNames(frame).some(n=>/option|positions?-changed|order-changed|buyv3|^error$/.test(n));
+}
 export function settlementFromFrame(provider,frame,known){
- const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
- const m=frame?.msg?.body??frame?.msg??frame?.body;
- if(!m||typeof m!=='object')return null;
- const ids=[m.id,m.option_id,m.position_id,m.external_id].filter(x=>x!=null).map(String);
- if(!ids.includes(String(known.orderId)))return null;
- const account=m.user_balance_id??m.balance_id;
- if(account!=null&&known.accountId!=null&&String(account)!==String(known.accountId))return null;
- const stake=m.amount??m.invest;
- if(stake!=null&&(!finite(stake)||Math.abs(Number(stake)-known.amount)>0.000001))return null;
- let gross=null;
- // Both fields are gross returns in these specific option settlement frames.
- // Never infer a settlement from quotes, debit events, or a generic 'profit'.
- if(name==='option-closed'&&finite(m.profit_amount))gross=Number(m.profit_amount);
- if(name==='position-changed'&&m.status==='closed'&&finite(m.close_profit)&&finite(m.invest))gross=Number(m.close_profit);
- if(gross===null||gross<0)return null;
- const opening=m.open_price??m.open_quote,closing=m.close_price??m.close_quote;
- return{provider,accountId:known.accountId??account??null,orderId:known.orderId,netPnl:gross-known.amount,source:'broker',...(finite(opening)&&Number(opening)>0?{entryPrice:Number(opening)}:{}),...(finite(closing)&&Number(closing)>0?{exitPrice:Number(closing)}:{})};
+ const kind=closingKind(frame),root=frame?.msg?.body??frame?.msg??frame?.body;
+ if(!kind||!root||typeof root!=='object'||known?.orderId==null)return null;
+ const baseAccount=root.user_balance_id??root.balance_id??root.account_id??null;
+ const queue=[{value:root,depth:0}],seen=new Set();
+ for(let i=0;i<queue.length&&i<100;i++){
+  const {value,depth}=queue[i];
+  if(!value||typeof value!=='object'||seen.has(value))continue;
+  seen.add(value);
+  if(Array.isArray(value)){
+   if(depth<4)for(const child of value.slice(0,40))queue.push({value:child,depth:depth+1});
+   continue;
+  }
+  const ids=[value.id,value.option_id,value.position_id,value.external_id,value.order_id]
+    .filter(x=>x!=null).map(String);
+  if(ids.includes(String(known.orderId))){
+   const account=value.user_balance_id??value.balance_id??value.account_id??baseAccount;
+   if(account!=null&&known.accountId!=null&&String(account)!==String(known.accountId))return null;
+   const stake=value.amount??value.invest;
+   if(stake!=null&&(!finite(stake)||Math.abs(Number(stake)-Number(known.amount))>0.000001))return null;
+   let gross=null;
+   // Only known gross-return fields on identified closed option events.
+   if(kind==='option'&&finite(value.profit_amount))gross=Number(value.profit_amount);
+   if(kind==='position'&&String(value.status||'').toLowerCase()==='closed'&&
+      finite(value.close_profit)&&finite(value.invest))gross=Number(value.close_profit);
+   if(gross!==null&&gross>=0){
+    const opening=value.open_price??value.open_quote,closing=value.close_price??value.close_quote;
+    return{provider,accountId:known.accountId??account??null,orderId:known.orderId,
+      netPnl:gross-Number(known.amount),source:'broker',
+      ...(finite(opening)&&Number(opening)>0?{entryPrice:Number(opening)}:{}),
+      ...(finite(closing)&&Number(closing)>0?{exitPrice:Number(closing)}:{})};
+   }
+  }
+  if(depth<4)for(const key of ['body','option','position','options','positions','data','result','items']){
+   const v=value[key];if(v&&typeof v==='object')queue.push({value:v,depth:depth+1});
+  }
+ }
+ return null;
 }
 
 // Executed inside the broker page only at activation / selected entry.
@@ -144,11 +176,12 @@ export class BrokerUiExecutor{
     this.onAccepted({...result,provider});a.resolve(result);
    }
   }
-  if(!/option-closed|position-changed/.test(name))return;
-  for(const [key,known] of this.orders){
+  if(!closingKind(frame))return;
+  // Finish every identified child contained in a batched broker response.
+  for(const [key,known] of [...this.orders]){
    if(known.provider!==provider)continue;
    const result=settlementFromFrame(provider,frame,known);
-   if(result){this.orders.delete(key);this.onSettlement(result);break;}
+   if(result){this.orders.delete(key);this.onSettlement(result);}
   }
  }
 }
