@@ -1,0 +1,22 @@
+name: Sentinel 13.9.54 directional analysis - research only
+on:
+  push:
+    branches:
+      - research/sentinel-13954-direction-analysis-20261019
+    paths:
+      - 'scripts/sentinel-13954-direction-attribution-20261019.mjs'
+      - '.github/workflows/sentinel-13954-direction-attribution-research.yml'
+permissions:
+  contents: read
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate research script syntax
+        run: node --check scripts/sentinel-13954-direction-attribution-20261019.mjs
+      - name: Replay production direction layers over time-ordered video quotes
+        run: node scripts/sentinel-13954-direction-attribution-20261019.mjs
