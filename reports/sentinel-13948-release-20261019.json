@@ -38,5 +38,17 @@
       "bytes": 415314,
       "sha256": "019756cbb07b86b4d92d2199c788618dd8a8c66e56bafdf407ad1325ec401343"
     }
+  },
+  "publication": {
+    "commit": "abf5d7e9045571d7b514e209e5d9d17bd0fceda9",
+    "deployment": "dpl_E6ikDDxkHoRrKWhkKoYH68AKVL1a",
+    "state": "READY",
+    "origin": "https://trading.devinx.com.br",
+    "downloadedPayloadRegressionTestsPassed": 132,
+    "exactPayloadFiles": 119,
+    "runtimeErrorScan": "no error/fatal records in initial deployment window",
+    "realBrokerOrders": false,
+    "unauthenticatedExecutorCommands": "401; no command enqueued",
+    "temporaryBrowserFixtureRoute": "404"
   }
 }
