@@ -2,6 +2,7 @@ import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
 import {CompletedExpiryDirection} from './completed-expiry-direction.mjs';
+import {DirectionDisagreementEvidence} from './direction-disagreement-evidence.mjs';
 import {HistoricalPriceStructureCache} from './historical-price-structure.mjs';
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {canRenewExpiredScenario} from './scenario-renewal.mjs';
@@ -80,7 +81,7 @@ function newPriceStructure(main,side,snap,strict=false){
 
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
-    this.expiryDirectionSelector=new CompletedExpiryDirection();
+    this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
     this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
@@ -964,7 +965,7 @@ export class DemoTradingRuntime{
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
 
-        expiryDirectionSelector:this.expiryDirectionSelector,expiryDirectionContext
+        expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
