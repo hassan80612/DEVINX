@@ -155,7 +155,7 @@ function completedRangeStructure(quotes,now,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
@@ -177,13 +177,22 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // Preserve existing qualified entries. Historical price reactions below
   // can admit directly from current quotes without four newly closed bars.
   const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
-  const decision=Number(durationMs)===30000&&expiryDirectionSelector?
+  const selected=Number(durationMs)===30000&&expiryDirectionSelector?
    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):baseline;
+  // Stage 4: compare ACTUAL completed 30s results on the rare occasions
+  // when the qualified causal market structure and selected projection
+  // disagree. After sufficient non-overlapping evidence the historical
+  // structure can outrank the fitted cycle, but not on arbitrary opinion.
+  const decision=Number(durationMs)===30000&&directionDisagreement?
+   directionDisagreement.observe({context:expiryDirectionContext,quoteHistory,quoteAt,
+    price,now,structural:original,projected:selected,
+    projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):selected;
   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
   // Historical reactions must agree with the projection actually selected
   // above. Comparing against the discarded narrow forecast can both veto
   // an agreeing reaction and allow one that contradicts the selected side.
-  const selectedForecast=forecast?.ready&&decision.ready?decision:forecast;
+  const selectedForecast=decision.reason==='validated-structure-over-cycle'?null:
+   forecast?.ready&&decision.ready?decision:forecast;
   const historical=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:selectedForecast},structure,...input});
   const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
   const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
