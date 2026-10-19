@@ -30,6 +30,12 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
 
     const {path}=await ctx.params;
     const rel=path.join('/');
+    if(rel.startsWith('executor/')){
+      if(!['executor/start','executor/stop','executor/config'].includes(rel))return NextResponse.json({ok:false,error:'not_found'},{status:404});
+      if(req.method!=='POST')return NextResponse.json({ok:false,error:'method_not_allowed'},{status:405});
+      const origin=req.headers.get('origin');
+      if(origin&&origin!==new URL(req.url).origin)return NextResponse.json({ok:false,error:'origin_not_allowed'},{status:403});
+    }
 
     // The mobile manual-order cockpit was retired. Block stale clients
     // before enqueueing a trade or triggering diagnostics on the Agent.
@@ -67,7 +73,7 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
     }
 
     const j=await rpc('sentinel_remote_status',{p_session_token:token,p_device_id:null});
-    return NextResponse.json({ok:true,data:j.data,command:{id:commandId,status:ack.status,result:ack.result}},{headers:{'cache-control':'no-store'}});
+    return NextResponse.json({ok:true,data:type.startsWith('executor/')?{...j.data,autoExecutor:Number(ack.result?.autoExecutor?.updatedAt)>Number(j.data?.autoExecutor?.updatedAt||0)?ack.result.autoExecutor:j.data?.autoExecutor}:j.data,command:{id:commandId,status:ack.status,result:ack.result}},{headers:{'cache-control':'no-store'}});
   }catch(e:any){
     const m=String(e?.message||e);
     return NextResponse.json({ok:false,error:m},{status:m==='unauthorized'?401:409,headers:{'cache-control':'no-store'}});

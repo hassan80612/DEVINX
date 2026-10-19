@@ -1,3 +1,4 @@
+import {packExecutor,unpackExecutor,dispatchExecutor} from './executor-remote.mjs';
 import {SignalExecutor} from './signal-executor.mjs';
 import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
@@ -61,6 +62,8 @@ async function executorAction(action,payload={}){
  if(action==='executor-start'){try{await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
 }
+
+function remoteExecutorState(){return unpackExecutor(packExecutor({...executor.status(),provider:activeProvider,updatedAt:Date.now()}));}
 
 function chooseLive(){
   if(activeProvider){
@@ -126,7 +129,7 @@ async function publishLiveFrame(){
     // not a second full balance/broker/history/status sweep every second.
     // The authenticated periodic status API still carries full details.
     const snapshot={
-      agentVersion:VERSION,state:runtime.stateName,
+      agentVersion:VERSION,state:runtime.stateName,bot:packExecutor(remoteExecutorState()),
       killSwitch:runtime.killSwitch,masterFrozen:runtime.masterFrozen,
       settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
       lastResult:runtime.lastResult
@@ -511,7 +514,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
+  return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
     timingDiagnostics:{evaluation:{...evaluationPerformance},brokerMaintenance:{...brokerMaintenancePerformance}},
     sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app','https://trading.devinx.com.br','https://sentinel.devinx.com.br'];
@@ -534,7 +537,7 @@ function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
   assertLicensedAccess();
 }
-async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/diagnostics/market'&&method==='POST')return marketDiagnostic(runtime,runtime.externalMarket||{});if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path.startsWith('/executor/')&&method==='POST'){if(path==='/executor/start'&&(executor.enabled||executor.arming))throw Error('Bot já ligado ou em ativação.');await dispatchExecutor(path,payload,executorAction,executionContext);return status();}if(path==='/diagnostics/market'&&method==='POST')return marketDiagnostic(runtime,runtime.externalMarket||{});if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
     if(payload?.brokerSwitch===true){
       const provider=String(payload.provider||activeProvider||'');
       if(!['iq_option','exnova'].includes(provider)||!brokers[provider]?.connected)
@@ -620,7 +623,7 @@ let lastRemoteHeartbeatAttemptAt=0;
 let lastRemoteRegisterAttemptAt=0;
 async function remoteState(){
   const x=await status();
-  return dashboardTransportState({agentVersion:VERSION,liveTopic,liveSignatureKey,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule});
+  return dashboardTransportState({autoExecutor:x.autoExecutor,agentVersion:VERSION,liveTopic,liveSignatureKey,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule});
 }
 async function remoteLoop(){
   if(shuttingDown||remoteBusy)return;remoteBusy=true;
@@ -632,7 +635,7 @@ async function remoteLoop(){
     }
     // Preserve sub-2-second remote command polling while avoiding repeated
     // full dashboard snapshots when stopped or disconnected.
-    const heartbeatEveryMs=runtime.stateName==='running'?5000:20000;
+    const heartbeatEveryMs=runtime.stateName==='running'||executor.pending||liveBridge.hasViewer()?5000:20000;
     if(now-lastRemoteHeartbeatAttemptAt>=heartbeatEveryMs){
       lastRemoteHeartbeatAttemptAt=now;
       // Cloud heartbeat must not delay a local quote or mobile command.
@@ -645,7 +648,7 @@ async function remoteLoop(){
         const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),28000,'agent_command_timeout');
         await saveState();
         // ACK the action promptly; publish refreshed state in the next heartbeat.
-        await remoteRelay.ack(cmd.id,true,cmd.type==='diagnostics/market'?{ok:true,marketDiagnostic:data}:{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
+        await remoteRelay.ack(cmd.id,true,cmd.type==='diagnostics/market'?{ok:true,marketDiagnostic:data}:{ok:true,...(cmd.type.startsWith('executor/')?{autoExecutor:data?.autoExecutor}:{}),state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
         lastRemoteHeartbeatAttemptAt=0;
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})

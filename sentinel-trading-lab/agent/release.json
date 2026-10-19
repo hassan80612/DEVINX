@@ -1,6 +1,6 @@
 {
-  "version": "13.9.43",
-  "build": "13.9.43-live-settings-broker-balance",
+  "version": "13.9.44",
+  "build": "13.9.44-mobile-bot-control",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

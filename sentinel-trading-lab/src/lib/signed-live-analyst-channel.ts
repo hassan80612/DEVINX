@@ -3,7 +3,7 @@ import {pcClockSample,pcClockNow} from './pc-clock-sync.mjs';
 import {analystWireV1} from './analyst-wire-v1.mjs';
 
 export type SignedAnalystFrame={
-  v:number,at:number,seq:number,sig:string,state:string,killSwitch?:boolean,masterFrozen?:boolean,
+  bot?:any[],v:number,at:number,seq:number,sig:string,state:string,killSwitch?:boolean,masterFrozen?:boolean,
   lastEvalMs:number,settings?:{engine?:string|null,forecastMode?:string,orderDurationMs?:number},lastResult:{asset:string,analysis:any},
   feed?:{price:number|null,quoteTs:number},liveBroker:{symbol:string,lastQuoteAt:number}
 };

@@ -85,6 +85,7 @@ export function analystSnapshot(runtimeStatus,live){
   const asset=String(live?.validatedSymbol||live?.symbol||runtimeStatus?.settings?.asset||'');
   const liveQuoteAt=Number(live?.lastQuoteAt||0);
   return{
+    ...(runtimeStatus?.bot?{bot:runtimeStatus.bot}:{}),
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
@@ -137,6 +138,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   // from reaching the phone. Preserve the authoritative PC window, selected
   // CALL/PUT trigger and the broker quote, dropping display-only extras.
   const critical={
+    ...(snapshot.bot?{bot:snapshot.bot}:{}),
     v:snapshot.v,at:snapshot.at,seq:snapshot.seq,
     agentVersion:snapshot.agentVersion,state:snapshot.state,
     killSwitch:snapshot.killSwitch,masterFrozen:snapshot.masterFrozen,

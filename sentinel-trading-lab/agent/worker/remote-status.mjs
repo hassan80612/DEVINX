@@ -108,7 +108,7 @@ export function dashboardTransportState(state){
     }
   };
   return{
-    ...pick(st,['agentVersion','liveTopic','liveSignatureKey','agentAccess','remoteRelay','browserDriver','loginStates','state','mode','balance','balanceSource','feed','analysisSource','executionMode','lastEvalMs','nextEvalMs','research','entryResearch','drawdownPct','consecutiveLosses','pending','wins','losses','winRate','settings','pnl','trades','activeProvider','startBlockedReason','killSwitch','masterFrozen','scheduler','autopilot','lastHeartbeat']),
+    ...pick(st,['autoExecutor','agentVersion','liveTopic','liveSignatureKey','agentAccess','remoteRelay','browserDriver','loginStates','state','mode','balance','balanceSource','feed','analysisSource','executionMode','lastEvalMs','nextEvalMs','research','entryResearch','drawdownPct','consecutiveLosses','pending','wins','losses','winRate','settings','pnl','trades','activeProvider','startBlockedReason','killSwitch','masterFrozen','scheduler','autopilot','lastHeartbeat']),
     liveBroker:market,brokers,lastResult,
     recentAnalyses:Array.isArray(st.recentAnalyses)?st.recentAnalyses.slice(0,6).map(x=>({ts:x?.ts,side:x?.side,confidence:x?.confidence,reasons:Array.isArray(x?.reasons)?x.reasons.slice(0,1):[]})):[],
     recentTrades:Array.isArray(st.recentTrades)?st.recentTrades.slice(-5):[],

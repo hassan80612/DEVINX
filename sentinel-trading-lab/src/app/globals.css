@@ -1659,3 +1659,5 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
     order:6;
   }
 }
+
+.botControl{margin-top:16px;min-width:0}.botControlFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.botControlFields label{display:grid;gap:6px;min-width:0;font-size:13px}.botControlFields input{width:100%;min-width:0;box-sizing:border-box;min-height:44px;font-size:16px}.botControlActions{display:flex;gap:8px;flex-wrap:wrap}.botControlActions button{min-height:44px;flex:1;white-space:nowrap}.botControl p{overflow-wrap:anywhere}

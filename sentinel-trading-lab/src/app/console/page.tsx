@@ -1,6 +1,8 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
+import {BotControl} from '../../components/BotControl';
+import {unpackExecutor} from '../../../agent/worker/executor-remote.mjs';
 import {LiveScenarioCard} from '../../components/LiveScenarioCard';
 import {VISIBLE_STRATEGIES,normalizeUserStrategy} from '../../../agent/src/core/visible-strategy-guide.mjs';
 import {ActiveBrowserSession} from '../../components/ActiveBrowserSession';
@@ -141,7 +143,7 @@ export default function Page(){
           // An occasional incomplete cloud status is not an instruction
           // from the PC to clear its currently displayed opportunity.
           // Preserve the authenticated clock calibration across polls too.
-          if(keepSignedViewOverCloud(previous,data))return previous;
+          if(keepSignedViewOverCloud(previous,data))return {...previous,autoExecutor:Number(previous?.autoExecutor?.updatedAt)>Number(data?.autoExecutor?.updatedAt)?previous.autoExecutor:data.autoExecutor};
           return reconcileStatus(reconcileCloudPcOpportunity(previous,data));
         });
         setSource('remote');const online=!!data?.remote?.online;
@@ -180,6 +182,8 @@ export default function Page(){
         // Reuse only the last already-confirmed PC window while retaining
         // fresh quotes; the next window must still originate from the Agent.
         const pcFrame=reconcileSignedAnalystDisplay(previous,payload);
+        const incomingBot=unpackExecutor(payload.bot);
+        const autoExecutor=incomingBot&&Number(incomingBot.updatedAt)>=Number(previous.autoExecutor?.updatedAt||0)?incomingBot:previous.autoExecutor;
         const prevPriceAt=Number(previous.liveBroker?.lastQuoteAt||0);
         // An updated strategy evaluation may use a quote older than a concurrent
         // full-status response. Accept that evaluation, but never rewind price.
@@ -188,11 +192,11 @@ export default function Page(){
         // Every accepted signed frame comes from the PC. Do not discard its
         // fired/open transition because a cloud status has a newer quote.
         // Also never move backwards to a previous opportunity window.
-        if(!acceptSignedPcFrame(previous,pcFrame))return keepNewerVerifiedQuote(previous,pcFrame);
+        if(!acceptSignedPcFrame(previous,pcFrame))return {...keepNewerVerifiedQuote(previous,pcFrame),autoExecutor};
         // Only an accepted, current frame keeps the fast channel healthy.
         // Obsolete frames must not suppress the authenticated status fallback.
         liveFrameAt.current=Date.now();
-        return {...previous,
+        return {...previous,autoExecutor,
           state:pcFrame.state,
           killSwitch:pcFrame.killSwitch,masterFrozen:pcFrame.masterFrozen,
           lastEvalMs:Math.max(prevEval,nextEval),
@@ -253,9 +257,9 @@ export default function Page(){
     else setNotice('Enviando comando ao Agent…');
     try{
       const method=path==='settings'?'PATCH':'POST';
-      const commandTimeout=path.startsWith('brokers/')&&path.endsWith('/login')?30000:2200;
+      const commandTimeout=path==='executor/start'||path.startsWith('brokers/')&&path.endsWith('/login')?30000:2200;
       const data=source==='local'&&agent.worker?await localFetch(path,method,body,commandTimeout):await cloudFetch(path,method,body);
-      setS(reconcileStatus(normalizeStatus(data)));setErr('');
+      setS((current:Status|null)=>{const next=reconcileStatus(reconcileCloudPcOpportunity(current,normalizeStatus(data)));return Number(current?.autoExecutor?.updatedAt)>Number(next.autoExecutor?.updatedAt)?{...next,autoExecutor:current.autoExecutor}:next;});setErr('');
       if(path==='mode')setNotice(body.mode==='demo'?'Conta de prática ativa.':'Modo REAL ativo para análise; execução continua manual.');
       else if(path==='settings'&&body?.strategy)setNotice('Estratégia aplicada: '+String(body.strategy).replaceAll('_',' ')+'.');
       else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Comando enviado ao Agent. A janela controlada da corretora deve abrir no PC.');
@@ -263,7 +267,7 @@ export default function Page(){
       setTimeout(()=>refresh(),650);setTimeout(()=>refresh(),1900);setTimeout(()=>setNotice(''),4200);return true;
     }catch(e:any){
       if(path==='settings')pendingSettingsRef.current=null;
-      setS(previous);setNotice('');setErr(friendlyError(e));setTimeout(()=>refresh(),300);return false;
+      if(!path.startsWith('executor/'))setS(previous);else remotePolledAt.current=0;setNotice('');setErr(friendlyError(e));setTimeout(()=>refresh(),300);return false;
     }finally{setBusy(false)}
   };
   // Language belongs to the SITE, including the PC overlay inside the
@@ -337,7 +341,7 @@ export default function Page(){
       </div></header>
       {(!agent.process||tab==='Market Analysis')&&<div className="agentbanner"><div className="agentIcon">↓</div><div className="agentText"><b>{language==='en'?'Start here: install the Windows Agent':'Comece por aqui: instale o Agent Windows'}</b><span>{language==='en'?'Download and open the installer on your computer. Then choose IQ Option or Exnova in Broker. Your account is recognized automatically.':'Baixe e abra o instalador no computador. Depois, escolha IQ Option ou Exnova em Corretora. Sua conta é reconhecida automaticamente.'}</span></div><div className="agentActions sentinelPcOnly">{agentAccess?<><a className="primary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{language==='en'?'Install Agent':'Instalar Agent'} · {AVAILABLE_AGENT_VERSION}</a><AgentZipDownload/></>:<a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Ativar acesso')}</a>}</div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>{t('Agent aberto, worker parado.')}</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button></div>}
-      {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(compactAnalyst||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act} compact={compactAnalyst} onToggleCompact={toggleCompactAnalyst}/>} {!compactAnalyst&&content}</main>
+      {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(compactAnalyst||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act} compact={compactAnalyst} onToggleCompact={toggleCompactAnalyst}/>}{(compactAnalyst||tab==='Market Analysis')&&<BotControl s={s} act={act} online={!!agent.worker}/>} {!compactAnalyst&&content}</main>
       <nav className="mobileDock">{mobileMain.map(([k,l,i])=><button key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setMobileMore(false)}}><i>{i}</i><span>{t(l)}</span></button>)}<button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><i>•••</i><span>{t('Mais')}</span></button></nav>{mobileMore&&<div className="mobileMorePanel">{visibleTabs.filter(x=>!mobileMain.some(([k])=>k===x.key)).map(x=><button key={x.key} onClick={()=>{if(x.key==='Membership')window.location.assign('/api/checkout?market='+(language==='en'?'INTL':'BR'));else setTab(x.key);setMobileMore(false)}}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div>}
     </div>}
 
