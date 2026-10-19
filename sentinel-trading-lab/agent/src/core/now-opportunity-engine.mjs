@@ -13,6 +13,24 @@ import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
+
+// Direction arbitration for the 30-second expiry. An in-sample harmonic
+// projection is NOT evidence that contradicting a ready structural direction
+// improves future outcomes. With opposite qualified directions, emit NO TRADE
+// instead of quietly changing CALL to PUT (or vice versa). An independent,
+// subsequently observed candle-level event is still allowed to qualify below.
+export function reconcileExpiryDirection({structural,forecast,selected}={}){
+ if(structural?.ready!==true||!isSide(structural.side))return selected;
+ const oppositeForecast=forecast?.ready===true&&isSide(forecast.side)&&
+  forecast.side!==structural.side;
+ const oppositeSelected=selected?.ready===true&&isSide(selected.side)&&
+  selected.side!==structural.side;
+ if(oppositeForecast||oppositeSelected)return {
+  ...structural,ready:false,side:null,entryPrice:null,
+  reason:'unverified-forecast-structure-conflict'
+ };
+ return selected;
+}
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
 function causalQuotes(history,now){
  const byTime=new Map();
@@ -176,14 +194,25 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    thirtySecondCycleForecast({...input,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):null;
   // Preserve existing qualified entries. Historical price reactions below
   // can admit directly from current quotes without four newly closed bars.
-  const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
-  const decision=Number(durationMs)===30000&&expiryDirectionSelector?
+  // The projection is permitted to enrich an already-ready structural
+  // decision only when it AGREES on direction. Never replace it on the
+  // strength of a fitted model alone.
+  const baseline=forecast?.ready&&original.ready&&forecast.side===original.side?
+   {...original,...forecast}:original;
+  const selected=Number(durationMs)===30000&&expiryDirectionSelector?
    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):baseline;
+  // The adaptive wide-cycle selector can itself switch direction. Apply the
+  // same arbitration AFTER that selector, not only before it.
+  const directionConflict=original.ready===true&&isSide(original.side)&&(
+   forecast?.ready===true&&isSide(forecast.side)&&forecast.side!==original.side||
+   selected?.ready===true&&isSide(selected.side)&&selected.side!==original.side);
+  const decision=reconcileExpiryDirection({structural:original,forecast,selected});
   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
-  // Historical reactions must agree with the projection actually selected
-  // above. Comparing against the discarded narrow forecast can both veto
-  // an agreeing reaction and allow one that contradicts the selected side.
-  const selectedForecast=forecast?.ready&&decision.ready?decision:forecast;
+  // A blocked forecast must not re-enter via the historical
+  // "trend-and-live-forecast" shortcut. An independently confirmed level
+  // rejection or structure change can still form a valid new observation.
+  const selectedForecast=directionConflict?null:
+   forecast?.ready&&decision.ready?decision:forecast;
   const historical=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:selectedForecast},structure,...input});
   const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
   const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
