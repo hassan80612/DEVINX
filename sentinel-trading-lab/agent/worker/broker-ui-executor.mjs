@@ -80,7 +80,7 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
  }
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
@@ -125,6 +125,10 @@ export class BrokerUiExecutor{
   const timedOut=new Promise(resolve=>{timeoutResolve=resolve;});
   const attempt={provider,order,requestId:null,resolve:yes,reject:error=>{sentNo(error);no(error);},sent:sentYes};
   const click=this.clickQueue.catch(()=>{}).then(async()=>{
+   // A physically clicked but unidentified order can still appear in the
+   // broker. Never overlap its unresolved request with another click.
+   if(this.unidentifiedClick?.order?.clicked&&!this.unidentifiedClick.requestId)
+    throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    this.checkContext(provider,order);const c=await this.controls(provider);
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    this.attempt=attempt;
@@ -138,7 +142,9 @@ export class BrokerUiExecutor{
     else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});}
     // Do not await a broker socket frame forever. Late page-out and
     // page-in frames still reconcile this very order asynchronously.
-    await Promise.race([sent,timedOut]);
+    const seenRequest=await Promise.race([sent,timedOut]);
+    if(seenRequest?.pending===true&&!attempt.requestId&&order.clicked)
+     this.unidentifiedClick=attempt;
    }finally{
     // If no page-out has yet arrived, retain only this pending attempt
     // so a late page-out can still acquire its broker request ID.
@@ -169,7 +175,7 @@ export class BrokerUiExecutor{
    if(!rid||!finite(value)||Math.abs(Number(value)-a.order.amount)>0.000001||
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
    if(account!=null)a.order.accountId=String(account);
-   a.requestId=rid;if(this.attempt===a)this.attempt=null;this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
+   a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
   }
   if(direction!=='page-in')return;
   if(a&&provider===a.provider&&rid&&rid===a.requestId){
