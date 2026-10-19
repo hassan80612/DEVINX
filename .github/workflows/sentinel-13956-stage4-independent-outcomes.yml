@@ -1,0 +1,36 @@
+name: Sentinel Stage4 independent evidence candidate - no production
+on:
+  push:
+    branches: [fix/sentinel-13956-stage4-independent-outcomes-20261019]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/direction-disagreement-evidence.mjs'
+      - 'sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs'
+      - 'sentinel-trading-lab/agent/src/core/runtime.mjs'
+      - 'tests/sentinel-13956-stage4-independent-outcomes.test.mjs'
+      - 'scripts/sentinel-13956-stage4-independent-outcomes-replay.mjs'
+      - '.github/workflows/sentinel-13956-stage4-independent-outcomes.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-stage4-independent-outcomes-test
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and exact stage4 causal tests
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/direction-disagreement-evidence.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --test tests/sentinel-13956-stage4-independent-outcomes.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs
+      - name: Replay known video only (not independent live session)
+        run: node scripts/sentinel-13956-stage4-independent-outcomes-replay.mjs
+      - name: Install site dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Full prebuild compatibility
+        run: npm run prebuild --prefix sentinel-trading-lab
