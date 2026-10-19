@@ -1,3 +1,4 @@
+import {installBrokerKeypadTyping,installCanvasKeyboardFocus} from './broker-keypad.mjs';
 import {BrokerTradeParameters} from './broker-trade-parameters.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
@@ -85,7 +86,21 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);const controls=await this.controls(provider);await this.applyParameters(provider,controls,expected);return{ready:true};}
+ async prepare(provider,expected){this.checkContext(provider,expected);const controls=await this.controls(provider);await controls.frame.evaluate(installCanvasKeyboardFocus);await controls.frame.evaluate(installBrokerKeypadTyping);await this.applyParameters(provider,controls,expected);return{ready:true};}
+ async manualKey(provider,{key,clearFirst=false},isAllowed=()=>false){
+  if(!/^(?:[0-9]|\.|backspace|close)$/.test(String(key))||typeof clearFirst!=='boolean')throw errorBefore('Tecla inválida.');
+  const work=async()=>{
+   if(!isAllowed())throw errorBefore('Pare o bot antes de editar o valor manualmente.');
+   const controls=await this.controls(provider),frame=controls.frame,page=this.driver.sessions.get(provider)?.page;
+   const amount=frame.locator('[data-sentinel-keypad-amount="1"]');if(await amount.count()!==1)throw errorBefore('Campo de valor não identificado para o teclado.');
+   if(key==='close'){await amount.click({timeout:500,noWaitAfter:true});return;}
+   const keys=await this.parameters.keypad.keys(provider,frame);
+   const click=async k=>{if(!isAllowed())throw errorBefore('Edição manual cancelada.');if(!keys[k])throw errorBefore('Tecla indisponível na calculadora.');await frame.locator(keys[k]).click({timeout:500,noWaitAfter:true});};
+   if(clearFirst){if(keys.clear)await click('clear');else for(let i=0;i<16;i++)await click('backspace');}
+   await click(key);return{ok:true};
+  };
+  const job=this.parameters.keypad.serial.catch(()=>{}).then(work);this.parameters.keypad.serial=job;return job;
+ }
  async applyParameters(provider,controls,expected){
   if(controls.canvasSelector)await controls.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});
   try{return await this.parameters.apply(provider,controls,expected);}

@@ -1,3 +1,4 @@
+import {installCanvasKeyboardFocus} from './broker-keypad.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm} from 'node:fs/promises';
 import {executorPanel} from './executor-panel.mjs';
@@ -726,6 +727,7 @@ export class LocalPlaywrightDriver{
     return this.launchBackground(provider);
   }
   async installBridge(page,provider=null){
+    if(!page.__sentinelCanvasKeyboardFocusInstalled){await page.addInitScript(installCanvasKeyboardFocus).catch(()=>{});await page.evaluate(installCanvasKeyboardFocus).catch(()=>{});page.__sentinelCanvasKeyboardFocusInstalled=true;}
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
       page.__sentinelOverlayControlExposed=true;
@@ -797,10 +799,11 @@ export class LocalPlaywrightDriver{
     for(const frame of page.frames()){
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
+      await frame.evaluate(installCanvasKeyboardFocus).catch(()=>{});
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{})};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});frame.evaluate(installCanvasKeyboardFocus).catch(()=>{})};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
@@ -1351,6 +1354,7 @@ export class LocalPlaywrightDriver{
       payload.visibleStrategies=VISIBLE_STRATEGIES;
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
+        window.__sentinelKeypadBotBusy=!!(d.autoExecutor?.enabled||d.autoExecutor?.arming||d.autoExecutor?.pending||d.autoExecutor?.executing);
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';

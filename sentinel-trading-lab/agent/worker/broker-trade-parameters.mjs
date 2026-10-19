@@ -1,3 +1,4 @@
+import {BrokerKeypad} from './broker-keypad.mjs';
 // Page helpers only inspect explicit controls, excluding the analyst overlay.
 // No broker protocol writes, coordinate guesses, balance scans or OCR.
 export function brokerParameterBridge({kind,marker,point,action='find',expectedMs,mappedUnit=null}){
@@ -32,13 +33,16 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
   return m?Number(m[1])*(m[2]==='ms'?1:/^m/.test(m[2])?60000:1000):null;
  };
  const unitOf=e=>e.getAttribute('data-duration-unit')||(/seconds|segundos|\(s\)/i.test(label(e))?'s':/minutes|minutos|\(min\)/i.test(label(e))?'min':null)||(kind==='duration'&&['s','min'].includes(mappedUnit)?mappedUnit:null);
- const value=e=>kind==='amount'?money(e.value??e.textContent):e.tagName==='SELECT'?duration(e.selectedOptions[0]?.textContent)??Number(e.selectedOptions[0]?.getAttribute('data-duration-ms')):duration((e.value??e.textContent)+' '+(unitOf(e)||''))??duration(e.value??e.textContent);
+ const displayText=e=>String(e.value??e.textContent??'').trim();
+ const displayMoney=e=>money(displayText(e))??money(displayText(e).match(/[$€£]\s*([+]?\d[\d.,]*)/)?.[1]);
+ const displayDuration=e=>duration(displayText(e))??duration(displayText(e).match(/\b\d+(?:[.,]\d+)?\s*(?:seg(?:undos?)?|sec(?:onds?)?|s|min(?:utos?|utes?)?|m)\b/i)?.[0]);
+ const value=e=>kind==='amount'?displayMoney(e):e.tagName==='SELECT'?duration(e.selectedOptions[0]?.textContent)??Number(e.selectedOptions[0]?.getAttribute('data-duration-ms')):duration((e.value??e.textContent)+' '+(unitOf(e)||''))??displayDuration(e);
  if(action==='option'){
-  const all=query('[role="option"], [role="menuitem"],button').filter(e=>visible(e)&&duration(e.textContent)===expectedMs);
+  const all=query('[role="option"],[role="menuitem"],button,li,[class*="option" i],[class*="item" i]').filter(e=>visible(e)&&duration(e.textContent)===expectedMs);
   if(all.length!==1)return{error:'Expiração não disponível de forma única no painel da corretora.'};
   all[0].setAttribute('data-sentinel-duration-option',marker);return{selector:'[data-sentinel-duration-option="'+marker+'"]'};
  }
- let fields=query(fieldSelector).filter(e=>(visible(e)||(point&&e===focused&&editable(e)))&&!e.disabled&&!e.readOnly);
+ let fields=query(fieldSelector).filter(e=>(visible(e)||(point&&e===focused&&editable(e)))&&!e.disabled);
  if(point){
   // A canvas text editor must expose an actual focused editable input. Without
   // one we cannot verify its value and do not send a trade.
@@ -55,6 +59,10 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
   }
   fields=fields.filter(e=>{const r=e.getBoundingClientRect();return selected.has(e)||(e===focused&&editable(e))||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
  }else fields=fields.filter(e=>(kind==='amount'?/amount|invest(?:ment|imento)?|stake|valor|importe|montant|quantia/i:/duration|expir|tempo|dura[çc][aã]o/i).test(label(e)));
+ if(!fields.length&&point){
+  const candidates=new Set();for(const hit of document.elementsFromPoint(point.x,point.y))for(let p=hit,d=0;p&&d<3&&p!==document.body&&p!==document.documentElement;p=p.parentElement,d++)if(visible(p)&&String(p.textContent||'').length<120&&(kind==='amount'?/invest|amount|valor|stake/i:/expir|duration|tempo/i).test(label(p))&&Number.isFinite(value(p))&&!p.querySelector('[data-sentinel-execution-call],[data-sentinel-execution-put]'))candidates.add(p);
+  fields=[...candidates].filter(e=>![...candidates].some(other=>other!==e&&e.contains(other)));
+ }
  fields=fields.filter(e=>!fields.some(other=>other!==e&&e.contains(other)));
  if(fields.length!==1)return{code:fields.length?'ambiguous-editor':'editor-not-ready',error:kind==='amount'?'Campo de valor não identificado. Use Mapear controles.':'Campo de expiração não identificado. Use Mapear controles.'};
  const e=fields[0];e.setAttribute('data-sentinel-trade-'+kind,marker);
@@ -65,14 +73,14 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
   if(kind==='duration'&&options.length!==1)return{error:'A corretora não oferece esta expiração neste painel.'};
   return{selector,value:value(e),type:'select',optionValue:options[0]?.value};
  }
- if(!editable(e))return{selector,value:value(e),type:'popup'};
+ if(!editable(e)||e.readOnly){if(kind==='amount')e.setAttribute('data-sentinel-keypad-amount','1');return{selector,value:value(e),type:'popup'};}
  const unit=unitOf(e);
  if(kind==='duration'&&!unit&&duration(e.value??e.textContent)==null)return{error:'Unidade da expiração não identificada. Não foi enviada entrada.'};
  return{selector,value:value(e),type:'input',keyboard:!!point&&e===focused,text:kind==='amount'?null:unit==='ms'?String(expectedMs):unit==='s'?String(expectedMs/1000):unit==='min'?String(expectedMs/60000):(expectedMs/1000+' s'),unit};
 }
 
 export class BrokerTradeParameters{
- constructor(driver){this.driver=driver;}
+ constructor(driver){this.driver=driver;this.keypad=new BrokerKeypad(driver);}
  async apply(provider,controls,expected){
   const frame=controls.frame,page=this.driver.sessions.get(provider)?.page;
   const desired={amount:expected.amount,duration:expected.durationMs};
@@ -96,9 +104,9 @@ export class BrokerTradeParameters{
     return field;
    };
    let field=await inspect();
-   if(field.error)throw Error(field.error);
+   if(field.error){this.lastDiagnostic=await frame.evaluate(()=>({canvas:document.querySelectorAll('canvas').length,inputs:document.querySelectorAll('input,textarea').length,readonly:document.querySelectorAll('input[readonly]').length})).catch(()=>null);throw Error(field.error+(this.lastDiagnostic?' [painel: '+this.lastDiagnostic.canvas+' canvas, '+this.lastDiagnostic.inputs+' campos, '+this.lastDiagnostic.readonly+' somente leitura]':''));}
    const locator=frame.locator(field.selector);
-   if(Number.isFinite(field.value)&&Math.abs(field.value-desired[kind])<0.000001){if(point&&field.type==='input')await page.keyboard.press('Tab');continue;}
+   if(Number.isFinite(field.value)&&Math.abs(field.value-desired[kind])<0.000001){if(point&&field.type==='input')await page.keyboard.press('Tab');else if(point&&field.type==='popup')await page.mouse.click(viewportPoint.x,viewportPoint.y);continue;}
    if(field.type==='select')await locator.selectOption(field.optionValue,{timeout:500});
    else if(field.type==='input'){
     const text=kind==='amount'?String(desired[kind]):field.text;
@@ -111,12 +119,11 @@ export class BrokerTradeParameters{
     }else{await locator.fill(text,{timeout:500});await locator.press('Tab',{timeout:500});}
    }else{
     if(!point)await locator.click({timeout:500,noWaitAfter:true});
-    const option=await frame.evaluate(brokerParameterBridge,{...args,action:'option'});
-    if(option.error)throw Error(option.error);
-    await frame.locator(option.selector).click({timeout:500,noWaitAfter:true});
+    if(kind==='amount'){await this.keypad.write(provider,frame,expected.amount);if(point)await page.mouse.click(viewportPoint.x,viewportPoint.y);else await locator.click({timeout:500,noWaitAfter:true});}
+    else{const option=await frame.evaluate(brokerParameterBridge,{...args,action:'option'});if(option.error)throw Error(option.error);await frame.locator(option.selector).click({timeout:500,noWaitAfter:true});}
    }
    // Values must survive blur/re-render, not merely be typed into an editor.
-   if(point)await page.mouse.click(viewportPoint.x,viewportPoint.y);
+   if(point&&field.type!=='popup')await page.mouse.click(viewportPoint.x,viewportPoint.y);
    let actual=await inspect('read');
    if(point&&field.type==='input')await page.keyboard.press('Tab');
    if(actual.error||!Number.isFinite(actual.value)||Math.abs(actual.value-desired[kind])>0.000001)throw Error(kind==='amount'?'Valor da entrada não confirmado no painel da corretora.':'Expiração não confirmada no painel da corretora.');

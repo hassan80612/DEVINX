@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "provider": "iq_option",
+      "readonlyAmountSetByMouse": true,
+      "decimalAmountVerified": 4.25,
+      "popupMinuteSelected": true,
+      "physicalKeyboardForwarded": true,
+      "ctrlAAndBackspaceAndEnter": true,
+      "unrelatedInputPreserved": true,
+      "runningBotRejectsManualEdits": true,
+      "realBrokerOrders": false
+    },
+    {
+      "provider": "exnova",
+      "readonlyAmountSetByMouse": true,
+      "decimalAmountVerified": 4.25,
+      "popupMinuteSelected": true,
+      "physicalKeyboardForwarded": true,
+      "ctrlAAndBackspaceAndEnter": true,
+      "unrelatedInputPreserved": true,
+      "runningBotRejectsManualEdits": true,
+      "realBrokerOrders": false
+    },
+    {
+      "canvasKeyboardFocusRestored": true,
+      "realEditorFocusPreserved": true
+    }
+  ],
+  "nativeWindowsTested": false,
+  "realBrokerTested": false
+}
