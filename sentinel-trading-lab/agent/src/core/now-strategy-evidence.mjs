@@ -30,7 +30,10 @@ export function currentStrategyEvidence({quotes,price,quoteAt,engineId}){
  const p3=at(rows,quoteAt-3000),p8=at(rows,quoteAt-8000),p14=at(rows,quoteAt-14000);
  if(!p3||!p8||!p14||rows.filter(q=>q.ts>=quoteAt-14000)
    .some((q,i,a)=>i>0&&q.ts-a[i-1].ts>3500))return wait('current-observation-not-ready');
- const bars=barsOf(rows),recent=rows.filter(q=>q.ts>=quoteAt-6000);
+ // A 1-second candle currently forming must not serve as a confirmed
+ // candle. Keep the latest live quote for the impulse, but use only
+ // completed bars to confirm structure and candlestick patterns.
+ const bars=barsOf(rows).filter(b=>b.ts+1000<=quoteAt),recent=rows.filter(q=>q.ts>=quoteAt-6000);
  const prior=rows.filter(q=>q.ts<quoteAt-6000);
  if(prior.length<2)return wait('current-observation-not-ready');
  const changes=bars.slice(1).map((b,i)=>Math.abs(b.close-bars[i].close));
