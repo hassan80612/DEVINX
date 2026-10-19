@@ -16,6 +16,7 @@ jobs:
         run: |
           set -euo pipefail
           HOST=https://sentinel-trading-mmh4u4671-iguassu-shop.vercel.app
+          # Stage4 candidate preview has passed deployment READY status.
           TMP="$(mktemp -d)"
           curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13956" -o "$TMP/agent-update.json"
           curl --fail --location --silent --show-error --max-time 90 "$HOST/downloads/Sentinel-Agent-13.9.56.exe?verify=13956" -o "$TMP/Sentinel-Agent-13.9.56.exe"
