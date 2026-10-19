@@ -111,11 +111,12 @@ export class SignalExecutor{
   }
   if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider)this.session.accountId=String(balance.current.accountId);
   if(this.enabled&&this.pending&&!this.executing&&now>this.pending.exitAt+1500){
-   // Missing/delayed broker closure is NOT a bot stop. Hold the pending batch
-   // and the Martingale level until every identified result arrives. No
-   // subsequent entry may overlap an unresolved batch.
+   // A delayed close or click acknowledgement is NOT a bot stop.
+   // Unknown physical clicks remain reserved; no duplicate entry.
    const done=this.pending.orders.filter(p=>p.settled).length;
-   this.message='Ligado · aguardando encerramentos da corretora ('+done+'/'+this.pending.orders.length+') · sem novas entradas';
+   const unidentified=this.pending.orders.filter(p=>p.clicked&&!p.orderId).length;
+   this.message='Ligado · aguardando corretora ('+done+'/'+this.pending.orders.length+
+     ' fechadas'+(unidentified?', '+unidentified+' clique(s) sem ID':'')+') · sem repetir entradas';
   }
  }
  pulse(){
@@ -156,7 +157,16 @@ export class SignalExecutor{
    jobs.push(Promise.resolve().then(async()=>{
     if(!valid())throw Object.assign(Error('Entrada cancelada antes do clique.'),{beforeClick:true});
     const result=await this.driver.execute(c.provider,order);
-    if(result?.accepted!==true||!result.orderId)throw Error('Clique sem confirmação da corretora · não será repetido.');
+    if(result?.pending===true&&order.clicked===true){
+     // The broker request/response may arrive later. Keep the exact
+     // click open for reconciliation; never repeat it or stop the bot.
+     if(order.state!=='accepted'&&!order.settled)order.state='awaiting-broker';
+     if(result.requestId!=null)order.requestId=String(result.requestId);
+     if(this.enabled)this.message='Ligado · clique aguardando confirmação da corretora · sem repetir';
+     return;
+    }
+    if(result?.accepted!==true||!result.orderId)
+     throw Object.assign(Error('Não foi possível confirmar o clique.'),{uncertainClick:order.clicked===true});
     this.accepted({...result,provider:c.provider,localId:order.id});
    }).catch(e=>{
     order.error=String(e?.message||e);
@@ -165,8 +175,21 @@ export class SignalExecutor{
     const context=this.context();
     const changed=order.clicked!==true&&this.enabled&&generation===this.generation&&this.sameContext(this.session,context)&&(batch.engine!==context.engine||batch.durationMs!==context.durationMs);
     if(changed&&!batch.orders.some(p=>p.clicked)){this.message='Estratégia alterada · aguardando próximo sinal';return;}
-    // A partial or uncertain sequence is never resent. Keep every actual
-    // order until its individual broker result arrives, even after Stop.
+    // The broker may have registered the physical click without responding.
+    // Preserve it as unknown until a correlated broker order arrives.
+    if(order.clicked&&e?.brokerRejected!==true){
+     order.state='awaiting-broker';
+     if(this.enabled)this.message='Ligado · clique sem confirmação · aguardando corretora, sem repetir';
+     return;
+    }
+    // A clearly cancelled before-click attempt can be skipped without
+    // turning the automation OFF or manufacturing a Martingale loss.
+    if(!order.clicked&&e?.beforeClick===true){
+     if(this.enabled)this.message='Ligado · sinal ignorado antes do clique · próximo sinal do analista';
+     return;
+    }
+    // Explicit broker rejection and genuine state mismatches are distinct
+    // from a delayed broker acknowledgement.
     this.stop(order.error);
    }));
   }
@@ -175,7 +198,11 @@ export class SignalExecutor{
    batch.amount=money(batch.orders.reduce((sum,p)=>sum+p.amount,0));if(this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade.amount=batch.amount;
    if(!batch.orders.length){if(this.pending===batch)this.pending=null;this.balanceRisk.trade=null;return;}
    if(batch.orders.every(p=>p.state==='accepted'||p.settled))batch.state='accepted';
-   if(batch.orders.length!==batch.clickCount&&this.enabled)this.stop('Bot parado · sequência de cliques incompleta; não será repetida');
+   if(batch.orders.length!==batch.clickCount&&this.enabled){
+    // Do not recreate missing clicks. Stay armed, but any already-clicked
+    // child still requires individual broker confirmation before progress.
+    this.message='Ligado · sequência parcial · aguardando fechamento sem repetir cliques';
+   }
    this.finishBatch(batch);
   }).finally(()=>{this.executing=false;});
  }
