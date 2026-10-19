@@ -26,11 +26,11 @@ export class SignalExecutor{
   if(this.enabled){
    if(!(next.amount>0))throw Error('Valor por entrada deve ser positivo.');
   }
-  const intervalChanged=next.intervalMs!==this.config.intervalMs;this.config=next;
+  // Keep intervalMs readable for older saved clients, but never use it to skip a CALL/PUT.
+  this.config=next;
   if(!next.martingaleEnabled||this.martingaleLevel>next.martingaleLevels)this.martingaleLevel=0;
   if(this.enabled){
    this.deadlineAt=next.stopAfterMinutes?this.startedAt+next.stopAfterMinutes*60000:null;
-   if(intervalChanged){this.sequence=0;this.queuedSignal=null;}
    this.watch();
   }
   return this.status();
@@ -66,15 +66,6 @@ export class SignalExecutor{
  observeBalance(value){this.balanceRisk.observe(value);}
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
  sameContext(a,b){return a.provider===b.provider&&symbol(a.asset)===symbol(b.asset);}
- releaseUnresolved(){
-  const batch=this.pending;if(!batch)return;
-  for(const p of batch.orders.filter(p=>p.clicked&&!p.settled&&!p.rejected)){
-   const row={provider:p.provider,accountId:p.accountId,orderId:p.orderId||p.id,side:p.side,amount:p.amount,entryPrice:p.entryPrice,exitPrice:null,netPnl:null,sessionId:p.sessionId,martingaleLevel:p.martingaleLevel,source:'unresolved',result:'unknown',closedAt:this.clock()};
-   this.ledger.set(row.provider+'|'+row.orderId,row);if(this.ledger.size>2048)this.ledger.delete(this.ledger.keys().next().value);
-   this.history=[row,...this.history].slice(0,5);
-  }
-  this.pending=null;this.message='Parado · sequência encerrada sem todos os resultados confirmados';
- }
  watch(){
   if(!this.enabled&&!this.pending)return;
   const now=this.clock(),c=this.context(),p=this.pending;
@@ -89,7 +80,13 @@ export class SignalExecutor{
    else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;this.sequence=0;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
   }
   if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider)this.session.accountId=String(balance.current.accountId);
-  if(this.pending&&!this.executing&&now>this.pending.exitAt+15000){this.stop('Bot parado · resultado da ordem não confirmado pela corretora; martingale não avançou');this.releaseUnresolved();}
+  if(this.enabled&&this.pending&&!this.executing&&now>this.pending.exitAt+1500){
+   // Missing/delayed broker closure is NOT a bot stop. Hold the pending batch
+   // and the Martingale level until every identified result arrives. No
+   // subsequent entry may overlap an unresolved batch.
+   const done=this.pending.orders.filter(p=>p.settled).length;
+   this.message='Ligado · aguardando encerramentos da corretora ('+done+'/'+this.pending.orders.length+') · sem novas entradas';
+  }
  }
  pulse(){
   this.watch();if(!this.enabled)return;
@@ -97,14 +94,13 @@ export class SignalExecutor{
   if(s?.engineId&&s.engineId!==c.engine)return;
   if(s&&!this.seen.has(s.id)){
    this.seen.add(s.id);if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
-   const selected=this.lastEntryAt==null||s.at-this.lastEntryAt>=this.config.intervalMs;
-   this.sequence++;
-   if(selected)this.queuedSignal=s;else this.message='Sinal pulado conforme intervalo programado';
+   // Every NEW analyst signal is eligible. No independent bot cooldown.
+   this.sequence++;this.queuedSignal=s;
   }
   const queued=this.queuedSignal;if(!queued)return;
   const now=this.clock();
   if(now<queued.at||now-queued.at>1500||queued.durationMs!==c.durationMs||now>=queued.exitAt){this.queuedSignal=null;this.message='Sinal antigo descartado · aguardando próximo';return;}
-  if(this.pending){this.message='Aguardando concluir a entrada anterior';return;}
+  if(this.pending){this.message='Ligado · aguardando encerramento da entrada anterior';return;}
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
   const amount=money(this.config.amount*2**(this.config.martingaleEnabled?this.martingaleLevel:0));
