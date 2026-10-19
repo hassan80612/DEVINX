@@ -24,7 +24,10 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    if(action!=='stop'){
     const patch:Record<string,number|boolean>={};
     for(const [key] of fields)if(dirty.current.has(key)){
-     const n=Number(draft[key]);if(draft[key]===''||!Number.isFinite(n)||n<0){setMessage(t('Preencha os valores do bot.'));return;}
+     const n=Number(draft[key]);if(draft[key]===''||!Number.isFinite(n)||n<0||
+      key==='martingaleLevels'&&(!Number.isInteger(n)||n>3)){
+      setMessage(t('Martingale: máximo de 3 níveis.'));return;
+     }
      patch[key]=key==='martingaleEnabled'?n===1:n;
     }
     if(Object.keys(patch).length){if(!await act('executor/config',{patch}))return;dirty.current.clear();}
@@ -42,7 +45,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   {!bot?<p className="muted">{t('Atualize o Agent no PC para controlar o bot pelo celular.')}</p>:<>
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
    {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
-   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} min="0" step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
+   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} min="0" max={key==='martingaleLevels'?3:undefined} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
    <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
    <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
    <small className="muted">{t('Após perda da sequência: 2, 4, 8 cliques no próximo sinal, até o máximo definido. Ganho ou último nível concluído volta a 1 clique. Empate mantém o nível.')}</small>
