@@ -1,0 +1,31 @@
+{
+  "realBrokerOrders": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "unlabelledWrapperFields": true,
+      "localizedStake": true,
+      "minuteSelectedOnPC": true,
+      "unrelatedPricePreserved": true
+    },
+    {
+      "provider": "iq_option",
+      "legacyDirectionsPreserved": true,
+      "calibrationLeakedClicks": 0,
+      "minuteUnitVerified": true
+    },
+    {
+      "provider": "exnova",
+      "unlabelledWrapperFields": true,
+      "localizedStake": true,
+      "minuteSelectedOnPC": true,
+      "unrelatedPricePreserved": true
+    },
+    {
+      "provider": "exnova",
+      "legacyDirectionsPreserved": true,
+      "calibrationLeakedClicks": 0,
+      "minuteUnitVerified": true
+    }
+  ]
+}

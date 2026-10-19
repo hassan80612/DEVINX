@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {analyzeNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
-const short=[5000,10000,15000,30000];
+const short=[5000,10000,15000,30000,60000];
 const make=()=>new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
 test('new short-term Sentinel engine defaults to 30-second expiry and reference',()=>{
  const runtime=make();
  assert.equal(runtime.settings.orderDurationMs,30000);
  assert.equal(runtime.settings.forecastHorizonSeconds,30);
 });
-test('5/10/15/30s are independent expiries under shared 30s analysis reference',()=>{
+test('5/10/15/30/60s are independent expiries under shared 30s analysis reference',()=>{
  for(const value of short){
   const runtime=make();
   runtime.patchSettings({orderDurationMs:value,forecastHorizonSeconds:value/1000});
@@ -18,30 +18,25 @@ test('5/10/15/30s are independent expiries under shared 30s analysis reference',
   assert.equal(runtime.settings.forecastHorizonSeconds,30);
  }
 });
-test('no duration over 30 seconds is accepted from a direct API or a stale PC menu',()=>{
- for(const value of [31000,45000,60000,120000,300000,3600000]){
+test('unsupported expiries remain rejected; supported 1m is explicitly accepted',()=>{
+ for(const value of [31000,45000,120000,300000,3600000]){
   const runtime=make();
   assert.throws(()=>runtime.patchSettings({orderDurationMs:value}),/invalid_short_operation_duration/);
   assert.equal(runtime.settings.orderDurationMs,30000);
  }
 });
-test('persisted 60-second or older 15-minute expiry migrates to 30s without restarting signals',()=>{
+test('persisted 60s stays 60s; unsupported legacy 15m migrates to 30s',()=>{
  for(const prior of [60000,900000]){
   const runtime=make();
   runtime.restore({settings:{orderDurationMs:prior,forecastHorizonSeconds:prior/1000}});
-  assert.equal(runtime.settings.orderDurationMs,30000);
+  assert.equal(runtime.settings.orderDurationMs,prior===60000?60000:30000);
   assert.equal(runtime.settings.forecastHorizonSeconds,30);
  }
 });
-test('broker page wide text scan becomes less frequent for normal clock but keeps 2.5s on explicit broker clock',()=>{
+test('minute support does not restore broker-clock scans or new polling',()=>{
  const source=readFileSync('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
- assert.match(source,/scanEveryMs=payload\.clockMode==='broker'\?2500:10000/);
- assert.match(source,/payload\.brokerTiming=this\.readBrokerTimingSnapshot\(provider,st\)/);
- assert.doesNotMatch(source,/payload\.brokerTiming=this\.liveStatus\(provider\)\.brokerTiming/);
- assert.match(source,/Date\.now\(\)-Number\(s\.lastBrokerTimeScanAt\|\|0\)>=scanEveryMs/);
- const worker=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
- assert.match(worker,/runtime\.tick\(loopNow,\{skipStatus:true\}\)/);
- assert.match(worker,/publishLiveFrame\(\)/);
+ assert.doesNotMatch(source,/lastBrokerTimeScanAt|readBrokerTimingSnapshot|scanEveryMs/);
+ const worker=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');assert.match(worker,/accountBalanceSnapshot/);assert.match(worker,/runtime\.tick\(loopNow,\{skipStatus:true\}\)/);
 });
 test('legacy forecast engine still accepts its own former duration settings',()=>{
  const legacy=new DemoTradingRuntime({enableVNext:false,forecastModel:'original-67'});

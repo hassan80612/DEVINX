@@ -1,27 +1,38 @@
 // Page helpers only inspect explicit controls, excluding the analyst overlay.
 // No broker protocol writes, coordinate guesses, balance scans or OCR.
-export function brokerParameterBridge({kind,marker,point,action='find',expectedMs}){
+export function brokerParameterBridge({kind,marker,point,action='find',expectedMs,mappedUnit=null}){
  const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&!e.closest('#sentinel-trading-overlay-host');};
- const label=e=>[e.name,e.id,e.getAttribute('aria-label'),e.getAttribute('data-testid'),e.getAttribute('data-test'),e.labels?.[0]?.textContent,e.closest('label')?.textContent].filter(Boolean).join(' ');
+ const fieldSelector='input:not([type="hidden"]),select,[role="combobox"]';
+ const label=e=>{
+  const parts=[e.name,e.id,e.className,e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-testid'),e.getAttribute('data-test'),e.labels?.[0]?.textContent,e.closest('label')?.textContent];
+  // Quadcode often labels the wrapper rather than its editable input.
+  // Only read a small field container containing this single editor.
+  for(let p=e.parentElement,depth=0;p&&depth<3;p=p.parentElement,depth++){
+   if(p===document.body||p===document.documentElement||p.querySelectorAll(fieldSelector).length!==1)break;
+   parts.push(p.className,p.getAttribute('data-test'),p.getAttribute('data-testid'),p.getAttribute('aria-label'),String(p.textContent||'').slice(0,150));
+  }
+  return parts.filter(Boolean).join(' ');
+ };
+ const money=text=>{let v=String(text??'').trim().replace(/^(?:R\$|US\$|USD|BRL|EUR|[$€£])\s*/i,'').replace(/\s/g,'');if(!/^[+]?\d[\d.,]*$/.test(v))return null;const c=v.lastIndexOf(','),d=v.lastIndexOf('.');if(c>=0&&d>=0)v=c>d?v.replace(/\./g,'').replace(',','.'):v.replace(/,/g,'');else if(c>=0)v=v.replace(',','.');const n=Number(v);return Number.isFinite(n)?n:null;};
  const duration=text=>{
   const t=String(text).trim().toLowerCase().replace(',','.');
   const m=t.match(/^(\d+(?:\.\d+)?)\s*(ms|s|sec(?:onds?)?|seg(?:undos?)?|m|min(?:utes?|utos?)?)$/);
   return m?Number(m[1])*(m[2]==='ms'?1:/^m/.test(m[2])?60000:1000):null;
  };
- const unitOf=e=>e.getAttribute('data-duration-unit')||(/seconds|segundos|\(s\)/i.test(label(e))?'s':/minutes|minutos|\(min\)/i.test(label(e))?'min':null);
- const value=e=>kind==='amount'?Number(String(e.value).replace(',','.')):e.tagName==='SELECT'?duration(e.selectedOptions[0]?.textContent)??Number(e.selectedOptions[0]?.getAttribute('data-duration-ms')):duration((e.value??e.textContent)+' '+(unitOf(e)||''))??duration(e.value??e.textContent);
+ const unitOf=e=>e.getAttribute('data-duration-unit')||(/seconds|segundos|\(s\)/i.test(label(e))?'s':/minutes|minutos|\(min\)/i.test(label(e))?'min':null)||(kind==='duration'&&['s','min'].includes(mappedUnit)?mappedUnit:null);
+ const value=e=>kind==='amount'?money(e.value):e.tagName==='SELECT'?duration(e.selectedOptions[0]?.textContent)??Number(e.selectedOptions[0]?.getAttribute('data-duration-ms')):duration((e.value??e.textContent)+' '+(unitOf(e)||''))??duration(e.value??e.textContent);
  if(action==='option'){
   const all=[...document.querySelectorAll('[role="option"], [role="menuitem"],button')].filter(e=>visible(e)&&duration(e.textContent)===expectedMs);
   if(all.length!==1)return{error:'Expiração não disponível de forma única no painel da corretora.'};
   all[0].setAttribute('data-sentinel-duration-option',marker);return{selector:'[data-sentinel-duration-option="'+marker+'"]'};
  }
- let fields=[...document.querySelectorAll('input:not([type="hidden"]),select,[role="combobox"]')].filter(e=>visible(e)&&!e.disabled&&!e.readOnly);
+ let fields=[...document.querySelectorAll(fieldSelector)].filter(e=>visible(e)&&!e.disabled&&!e.readOnly);
  if(point){
   // A canvas text editor must expose an actual focused editable input. Without
   // one we cannot verify its value and do not send a trade.
   const focused=document.activeElement;
   fields=fields.filter(e=>{const r=e.getBoundingClientRect();return(e===focused&&e.tagName==='INPUT')||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
- }else fields=fields.filter(e=>(kind==='amount'?/amount|invest(?:ment)?|stake|valor|importe|montant/i:/duration|expir|tempo|dura[çc][aã]o/i).test(label(e)));
+ }else fields=fields.filter(e=>(kind==='amount'?/amount|invest(?:ment|imento)?|stake|valor|importe|montant|quantia/i:/duration|expir|tempo|dura[çc][aã]o/i).test(label(e)));
  if(fields.length!==1)return{error:kind==='amount'?'Campo de valor não identificado. Use Mapear controles.':'Campo de expiração não identificado. Use Mapear controles.'};
  const e=fields[0];e.setAttribute('data-sentinel-trade-'+kind,marker);
  const selector='[data-sentinel-trade-'+kind+'="'+marker+'"]';
@@ -51,11 +62,11 @@ export class BrokerTradeParameters{
     viewportPoint={x:box.x+point.x,y:box.y+point.y};
     await page.mouse.click(viewportPoint.x,viewportPoint.y);
    }
-   const marker='sentinel-'+kind+'-'+Math.random().toString(36).slice(2),args={kind,marker,point:viewportPoint,expectedMs:expected.durationMs};
+   const marker='sentinel-'+kind+'-'+Math.random().toString(36).slice(2),args={kind,marker,point:viewportPoint,expectedMs:expected.durationMs,mappedUnit:controls.durationUnit};
    let field=await frame.evaluate(brokerParameterBridge,args);
    if(field.error)throw Error(field.error);
    const locator=frame.locator(field.selector);
-   if(Math.abs(field.value-desired[kind])<0.000001){if(point&&field.type==='input')await locator.press('Tab',{timeout:500});continue;}
+   if(Number.isFinite(field.value)&&Math.abs(field.value-desired[kind])<0.000001){if(point&&field.type==='input')await locator.press('Tab',{timeout:500});continue;}
    if(field.type==='select')await locator.selectOption(field.optionValue,{timeout:500});
    else if(field.type==='input'){
     await locator.fill(kind==='amount'?String(desired[kind]):field.text,{timeout:500});

@@ -53,7 +53,9 @@ export class BrokerUiExecutor{
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
   const page=this.driver.sessions.get(provider)?.page;if(!page||page.isClosed?.())throw errorBefore('Janela da corretora não está conectada.');
-  const result=await page.evaluate(canvasControlBridge,{action:'calibrate',label:provider==='iq_option'?'IQ Option':'Exnova'});if(result?.error)throw errorBefore(result.error);return result;
+  const binding=this.canvasBindings[provider];let parametersOnly=false;
+  if(binding){const check=await page.evaluate(canvasControlBridge,{action:'resolve',binding,marker:randomUUID()});parametersOnly=!check?.error;}
+  const result=await page.evaluate(canvasControlBridge,{action:'calibrate',binding:parametersOnly?binding:null,parametersOnly,label:provider==='iq_option'?'IQ Option':'Exnova'});if(result?.error)throw errorBefore(result.error);return result;
  }
  async saveBinding(provider,value){
   if(!['iq_option','exnova'].includes(provider))throw errorBefore('Corretora inválida.');
@@ -92,8 +94,10 @@ export class BrokerUiExecutor{
  }
  async execute(provider,order){
   this.checkContext(provider,order);
-  const c=await this.controls(provider);
+  let c=await this.controls(provider);
   await this.applyParameters(provider,c,order);
+  // A committed stake/expiry can replace the broker button nodes.
+  c=await this.controls(provider);
   this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
   if(this.attempt)throw errorBefore('Outra ordem está aguardando confirmação.');
   let resolve,reject;const confirmation=new Promise((yes,no)=>{resolve=yes;reject=no;});

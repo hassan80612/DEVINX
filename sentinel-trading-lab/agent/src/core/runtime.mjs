@@ -812,10 +812,10 @@ export class DemoTradingRuntime{
       patch={...patch};delete patch.engine;
     }
     if(this.forecastModel==='now-structural-v1'){
-      // Short operations only. Expiry is independent of the shared 30s
-      // chart-analysis reference, never a hidden 60s trade.
+      // Explicit 5s–1m operation expiries. The shared 30s chart reference
+      // does not override the holding period selected by the user.
       if(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')&&
-        ![5000,10000,15000,30000].includes(Number(patch.orderDurationMs)))
+        ![5000,10000,15000,30000,60000].includes(Number(patch.orderDurationMs)))
         throw new Error('invalid_short_operation_duration');
       patch={...patch,forecastMode:'continuous',
         ...(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')?{forecastHorizonSeconds:30}:{})};
@@ -1429,9 +1429,9 @@ export class DemoTradingRuntime{
   snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
   restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
   delete this.settings.clockMode;
-  // Previous settings may persist a 1m+ expiry. Replace once at restore
-  // rather than silently continuing to signal beyond the user's new limit.
-  if(![5000,10000,15000,30000].includes(Number(this.settings.orderDurationMs)))
+  // Preserve the supported 1m expiry on restart; migrate only unsupported
+  // legacy durations to the default 30s operation.
+  if(![5000,10000,15000,30000,60000].includes(Number(this.settings.orderDurationMs)))
     this.settings.orderDurationMs=30000;
   this.settings.forecastHorizonSeconds=30;
   this.settings.engine=normalizeUserStrategy(this.settings.engine);

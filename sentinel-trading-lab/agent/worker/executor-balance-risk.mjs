@@ -23,7 +23,7 @@ export class ExecutorBalanceRisk{
  view(now){
   const s=this.session,b=this.last;
   const changed=!!(s&&this.current&&(this.current.provider!==s.provider||this.current.accountId!==s.accountId));
-  if(!s||!b)return{source:'unavailable',current:this.current,net:null,reconciling:false,accountChanged:changed};
+  if(!s||!b)return{source:this.current?'broker':'unavailable',current:this.current,initial:this.current?.amount??null,net:this.current?0:null,available:this.current?.amount??null,reconciling:false,accountChanged:changed};
   let effective=b.amount,reserved=0,reconciling=false;
   if(this.trade){
    const t=this.trade;

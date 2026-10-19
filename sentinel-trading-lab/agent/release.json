@@ -1,6 +1,6 @@
 {
-  "version": "13.9.46",
-  "build": "13.9.46-broker-expiry-bounded-martingale",
+  "version": "13.9.47",
+  "build": "13.9.47-broker-value-balance-minute",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

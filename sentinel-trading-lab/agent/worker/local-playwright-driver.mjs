@@ -340,14 +340,16 @@ function rememberBalanceChange(st,id,type,amount){
   if(id==null||amount==null)return;
   const rows=Array.isArray(st.lastBalances)?st.lastBalances:[];
   const index=rows.findIndex(row=>n(row?.id)===id);
-  const row={...(index>=0?rows[index]:{}),id,amount,balance:amount};
+  const row={...(index>=0?rows[index]:{}),id,amount,balance:amount,__receivedAt:Date.now()};
   if([1,4].includes(type))row.type=type;
   st.lastBalances=index>=0?rows.map((old,i)=>i===index?row:old):[...rows,row].slice(-50);
 }
-function markObservedBalance(st){
+function markObservedBalance(st,receivedAt=null){
+  receivedAt=Number(receivedAt)||(st.lastBalances||[]).find(row=>String(row.id)===String(st.balanceId))?.__receivedAt||Date.now();
   if(st.balanceId==null||!Number.isFinite(st.balance)||st.balance<0)return;
+  if(st.balanceObservation?.accountId===String(st.balanceId)&&st.balanceObservation?.amount===st.balance&&st.balanceObservation?.receivedAt===receivedAt)return;
   st.balanceRevision=Number(st.balanceRevision||0)+1;
-  st.balanceObservation={accountId:String(st.balanceId),amount:st.balance,receivedAt:Date.now(),revision:st.balanceRevision,source:st.balanceSource};
+  st.balanceObservation={accountId:String(st.balanceId),amount:st.balance,receivedAt,revision:st.balanceRevision,source:st.balanceSource};
 }
 function applyKnownBalance(st,{observed=false}={}){
   const arr=Array.isArray(st.lastBalances)?st.lastBalances:[];if(!arr.length)return false;
@@ -359,7 +361,7 @@ function applyKnownBalance(st,{observed=false}={}){
   if(!selected&&st.balanceId!=null)selected=arr.find(x=>n(x?.id)===n(st.balanceId))||null;
   if(!selected&&st.mode)selected=arr.find(x=>(st.mode==='real'&&Number(x?.type)===1)||(st.mode==='demo'&&Number(x?.type)===4));
   const eligible=arr.filter(x=>[1,4].includes(Number(x?.type)));if(!selected&&eligible.length===1)selected=eligible[0];
-  if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';if(observed)markObservedBalance(st);return true}return false
+  if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';if(observed||selected.__receivedAt>0)markObservedBalance(st,selected.__receivedAt||Date.now());return true}return false
 }
 function appendQuoteSample(st,ts,price){
   const t=Number(ts),p=Number(price);if(!Number.isFinite(t)||!Number.isFinite(p)||p<=0)return;
@@ -441,7 +443,7 @@ function protocolScan(data,st,direction='in'){
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
     const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null)st.balanceId=bid;
     let selected=null;const balances=Array.isArray(m.balances)?m.balances:[];
-    if(balances.length)st.lastBalances=balances.slice(0,50);
+    if(balances.length)st.lastBalances=balances.slice(0,50).map(row=>({...row,__receivedAt:Date.now()}));
     const explicitType=Number(m.balance_type??m.balanceType);
     if(st.balanceId!=null)selected=balances.find(x=>n(x?.id)===n(st.balanceId))||null;
     if(!selected&&[1,4].includes(explicitType))selected=balances.find(x=>Number(x?.type)===explicitType)||null;
@@ -449,11 +451,12 @@ function protocolScan(data,st,direction='in'){
     if(!selected&&eligible.length===1)selected=eligible[0];
     const typ=Number(selected?.type??([1,4].includes(explicitType)?explicitType:NaN));
     if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
+    if(selected?.id!=null)st.balanceId=n(selected.id);
     const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile';markObservedBalance(st)}else applyKnownBalance(st,{observed:true})
   }
   if(outer==='balances'){
     const arr=Array.isArray(data.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.balances)?data.msg.balances:[];
-    if(arr.length){st.lastBalances=arr.slice(0,50);applyKnownBalance(st,{observed:true})}
+    if(arr.length){st.lastBalances=arr.slice(0,50).map(row=>({...row,__receivedAt:Date.now()}));applyKnownBalance(st,{observed:true})}
   }
   if(/balance-changed/i.test(outer)||/balance-changed/i.test(inner)){
     // The observer already accepts named event envelopes. Read the event's
@@ -1310,7 +1313,7 @@ export class LocalPlaywrightDriver{
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
   accountBalanceSnapshot(provider){
-    const st=this.state(provider),value=st.balanceObservation;
+    const st=this.state(provider);applyKnownBalance(st);const value=st.balanceObservation;
     if(!value||st.balanceId==null||String(st.balanceId)!==value.accountId)return null;
     const selected=(st.lastBalances||[]).find(row=>String(row.id)===value.accountId);
     if(selected&&st.visibleAccountMode&&((Number(selected.type)===1&&st.visibleAccountMode!=='real')||(Number(selected.type)===4&&st.visibleAccountMode!=='demo')))return null;
@@ -1947,7 +1950,7 @@ export class LocalPlaywrightDriver{
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'DURAÇÃO DA OPERAÇÃO':'ENTRADA DAQUI A')}
                 <select data-sentinel-setting="duration" title="${tr('Prazo da previsão selecionado por você')}" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
-                  ${[5,10,15,30].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+v+'s</option>').join('')}
+                  ${[5,10,15,30,60].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+v+'s</option>').join('')}
                 </select>
               </label>
             </div>

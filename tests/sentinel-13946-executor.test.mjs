@@ -84,7 +84,7 @@ test('PC controls remove manual balance/payout; settings remain editable while r
 });
 test('compact mobile wire preserves progression and limits without exposing order or account IDs',()=>{
  const x=setup();const status={...x.bot.status(),martingaleLevel:2,nextAmount:4,lossLimitRemaining:7,provider:'exnova',brokerBalance:{amount:30,receivedAt:T,accountId:'secret'}};const packed=packExecutor(status),out=unpackExecutor(packed);
- assert.equal(out.config.martingaleLevels,2);assert.equal(out.martingaleLevel,2);assert.equal(out.nextAmount,4);assert.equal(out.lossLimitRemaining,7);assert.equal(out.capabilities.brokerExecution,2);assert.doesNotMatch(JSON.stringify(packed),/secret/);
+ assert.equal(out.config.martingaleLevels,2);assert.equal(out.martingaleLevel,2);assert.equal(out.nextAmount,4);assert.equal(out.lossLimitRemaining,7);assert.equal(out.capabilities.brokerExecution,3);assert.doesNotMatch(JSON.stringify(packed),/secret/);
  const old=packed.slice(0,18);assert.ok(unpackExecutor(old));assert.equal(unpackExecutor(old).capabilities,undefined);
 });
 test('non-final forecast cannot trigger the executor',()=>{

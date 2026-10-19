@@ -50,7 +50,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     <button className="secondary" disabled={!online||!!pending||bot.arming||!current} onClick={()=>void run('save')}>{t('Salvar limites')}</button>
    </div>
    <p role="status">{message||t(bot.message||'Desligado')}{bot.pending?' · '+bot.pending.side+' · '+t('Entrada em andamento'):''}</p>
-   <p className="muted">{t(bot.balanceSource==='broker-received-balance'?'Saldo recebido':'Saldo calculado')}: {Number(bot.balanceSource==='broker-received-balance'?bot.brokerBalance?.amount:bot.calculatedBalance).toFixed(2)} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
+   <p className="muted">{t(bot.brokerBalance?'Saldo recebido':'Saldo indisponível')}: {bot.brokerBalance?Number(bot.brokerBalance.amount).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
    <small className="muted">{t('O bot aplica valor e expiração do analista na corretora. Martingale aumenta o valor, não a assertividade, e não garante recuperar perdas. Parar impede novas entradas.')}</small>
    {!online&&<p role="status">{t('Agent do PC offline. Abra o Agent para enviar comandos.')}</p>}
   </>}

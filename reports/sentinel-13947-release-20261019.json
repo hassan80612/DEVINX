@@ -1,0 +1,42 @@
+{
+  "version": "13.9.47",
+  "build": "13.9.47-broker-value-balance-minute",
+  "baseCommit": "9129dd0d5f16f0068ef3a6ce113529847f397031",
+  "rollbackBranch": "backup/sentinel-13.9.46-before-balance-minute-20261019",
+  "changes": [
+    "Display received broker balance and available funds before the first session and after parameter preparation errors; no synthetic zero or manual fallback label",
+    "Publish cached account balances when account selection arrives later; profile without balance_id uses the uniquely selected returned account ID",
+    "Identify stake/expiration from bounded single-input wrappers, class/labels and localized money; re-resolve direction controls after editor commits",
+    "Preserve existing direction mapping while mapping stake/expiration; explicit duration unit and shield prevent calibration trades; stale geometry permits full remap",
+    "Add 60s to PC/mobile operation options, runtime validation and restored settings; pending positions retain their original broker expiry"
+  ],
+  "validation": {
+    "prebuildTestsPassed": 408,
+    "finalRegressionTestsPassed": 50,
+    "nextProductionBuild": "passed",
+    "browserReports": [
+      "sentinel-13947-browser-fixture.json",
+      "sentinel-13947-mobile-browser-fixture.json"
+    ],
+    "priorMartingaleBrowserRegressions": "passed",
+    "payloadCRC": "passed",
+    "payloadExactlyMatchesSource": true,
+    "nativeBrokerOrders": false,
+    "nativeWindowsLaunch": false,
+    "accuracyGainClaimed": false
+  },
+  "limits": [
+    "Verified with browser fixtures for both providers; live broker field compatibility still depends on the exposed editor or the user mapping",
+    "A pure-canvas duration dropdown with no readable editor/accessible option cannot be silently treated as a verified field"
+  ],
+  "artifacts": {
+    "Sentinel-Agent-13.9.47.exe": {
+      "bytes": 2686976,
+      "sha256": "c009f3307a62ccfa913116d6ce2577293b62cd114f57ebb282e9324d8bfee83d"
+    },
+    "agent_payload_v88.zip": {
+      "bytes": 414143,
+      "sha256": "6fde52d59622ff92d60d4f46cfdba142fdb129980cdc43524df5fbc1d0669de9"
+    }
+  }
+}

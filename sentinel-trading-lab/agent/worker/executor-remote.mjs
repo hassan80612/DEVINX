@@ -17,7 +17,7 @@ export function unpackExecutor(a){
  return {enabled:a[0]===1,arming:a[1]===1,executing:a[2]===1,
   config:Object.fromEntries(EXECUTOR_CONFIG_KEYS.map((k,i)=>[k,a[3][i]])),message:a[4],
   startedAt:a[5],deadlineAt:a[6],netPnl:a[7],calculatedBalance:a[8],availableBalance:a[9],
-  balanceSource:a[10]===1?'broker-received-balance':'user-configured-local-calculation',
+  balanceSource:a[10]===1?'broker-received-balance':Number(a[18]?.[0])>=3?'unavailable':'user-configured-local-calculation',
   brokerBalance:a[11]?{amount:a[11][0],receivedAt:a[11][1]}:null,
   riskNetPnl:a[12],executed:a[13],closed:a[14],
   pending:a[15]?{side:a[15][0],state:a[15][1],exitAt:a[15][2],entryPrice:a[15][3]}:null,

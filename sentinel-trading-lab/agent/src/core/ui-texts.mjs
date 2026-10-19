@@ -1,6 +1,7 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Saldo indisponível":"Balance unavailable",
   "Ativar martingale":"Enable martingale",
   "Perda máxima na sessão (moeda da conta)": "Maximum session loss (account currency)",
   "Níveis de martingale (0 = desligado)": "Martingale levels (0 = off)",
