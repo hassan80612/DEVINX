@@ -23,8 +23,15 @@ const lastZone=terminal.zones.find(z=>Math.abs(z.level-1.99)<.0000001);
 // single observed tick. Count those candles as though final to measure
 // whether 2-of-3 direction confirmations could be contributed by it.
 const quotes=[];
-for(let i=0;i<19;i++)quotes.push({ts:NOW-(19-i)*1000,price:1.2+i*.00001,receivedAt:NOW-(19-i)*1000});
-quotes.push({ts:NOW-200,price:1.2+.00022,receivedAt:NOW-200});
+for(let i=0;i<19;i++){
+ const price=i<16?1.2-i*.00001:1.19980+(i-16)*.00001;
+ quotes.push({ts:NOW-(19-i)*1000,price,receivedAt:NOW-(19-i)*1000});
+}
+const beforeCurrentMicrobar=currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,
+ price:quotes.at(-1).price,engineId:'trend'});
+quotes.push({ts:NOW+100,price:1.2003,receivedAt:NOW+100});
+const afterCurrentMicrobar=currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,
+ price:quotes.at(-1).price,engineId:'trend'});
 const lastCandleReceivedTicks=quotes.filter(x=>Math.floor(x.ts/1000)===Math.floor(quotes.at(-1).ts/1000)).length;
 const output={
  historicalTimeframeChoice:{
@@ -42,9 +49,11 @@ const output={
   noForwardClosedCandleToConfirm:true
  },
  technicalInference:{
-  selectedEngineLabel:currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,price:quotes.at(-1).price,engineId:'trend'})?.reason,
+  beforeCurrentOneTick:{side:beforeCurrentMicrobar.side,ready:beforeCurrentMicrobar.ready,reason:beforeCurrentMicrobar.reason},
+  afterCurrentOneTick:{side:afterCurrentMicrobar.side,ready:afterCurrentMicrobar.ready,reason:afterCurrentMicrobar.reason},
   oneTickLastSecondCandle:lastCandleReceivedTicks===1,
-  lastSecondBarComplete:false
+  lastSecondBarComplete:false,
+  interpretation:'Manual trend strategy can count an observed single tick from the still-forming current 1-second candle in its 4-bar confirmation.'
  },
  constraints:'Controlled synthetic inputs, not real broker signal outcomes. No production changes.'
 };
