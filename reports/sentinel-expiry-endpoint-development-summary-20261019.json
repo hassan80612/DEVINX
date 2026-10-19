@@ -1,0 +1,52 @@
+{
+  "method": "Fixed development screen, not unseen validation or live OTC",
+  "summary": {
+    "forex": {
+      "baseline": {
+        "win": 306,
+        "loss": 318,
+        "tie": 19,
+        "winRate": 0.49038461538461536,
+        "netAt86Percent": -54.84000000000003,
+        "maxLossStreak": 7
+      },
+      "candidate": {
+        "win": 304,
+        "loss": 320,
+        "tie": 19,
+        "winRate": 0.48717948717948717,
+        "netAt86Percent": -58.56,
+        "maxLossStreak": 7
+      },
+      "passed": false,
+      "improvedWindows": 1,
+      "worsenedWindows": 2,
+      "available": 13,
+      "changed": 6
+    },
+    "crypto-screen": {
+      "baseline": {
+        "win": 254,
+        "loss": 251,
+        "tie": 6,
+        "winRate": 0.502970297029703,
+        "netAt86Percent": -32.56,
+        "maxLossStreak": 8
+      },
+      "candidate": {
+        "win": 261,
+        "loss": 244,
+        "tie": 6,
+        "winRate": 0.5168316831683168,
+        "netAt86Percent": -19.539999999999992,
+        "maxLossStreak": 10
+      },
+      "passed": false,
+      "improvedWindows": 4,
+      "worsenedWindows": 5,
+      "available": 511,
+      "changed": 256
+    }
+  },
+  "developmentPassed": false
+}

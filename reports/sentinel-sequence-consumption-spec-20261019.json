@@ -1,0 +1,8 @@
+{
+ "baseCommit":"e885d12a06d5477e0dfcfed375a688d3397f230c",
+ "hypothesis":"Observed structural sequences currently emit the same break/retest or reclaim event at every later qualifying quote, overwriting its confirmedAt with the present. A new 30s window can therefore consume the same structural setup repeatedly.",
+ "fixedChange":"Within each received level timeline, emit each kind/break/reclaim/retest/pivot-price combination only at its first qualifying observation. Attach its immutable setup key to structural-change decisions. A setup already used in the same provider/asset/strategy/duration context cannot open another entry. New setups and all other routes remain eligible immediately; no cooldown, extra candle, account read, direction inversion or order changes.",
+ "development":"Complete runtime A/B on all previously inspected 15 Forex windows, nine crypto windows October 15-17 and nine crypto windows October 18-20. Include changed admission times, coverage, observed endpoint win rate, illustrative net at 86% payout and worst per-window loss streak. Known video is diagnostic only.",
+ "acceptance":"Require higher win rate, positive illustrative net and no worse worst-window loss streak in EACH of the three external development sets while retaining at least half baseline completed trades. If any fails, reject; do not consume new holdout or publish.",
+ "limits":"A logical event-lifecycle fix is not presumed to improve predictability. External data do not establish broker OTC profitability; missed quotes and ties must be reported. No parameter tuning or publication on a selected winning window."
+}
