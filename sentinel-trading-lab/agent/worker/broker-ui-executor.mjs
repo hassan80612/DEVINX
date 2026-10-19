@@ -80,7 +80,7 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.confirmedDispatchDurations=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
  }
  retireUnidentifiedBatch(batch){
   // Only after the expiry+grace timeout: release the execution mutex.
@@ -105,6 +105,25 @@ export class BrokerUiExecutor{
    (active==null||Number(active)===Number(p.attempt.order.activeId))&&
    (account==null||p.attempt.order.accountId==null||String(account)===String(p.attempt.order.accountId)));
   return options.length===1?options[0].attempt:null;
+ }
+ // Time actually observed between beginning broker-control lookup and
+ // a matching native broker page-out request. Never fabricate throughput.
+ dispatchKey(provider,activeId){return String(provider)+'|'+String(activeId);}
+ batchFeasibility(provider,{count,activeId,entryAt,now}={}){
+  if(!Number.isInteger(count)||count<1)return{safe:false,reason:'Quantidade inválida de cliques'};
+  if(count===1)return{safe:true,reason:'Entrada única'};
+  const samples=this.confirmedDispatchDurations.get(this.dispatchKey(provider,activeId))||[];
+  if(!samples.length)return{safe:false,reason:'Ainda não há velocidade de cliques confirmada para essa corretora e ativo'};
+  // Current analyst receipt allows entry for 1500 ms. Predict the start
+  // of the final click from the slowest recently measured native dispatch.
+  // If not feasible, reject the WHOLE batch rather than sending 6 of 8.
+  const observedMax=Math.max(...samples);
+  const remaining=Number(entryAt)+1500-Number(now);
+  const lastStartDelay=(count-1)*observedMax;
+  return lastStartDelay<remaining?
+   {safe:true,estimatedLastClickDelayMs:lastStartDelay,observedSamples:samples.length}:
+   {safe:false,estimatedLastClickDelayMs:lastStartDelay,observedSamples:samples.length,
+    reason:'Sequência de '+count+' cliques não cabe no prazo de entrada com a velocidade observada'};
  }
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
@@ -153,6 +172,7 @@ export class BrokerUiExecutor{
    // broker. Never overlap its unresolved request with another click.
    if(this.unidentifiedClick?.order?.clicked&&!this.unidentifiedClick.requestId)
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
+   attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    this.attempt=attempt;
@@ -200,7 +220,15 @@ export class BrokerUiExecutor{
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
    if(account!=null)a.order.accountId=String(account);
    a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;
-   this.retiredAttempts=this.retiredAttempts.filter(p=>p.attempt!==a);this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
+   this.retiredAttempts=this.retiredAttempts.filter(p=>p.attempt!==a);
+   const duration=Date.now()-Number(a.dispatchStartedAt||0);
+   if(duration>0&&duration<=this.ackTimeoutMs){
+    const key=this.dispatchKey(provider,a.order.activeId);
+    const samples=this.confirmedDispatchDurations.get(key)||[];
+    samples.push(duration);if(samples.length>32)samples.shift();
+    this.confirmedDispatchDurations.set(key,samples);
+   }
+   this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
   }
   if(direction!=='page-in')return;
   if(a&&provider===a.provider&&rid&&rid===a.requestId){
