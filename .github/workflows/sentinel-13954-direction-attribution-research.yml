@@ -5,6 +5,7 @@ on:
       - research/sentinel-13954-direction-analysis-20261019
     paths:
       - 'scripts/sentinel-13954-direction-attribution-20261019.mjs'
+      - 'scripts/sentinel-13954-candle-historical-calculation-audit.mjs'
       - '.github/workflows/sentinel-13954-direction-attribution-research.yml'
 permissions:
   contents: read
@@ -17,6 +18,10 @@ jobs:
         with:
           node-version: '22'
       - name: Validate research script syntax
-        run: node --check scripts/sentinel-13954-direction-attribution-20261019.mjs
+        run: |
+          node --check scripts/sentinel-13954-direction-attribution-20261019.mjs
+          node --check scripts/sentinel-13954-candle-historical-calculation-audit.mjs
       - name: Replay production direction layers over time-ordered video quotes
         run: node scripts/sentinel-13954-direction-attribution-20261019.mjs
+      - name: Inspect chronological historical-candle construction
+        run: node scripts/sentinel-13954-candle-historical-calculation-audit.mjs
