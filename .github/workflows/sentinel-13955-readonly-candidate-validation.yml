@@ -1,0 +1,32 @@
+name: Sentinel 13.9.55 isolated research - NO deployment
+on:
+  push:
+    branches:
+      - fix/sentinel-13955-verified-execution-keyboard-research-20261019
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'tests/**'
+      - '.github/workflows/sentinel-13955-readonly-candidate-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13955-readonly-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and focused regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-13955-measured-batch-and-keyboard.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13953-broker-ack-timeout.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs
+      - name: Install site test prerequisites without modifying lockfiles
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Full integration regressions (NO build, NO EXE publication)
+        run: npm run prebuild --prefix sentinel-trading-lab
