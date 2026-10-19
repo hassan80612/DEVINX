@@ -86,8 +86,8 @@ export class BrokerUiExecutor{
   // Only after the expiry+grace timeout: release the execution mutex.
   // Retain the old attempt for a bounded best-effort late broker request
   // correlation, without issuing a second click.
-  const a=this.unidentifiedClick;
-  if(a&&batch?.orders?.some(p=>p.id===a.order?.id)){
+  const a=this.unidentifiedClick||this.attempt;
+  if(a&&batch?.orders?.some(p=>p.id===a.order?.id)&&a.order.clicked){
    this.retiredAttempts.push({attempt:a,expiresAt:Date.now()+300000});
    this.retiredAttempts=this.retiredAttempts.slice(-16);
    if(this.attempt===a)this.attempt=null;
@@ -187,8 +187,13 @@ export class BrokerUiExecutor{
     // Do not await a broker socket frame forever. Late page-out and
     // page-in frames still reconcile this very order asynchronously.
     const seenRequest=await Promise.race([sent,timedOut]);
-    if(seenRequest?.pending===true&&!attempt.requestId&&order.clicked)
-     this.unidentifiedClick=attempt;
+    if(seenRequest?.pending===true&&!attempt.requestId&&order.clicked){
+     if(order.detached){
+      this.retiredAttempts.push({attempt,expiresAt:Date.now()+300000});
+      this.retiredAttempts=this.retiredAttempts.slice(-16);
+      if(this.attempt===attempt)this.attempt=null;
+     }else this.unidentifiedClick=attempt;
+    }
    }finally{
     // If no page-out has yet arrived, retain only this pending attempt
     // so a late page-out can still acquire its broker request ID.
