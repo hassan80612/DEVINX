@@ -104,7 +104,7 @@ export class SignalExecutor{
   if(reset){
    // Stop clears the visible bot session, NOT an already-open broker trade.
    // Old orders remain quarantined for correlated settlement only.
-   if(this.pending){const b=this.pending;b.detached=true;this.unresolvedBatches.set(b.id,b);this.pending=null;}
+   if(this.pending){const b=this.pending;b.detached=true;for(const p of b.orders)p.detached=true;this.unresolvedBatches.set(b.id,b);this.pending=null;}
    this.balanceRisk.trade=null;this.balanceRisk.session=null;
    this.session=null;this.startedAt=null;this.deadlineAt=null;this.initialBalance=null;
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;
