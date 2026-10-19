@@ -1,0 +1,9 @@
+{
+ "status":"frozen-research-only-not-production",
+ "target":"single final arbiter for actual 30s holding horizon",
+ "registeredBeforeScreen":true,
+ "rules":{"lookbackMs":90000,"minimumCoverageMs":75000,"minimumQuotes":45,"maximumGapMs":4000,"trendRSquared":0.6,"recentLegMs":6000,"maximumRecentReferenceAgeMs":3000,"maximumLiveQuoteAgeMs":1450,"conflict":"wait when selected projection and terminal structure disagree","trend":"same direction as 90s fit and recent leg","pullback":"wait","oscillation":"only an already-confirmed structural turn aligned with recent leg","unavailable":"wait, never interpolate"},
+ "acceptance":{"eachExternalCohort":"strictly improved accuracy, positive illustrative net at 86% payout, coverage at least 25%, no worse maximum loss streak","native":"report separately; signed sample and OCR video do not establish independent live profitability"},
+ "stop":"reject at first failing complete external development cohort; do not tune thresholds or consume untouched holdout",
+ "preservation":["bot unchanged","active entry lifecycle unchanged","production unchanged unless validated","no new broker reads","no Supabase writes","no waiting timer or fixed new candle count"]
+}
