@@ -36,9 +36,30 @@ for(const provider of ['iq_option','exnova']){
  test(provider+': minute expiry and phone control survive while fixed broker controls are not edited',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.c.durationMs=60000;await x.bot.start();await x.fire();const end=x.bot.pending.exitAt;x.advance(30000);await x.fire();assert.equal(x.calls.length,1);assert.equal(x.bot.pending.exitAt,end);assert.equal(x.bot.pending.orders[0].durationMs,60000);x.bot.stop();assert.ok(x.bot.pending);x.bot.configure({stopAfterMinutes:5,stopLoss:12});settleSequence(x,[.86]);assert.equal(x.bot.enabled,false);assert.equal(x.bot.config.stopAfterMinutes,5);
  });
- test(provider+': partial sequence is never replayed; accepted child remains tracked after sibling failure',async()=>{
-  const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);let calls=0;x.driver.execute=async(p,o)=>{calls++;if(calls===2)throw Object.assign(Error('before click failure'),{beforeClick:true});o.captureEntry();o.clicked=true;return{accepted:true,orderId:'partial'};};await x.fire('PUT');assert.equal(x.bot.enabled,false);assert.equal(x.bot.pending.orders.length,1);assert.equal(x.bot.pending.orders[0].orderId,'partial');x.advance(30000);x.bot.settle({provider,orderId:'partial',netPnl:.86});assert.equal(x.bot.nextClicks(),2);for(let i=0;i<4;i++)await x.fire();assert.equal(calls,2);
- });
+ test(provider+': before-click sibling failure does not switch OFF; partial sequence never replays',async()=>{
+  const x=setup(provider);x.c.brokerBalance=null;
+  x.bot.configure({martingaleEnabled:true,martingaleLevels:2});
+  await x.bot.start();await x.fire();settleSequence(x,[-1]);
+  let calls=0,seq=0;
+  x.driver.execute=async(p,o)=>{
+   calls++;
+   if(calls===2)throw Object.assign(Error('before click failure'),{beforeClick:true});
+   o.captureEntry();o.clicked=true;
+   return{accepted:true,orderId:'partial-'+(++seq)};
+  };
+  await x.fire('PUT');
+  assert.equal(x.bot.enabled,true,'pre-click failure is not an automatic stop');
+  assert.equal(x.bot.pending.orders.length,1);
+  assert.equal(x.bot.pending.orders[0].orderId,'partial-1');
+  x.advance(30000);
+  assert.ok(x.bot.settle({provider,orderId:'partial-1',netPnl:.86,source:'broker'}));
+  assert.equal(x.bot.nextClicks(),2,'partial batch must not advance/reset Martingale based on incomplete signal');
+  assert.equal(calls,2,'no replay of the failed partial signal');
+  x.advance(500);
+  await x.fire('PUT');
+  assert.equal(calls,4,'only a new analyst signal can launch another 2-click batch');
+  assert.equal(x.bot.enabled,true);
+ });;
 }
 test('maximum is finite/integer, zero disables progression, and wire carries click count without IDs',async()=>{
  const x=setup();for(const levels of [-1,1.5,11,Infinity])assert.throws(()=>x.bot.configure({martingaleLevels:levels}));x.bot.configure({martingaleEnabled:true,martingaleLevels:0});await x.bot.start();await x.fire();settleSequence(x,[-1]);assert.equal(x.bot.nextClicks(),1);
