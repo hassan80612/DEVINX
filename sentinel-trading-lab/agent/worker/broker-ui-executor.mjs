@@ -109,16 +109,18 @@ export class BrokerUiExecutor{
  // Time actually observed between beginning broker-control lookup and
  // a matching native broker page-out request. Never fabricate throughput.
  dispatchKey(provider,activeId){return String(provider)+'|'+String(activeId);}
- batchFeasibility(provider,{count,activeId,entryAt,now}={}){
+ batchFeasibility(provider,{count,activeId,entryAt,now,maxEntryAgeMs=1500}={}){
   if(!Number.isInteger(count)||count<1)return{safe:false,reason:'Quantidade inválida de cliques'};
   if(count===1)return{safe:true,reason:'Entrada única'};
   const samples=this.confirmedDispatchDurations.get(this.dispatchKey(provider,activeId))||[];
   if(!samples.length)return{safe:false,reason:'Ainda não há velocidade de cliques confirmada para essa corretora e ativo'};
-  // Current analyst receipt allows entry for 1500 ms. Predict the start
+  // Match the active signal-to-click age budget, rather than assuming
+  // the old 1500ms window for every short-expiry operation.
+  // Predict the start
   // of the final click from the slowest recently measured native dispatch.
   // If not feasible, reject the WHOLE batch rather than sending 6 of 8.
   const observedMax=Math.max(...samples);
-  const remaining=Number(entryAt)+1500-Number(now);
+  const remaining=Number(entryAt)+Math.min(1500,Math.max(0,Number(maxEntryAgeMs)))-Number(now);
   const lastStartDelay=(count-1)*observedMax;
   return lastStartDelay<remaining?
    {safe:true,estimatedLastClickDelayMs:lastStartDelay,observedSamples:samples.length}:
