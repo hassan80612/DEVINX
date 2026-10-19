@@ -46,12 +46,12 @@ let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
-const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled)executor.stop('Bot parado · operação externa detectada; confira a conta.');}});
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}}});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
- if(action==='executor-stop'){const result=executor.stop();return{ok:true,message:result.message};}
+ if(action==='executor-stop'){const result=executor.stop('Parado por você',{reset:true});return{ok:true,message:result.message};}
  assertLicensedAccess();
  if(action==='executor-map'||action==='executor-map-save'){
   if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
@@ -60,7 +60,7 @@ async function executorAction(action,payload={}){
   executor.message='CALL/PUT mapeados para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · pronto para ligar';return{ok:true,message:executor.message};
  }
  if(action==='executor-config'){executor.configure(payload.patch||{});const serialized=JSON.stringify(executor.config);executorSettingsWrite=executorSettingsWrite.catch(()=>{}).then(async()=>{await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile+'.tmp',serialized,{mode:0o600});await rename(executorSettingsFile+'.tmp',executorSettingsFile);});await executorSettingsWrite;return{ok:true,message:'Configuração do bot aplicada'};}
- if(action==='executor-start'){try{if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
+ if(action==='executor-start'){try{if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
 }
 
@@ -194,8 +194,8 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     return{ok:true,message:'Análise iniciada · operação manual somente'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
-  if(action==='pause'){executor.stop('Bot parado · analista pausado');localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){executor.stop('Bot parado · analista parado');localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Analista parado · execução automática desativada'}}
+  if(action==='pause'){executor.stop('Analista pausado',{reset:true});localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){executor.stop('Analista parado',{reset:true});localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Analista parado · execução automática desativada'}}
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
