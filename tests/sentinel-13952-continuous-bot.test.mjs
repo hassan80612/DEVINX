@@ -26,28 +26,25 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.pending.clickCount,2);
   assert.equal(x.bot.enabled,true);
  });
- test(provider+': missing close never stops the bot or advances Martingale speculatively',async()=>{
-  const x=setup(provider);
-  x.c.brokerBalance=null;
+ test(provider+': late settlement is quarantined after grace, and bot resumes only on next NEW signal',async()=>{
+  const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
-  await x.bot.start();
-  await x.fire('CALL');
-  const first=x.bot.pending.orderId;
-  x.advance(160000);
-  x.bot.watch();
+  await x.bot.start();await x.fire('CALL');
+  const oldId=x.bot.pending.orderId;
+  x.advance(160000);x.bot.watch();
   assert.equal(x.bot.enabled,true);
-  assert.ok(x.bot.pending);
-  assert.equal(x.bot.nextClicks(),1,'a missing close cannot be treated as loss');
-  assert.match(x.bot.message,/aguardando encerramentos/);
+  assert.equal(x.bot.pending,null);
+  assert.equal(x.bot.unresolvedBatches.size,1);
+  assert.equal(x.bot.nextClicks(),1,'unknown result never escalates Martingale');
+  assert.equal(x.bot.net,0,'unknown result never fabricates a loss');
+  assert.match(x.bot.message,/resultado pendente/);
   const before=x.calls.length;
   await x.fire('PUT');
-  assert.equal(x.calls.length,before,'unknown result blocks overlap without turning off automation');
-  assert.ok(x.bot.settle({provider,orderId:first,netPnl:-1,source:'broker'}));
-  assert.equal(x.bot.pending,null);
-  assert.equal(x.bot.nextClicks(),2);
-  x.advance(1000);
-  await x.fire('PUT');
-  assert.equal(x.calls.length,before+2);
+  assert.equal(x.calls.length,before+1,'only the NEXT real analyst signal is allowed');
+  assert.equal(x.bot.pending.clickCount,1);
+  assert.ok(x.bot.settle({provider,orderId:oldId,netPnl:-1,source:'broker'}));
+  assert.equal(x.bot.unresolvedBatches.size,0);
+  assert.equal(x.bot.nextClicks(),1,'old settled result cannot retroactively change a newer Martingale');
   assert.equal(x.bot.enabled,true);
  });
  test(provider+': grouped closing packet completes two identified martingale orders, rejects unknown and duplicates',()=>{
