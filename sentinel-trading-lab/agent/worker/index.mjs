@@ -289,7 +289,14 @@ async function enforceAccessLease(){
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
-try{executor.configure(JSON.parse(await readFile(executorSettingsFile,'utf8')))}catch{}
+try{
+ const saved=JSON.parse(await readFile(executorSettingsFile,'utf8'));
+ // Old installations could retain levels 4-10. Migrate to the new safe cap
+ // instead of rejecting the entire saved bot configuration on startup.
+ if(Number.isInteger(saved?.martingaleLevels)&&saved.martingaleLevels>3)
+  saved.martingaleLevels=3;
+ executor.configure(saved);
+}catch{}
 try{uiExecutor.restoreBindings(JSON.parse(await readFile(executorTargetsFile,'utf8')))}catch{}
 // The bot ALWAYS starts disarmed, including after an Agent update/restart.
 // Product now presents Continuous only. Migrate a saved Selective choice
