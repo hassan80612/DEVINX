@@ -2,6 +2,9 @@
 // An identified close for every order completes one progression step.
 // Balance is optional; identified broker settlements control session loss limits.
 import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
+// Three increases after the normal 1-click entry: 2, 4, at most 8 clicks.
+// Finishing the last complete losing batch cycles back to one normal click.
+export const MAX_MARTINGALE_LEVELS=3;
 export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,stopAfterMinutes:0,stopLoss:0,martingaleLevels:2,martingaleEnabled:false});
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const symbol=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -21,7 +24,7 @@ export class SignalExecutor{
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
   const next={...this.config};
   for(const key of Object.keys(DEFAULT_EXECUTOR_CONFIG))if(patch[key]!==undefined){if(key==='martingaleEnabled'){if(typeof patch[key]!=='boolean')throw Error('Ativação de martingale inválida.');next[key]=patch[key];}else next[key]=Number(patch[key]);}
-  if(!num(next.amount)||next.amount<0||next.amount>1000000||!Number.isInteger(next.martingaleLevels)||next.martingaleLevels<0||next.martingaleLevels>10||!Number.isInteger(next.intervalMs)||next.intervalMs<5000||next.intervalMs>3600000||
+  if(!num(next.amount)||next.amount<0||next.amount>1000000||!Number.isInteger(next.martingaleLevels)||next.martingaleLevels<0||next.martingaleLevels>MAX_MARTINGALE_LEVELS||!Number.isInteger(next.intervalMs)||next.intervalMs<5000||next.intervalMs>3600000||
    !num(next.stopAfterMinutes)||next.stopAfterMinutes<0||next.stopAfterMinutes>1440||!num(next.stopLoss)||next.stopLoss<0||next.stopLoss>1e8)throw Error('Configuração do bot inválida.');
   if(this.enabled){
    if(!(next.amount>0))throw Error('Valor por entrada deve ser positivo.');
