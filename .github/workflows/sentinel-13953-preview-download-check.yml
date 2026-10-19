@@ -1,4 +1,4 @@
-name: Sentinel 13.9.53 preview download integrity
+name: Sentinel 13.9.53 production download integrity
 on:
   push:
     branches: [fix/sentinel-13953-safe-bot-restart-20261019]
@@ -15,7 +15,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HOST=https://sentinel-trading-d0hqdmug6-iguassu-shop.vercel.app
+          HOST=https://trading.devinx.com.br
           TMP="$(mktemp -d)"
           curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13953" -o "$TMP/agent-update.json"
           curl --fail --location --silent --show-error --max-time 90 "$HOST/downloads/Sentinel-Agent-13.9.53.exe?verify=13953" -o "$TMP/Sentinel-Agent-13.9.53.exe"
