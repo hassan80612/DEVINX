@@ -80,7 +80,7 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.confirmedDispatchDurations=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.confirmedDispatchDurations=new Map();this.cachedHtmlControls=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
  }
  retireUnidentifiedBatch(batch){
   // Only after the expiry+grace timeout: release the execution mutex.
@@ -146,6 +146,22 @@ export class BrokerUiExecutor{
    const found=await page.evaluate(canvasControlBridge,{action:'resolve',binding:this.canvasBindings[provider],marker:randomUUID()});
    if(found?.error)throw errorBefore(found.error);return{frame:page,...found};
   }
+  // Reuse already identified, still-visible broker HTML controls during
+  // a batch instead of rescanning all frames for every click.
+  const state=this.driver.state(provider);
+  const token=String(state?.activeId)+'|'+clean(state?.symbol);
+  const cached=this.cachedHtmlControls.get(provider);
+  if(cached&&cached.page===page&&cached.token===token&&Date.now()-cached.at<=1200){
+   try{
+    const call=cached.frame.locator(cached.callSelector),put=cached.frame.locator(cached.putSelector);
+    const [cn,pn,cv,pv,ce,pe]=await Promise.all([
+     call.count(),put.count(),call.isVisible({timeout:80}),put.isVisible({timeout:80}),
+     call.isEnabled({timeout:80}),put.isEnabled({timeout:80})]);
+    if(cn===1&&pn===1&&cv&&pv&&ce&&pe)
+     return{frame:cached.frame,callSelector:cached.callSelector,putSelector:cached.putSelector};
+   }catch{}
+  }
+  this.cachedHtmlControls.delete(provider);
   let found=null,frame=null,reason=null;
   for(const f of page.frames()){
    let v;try{v=await f.evaluate(inspectTradeControls,{marker:randomUUID()});}catch{continue;}
@@ -154,6 +170,8 @@ export class BrokerUiExecutor{
   }
   if(!found)throw errorBefore(reason||'Botões CALL/PUT não identificados. Abra o painel de negociação.');
   if(found?.error||!found?.callSelector)throw errorBefore(found?.error||'Aguardando painel da nova operação.');
+  this.cachedHtmlControls.set(provider,{page,token,frame,
+   callSelector:found.callSelector,putSelector:found.putSelector,at:Date.now()});
   return{frame,...found};
  }
  checkContext(provider,expected){
