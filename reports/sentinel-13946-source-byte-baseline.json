@@ -1,0 +1,27 @@
+[
+  {
+    "path": "src/core/completed-expiry-direction.mjs",
+    "baseGitBlob": "d4966c30ad407b1cdb89eef04fab13a221bc4e22",
+    "difference": "extra final blank line in local tool-restored source; published bytes match unchanged .45 Git blob"
+  },
+  {
+    "path": "src/core/now-opportunity-engine.mjs",
+    "baseGitBlob": "68b374dbcaec2caaf11963bc73aa8d05f9208b93",
+    "difference": "extra final blank line in local tool-restored source; published bytes match unchanged .45 Git blob"
+  },
+  {
+    "path": "src/core/thirty-second-expiry-direction.mjs",
+    "baseGitBlob": "8bf02808ae8d43e1bd028cddc1134faf6739bd98",
+    "difference": "extra final blank line in local tool-restored source; published bytes match unchanged .45 Git blob"
+  },
+  {
+    "path": "worker/live-bridge.mjs",
+    "baseGitBlob": "6436fdc34a807e8d85b6b5cb6a56ef17002d6848",
+    "difference": "extra final blank line in local tool-restored source; published bytes match unchanged .45 Git blob"
+  },
+  {
+    "path": "worker/remote-status.mjs",
+    "baseGitBlob": "396d71e9c0423595f6a3cf4889cea42a126044bc",
+    "difference": "extra final blank line in local tool-restored source; published bytes match unchanged .45 Git blob"
+  }
+]

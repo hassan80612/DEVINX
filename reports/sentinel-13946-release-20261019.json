@@ -35,11 +35,23 @@
   "artifacts": {
     "Sentinel-Agent-13.9.46.exe": {
       "bytes": 2685440,
-      "sha256": "bd82635b1f68aebe96cd44b5ea78d59bf6de811bfb4259f970c6449b92f78628"
+      "sha256": "41277f949f70a4a2ce7117ee06342fb40dc5bfac2e1edfe7dd29fdc3c566b6bc"
     },
     "agent_payload_v88.zip": {
-      "bytes": 412938,
-      "sha256": "ec85a2073ac8a01bec35d8f49a559a4f4d4bf597d888e6d09331af2a16638e63"
+      "bytes": 412937,
+      "sha256": "2cc9ec768dfb1582cbc18d70506bf58b9fbe765d86f8f7d58f1bcb79a22227d1"
     }
-  }
+  },
+  "publication": {
+    "deployment": "dpl_9SxuxMLyLpGBsob2HzARVWnPseBy",
+    "state": "READY",
+    "commit": "9129dd0d5f16f0068ef3a6ce113529847f397031",
+    "origin": "https://trading.devinx.com.br",
+    "publishedPayloadRegressionTestsPassed": 104,
+    "exactPayloadFiles": 119,
+    "unauthenticatedExecutorCommands": "all 401; no command enqueued",
+    "runtimeErrorScan": "no error/fatal logs found in initial 10-minute deployment window",
+    "nativeBrokerTested": false
+  },
+  "sourceRestorationNote": "Five untouched base files had one extra final blank line in locally restored text. Published bytes were proven to match their .45 Git blob IDs; local checkout aligned, package rebuilt, public installer byte-identical. See source-byte-baseline report."
 }
