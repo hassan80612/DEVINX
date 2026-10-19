@@ -5,6 +5,7 @@ on:
     paths:
       - 'sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs'
       - 'tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs'
+      - 'scripts/sentinel-13956-stage4-compare-old-video.mjs'
       - '.github/workflows/sentinel-13956-stage4-direction-only-validation.yml'
 permissions:
   contents: read
@@ -24,6 +25,8 @@ jobs:
           node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
           node --check tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs
           node --test tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs
+      - name: Replay stage4-on versus old video without orders (NOT a new holdout)
+        run: node scripts/sentinel-13956-stage4-compare-old-video.mjs
       - name: Install website dependencies
         run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Run complete prebuild regression suite
