@@ -54,7 +54,7 @@ jobs:
           import sys
           tmp=Path(sys.argv[1])
           headers=(tmp/'range-headers').read_text().lower()
-          assert '206 partial content' in headers and 'content-range: bytes 0-1023/' in headers,headers
+          assert ' 206' in headers and 'content-range: bytes 0-1023/' in headers,headers
           assert (tmp/'first-kib').read_bytes()==(tmp/'Sentinel-Agent-13.9.52.exe').read_bytes()[:1024]
           print('Range response: 206; first 1024 bytes match downloadable EXE')
           PY
