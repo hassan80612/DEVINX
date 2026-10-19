@@ -100,7 +100,12 @@ export function assessCandleLevelRoute({map,quoteHistory=[],quoteAt,now=quoteAt,
   events.push({side:eventSide,kind:rejection?'rejection':'breakout',
    candleBacked,wickFraction:wick,zone:describe(z),distance:Math.abs(spot-z.level)});
  }
- events.sort((a,b)=>a.distance-b.distance||Number(b.candleBacked)-Number(a.candleBacked));
+ // A confirmed CLOSED-candle rejection is stronger evidence than a
+ // nearby but unconfirmed touch. Ranking by proximity first previously
+ // allowed an unconfirmed level to shadow a genuine rejection and leave
+ // a contradictory harmonic forecast in charge of CALL/PUT.
+ events.sort((a,b)=>Number(b.candleBacked)-Number(a.candleBacked)||
+  a.distance-b.distance);
  route.event=events[0]??null;
  if(route.event){
   route.conflict=events.some(e=>e.side!==route.event.side&&
