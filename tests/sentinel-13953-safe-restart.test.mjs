@@ -61,6 +61,16 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.pending,batch);
   assert.equal(x.bot.executed,1);
  });
+ test(provider+': restart with pending close does not depend on currently visible CALL/PUT broker controls',async()=>{
+  const x=setup(provider);x.c.brokerBalance=null;
+  await x.bot.start();await x.fire('CALL');const pending=x.bot.pending;
+  x.bot.stop('Parado manualmente');
+  x.driver.prepare=async()=>{throw Error('Painel de nova operação indisponível durante fechamento');};
+  await x.bot.start();
+  assert.equal(x.bot.enabled,true);
+  assert.equal(x.bot.pending,pending);
+  assert.equal(x.calls.length,1);
+ });
  test(provider+': a normal stop with no pending positions still starts a fresh session',async()=>{
   const x=setup(provider);await x.bot.start();const sid=x.bot.sessionId;
   x.bot.stop();await x.bot.start();
