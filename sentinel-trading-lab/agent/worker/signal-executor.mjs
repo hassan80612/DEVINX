@@ -186,7 +186,7 @@ export class SignalExecutor{
   const amount=money(this.config.amount*2**(this.config.martingaleEnabled?this.martingaleLevel:0));
   if(!Number.isFinite(amount)||amount>1000000){this.message='Ligado · valor inválido · próximo sinal';return;}
   if(this.config.stopLoss>0&&amount>Math.max(0,this.config.stopLoss+this.riskNet(balance))+0.000001){
-   this.stop('Bot parado · próxima entrada excede o stop-loss restante');
+   this.stop('Bot parado · próxima entrada excede o limite de perda restante (stop-loss)');
    return;
   }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
