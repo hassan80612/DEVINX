@@ -922,7 +922,7 @@ export class LocalPlaywrightDriver{
         client.on('Network.webSocketFrameReceived',event=>{
           const response=event?.response,payload=response?.payloadData;
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
-            (!/balance|profile/.test(payload)&&(!this.executionObserver||!/option|position-changed|order-changed|"error"/.test(payload))))return;
+            (!/balance|profile/.test(payload)&&(!this.executionObserver||!/option|positions?-changed|order-changed|"error"/.test(payload))))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
           if(this.executionObserver&&isExecutionFrame(frame))this.observeExecution(provider,frame,'page-in');
           else if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');
