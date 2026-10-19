@@ -1,0 +1,96 @@
+name: Sentinel 13.9.52 analyst-following candidate - no production
+on:
+  push:
+    branches:
+      - fix/sentinel-13952-continuous-analyst-bot-20261019
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/src/components/BotControl.tsx'
+      - 'tests/**'
+      - '.github/workflows/sentinel-13952-continuous-bot-candidate.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-13952-continuous-bot-candidate
+  cancel-in-progress: false
+
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Check every Agent module and bot close/timing regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
+      - name: Install website build dependencies
+        run: npm ci --prefix sentinel-trading-lab --no-audit --no-fund
+      - name: Full website prebuild and Next.js build
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Produce exact Agent ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          python3 - <<'PY'
+          import json,zipfile
+          from pathlib import Path
+          p=Path('agent/release.json')
+          release=json.loads(p.read_text())
+          assert release['version']=='13.9.52' and release['build']=='13.9.52-analyst-follow-reconciled'
+          with zipfile.ZipFile('public/downloads/agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            assert json.loads(z.read('package.json'))['version']==release['version']
+            assert 'worker/signal-executor.mjs' in z.namelist()
+            assert 'worker/broker-ui-executor.mjs' in z.namelist()
+          PY
+      - name: Compile Windows EXE with identical embedded tested ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-13.9.52.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-13.9.52.exe public/downloads/Sentinel-Agent-Windows.exe
+          cp public/downloads/Sentinel-Agent-13.9.52.exe public/downloads/sentinel-agent-windows.exe
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('public/downloads')
+          payload=(root/'agent_payload_v88.zip').read_bytes()
+          exe=(root/'Sentinel-Agent-13.9.52.exe').read_bytes()
+          assert len(exe)>1_000_000 and exe[:2]==b'MZ' and payload in exe
+          assert exe==(root/'Sentinel-Agent-Windows.exe').read_bytes()
+          assert exe==(root/'sentinel-agent-windows.exe').read_bytes()
+          release=json.loads(Path('agent/release.json').read_text())
+          record={'format':'sentinel-agent-update-v1','version':release['version'],'build':release['build'],'zipSha256':hashlib.sha256(payload).hexdigest()}
+          (root/'agent-update.json').write_text(json.dumps(record,ensure_ascii=False)+'\n')
+          print(json.dumps({'exeBytes':len(exe),'exeSha256':hashlib.sha256(exe).hexdigest(),'payloadBytes':len(payload),'payloadSha256':record['zipSha256']}))
+          PY
+      - name: Commit tested EXE ONLY to isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.52.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(sentinel): verified 13.9.52 Agent - candidate branch only'
+            git push origin HEAD:fix/sentinel-13952-continuous-analyst-bot-20261019
+          fi
