@@ -1,0 +1,7 @@
+{
+ "state":"frozen before outcome evaluation; research only",
+ "baseCommit":"14a0d0dc4c9f278708a79d22b9bd25d70c0e2491",
+ "rules":{"volatility":"mean true range of 14 already closed 5-second quote bars","reversalDistance":"1.5 ATR, frozen at each extreme","minorPivot":"strict high/low of already closed one-second observed closing quotes, two points each side","entry":"reversal confirmed and price beyond an already confirmed opposite minor pivot within the same swing and preceding the extreme, last quote not moving against the chosen side","source":"received positive unique quotes; maximum gap 3500 ms; no interpolation","signal":"one immutable signal per pivot; use current observed price and decision time","holdingMs":30000,"overlap":"events during an active 30s operation are consumed, never queued for late entry"},
+ "acceptance":{"completeExternalCohorts":"higher win rate than current base, positive illustrative net at 86% payout, at least 25% of base completed entry count, no worse maximum per-window loss streak","native":"separate exploratory results; no profitability or independent validation claim from OCR or small memory captures","holdout":"only evaluate a new holdout after complete development cohorts pass"},
+ "limits":["Confirmation occurs after the extreme.","No signal is plotted or scored at an earlier pivot timestamp.","No threshold grid or tuning after inspecting outcomes.","Historical Forex and crypto are not IQ Option/Exnova OTC.","No bot, broker I/O, production code, or database changes."]
+}
