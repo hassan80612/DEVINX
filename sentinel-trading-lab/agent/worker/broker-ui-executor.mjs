@@ -1,9 +1,10 @@
+import {BrokerTradeParameters} from './broker-trade-parameters.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
-export function isExecutionFrame(frame){return /option|position-changed|order-changed|buyv3/i.test(String(frame?.name||'')+' '+String(frame?.msg?.name||''));}
+export function isExecutionFrame(frame){return /option|position-changed|order-changed|buyv3|^error$/i.test(String(frame?.msg?.name||frame?.name||''));}
 export function settlementFromFrame(provider,frame,known){
  const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
  const m=frame?.msg?.body??frame?.msg??frame?.body;
@@ -25,8 +26,7 @@ export function settlementFromFrame(provider,frame,known){
 }
 
 // Executed inside the broker page only at activation / selected entry.
-// Only locates the direction buttons. Stake and duration are set by the user
-// on the broker; the bot's corresponding values are for local accounting.
+// Direction controls are resolved separately from verified stake/expiry editors.
 export function inspectTradeControls({marker}){
  const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'&&!e.closest('[aria-hidden="true"]');};
  const text=e=>[e.getAttribute('aria-label'),e.getAttribute('title'),e.getAttribute('data-test'),e.getAttribute('data-testid'),e.getAttribute('data-direction'),e.className,e.name,e.id,e.value,e.textContent].filter(Boolean).join(' ').trim();
@@ -48,7 +48,7 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{}}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};
+  this.parameters=new BrokerTradeParameters(driver);this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();
  }
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
@@ -83,22 +83,35 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);await this.controls(provider);return{ready:true};}
+ async prepare(provider,expected){this.checkContext(provider,expected);const controls=await this.controls(provider);await this.applyParameters(provider,controls,expected);return{ready:true};}
+ async applyParameters(provider,controls,expected){
+  if(controls.canvasSelector)await controls.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});
+  try{return await this.parameters.apply(provider,controls,expected);}
+  catch(e){throw errorBefore(e.message);}
+  finally{if(controls.canvasSelector)await controls.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}
+ }
  async execute(provider,order){
   this.checkContext(provider,order);
   const c=await this.controls(provider);
+  await this.applyParameters(provider,c,order);
   this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
-  order.captureEntry?.();order.clicked=true;
+  if(this.attempt)throw errorBefore('Outra ordem está aguardando confirmação.');
+  let resolve,reject;const confirmation=new Promise((yes,no)=>{resolve=yes;reject=no;});
+  // Attach the handler before clicking; outgoing/ack events can be synchronous.
+  confirmation.catch(()=>{});const attempt={provider,order,resolve,reject,requestId:null};this.attempt=attempt;
+  const timer=setTimeout(()=>reject(Error('Clique enviado sem confirmação da ordem · não será repetido.')),8000);
+  try{
+  const beforeClick=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clicked=true;};
   if(c.canvasSelector){
    await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});
-   try{await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:500,noWaitAfter:true});}
+   try{beforeClick();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:500,noWaitAfter:true});}
    finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}
   }
-  else await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});
-  // A completed UI click is not a broker order acknowledgement. The unique
-  // local ID is used only for the analyst-based result calculation.
-  return{clicked:true,clickId:'ui-click-'+randomUUID()};
+  else{beforeClick();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});}
+  return await confirmation;
+  }finally{clearTimeout(timer);if(this.attempt===attempt)this.attempt=null;}
  }
+
  observe(provider,frame,direction){
   if(!isExecutionFrame(frame))return;
   const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
@@ -107,6 +120,7 @@ export class BrokerUiExecutor{
   const a=direction==='page-out'?this.attempt:this.awaiting.get(provider+'|'+rid);
   if(direction==='page-out'){
    if(!/(?:open-option|place-digital-option|buyv3)$/.test(name))return;
+   const outboundKey=provider+'|'+rid;if(this.outboundSeen.has(outboundKey))return;this.outboundSeen.add(outboundKey);if(this.outboundSeen.size>512)this.outboundSeen.delete(this.outboundSeen.values().next().value);
    if(!a||a.provider!==provider){this.onUnexpectedOrder();return;}
    if(a.requestId===rid)return;
    const account=body?.user_balance_id??body?.balance_id;
@@ -114,22 +128,22 @@ export class BrokerUiExecutor{
    const directionSide=({call:'CALL',put:'PUT',buy:'CALL',sell:'PUT'})[String(body?.direction||body?.action||'').toLowerCase()];
    const active=body?.active_id??body?.active;
    if(!rid||!finite(value)||Math.abs(Number(value)-a.order.amount)>0.000001||
-    (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
+    (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
    if(account!=null)a.order.accountId=String(account);
-   a.requestId=rid;this.awaiting.set(provider+'|'+rid,a);this.onSent(rid);return;
+   a.requestId=rid;this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>200)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid);return;
   }
   if(direction!=='page-in')return;
   if(a&&provider===a.provider&&rid&&rid===a.requestId){
-   const id=body&&typeof body==='object'?(body.id??body.option_id??body.position_id):finite(body)?body:null;
+   const id=body&&typeof body==='object'?(body.id??body.option_id??body.position_id??body.order_id):finite(body)?body:null;
    const failed=body?.isSuccessful===false||body?.success===false||body?.error||name==='error';
    if(failed){this.awaiting.delete(provider+'|'+rid);this.onRejected({provider,requestId:rid});a.reject(Object.assign(Error('Ordem rejeitada pela corretora.'),{brokerRejected:true}));return;}
-   if(id!=null&&String(id)!=='0'&&String(id)!=='-1'){
+   if(id!=null&&['string','number'].includes(typeof id)&&String(id)!=='0'&&String(id)!=='-1'){
     const result={accepted:true,requestId:rid,orderId:String(id),accountId:a.order.accountId??null};
     const opening=body?.open_price??body?.open_quote;
     if(finite(opening)&&Number(opening)>0)result.entryPrice=Number(opening);
     const expires=body?.expiration_time??body?.expired;
     if(finite(expires))result.exitAt=Number(expires)<1e12?Number(expires)*1000:Number(expires);
-    this.orders.set(provider+'|'+id,{...a.order,orderId:String(id)});
+    this.orders.set(provider+'|'+id,{...a.order,provider,orderId:String(id)});
     if(this.orders.size>200)this.orders.delete(this.orders.keys().next().value);
     this.awaiting.delete(provider+'|'+rid);
     this.onAccepted({...result,provider});a.resolve(result);

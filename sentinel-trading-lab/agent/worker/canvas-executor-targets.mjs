@@ -7,9 +7,9 @@ export function normalizeCanvasBinding(value){
  const finite=n=>typeof n==='number'&&Number.isFinite(n);
  for(const k of ['width','height','viewportWidth','viewportHeight','pixelRatio'])if(!finite(canvas[k])||canvas[k]<=0||canvas[k]>50000)throw Error('Dimensões do mapeamento inválidas.');
  if(typeof canvas.domPath!=='string'||canvas.domPath.length>2000||typeof canvas.id!=='string'||canvas.id.length>300)throw Error('Painel do mapeamento inválido.');
- for(const side of ['CALL','PUT']){const p=targets[side];if(!p||!finite(p.x)||!finite(p.y)||p.x<0||p.y<0||p.x>=canvas.width||p.y>=canvas.height)throw Error('Ponto CALL/PUT inválido.');}
- if(Math.hypot(targets.CALL.x-targets.PUT.x,targets.CALL.y-targets.PUT.y)<12)throw Error('Indique CALL e PUT em pontos diferentes.');
- return{format:value.format,origin,path,canvas:{id:canvas.id,domPath:canvas.domPath,width:canvas.width,height:canvas.height,viewportWidth:canvas.viewportWidth,viewportHeight:canvas.viewportHeight,pixelRatio:canvas.pixelRatio},targets:{CALL:{...targets.CALL},PUT:{...targets.PUT}}};
+ for(const side of ['CALL','PUT',...['amount','duration'].filter(k=>targets[k])]){const p=targets[side];if(!p||!finite(p.x)||!finite(p.y)||p.x<0||p.y<0||p.x>=canvas.width||p.y>=canvas.height)throw Error('Ponto CALL/PUT inválido.');}
+ const points=Object.values(targets);if(points.some((p,i)=>points.slice(i+1).some(q=>Math.hypot(p.x-q.x,p.y-q.y)<12)))throw Error('Indique CALL e PUT em pontos diferentes.');
+ return{format:value.format,origin,path,canvas:{id:canvas.id,domPath:canvas.domPath,width:canvas.width,height:canvas.height,viewportWidth:canvas.viewportWidth,viewportHeight:canvas.viewportHeight,pixelRatio:canvas.pixelRatio},targets:Object.fromEntries(['CALL','PUT','amount','duration'].filter(k=>targets[k]).map(k=>[k,{...targets[k]}]))};
 }
 
 // Self-contained because Playwright serializes this function into the page.
@@ -48,7 +48,7 @@ export function canvasControlBridge({action,binding,marker,label='Corretora'}){
  const tip=document.createElement('div');Object.assign(tip.style,{position:'fixed',top:'12px',left:'12px',maxWidth:'min(550px,80vw)',background:'#102d32',color:'#fff',border:'2px solid #d5b66b',borderRadius:'10px',padding:'12px',font:'bold 16px Arial',pointerEvents:'none'});
  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar / Esc';Object.assign(cancel.style,{position:'fixed',bottom:'12px',left:'12px',padding:'10px',background:'#50282e',color:'#fff',border:'1px solid #fff',cursor:'pointer'});
  shield.append(tip,cancel);document.documentElement.append(shield);
- let canvas=null,result=null,finished=false;
+ let canvas=null,result=null,finished=false;const steps=['CALL','PUT','amount','duration'];let step=0;
  const text=message=>{tip.textContent=label+' · '+message;};
  text('Indique o centro de CALL / ACIMA. Este clique NÃO envia operação. Depois indique PUT / ABAIXO.');
  const cleanup=()=>{shield.remove();document.removeEventListener('keydown',key,true);if(host)host.style.visibility=oldVisibility||'';};
@@ -64,10 +64,11 @@ export function canvasControlBridge({action,binding,marker,label='Corretora'}){
   if(!candidate||!visible(candidate)){text('Indique o botão desenhado no painel gráfico da corretora, ou Esc para cancelar.');return;}
   if(canvas&&candidate!==canvas){text('CALL e PUT devem pertencer ao mesmo painel gráfico. Pressione Esc para recomeçar.');return;}
   const r=candidate.getBoundingClientRect(),point={x:event.clientX-r.left,y:event.clientY-r.top};
-  if(!canvas){canvas=candidate;result={format:'sentinel-canvas-targets-v1',origin:location.origin,path:location.pathname,canvas:describe(canvas),targets:{CALL:point}};text('Agora indique o centro de PUT / ABAIXO. Este clique NÃO envia operação.');return;}
-  if(Math.hypot(point.x-result.targets.CALL.x,point.y-result.targets.CALL.y)<12){text('PUT precisa ser um ponto diferente de CALL. Indique o centro de PUT / ABAIXO.');return;}
+  if(!canvas){canvas=candidate;result={format:'sentinel-canvas-targets-v1',origin:location.origin,path:location.pathname,canvas:describe(canvas),targets:{}};}
+  if(Object.values(result.targets).some(p=>Math.hypot(point.x-p.x,point.y-p.y)<12)){text('Indique um controle diferente, ou Esc para cancelar.');return;}
   const current=describe(canvas);if(['width','height','viewportWidth','viewportHeight','pixelRatio'].some(k=>Math.abs(current[k]-result.canvas[k])>0.5)){text('O tamanho mudou durante o mapeamento. Pressione Esc e recomece.');return;}
-  result.targets.PUT=point;finished=true;
+  result.targets[steps[step++]]=point;finished=step===steps.length;
+  if(!finished)text(({PUT:'Agora indique PUT / ABAIXO.',amount:'Agora indique o campo de valor da entrada.',duration:'Agora indique o campo de duração / expiração.'})[steps[step]]+' Este clique NÃO envia operação.');
  },true);
  shield.addEventListener('click',async event=>{
   block(event);if(event.target===cancel){cleanup();return;}

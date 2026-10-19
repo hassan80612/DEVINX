@@ -9,8 +9,8 @@ import {analystWireV1} from '../sentinel-trading-lab/src/lib/analyst-wire-v1.mjs
 const T=1800000000000;
 for(const provider of ['iq_option','exnova'])test(provider+': phone config/start/stop uses same executor and preserves an open entry',async()=>{
  let now=T;const calls=[];
- const c={provider,asset:'EUR/GBP OTC',durationMs:30000,licensed:true,state:'running',engine:'trend',analysis:{}};
- const executor=new SignalExecutor({clock:()=>now,context:()=>c,driver:{prepare:async()=>{},execute:async(p,o)=>{assert.ok(o.isValid());calls.push(o.side);o.captureEntry();o.clicked=true;return{clicked:true,clickId:'fixture-1'};}}});
+ const c={provider,asset:'EUR/GBP OTC',durationMs:30000,licensed:true,state:'running',engine:'trend',analysis:{},brokerBalance:{provider,accountId:'10',amount:20,receivedAt:T,revision:1}};
+ const executor=new SignalExecutor({clock:()=>now,context:()=>c,driver:{prepare:async()=>{},execute:async(p,o)=>{assert.ok(o.isValid());calls.push(o.side);o.captureEntry();o.clicked=true;return{accepted:true,orderId:'fixture-1'};}}});
  const run=async(action,payload)=>{if(action==='executor-config')return executor.configure(payload.patch);if(action==='executor-stop')return executor.stop();if(action==='executor-start')return executor.start();throw Error('unsupported');};
  const cmd=(p,payload={})=>dispatchExecutor('/executor/'+p,payload,run,()=>c);
  await cmd('config',{patch:{initialBalance:20,amount:1,payoutPercent:86,stopLoss:5}});
@@ -35,3 +35,4 @@ test('remote bot status is bounded, signs every value, and survives the saturate
  const signed=mac(fit);const reordered=Object.fromEntries(Object.entries(fit).reverse());assert.equal(mac(reordered),signed);reordered.bot=structuredClone(bot);reordered.bot[0]=0;assert.notEqual(mac(reordered),signed);
  assert.deepEqual(dashboardTransportState({autoExecutor:remote}).autoExecutor,remote);
 });
+

@@ -46,20 +46,20 @@ let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
-const uiExecutor=new BrokerUiExecutor(driver);
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:rid=>executor.sent(rid),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled)executor.stop('Bot parado · operação externa detectada; confira a conta.');}});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
- if(action==='executor-stop'){const result=executor.stop();if(!executor.pending)driver.setExecutionObserver?.(null);return{ok:true,message:result.message};}
+ if(action==='executor-stop'){const result=executor.stop();return{ok:true,message:result.message};}
  assertLicensedAccess();
  if(action==='executor-map'||action==='executor-map-save'){
   if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
-  if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL e depois PUT no painel da corretora. Os cliques de indicação não operam.'};}
+  if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL, PUT, valor e expiração no painel da corretora. Os cliques de indicação não operam.'};}
   const bindings=await uiExecutor.saveBinding(activeProvider,payload.binding);await mkdir(dirname(executorTargetsFile),{recursive:true});await writeFile(executorTargetsFile+'.tmp',JSON.stringify(bindings),{mode:0o600});await rename(executorTargetsFile+'.tmp',executorTargetsFile);
   executor.message='CALL/PUT mapeados para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · pronto para ligar';return{ok:true,message:executor.message};
  }
  if(action==='executor-config'){executor.configure(payload.patch||{});const serialized=JSON.stringify(executor.config);executorSettingsWrite=executorSettingsWrite.catch(()=>{}).then(async()=>{await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile+'.tmp',serialized,{mode:0o600});await rename(executorSettingsFile+'.tmp',executorSettingsFile);});await executorSettingsWrite;return{ok:true,message:'Configuração do bot aplicada'};}
- if(action==='executor-start'){try{await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
+ if(action==='executor-start'){try{if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
 }
 
@@ -684,4 +684,5 @@ function shutdownWorker(){
 }
 process.once('SIGTERM',()=>{void shutdownWorker()});
 process.once('SIGINT',()=>{void shutdownWorker()});
+
 

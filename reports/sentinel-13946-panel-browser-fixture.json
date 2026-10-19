@@ -1,0 +1,21 @@
+{
+  "actualBrokerOrders": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "liveEdits": true,
+      "stoppedPendingEdits": true,
+      "martingaleToggleBoolean": true,
+      "manualFieldsRemoved": true,
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "liveEdits": true,
+      "stoppedPendingEdits": true,
+      "martingaleToggleBoolean": true,
+      "manualFieldsRemoved": true,
+      "pageErrors": []
+    }
+  ]
+}

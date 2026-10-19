@@ -17,22 +17,26 @@ export class ExecutorBalanceRisk{
   const s=this.session,b=this.last;if(!s||!b||order.provider!==s.provider)return;
   this.trade={amount:order.amount,exitAt:order.exitAt,before:b.amount,beforeRevision:b.revision};
  }
+ close(netPnl,now){
+  if(this.trade)this.trade={...this.trade,settled:true,netPnl,closedAt:now,closeRevision:this.last?.revision};
+ }
  view(now){
   const s=this.session,b=this.last;
   const changed=!!(s&&this.current&&(this.current.provider!==s.provider||this.current.accountId!==s.accountId));
-  if(!s||!b)return{source:'manual',current:this.current,net:null,reconciling:false,accountChanged:changed};
+  if(!s||!b)return{source:'unavailable',current:this.current,net:null,reconciling:false,accountChanged:changed};
   let effective=b.amount,reserved=0,reconciling=false;
   if(this.trade){
    const t=this.trade;
-   if(now<t.exitAt){
-    // A stake debit is reserved money, not a completed trading loss.
+   if(!t.settled){
+    // Keep the stake reserved until the identified order closes. An expired
+    // quote or a pre-expiry debit does not prove that the operation lost.
     if(b.revision>t.beforeRevision&&b.amount<=t.before-t.amount+0.000001)reserved=t.amount;
-    effective+=reserved;
-   }else if(!(b.revision>t.beforeRevision&&b.receivedAt>=t.exitAt)&&now<t.exitAt+1000){
-    // A win's capital/payout can arrive just after the expiry quote. Reuse
-    // the existing worker pulse for at most 1s; install no extra timer.
-    effective=t.before;reconciling=true;
-   }else this.trade=null;
+    effective+=reserved;reconciling=now>=t.exitAt;
+   }else{
+    const expected=t.before+t.netPnl;
+    if(Math.abs(b.amount-expected)<0.000001||b.revision>t.closeRevision)this.trade=null;
+    else{effective=expected;reconciling=now<t.closedAt+15000;}
+   }
   }
   return{source:'broker',current:this.current,initial:s.initial,net:effective-s.initial,available:b.amount,reserved,reconciling,accountChanged:changed};
  }

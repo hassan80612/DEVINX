@@ -1,0 +1,83 @@
+{
+  "nativeBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "clicks": [
+        {
+          "side": "CALL",
+          "amount": 1,
+          "durationMs": 30000
+        },
+        {
+          "side": "PUT",
+          "amount": 2,
+          "durationMs": 60000
+        },
+        {
+          "side": "CALL",
+          "amount": 1,
+          "durationMs": 60000
+        },
+        {
+          "side": "PUT",
+          "amount": 2,
+          "durationMs": 60000
+        },
+        {
+          "side": "CALL",
+          "amount": 4,
+          "durationMs": 60000
+        }
+      ],
+      "ignoredEditBlocksDirection": true,
+      "actualBrokerOrders": false
+    },
+    {
+      "provider": "exnova",
+      "clicks": [
+        {
+          "side": "CALL",
+          "amount": 1,
+          "durationMs": 30000
+        },
+        {
+          "side": "PUT",
+          "amount": 2,
+          "durationMs": 60000
+        },
+        {
+          "side": "CALL",
+          "amount": 1,
+          "durationMs": 60000
+        },
+        {
+          "side": "PUT",
+          "amount": 2,
+          "durationMs": 60000
+        },
+        {
+          "side": "CALL",
+          "amount": 4,
+          "durationMs": 60000
+        }
+      ],
+      "ignoredEditBlocksDirection": true,
+      "actualBrokerOrders": false
+    },
+    {
+      "provider": "iq_option",
+      "mappedCanvasEditors": true,
+      "stakeVerified": 4,
+      "expiryVerifiedMs": 30000,
+      "actualBrokerOrders": false
+    },
+    {
+      "provider": "exnova",
+      "mappedCanvasEditors": true,
+      "stakeVerified": 4,
+      "expiryVerifiedMs": 30000,
+      "actualBrokerOrders": false
+    }
+  ]
+}

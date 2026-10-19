@@ -1,0 +1,45 @@
+{
+  "version": "13.9.46",
+  "build": "13.9.46-broker-expiry-bounded-martingale",
+  "baseCommit": "14a0d0dc4c9f278708a79d22b9bd25d70c0e2491",
+  "rollbackBranch": "backup/sentinel-13.9.45-before-executor-20261019",
+  "changes": [
+    "Analyst-selected expiration applied and verified on explicit broker controls; existing position keeps its accepted expiry",
+    "Manual initial-balance and payout fields removed; cached selected-account events supply funds; outcomes require identified broker settlement",
+    "Loss limit in account currency; a new stake cannot exceed remaining permitted loss",
+    "Separate martingale enable flag, default off; maximum 0–10 additional levels; fixed double multiplier; win resets base, final loss resets base, tie retains valid level",
+    "Actual stake changed and verified before direction click; unknown or estimated outcomes never increase progression",
+    "PC/mobile edit limits while enabled or stopped with a position pending; compatible compact signed transport"
+  ],
+  "validation": {
+    "prebuildTestsPassed": 390,
+    "finalExecutorTestsPassed": 28,
+    "typescript": "passed",
+    "nextBuild": "passed",
+    "payloadCRC": "passed",
+    "payloadExactlyMatchesSource": true,
+    "browserReports": [
+      "sentinel-13946-broker-browser-fixture.json",
+      "sentinel-13946-mobile-browser-fixture.json",
+      "sentinel-13946-panel-browser-fixture.json"
+    ],
+    "realBrokerOrders": false,
+    "nativeWindowsLaunchTested": false,
+    "accuracyImprovementClaimed": false
+  },
+  "limits": [
+    "Broker compatibility validated in local HTML fixtures and canvas-backed native input fixtures, not against logged-in IQ Option or Exnova panels",
+    "Canvas parameters require an exposed native editable field with verifiable value/unit or a unique accessible duration option; a pure-canvas dropdown without readable controls is unsupported and sends no trade",
+    "No guarantee of recovering accumulated losses at payouts below 100%; stop loss and funds limits take precedence"
+  ],
+  "artifacts": {
+    "Sentinel-Agent-13.9.46.exe": {
+      "bytes": 2685440,
+      "sha256": "bd82635b1f68aebe96cd44b5ea78d59bf6de811bfb4259f970c6449b92f78628"
+    },
+    "agent_payload_v88.zip": {
+      "bytes": 412938,
+      "sha256": "ec85a2073ac8a01bec35d8f49a559a4f4d4bf597d888e6d09331af2a16638e63"
+    }
+  }
+}
