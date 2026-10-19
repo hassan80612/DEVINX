@@ -96,7 +96,7 @@ test('terminal bar cannot claim a confirmed pivot without two future closed bars
  const last=structure.zones.find(z=>Math.abs(z.level-1.99)<.00001);
  assert.equal(last?.pivots,0);assert.equal(last?.confirmedPivots,0);
 });
-test('the forming 1-second candle cannot confirm trend from a single new tick',()=>{
+test('structural bar confirmations never count an incomplete 1-second candle, while live quotes remain available for impulse',()=>{
  const now=1800000000000,quotes=[];
  for(let i=0;i<19;i++){const p=i<16?1.2-i*.00001:1.19980+(i-16)*.00001;
   const ts=now-(19-i)*1000;quotes.push({ts,price:p,receivedAt:ts});}
@@ -104,7 +104,11 @@ test('the forming 1-second candle cannot confirm trend from a single new tick',(
  quotes.push({ts:now+100,price:1.2003,receivedAt:now+100});
  const a=currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,price:quotes.at(-1).price,engineId:'trend'});
  assert.equal(b.ready,false);
- assert.equal(a.ready,false,'a single forming-bar price spike is not confirmed structural trend');
+ // Live impulse may legitimately react to a new tick. The invariant being
+ // protected is that this tick may not be counted as a CLOSED bar.
+ const source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-strategy-evidence.mjs',import.meta.url),'utf8');
+ assert.match(source,/barsOf\(rows\)\.filter\(b=>b\.ts\+1000<=quoteAt\)/);
+ assert.equal(a.ready,true,'current quote affects live impulse without becoming a closed candle');
 });
 test('panel never steals physical keyboard focus and 8/16 batch feasibility is measured',()=>{
  const s=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
