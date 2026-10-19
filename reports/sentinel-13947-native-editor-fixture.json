@@ -1,0 +1,25 @@
+{
+  "realBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "previousMappedEditorFails": true,
+      "delayedShadowEditorDetected": true,
+      "zeroSizeFocusedEditorTyped": true,
+      "keyboardCommitVerified": true,
+      "directionClicks": 0,
+      "stake": 4,
+      "durationMs": 60000
+    },
+    {
+      "provider": "exnova",
+      "previousMappedEditorFails": true,
+      "delayedShadowEditorDetected": true,
+      "zeroSizeFocusedEditorTyped": true,
+      "keyboardCommitVerified": true,
+      "directionClicks": 0,
+      "stake": 4,
+      "durationMs": 60000
+    }
+  ]
+}
