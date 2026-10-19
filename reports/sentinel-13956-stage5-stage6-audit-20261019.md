@@ -46,3 +46,14 @@ Usuário solicitou, para a **PRÓXIMA correção**, limite máximo de **3 nívei
 ## Limitações
 
 A execução GitHub Actions foi bem-sucedida, com os testes regressivos existentes aprovados. O teste é sintético e não contém dados de lucro/perda da conta real. Não comprova melhoria estatística na direção CALL/PUT.
+
+## Novo problema relatado pelo usuário — corretora/operadora muito lenta
+
+Relato recebido em 19/10/2026, durante acompanhamento da sessão iniciada com **US$ 16,86**, usando a **13.9.56**: **“operadoura muito lenta”**.
+
+- Registrar como problema pendente adicional aos pontos 5 (prioridade de suportes/resistências) e 6 (diferença entre horário/preço do sinal e da entrada efetiva).
+- Ainda não foi identificada causa técnica. Investigar se a lentidão é no navegador/corretora, na leitura das cotações, no envio dos cliques pelo Agent ou na resposta/atualização do painel.
+- Na análise futura, medir tempos separados: recebimento da cotação, decisão CALL/PUT, clique iniciado, confirmação da corretora, preço aceito e liquidação — sem confundir atraso da interface com erro direcional do analista.
+- **Não alterar, publicar ou reiniciar a 13.9.56 agora**: o usuário deseja acompanhar a sessão e preservar a versão em observação.
+- **Martingale máximo 3 níveis** continua reservado para a próxima correção, não para a investigação atual.
+
