@@ -1,0 +1,33 @@
+name: Sentinel paired causal stage4 validation - research only
+on:
+  push:
+    branches: [research/sentinel-13956-causal-direction-arbitration-20261019]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/**'
+      - 'tests/sentinel-13956-causal-direction-arbitration.test.mjs'
+      - 'scripts/sentinel-13956-causal-arbitration-replay.mjs'
+      - '.github/workflows/sentinel-13956-causal-arbitration-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-causal-stage4-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and paired-expiry unit tests
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/causal-direction-arbitration.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --test tests/sentinel-13956-causal-direction-arbitration.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs
+      - name: Reproduce previous recorded session - not a fresh holdout
+        run: node scripts/sentinel-13956-causal-arbitration-replay.mjs
+      - name: Install site dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --package-lock=false --no-audit --no-fund
+      - name: Complete regression suite
+        run: npm run prebuild --prefix sentinel-trading-lab
