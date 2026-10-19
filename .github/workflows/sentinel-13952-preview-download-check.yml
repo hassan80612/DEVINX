@@ -1,0 +1,54 @@
+name: Sentinel 13.9.52 preview download integrity
+on:
+  push:
+    branches: [fix/sentinel-13952-continuous-analyst-bot-20261019]
+    paths:
+      - '.github/workflows/sentinel-13952-preview-download-check.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download preview EXE, ZIP and manifest; compare actual file hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          HOST=https://sentinel-trading-iedqg5a7f-iguassu-shop.vercel.app
+          TMP="$(mktemp -d)"
+          curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13952" -o "$TMP/agent-update.json"
+          curl --fail --location --silent --show-error --max-time 90 "$HOST/downloads/Sentinel-Agent-13.9.52.exe?verify=13952" -o "$TMP/Sentinel-Agent-13.9.52.exe"
+          curl --fail --location --silent --show-error --max-time 60 "$HOST/downloads/agent_payload_v88.zip?verify=13952" -o "$TMP/agent_payload_v88.zip"
+          curl --fail --location --silent --show-error --max-time 60 "$HOST/downloads/Sentinel-Agent-13.9.52-Alternativo.zip?verify=13952" -o "$TMP/Sentinel-Agent-13.9.52-Alternativo.zip"
+          python3 - "$TMP" <<'PY'
+          import hashlib,json,sys,zipfile
+          from pathlib import Path
+          tmp=Path(sys.argv[1]);root=Path('sentinel-trading-lab')
+          remote=json.loads((tmp/'agent-update.json').read_text())
+          local=json.loads((root/'public/downloads/agent-update.json').read_text())
+          assert remote==local, (remote,local)
+          assert remote['version']=='13.9.52' and remote['build']=='13.9.52-analyst-follow-reconciled'
+          for name in ['Sentinel-Agent-13.9.52.exe','agent_payload_v88.zip','Sentinel-Agent-13.9.52-Alternativo.zip']:
+            actual=(tmp/name).read_bytes()
+            expected=(root/'public/downloads'/name).read_bytes()
+            assert hashlib.sha256(actual).digest()==hashlib.sha256(expected).digest(),name
+            print(name, len(actual),hashlib.sha256(actual).hexdigest())
+          exe=(tmp/'Sentinel-Agent-13.9.52.exe').read_bytes()
+          payload=(tmp/'agent_payload_v88.zip').read_bytes()
+          assert exe[:2]==b'MZ' and payload in exe
+          assert hashlib.sha256(payload).hexdigest()==remote['zipSha256']
+          with zipfile.ZipFile(tmp/'Sentinel-Agent-13.9.52-Alternativo.zip') as archive:
+            assert archive.testzip() is None
+            assert archive.read('agent_payload_v88.zip')==payload
+          PY
+          curl --fail --location --silent --show-error --max-time 50 --range 0-1023 -D "$TMP/range-headers" "$HOST/downloads/Sentinel-Agent-13.9.52.exe?verify=13952" -o "$TMP/first-kib"
+          python3 - "$TMP" <<'PY'
+          from pathlib import Path
+          import sys
+          tmp=Path(sys.argv[1])
+          headers=(tmp/'range-headers').read_text().lower()
+          assert '206 partial content' in headers and 'content-range: bytes 0-1023/' in headers,headers
+          assert (tmp/'first-kib').read_bytes()==(tmp/'Sentinel-Agent-13.9.52.exe').read_bytes()[:1024]
+          print('Range response: 206; first 1024 bytes match downloadable EXE')
+          PY
