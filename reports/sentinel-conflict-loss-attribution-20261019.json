@@ -1,0 +1,361 @@
+{
+  "method": "Descriptive attribution from previously inspected external replay entries, not broker OTC. Each before/after side is scored at the exact same recorded entry price and expiry. Adjacent stage flips require both stages to be ready; reactivations from a blocked stage are counted separately. Route labels are attribution, not proof of causal responsibility or a future profitable rule.",
+  "source": "sentinel-final-conflict-audit-20261018-known.json",
+  "windows": 15,
+  "total": {
+    "win": 306,
+    "loss": 318,
+    "tie": 19
+  },
+  "stageFlips": [
+    {
+      "before": "selected",
+      "after": "historical",
+      "flips": 20,
+      "corrected": 12,
+      "spoiled": 8,
+      "examples": [
+        {
+          "window": "development-08-utc",
+          "at": 1585556207929,
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue"
+          },
+          "after": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-rejection"
+          },
+          "finalSide": "CALL",
+          "beforeOutcome": "win",
+          "afterOutcome": "loss"
+        },
+        {
+          "window": "validation-14-utc",
+          "at": 1585577936315,
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue"
+          },
+          "after": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "historical-level-breakout"
+          },
+          "finalSide": "PUT",
+          "beforeOutcome": "win",
+          "afterOutcome": "loss"
+        },
+        {
+          "window": "second-validation-10-utc",
+          "at": 1585562400937,
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue"
+          },
+          "after": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-rejection"
+          },
+          "finalSide": "CALL",
+          "beforeOutcome": "win",
+          "afterOutcome": "loss"
+        }
+      ]
+    },
+    {
+      "before": "historical",
+      "after": "candle",
+      "flips": 0,
+      "corrected": 0,
+      "spoiled": 0,
+      "examples": []
+    },
+    {
+      "before": "candle",
+      "after": "final",
+      "flips": 6,
+      "corrected": 4,
+      "spoiled": 2,
+      "examples": [
+        {
+          "window": "third-validation-15-utc",
+          "at": 1585580556972,
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "multiscale-candle-rejection"
+          },
+          "after": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "failed-breakout-structure-change"
+          },
+          "finalSide": "CALL",
+          "beforeOutcome": "win",
+          "afterOutcome": "loss"
+        },
+        {
+          "window": "third-validation-15-utc",
+          "at": 1585581073979,
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "multiscale-candle-rejection"
+          },
+          "after": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "break-retest-continuation"
+          },
+          "finalSide": "CALL",
+          "beforeOutcome": "win",
+          "afterOutcome": "loss"
+        }
+      ]
+    }
+  ],
+  "finalWithAnyAdjacentFlip": {
+    "win": 16,
+    "loss": 10,
+    "tie": 0
+  },
+  "finalWithoutAdjacentFlip": {
+    "win": 290,
+    "loss": 308,
+    "tie": 19
+  },
+  "finalOpposedToSelectedExpiryForecast": {
+    "win": 5,
+    "loss": 0,
+    "tie": 0
+  },
+  "finalNotOpposedToSelectedExpiryForecast": {
+    "win": 301,
+    "loss": 318,
+    "tie": 19
+  },
+  "blockedHistoricalConflictReactivated": {
+    "win": 1,
+    "loss": 0,
+    "tie": 0
+  },
+  "byRoute": [
+    {
+      "source": "forex-known",
+      "totals": {
+        "win": 306,
+        "loss": 318,
+        "tie": 19
+      },
+      "routes": {
+        "break-retest-continuation": {
+          "win": 22,
+          "loss": 15,
+          "tie": 0,
+          "winRate": 0.5945945945945946
+        },
+        "failed-breakout-structure-change": {
+          "win": 22,
+          "loss": 20,
+          "tie": 0,
+          "winRate": 0.5238095238095238
+        },
+        "historical-level-rejection": {
+          "win": 110,
+          "loss": 101,
+          "tie": 10,
+          "winRate": 0.5213270142180095
+        },
+        "multiscale-candle-rejection": {
+          "win": 69,
+          "loss": 82,
+          "tie": 3,
+          "winRate": 0.45695364238410596
+        },
+        "causal-expiry-analogue": {
+          "win": 34,
+          "loss": 43,
+          "tie": 4,
+          "winRate": 0.44155844155844154
+        },
+        "closed-structure-and-live-impulse": {
+          "win": 21,
+          "loss": 20,
+          "tie": 0,
+          "winRate": 0.5121951219512195
+        },
+        "historical-level-breakout": {
+          "win": 15,
+          "loss": 16,
+          "tie": 1,
+          "winRate": 0.4838709677419355
+        },
+        "closed-range-extreme-reversal-confirmed": {
+          "win": 11,
+          "loss": 15,
+          "tie": 1,
+          "winRate": 0.4230769230769231
+        },
+        "bootstrap-expiry-penalized-fit": {
+          "win": 0,
+          "loss": 1,
+          "tie": 0,
+          "winRate": 0
+        },
+        "historical-trend-and-live-forecast": {
+          "win": 1,
+          "loss": 0,
+          "tie": 0,
+          "winRate": 1
+        },
+        "observed-trend-and-30s-cycle-projection": {
+          "win": 1,
+          "loss": 3,
+          "tie": 0,
+          "winRate": 0.25
+        },
+        "completed-expiry-outcomes-adaptive-cycle": {
+          "win": 0,
+          "loss": 2,
+          "tie": 0,
+          "winRate": 0
+        }
+      }
+    },
+    {
+      "source": "crypto-known",
+      "totals": {
+        "win": 300,
+        "loss": 228,
+        "tie": 3
+      },
+      "routes": {
+        "observed-trend-and-30s-cycle-projection": {
+          "win": 51,
+          "loss": 44,
+          "tie": 0,
+          "winRate": 0.5368421052631579
+        },
+        "failed-breakout-structure-change": {
+          "win": 80,
+          "loss": 53,
+          "tie": 1,
+          "winRate": 0.6015037593984962
+        },
+        "bootstrap-expiry-penalized-fit": {
+          "win": 2,
+          "loss": 2,
+          "tie": 0,
+          "winRate": 0.5
+        },
+        "historical-level-rejection": {
+          "win": 5,
+          "loss": 3,
+          "tie": 0,
+          "winRate": 0.625
+        },
+        "historical-level-breakout": {
+          "win": 5,
+          "loss": 3,
+          "tie": 0,
+          "winRate": 0.625
+        },
+        "multiscale-candle-rejection": {
+          "win": 82,
+          "loss": 67,
+          "tie": 1,
+          "winRate": 0.5503355704697986
+        },
+        "break-retest-continuation": {
+          "win": 47,
+          "loss": 31,
+          "tie": 1,
+          "winRate": 0.6025641025641025
+        },
+        "completed-expiry-outcomes-adaptive-cycle": {
+          "win": 27,
+          "loss": 25,
+          "tie": 0,
+          "winRate": 0.5192307692307693
+        },
+        "rejection-followthrough-clear-room": {
+          "win": 1,
+          "loss": 0,
+          "tie": 0,
+          "winRate": 1
+        }
+      }
+    },
+    {
+      "source": "crypto-screen",
+      "totals": {
+        "win": 254,
+        "loss": 251,
+        "tie": 6
+      },
+      "routes": {
+        "break-retest-continuation": {
+          "win": 36,
+          "loss": 45,
+          "tie": 1,
+          "winRate": 0.4444444444444444
+        },
+        "observed-trend-and-30s-cycle-projection": {
+          "win": 67,
+          "loss": 62,
+          "tie": 1,
+          "winRate": 0.5193798449612403
+        },
+        "completed-expiry-outcomes-adaptive-cycle": {
+          "win": 21,
+          "loss": 19,
+          "tie": 0,
+          "winRate": 0.525
+        },
+        "failed-breakout-structure-change": {
+          "win": 79,
+          "loss": 70,
+          "tie": 3,
+          "winRate": 0.5302013422818792
+        },
+        "multiscale-candle-rejection": {
+          "win": 42,
+          "loss": 51,
+          "tie": 1,
+          "winRate": 0.45161290322580644
+        },
+        "historical-level-rejection": {
+          "win": 5,
+          "loss": 2,
+          "tie": 0,
+          "winRate": 0.7142857142857143
+        },
+        "bootstrap-expiry-penalized-fit": {
+          "win": 1,
+          "loss": 0,
+          "tie": 0,
+          "winRate": 1
+        },
+        "historical-level-breakout": {
+          "win": 3,
+          "loss": 1,
+          "tie": 0,
+          "winRate": 0.75
+        },
+        "rejection-followthrough-clear-room": {
+          "win": 0,
+          "loss": 1,
+          "tie": 0,
+          "winRate": 0
+        }
+      }
+    }
+  ],
+  "conclusion": "Conflicting authority exists at specific writers. On the traced Forex sample, it is not sufficient to explain the bulk of wrong signals; many wrong final directions do not contain an adjacent ready-to-ready flip. A blanket opposite-signal or conflict veto is not justified. No production change."
+}
