@@ -51,7 +51,7 @@ const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
- if(action==='executor-stop'){const result=executor.stop('Parado por você',{reset:true});return{ok:true,message:result.message};}
+ if(action==='executor-stop'){const old=executor.pending;const result=executor.stop('Parado por você',{reset:true});if(old)uiExecutor.retireUnidentifiedBatch(old);return{ok:true,message:result.message};}
  assertLicensedAccess();
  if(action==='executor-map'||action==='executor-map-save'){
   if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
