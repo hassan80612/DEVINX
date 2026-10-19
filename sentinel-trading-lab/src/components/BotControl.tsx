@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['intervalMs','Intervalo entre entradas (segundos)','1'],['stopAfterMinutes','Parar em (min)','1'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
+const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopAfterMinutes','Parar em (min)','1'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
@@ -16,7 +16,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
  const configKey=JSON.stringify(bot?.config||{});
  useEffect(()=>{
   const config=JSON.parse(configKey);
-  setDraft(old=>Object.fromEntries(fields.map(([key])=>[key,dirty.current.has(key)?old[key]??'':String(key==='martingaleEnabled'?config[key]?1:0:key==='intervalMs'?Number(config[key]||30000)/1000:config[key]??0)])));
+  setDraft(old=>Object.fromEntries(fields.map(([key])=>[key,dirty.current.has(key)?old[key]??'':String(key==='martingaleEnabled'?config[key]?1:0:config[key]??0)])));
  },[configKey]);
  const run=async(action:string)=>{
   if(lock.current&&action!=='stop')return;const request=++generation.current;lock.current=true;setPending(action);setMessage('');
@@ -25,7 +25,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     const patch:Record<string,number|boolean>={};
     for(const [key] of fields)if(dirty.current.has(key)){
      const n=Number(draft[key]);if(draft[key]===''||!Number.isFinite(n)||n<0){setMessage(t('Preencha os valores do bot.'));return;}
-     patch[key]=key==='martingaleEnabled'?n===1:key==='intervalMs'?n*1000:n;
+     patch[key]=key==='martingaleEnabled'?n===1:n;
     }
     if(Object.keys(patch).length){if(!await act('executor/config',{patch}))return;dirty.current.clear();}
    }
