@@ -2,17 +2,17 @@ name: Sentinel 13.9.53 analyst-following candidate - no production
 on:
   push:
     branches:
-      - fix/sentinel-13953-continuous-analyst-bot-20261019
+      - fix/sentinel-13953-safe-bot-restart-20261019
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/src/components/BotControl.tsx'
       - 'sentinel-trading-lab/agent/worker/executor-panel.mjs'
       - 'tests/**'
-      - '.github/workflows/sentinel-13953-continuous-bot-candidate.yml'
+      - '.github/workflows/sentinel-13953-safe-restart-candidate.yml'
 permissions:
   contents: write
 concurrency:
-  group: sentinel-13953-continuous-bot-candidate
+  group: sentinel-13953-safe-restart-candidate
   cancel-in-progress: false
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
-          node --test tests/sentinel-13953-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
+          node --test tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13953-broker-ack-timeout.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
       - name: Install website build dependencies
         run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
       - name: Full website prebuild and Next.js build
@@ -49,7 +49,7 @@ jobs:
           agent=root/'agent'
           dl=root/'public/downloads'
           release=json.loads((agent/'release.json').read_text())
-          assert release['version']=='13.9.53' and release['build']=='13.9.53-analyst-follow-reconciled'
+          assert release['version']=='13.9.53' and release['build']=='13.9.53-safe-restart-ack-reconcile'
           manifest=json.loads((dl/'agent-update.json').read_text())
           payload=(dl/'agent_payload_v88.zip').read_bytes()
           exe=(dl/'Sentinel-Agent-13.9.53.exe').read_bytes()
@@ -79,5 +79,5 @@ jobs:
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.53.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.53-Alternativo.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
           if ! git diff --cached --quiet; then
             git commit -m 'build(sentinel): verified 13.9.53 Agent - candidate branch only'
-            git push origin HEAD:fix/sentinel-13953-continuous-analyst-bot-20261019
+            git push origin HEAD:fix/sentinel-13953-safe-bot-restart-20261019
           fi
