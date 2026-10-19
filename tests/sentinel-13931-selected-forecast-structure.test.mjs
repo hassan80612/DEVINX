@@ -24,11 +24,13 @@ function scenario(index,level){
  assert.equal(thirtySecondCycleForecast({...args,periodSearch:'wide'}).side,'PUT');
  return analyzeNowOpportunity(args);
 }
-test('historical rejection cannot override the selected wide projection using the discarded narrow one',()=>{
+test('observed historical rejection remains independent evidence when narrow and wide cycle disagree',()=>{
  const result=scenario(161,.843035);
  assert.equal(result.priceStructure.reaction.side,'CALL');
- assert.equal(result.ready,false);assert.equal(result.side,null);
- assert.equal(result.reason,'historical-level-versus-expiry-conflict');
+ // The stage4 policy removes the unverified conflicting cycle authority.
+ // The independently observed CALL level rejection is still a valid setup.
+ assert.equal(result.ready,true);assert.equal(result.side,'CALL');
+ assert.equal(result.reason,'historical-level-rejection');
 });
 test('a reaction agreeing with the selected wide projection is not vetoed by the discarded narrow one',()=>{
  // Corrected actual-timestamp sampling changes the fits at the old index.
