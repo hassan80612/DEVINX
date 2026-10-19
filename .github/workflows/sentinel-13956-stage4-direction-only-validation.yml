@@ -1,0 +1,30 @@
+name: Sentinel 13.9.56 stage4 direction-only candidate validation
+on:
+  push:
+    branches: [fix/sentinel-13956-stage4-direction-conflict-only-20261019]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs'
+      - 'tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs'
+      - '.github/workflows/sentinel-13956-stage4-direction-only-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13956-stage4-only-verify
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check and stage4 arbitration tests
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs
+          node --test tests/sentinel-13956-stage4-structural-cycle-arbitration.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs
+      - name: Install website dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Run complete prebuild regression suite
+        run: npm run prebuild --prefix sentinel-trading-lab
