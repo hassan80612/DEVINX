@@ -43,3 +43,22 @@ O defeito conceitual a examinar primeiro é a **autoridade não calibrada** de u
 - **Não publicar** nenhuma alteração do motor com base apenas nesta gravação, nem fazer backfit disfarçado de prova.
 
 Reprodução da perícia, leitura apenas: `node scripts/sentinel-13954-direction-attribution-20261019.mjs`. Testes e workflow: `.github/workflows/sentinel-13954-direction-attribution-research.yml`.
+
+## Auditoria nova: construção do histórico e efeito da vela corrente
+
+Comparação pura das funções publicadas da 13.9.54, com preços sintéticos controlados; NÃO é medição da sessão do usuário. Reproduzível por `node scripts/sentinel-13954-candle-historical-calculation-audit.mjs`.
+
+1. **Série histórica mais longa prevalece sobre a mais atual** (`historical-price-structure.mjs`, `closedCandles`): o código agrupa os candles por duração, ordena pelos grupos com maior QUANTIDADE, e só usa recência para desempatar. Ao combinar 40 barras antigas de 60s com 12 barras recentes de 5s, devolveu o período de **60 segundos** encerrado **1.200.000ms (20min) antes** do presente, apesar das 12 barras de 5s terminarem exatamente no tempo atual. O defeito de seleção é real; resta verificar se o feed operativo chega misturado desse jeito.
+2. **Pivô histórico marcado sem os dois lados fechados**: `historical-price-structure.mjs` define `pivot` se houver pelo menos dois vizinhos, permitindo que na última barra todos os vizinhos sejam ANTERIORES. No experimento, a máxima da última barra foi contada em `zone.pivots=1` sem barra futura, mas `candle-level-map.mjs` a identificou corretamente como `confirmedPivots=0`. **Logo, não afirmar que esse pivô isolado liberou uma ordem: a segunda camada o descarta nesse caso**, embora persista a contagem inconsistente e a possibilidade de afetar pesos de outras zonas já confirmadas.
+3. **Vela de 1 segundo ainda aberta influencia estratégia manual de tendência** (`now-strategy-evidence.mjs`, `barsOf`): agrega todas as cotações observadas por segundo, incluindo a única cotação inicial da vela corrente; conta essa vela entre as últimas quatro barras para confirmação. Uma sequência controlada foi `{ready:false,side:null,reason:'current-flow-unconfirmed'}` antes da primeira cotação de um novo segundo e `{ready:true,side:'CALL',reason:'current-trend-follow-through'}` logo após **um único tick** da vela ainda em formação. Isso é compatível com o relato de reação excessiva ao movimento mais recente; não prova que tal tick realmente errou um CALL na sessão. O motor automático tem ramo separado com quatro barras fechadas de 10s para operações de 30s, mas também usa analogias e projeção de 30s.
+
+### Correções técnicas a avaliar (isoladas, sem produção)
+
+- A seleção de histórico precisa ser explícita quanto ao período relevante à estratégia e **rejeitar as séries antigas ou interrompidas**; nunca substituir o gráfico atual só porque outra coleção contém mais barras.
+- A classificação `pivot` deve exigir **velas fechadas de ambos os lados** e pesos históricos não devem contar extremos não confirmados.
+- Separar `última vela fechada` de `vela atual em formação` na confirmação, sem eliminar a cotação viva necessária à decisão; tratar o movimento instantâneo como observação, não por si só confirmação de tendência ou resultado futuro de 30s.
+- Comparar previsão de 30s com estrutura e resultados concluídos usando o mesmo vencimento e **outros ativos/instantes que não foram usados para criar o critério**. Nenhuma dessas correções, sozinha, comprova aumento da assertividade.
+
+### Teste executado
+
+GitHub Actions workflow de pesquisa concluído sem falhas em 19/10/2026. Apenas scripts e relatório em ramo de investigação. Nenhuma publicação nem inversão.
