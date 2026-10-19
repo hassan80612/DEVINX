@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopAfterMinutes','Parar em (min)','1'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
+const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
@@ -43,7 +43,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
    {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
    <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} min="0" step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
-   <p className="muted">{t('0 = sem limite')} · {t('O tempo conta desde o início da sessão. Limite de perda na moeda da conta.')}</p>
+   <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
    <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
    <small className="muted">{t('Após perda da sequência: 2, 4, 8 cliques no próximo sinal, até o máximo definido. Ganho ou último nível concluído volta a 1 clique. Empate mantém o nível.')}</small>
    <div className="botControlActions">
@@ -53,7 +53,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    </div>
    <p role="status">{message||t(bot.message||'Desligado')}{bot.pending?' · '+bot.pending.side+' · '+t('Entrada em andamento'):''}</p>
    <p className="muted">{t(bot.brokerBalance?'Saldo recebido':'Saldo indisponível')}: {bot.brokerBalance?Number(bot.brokerBalance.amount).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
-   <small className="muted">{t('Ajuste manualmente valor e duração na corretora. O bot só clica CALL/PUT. Cada clique abre uma operação com o mesmo valor. Parar impede novos cliques.')}</small>
+   <small className="muted">{t('Ajuste manualmente valor e duração na corretora. O bot só clica CALL/PUT. Cada clique abre uma operação com o mesmo valor. Parar zera a sessão do bot e impede novos cliques, mas não cancela ordens que a corretora já abriu.')}</small>
    {!online&&<p role="status">{t('Agent do PC offline. Abra o Agent para enviar comandos.')}</p>}
   </>}
  </section>;
