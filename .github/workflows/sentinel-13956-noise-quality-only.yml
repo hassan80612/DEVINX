@@ -1,0 +1,30 @@
+name: Sentinel 30s projection noise quality - research only
+on:
+  push:
+    branches: [research/sentinel-13956-expiry-signal-to-noise-20261019]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs'
+      - 'tests/sentinel-13956-expiry-noise-gate.test.mjs'
+      - 'scripts/sentinel-13956-noise-filter-replay.mjs'
+      - '.github/workflows/sentinel-13956-noise-quality-only.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13956-projection-noise
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify the forecast noise threshold and unchanged 30s clock
+        run: node --test tests/sentinel-13956-expiry-noise-gate.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs
+      - name: Compare with archive replay - not independent evaluation
+        run: node scripts/sentinel-13956-noise-filter-replay.mjs
+      - name: Install dependencies for full regression run
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Run complete prebuild
+        run: npm run prebuild --prefix sentinel-trading-lab
