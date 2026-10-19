@@ -30,7 +30,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     if(Object.keys(patch).length){if(!await act('executor/config',{patch}))return;dirty.current.clear();}
    }
    if(request!==generation.current)return;
-   if(action==='start')await act('executor/start',{context:{provider:bot.provider,asset:s.liveBroker?.symbol||s.settings?.asset,durationMs:Number(s.settings?.orderDurationMs)}});
+   if(action==='start'){const result=await act('executor/start',{context:{provider:bot.provider,asset:s.liveBroker?.symbol||s.settings?.asset,durationMs:Number(s.settings?.orderDurationMs)}});if(result===false||result===null)setMessage(t('Não foi possível ligar o bot. Confira o aviso do Agent no PC.'));}
    else if(action==='stop')await act('executor/stop');
    else setMessage(t('Configuração do bot aplicada'));
   }finally{if(request===generation.current){setPending('');lock.current=false;}}
@@ -45,7 +45,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
    <small className="muted">{t('Após perda da sequência: 2, 4, 8 cliques no próximo sinal, até o máximo definido. Ganho ou último nível concluído volta a 1 clique. Empate mantém o nível.')}</small>
    <div className="botControlActions">
-    <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||!!bot.pending||bot.executing||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
+    <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
     <button className="kill" disabled={!online||pending==='stop'} onClick={()=>void run('stop')}>{pending==='stop'?t('Parando…'):t('Parar bot')}</button>
     <button className="secondary" disabled={!online||!!pending||bot.arming||!current} onClick={()=>void run('save')}>{t('Salvar limites')}</button>
    </div>
