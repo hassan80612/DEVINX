@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download preview EXE, ZIP and manifest; compare actual file hashes
+      - name: Verify public EXE and offline ZIP contain exact current Agent source
         shell: bash
         run: |
           set -euo pipefail
@@ -19,7 +19,6 @@ jobs:
           TMP="$(mktemp -d)"
           curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13952" -o "$TMP/agent-update.json"
           curl --fail --location --silent --show-error --max-time 90 "$HOST/downloads/Sentinel-Agent-13.9.52.exe?verify=13952" -o "$TMP/Sentinel-Agent-13.9.52.exe"
-          curl --fail --location --silent --show-error --max-time 60 "$HOST/downloads/agent_payload_v88.zip?verify=13952" -o "$TMP/agent_payload_v88.zip"
           curl --fail --location --silent --show-error --max-time 60 "$HOST/downloads/Sentinel-Agent-13.9.52-Alternativo.zip?verify=13952" -o "$TMP/Sentinel-Agent-13.9.52-Alternativo.zip"
           python3 - "$TMP" <<'PY'
           import hashlib,json,sys,zipfile
@@ -29,23 +28,25 @@ jobs:
           local=json.loads((root/'public/downloads/agent-update.json').read_text())
           assert remote==local, (remote,local)
           assert remote['version']=='13.9.52' and remote['build']=='13.9.52-analyst-follow-reconciled'
-          for name in ['Sentinel-Agent-13.9.52.exe','agent_payload_v88.zip','Sentinel-Agent-13.9.52-Alternativo.zip']:
-            actual=(tmp/name).read_bytes()
-            expected=(root/'public/downloads'/name).read_bytes()
-            # Go toolchain/OS can change EXE bytes between two builds.
-            # Verify the served PE embeds the SAME verified source ZIP instead.
-            if not name.endswith('.exe'):
-              assert hashlib.sha256(actual).digest()==hashlib.sha256(expected).digest(),name
-            else:
-              assert actual[:2]==b'MZ' and len(actual)>1_000_000
-            print(name, 'served', len(actual), hashlib.sha256(actual).hexdigest(), 'candidate',hashlib.sha256(expected).hexdigest())
           exe=(tmp/'Sentinel-Agent-13.9.52.exe').read_bytes()
-          payload=(tmp/'agent_payload_v88.zip').read_bytes()
-          assert exe[:2]==b'MZ' and payload in exe
-          assert hashlib.sha256(payload).hexdigest()==remote['zipSha256']
+          assert exe[:2]==b'MZ' and len(exe)>1_000_000
+          # The raw update ZIP is access-protected by design. Download the
+          # public offline installer, whose embedded ZIP must match manifest.
           with zipfile.ZipFile(tmp/'Sentinel-Agent-13.9.52-Alternativo.zip') as archive:
             assert archive.testzip() is None
-            assert archive.read('agent_payload_v88.zip')==payload
+            payload=archive.read('agent_payload_v88.zip')
+            assert archive.read('install-agent-v88.ps1')==(root/'public/downloads/install-agent-v88.ps1').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==remote['zipSha256']
+          assert payload in exe,'EXE does not embed the exact published payload'
+          import io
+          with zipfile.ZipFile(io.BytesIO(payload)) as agent:
+            assert agent.testzip() is None
+            assert json.loads(agent.read('release.json'))==json.loads((root/'agent/release.json').read_text())
+            for name in agent.namelist():
+              if name.endswith('/'):continue
+              assert agent.read(name)==(root/'agent'/name).read_bytes(),name
+          print('Verified public EXE with embedded payload:',len(exe),hashlib.sha256(exe).hexdigest())
+          print('Verified public offline ZIP and manifest payload:',len(payload),hashlib.sha256(payload).hexdigest())
           PY
           curl --fail --location --silent --show-error --max-time 50 --range 0-1023 -D "$TMP/range-headers" "$HOST/downloads/Sentinel-Agent-13.9.52.exe?verify=13952" -o "$TMP/first-kib"
           python3 - "$TMP" <<'PY'
