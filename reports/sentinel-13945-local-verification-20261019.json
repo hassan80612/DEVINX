@@ -1,0 +1,17 @@
+{
+  "version": "13.9.45",
+  "prebuildTests": 397,
+  "failures": 0,
+  "testGroups": [
+    199,
+    20,
+    139,
+    39
+  ],
+  "payloadFiles": 118,
+  "exeBytes": 2679808,
+  "exeSha256": "10101f9a698358d8be6eae5b10d1b73f3a8d0ecb813a5b0916fef87980f9ce4a",
+  "payloadSha256": "f662297e76021865a0d8fed222c13edb107d8d8793f6aefe7e4921bb4648e54d",
+  "nativeWindowsLaunch": "not-tested",
+  "liveAccuracyImprovement": "not-established"
+}

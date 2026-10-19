@@ -1,6 +1,6 @@
 {
-  "version": "13.9.44",
-  "build": "13.9.44-mobile-bot-control",
+  "version": "13.9.45",
+  "build": "13.9.45-decision-deadline",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
