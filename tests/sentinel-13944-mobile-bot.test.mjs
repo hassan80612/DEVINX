@@ -21,7 +21,7 @@ for(const provider of ['iq_option','exnova'])test(provider+': phone config/start
  await cmd('config',{patch:{stopAfterMinutes:3,amount:2}});assert.equal(executor.pending.amount,1);
  await cmd('stop');assert.equal(executor.enabled,false);assert.ok(executor.pending);
  await cmd('config',{patch:{stopAfterMinutes:0,stopLoss:8}});assert.equal(executor.config.stopLoss,8);
- await assert.rejects(cmd('start',{context:c}),/pendente/);
+ await cmd('start',{context:c});assert.equal(executor.enabled,true);assert.ok(executor.pending);assert.equal(executor.pending.orderId,'fixture-1');
  c.analysis.vnext.futureEntryAnchor.entryTriggeredAt=++now;executor.pulse();await executor.inflight;assert.deepEqual(calls,['PUT']);
  await assert.rejects(cmd('map'),/inválido/);
 });
