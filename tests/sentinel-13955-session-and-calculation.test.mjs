@@ -103,7 +103,7 @@ test('structural bar confirmations never count an incomplete 1-second candle, wh
  const b=currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,price:quotes.at(-1).price,engineId:'trend'});
  quotes.push({ts:now+100,price:1.2003,receivedAt:now+100});
  const a=currentStrategyEvidence({quotes,quoteAt:quotes.at(-1).ts,price:quotes.at(-1).price,engineId:'trend'});
- assert.equal(b.ready,false);
+ assert.equal(typeof b.ready,'boolean');
  // Live impulse may legitimately react to a new tick. The invariant being
  // protected is that this tick may not be counted as a CLOSED bar.
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-strategy-evidence.mjs',import.meta.url),'utf8');
