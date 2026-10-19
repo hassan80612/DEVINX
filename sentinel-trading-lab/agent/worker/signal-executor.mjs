@@ -170,6 +170,17 @@ export class SignalExecutor{
   if(!this.accountCompatible(balance.current)){this.stop('Bot parado · conta da corretora mudou');return;}
   if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&balance.current.amount<amount){this.stop(balance.source==='broker'?'Bot parado · saldo da corretora insuficiente':'Bot parado · saldo calculado insuficiente');return;}
   const generation=this.generation,clickCount=this.nextClicks(),unitAmount=this.config.amount;
+  // Validate the actual native-broker dispatch throughput before taking
+  // any physical click. Otherwise a late CALL/PUT order becomes a different
+  // trade and a 16-click request can silently turn into 6 paid orders.
+  const feasibility=this.driver.batchFeasibility?.(c.provider,{
+   count:clickCount,activeId:c.activeId,entryAt:queued.at,now
+  });
+  if(feasibility?.safe===false){
+   this.message='Ligado · sinal não executado: '+feasibility.reason+
+     ' · zero cliques enviados; aguardando próximo CALL/PUT';
+   return;
+  }
   const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel:this.martingaleLevel,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
   this.pending=batch;
   const valid=()=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()-queued.at<=1500&&(!this.deadlineAt||this.clock()<this.deadlineAt);
