@@ -236,7 +236,7 @@ export class SignalExecutor{
     }
     // Explicit broker rejection and genuine state mismatches are distinct
     // from a delayed broker acknowledgement.
-    this.stop(order.error);
+    if(this.enabled)this.message='Ligado · entrada rejeitada antes da confirmação: '+order.error+' · próximo sinal';
    }));
   }
   this.inflight=Promise.allSettled(jobs).then(()=>{
@@ -262,7 +262,15 @@ export class SignalExecutor{
   if(!p)for(const b of this.unresolvedBatches.values()){p=b.orders.find(o=>o.id===localId);if(p)break;}
   if(p&&requestId){p.requestId=String(requestId);p.clicked=true;}
  }
- rejected(event){const p=this.pending?.orders.find(p=>p.id===event.localId||p.requestId!=null&&String(p.requestId)===String(event.requestId));if(p&&event.provider===p.provider){p.rejected=true;this.stop('Ordem rejeitada pela corretora · sequência interrompida.');}}
+ rejected(event){
+  const batches=[this.pending,...this.unresolvedBatches.values()].filter(Boolean);
+  const b=batches.find(b=>b.provider===event.provider&&b.orders.some(p=>p.id===event.localId||
+   p.requestId!=null&&String(p.requestId)===String(event.requestId)));
+  const p=b?.orders.find(p=>p.id===event.localId||p.requestId!=null&&String(p.requestId)===String(event.requestId));
+  if(p){p.rejected=true;p.state='rejected';
+   if(this.enabled)this.message='Ligado · corretora rejeitou uma ordem; nenhum clique será repetido';
+  }
+ }
  accepted(event){
   let batch=this.pending;
   if((!batch||event.provider!==batch.provider||!batch.orders.some(p=>p.id===event.localId||
@@ -273,17 +281,31 @@ export class SignalExecutor{
   const p=batch.orders.find(p=>p.id===event.localId||p.requestId!=null&&event.requestId!=null&&String(p.requestId)===String(event.requestId))||(batch.orders.length===1?batch.orders[0]:null);
   if(!p||p.state==='accepted'||p.settled)return;
   if(p.requestId!=null&&String(event.requestId)!==String(p.requestId))return;
-  if(batch.orders.some(other=>other!==p&&String(other.orderId)===String(event.orderId))){this.stop('Bot parado · confirmação de ordem duplicada');return;}
+  if(batch.orders.some(other=>other!==p&&String(other.orderId)===String(event.orderId))){
+   this.suspensionReason='confirmação duplicada · conferir ordens';
+   this.message='Ligado · suspenso por segurança: '+this.suspensionReason;return;
+  }
   p.state='accepted';p.clicked=true;p.orderId=String(event.orderId);p.requestId=event.requestId??p.requestId;p.accountId=event.accountId??p.accountId;
-  if(Number(event.exitAt)>p.at){const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;p.exitAt=Number(event.exitAt);if(mismatch)this.stop('Bot parado · duração da corretora difere do analista; ajuste manualmente');}
+  if(Number(event.exitAt)>p.at){
+   const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;
+   p.exitAt=Number(event.exitAt);
+   if(mismatch&&!batch.detached){
+    this.suspensionReason='expiração divergente · confira a corretora';
+    this.message='Ligado · suspenso por segurança: '+this.suspensionReason;
+   }
+  }
   if(num(event.entryPrice)&&Number(event.entryPrice)>0)p.entryPrice=Number(event.entryPrice);
-  if(p.accountId!=null){if(this.session.accountId!=null&&String(p.accountId)!==String(this.session.accountId))this.stop('Bot parado · conta da corretora mudou');else this.session.accountId=String(p.accountId);}
+  if(p.accountId!=null&&!batch.detached&&this.session){
+   if(this.session.accountId!=null&&String(p.accountId)!==String(this.session.accountId)){
+    this.suspensionReason='conta da ordem divergente';this.message='Ligado · suspenso por segurança: '+this.suspensionReason;
+   }else this.session.accountId=String(p.accountId);
+  }
   batch.executionSource=p.executionSource='broker';batch.accountId=p.accountId;batch.orderId??=p.orderId;batch.exitAt=Math.max(batch.exitAt,p.exitAt);
-  p.executionSource=event.source||'broker';this.lastEntryAt=p.at;this.executed++;
+  p.executionSource=event.source||'broker';if(!batch.detached){this.lastEntryAt=p.at;this.executed++;}
   if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados';
  }
  finishBatch(batch){
-  if(this.pending!==batch||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
+  if(this.pending!==batch||batch.detached||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
   this.balanceRisk.close(batch.netPnl,this.clock());this.pending=null;
   const full=batch.orders.length===batch.clickCount&&!batch.orders.some(p=>p.error);
   if(full)this.martingaleLevel=!this.config.martingaleEnabled?0:batch.netPnl>0?0:batch.netPnl<0?(batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):(batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
