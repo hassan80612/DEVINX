@@ -115,7 +115,7 @@ export class SignalExecutor{
    // Unknown physical clicks remain reserved; no duplicate entry.
    const done=this.pending.orders.filter(p=>p.settled).length;
    const unidentified=this.pending.orders.filter(p=>p.clicked&&!p.orderId).length;
-   this.message='Ligado · aguardando corretora ('+done+'/'+this.pending.orders.length+
+   this.message='Ligado · aguardando encerramentos da corretora ('+done+'/'+this.pending.orders.length+
      ' fechadas'+(unidentified?', '+unidentified+' clique(s) sem ID':'')+') · sem repetir entradas';
   }
  }
