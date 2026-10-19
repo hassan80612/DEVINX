@@ -1,6 +1,6 @@
 {
-  "version": "13.9.53",
-  "build": "13.9.53-safe-restart-ack-reconcile",
+  "version": "13.9.54",
+  "build": "13.9.54-bounded-settlement-recovery",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
