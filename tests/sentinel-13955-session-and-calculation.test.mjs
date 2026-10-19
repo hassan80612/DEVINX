@@ -15,7 +15,7 @@ const settle=async(x,values)=>{
 for(const provider of ['iq_option','exnova']){
  test(provider+': explicit Stop zeros current bot session, Start restarts from one click while old broker orders are quarantined',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
-  x.bot.configure({martingaleEnabled:true,martingaleLevels:4});
+  x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');const first=x.bot.pending,oldId=first.orders[0].orderId;
   assert.equal(x.bot.executed,1);
   x.bot.stop('Parado por você',{reset:true});
