@@ -1,0 +1,35 @@
+name: Sentinel 13.9.57 stage5 / broker latency / Martingale3 validation
+on:
+  push:
+    branches: [fix/sentinel-13957-stage5-execution-safety-martingale3-20261019]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/candle-level-map.mjs'
+      - 'sentinel-trading-lab/agent/worker/signal-executor.mjs'
+      - 'sentinel-trading-lab/agent/worker/executor-panel.mjs'
+      - 'sentinel-trading-lab/agent/worker/broker-ui-executor.mjs'
+      - 'tests/sentinel-13957-*.test.mjs'
+      - '.github/workflows/sentinel-13957-stage5-risk-latency-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13957-regressions
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/candle-level-map.mjs
+          node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+      - name: Focused closed-level / 3 Martingale / slow broker tests
+        run: node --test tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-multiscale-level-chain.test.mjs
+      - name: Install site dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Full existing Next.js and Agent prebuild suite
+        run: npm run prebuild --prefix sentinel-trading-lab
