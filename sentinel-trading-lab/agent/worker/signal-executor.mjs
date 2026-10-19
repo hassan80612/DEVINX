@@ -5,6 +5,12 @@ import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
 // Three increases after the normal 1-click entry: 2, 4, at most 8 clicks.
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
+export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:900,other:1500});
+export function maxSignalAgeMs(durationMs){
+ const ms=Number(durationMs);
+ return ms<=15000?MAX_SIGNAL_TO_CLICK_AGE_MS.short:
+  ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
+}
 export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,stopAfterMinutes:0,stopLoss:0,martingaleLevels:2,martingaleEnabled:false});
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const symbol=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -182,7 +188,7 @@ export class SignalExecutor{
   }
   const queued=this.queuedSignal;if(!queued)return;
   const now=this.clock();
-  if(now<queued.at||now-queued.at>1500||queued.durationMs!==c.durationMs||now>=queued.exitAt){this.queuedSignal=null;this.message='Sinal antigo descartado · aguardando próximo';return;}
+  if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||queued.durationMs!==c.durationMs||now>=queued.exitAt){this.queuedSignal=null;this.message='Sinal antigo descartado · aguardando próximo';return;}
   if(this.pending){this.message='Ligado · aguardando encerramento da entrada anterior';return;}
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
@@ -201,14 +207,15 @@ export class SignalExecutor{
   // Never start an 8/16-click sequence that the measured native broker
   // throughput cannot fit inside the actual analyst entry window.
   const canSend=this.driver.batchFeasibility?.(c.provider,{
-   count:clickCount,activeId:c.activeId,entryAt:queued.at,now});
+   count:clickCount,activeId:c.activeId,entryAt:queued.at,now,
+   maxEntryAgeMs:maxSignalAgeMs(queued.durationMs)});
   if(canSend?.safe===false){
    this.message='Ligado · sequência ignorada inteira antes de clicar: '+canSend.reason;
    return;
   }
   const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel:this.martingaleLevel,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
   this.pending=batch;
-  const valid=()=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()-queued.at<=1500&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=()=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()-queued.at<=maxSignalAgeMs(queued.durationMs)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
