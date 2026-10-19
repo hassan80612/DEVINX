@@ -1,6 +1,6 @@
 {
-  "version": "13.9.56",
-  "build": "13.9.56-independent-stage4-expiry-evidence",
+  "version": "13.9.57",
+  "build": "13.9.57-stage5-confirmed-levels-broker-latency-martingale3",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -24,7 +24,7 @@
         50,
         100
       ],
-      "levelEvidence": "confirmed-pivots-independent-rejections",
+      "levelEvidence": "confirmed-pivot-priority-over-unconfirmed-nearby-level",
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   }
