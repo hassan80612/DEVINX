@@ -56,7 +56,12 @@ export class SignalExecutor{
    // Do not reuse its in-flight clicks or allow a new batch to overlap it.
    if(this.executing&&this.inflight)await this.inflight.catch(()=>{});
    if(generation!==this.generation)throw Error('Reativação cancelada.');
-   await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
+   if(suspendedBatch){
+    // Re-arming a pending settlement must not require the broker's CALL/PUT
+    // buttons to be visible during the result screen. Check broker identity
+    // without touching the controls; map controls only for NEW physical clicks.
+    this.driver.checkContext?.(c.provider,c);
+   }else await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
    const current=this.context();
    if(generation!==this.generation||!this.sameContext(c,current)||c.durationMs!==current.durationMs||(broker&&current.brokerBalance&&String(broker.accountId)!==String(current.brokerBalance.accountId))||current.state!=='running'||!current.licensed)throw Error('Analista mudou durante a ativação.');
    if(suspendedBatch&&this.pending===suspendedBatch){
