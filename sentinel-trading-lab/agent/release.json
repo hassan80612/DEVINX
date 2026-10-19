@@ -1,6 +1,6 @@
 {
-  "version": "13.9.49",
-  "build": "13.9.49-calculator-keyboard-focus",
+  "version": "13.9.50",
+  "build": "13.9.50-canvas-activation-guard-input-diagnostic",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

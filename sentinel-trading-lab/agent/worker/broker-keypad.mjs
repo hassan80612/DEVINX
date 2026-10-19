@@ -53,7 +53,7 @@ export function installBrokerKeypadTyping(){
  document.addEventListener('pointerdown',e=>{if(inOverlay(e)){selected=false;return;}const amount=e.composedPath().some(n=>n?.getAttribute?.('data-sentinel-keypad-amount')==='1'),keypad=e.composedPath().some(n=>n?.hasAttribute?.('data-sentinel-calculator-root')||n?.hasAttribute?.('data-sentinel-calculator-open'));selected=amount||selected&&keypad;if(!keypad)replace=false;},true);
  document.addEventListener('focusin',e=>{const p=e.composedPath();if(p.some(n=>n?.matches?.('input,textarea,select,[contenteditable="true"]'))&&!p.some(n=>n?.getAttribute?.('data-sentinel-keypad-amount')==='1'||n?.hasAttribute?.('data-sentinel-calculator-root')))selected=false;},true);
  document.addEventListener('keydown',e=>{
-  if(window.__sentinelKeypadBotBusy||!selected||inOverlay(e)||e.altKey||e.metaKey&&!/^[aA]$/.test(e.key)||e.ctrlKey&&!/^[aA]$/.test(e.key))return;
+  if(window.__sentinelInputProbeActive||window.__sentinelKeypadBotBusy||!selected||inOverlay(e)||e.altKey||e.metaKey&&!/^[aA]$/.test(e.key)||e.ctrlKey&&!/^[aA]$/.test(e.key))return;
   if((e.ctrlKey||e.metaKey)&&/^[aA]$/.test(e.key)){e.preventDefault();replace=true;return;}
   const key=/^[0-9]$/.test(e.key)?e.key:/^[.,]$/.test(e.key)?'.':e.key==='Backspace'?'backspace':['Enter','Escape','Tab'].includes(e.key)?'close':null;if(!key)return;
   e.preventDefault();e.stopPropagation();const clearFirst=replace;replace=false;
@@ -66,6 +66,7 @@ export function installBrokerKeypadTyping(){
 export function installCanvasKeyboardFocus(){
  if(window.__sentinelCanvasKeyboardFocus)return;window.__sentinelCanvasKeyboardFocus=true;
  document.addEventListener('pointerdown',event=>{
+  if(window.__sentinelInputProbeActive)return;
   const path=event.composedPath();if(path.some(n=>n?.id==='sentinel-trading-overlay-host'))return;
   const canvas=path.find(n=>n?.tagName==='CANVAS');if(!canvas)return;
   requestAnimationFrame(()=>{

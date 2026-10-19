@@ -1,0 +1,41 @@
+{
+  "version": "13.9.50",
+  "build": "13.9.50-canvas-activation-guard-input-diagnostic",
+  "baseCommit": "bbb430e5d7c036bce639f2474af4f9bde722749c",
+  "rollbackBranch": "backup/sentinel-13.9.49-before-canvas-guard-20261019",
+  "changes": [
+    "Preflight real readable amount and duration controls before any parameter mutation for both IQ Option and Exnova",
+    "Remove activation clicks at saved canvas parameter coordinates and global keyboard typing; use only identified visible DOM controls",
+    "Remove unconfirmed automatic canvas focus and keypad keyboard hooks",
+    "Add a stopped-only 30-second passive input diagnostic with bounded structural metadata and event counts; no field values, text, key names or credentials",
+    "Transmit diagnostic in existing authenticated heartbeat; no new database schema or polling"
+  ],
+  "validation": {
+    "prebuildTestsPassed": 423,
+    "finalDiagnosticTestsPassed": 5,
+    "nextProductionBuild": "passed",
+    "exactPayloadFiles": 121,
+    "zipCRC": "passed",
+    "inputProbeBrowserReport": "sentinel-13950-input-probe-browser-fixture.json",
+    "canvasGuardBrowserReport": "sentinel-13950-canvas-guard-browser-fixture.json",
+    "liveBrokerTested": false,
+    "nativeWindowsLaunch": false,
+    "realOrders": 0
+  },
+  "limitations": [
+    "Physical keyboard remains unresolved on the actual user computer for both brokers.",
+    "Actual cause of the reported broker chart zoom is not confirmed; the unsafe activation parameter-click path is removed.",
+    "Pure canvas parameters without readable visible controls stop activation before clicks or typing.",
+    "Close Agent and broker windows before installing to discard old injected event listeners."
+  ],
+  "artifacts": {
+    "Sentinel-Agent-13.9.50.exe": {
+      "bytes": 2694656,
+      "sha256": "ea3951544a259cc87ab4c1846fb7fa3e0d557d3f9c970e8cb3e46c14c4cd4484"
+    },
+    "agent_payload_v88.zip": {
+      "bytes": 421945,
+      "sha256": "dd772d105e4e4705cad540e53ac8e5ecb17c5270f41b05e1d039f64829efdfa2"
+    }
+  }
+}

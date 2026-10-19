@@ -1,4 +1,4 @@
-import {installBrokerKeypadTyping,installCanvasKeyboardFocus} from './broker-keypad.mjs';
+import {brokerInputProbe,normalizeInputDiagnostic} from './broker-input-diagnostic.mjs';
 import {BrokerTradeParameters} from './broker-trade-parameters.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
@@ -86,7 +86,10 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);const controls=await this.controls(provider);await controls.frame.evaluate(installCanvasKeyboardFocus);await controls.frame.evaluate(installBrokerKeypadTyping);await this.applyParameters(provider,controls,expected);return{ready:true};}
+ async diagnose(provider){const page=this.driver.sessions.get(provider)?.page;if(!page||page.isClosed?.())throw errorBefore('Janela da corretora não está conectada.');let frame=page;try{frame=(await this.controls(provider)).frame;}catch{}return frame.evaluate(brokerInputProbe,{action:'start'});}
+ receiveDiagnostic(value,provider=null){const diagnostic=normalizeInputDiagnostic(value);if(diagnostic)this.controlDiagnostic={provider:['iq_option','exnova'].includes(provider)?provider:null,capturedAt:Date.now(),...diagnostic};return this.controlDiagnostic;}
+ async prepare(provider,expected){this.checkContext(provider,expected);const controls=await this.controls(provider);await controls.frame.evaluate(brokerInputProbe,{action:'stop'});try{await this.applyParameters(provider,controls,expected);}catch(error){await controls.frame.evaluate(brokerInputProbe,{action:'start'}).catch(()=>{});throw error;}return{ready:true};}
+
  async manualKey(provider,{key,clearFirst=false},isAllowed=()=>false){
   if(!/^(?:[0-9]|\.|backspace|close)$/.test(String(key))||typeof clearFirst!=='boolean')throw errorBefore('Tecla inválida.');
   const work=async()=>{

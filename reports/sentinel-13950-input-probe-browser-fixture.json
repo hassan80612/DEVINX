@@ -1,0 +1,28 @@
+{
+  "realBrokerTested": false,
+  "nativeWindowsTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "readOnlyProbe": true,
+      "noValuesOrKeyNames": true,
+      "shadowFieldClassified": true,
+      "analystInputsExcluded": true,
+      "keyboardEventCountsVerified": true,
+      "noDuplicateListeners": true,
+      "focusHelperPausedThenRestored": true,
+      "realOrders": 0
+    },
+    {
+      "provider": "exnova",
+      "readOnlyProbe": true,
+      "noValuesOrKeyNames": true,
+      "shadowFieldClassified": true,
+      "analystInputsExcluded": true,
+      "keyboardEventCountsVerified": true,
+      "noDuplicateListeners": true,
+      "focusHelperPausedThenRestored": true,
+      "realOrders": 0
+    }
+  ]
+}

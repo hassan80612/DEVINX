@@ -57,7 +57,7 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
     if(editors.length===1&&expectedLabel.test(label(p)))selected.add(editors[0]);
    }
   }
-  fields=fields.filter(e=>{const r=e.getBoundingClientRect();return selected.has(e)||(e===focused&&editable(e))||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
+  fields=fields.filter(e=>{const r=e.getBoundingClientRect();return selected.has(e)||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
  }else fields=fields.filter(e=>(kind==='amount'?/amount|invest(?:ment|imento)?|stake|valor|importe|montant|quantia/i:/duration|expir|tempo|dura[çc][aã]o/i).test(label(e)));
  if(!fields.length&&point){
   const candidates=new Set();for(const hit of document.elementsFromPoint(point.x,point.y))for(let p=hit,d=0;p&&d<3&&p!==document.body&&p!==document.documentElement;p=p.parentElement,d++)if(visible(p)&&String(p.textContent||'').length<120&&(kind==='amount'?/invest|amount|valor|stake/i:/expir|duration|tempo/i).test(label(p))&&Number.isFinite(value(p))&&!p.querySelector('[data-sentinel-execution-call],[data-sentinel-execution-put]'))candidates.add(p);
@@ -67,6 +67,7 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
  if(fields.length!==1)return{code:fields.length?'ambiguous-editor':'editor-not-ready',error:kind==='amount'?'Campo de valor não identificado. Use Mapear controles.':'Campo de expiração não identificado. Use Mapear controles.'};
  const e=fields[0];e.setAttribute('data-sentinel-trade-'+kind,marker);
  const selector='[data-sentinel-trade-'+kind+'="'+marker+'"]';
+ if(!visible(e))return{error:'Editor interno sem controle visível confirmado. Use Verificar teclado.'};
  if(action==='read')return{value:value(e)};
  if(e.tagName==='SELECT'){
   const options=[...e.options].filter(o=>!o.disabled&&duration(o.textContent)===expectedMs);
@@ -82,51 +83,31 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
 export class BrokerTradeParameters{
  constructor(driver){this.driver=driver;this.keypad=new BrokerKeypad(driver);}
  async apply(provider,controls,expected){
-  const frame=controls.frame,page=this.driver.sessions.get(provider)?.page;
-  const desired={amount:expected.amount,duration:expected.durationMs};
+  const frame=controls.frame,desired={amount:expected.amount,duration:expected.durationMs},fields=[];
+  // Locate both readable controls before any click, key or value mutation.
+  // Saved canvas points select a DOM control; they are never clicked here.
   for(const kind of ['amount','duration']){
-   const point=controls.positions?.[kind];
-   let viewportPoint;
-   if(point){
-    const box=await frame.locator(controls.canvasSelector).boundingBox();
-    if(!box)throw Error('Painel da corretora indisponível.');
-    viewportPoint={x:box.x+point.x,y:box.y+point.y};
-    await page.mouse.click(viewportPoint.x,viewportPoint.y);
-   }
-   const marker='sentinel-'+kind+'-'+Math.random().toString(36).slice(2),args={kind,marker,point:viewportPoint,expectedMs:expected.durationMs,mappedUnit:controls.durationUnit};
+   const point=controls.positions?.[kind];let viewportPoint;
+   if(point){const box=await frame.locator(controls.canvasSelector).boundingBox();if(!box)throw Error('Painel da corretora indisponível.');viewportPoint={x:box.x+point.x,y:box.y+point.y};}
+   const args={kind,marker:'sentinel-'+kind+'-'+Math.random().toString(36).slice(2),point:viewportPoint,expectedMs:expected.durationMs,mappedUnit:controls.durationUnit};
    const inspect=async(action='find')=>{
-    let field;
-    for(let attempt=0;attempt<10;attempt++){
-     field=await frame.evaluate(brokerParameterBridge,{...args,action});
-     if(!point||field.code!=='editor-not-ready')break;
-     await new Promise(resolve=>setTimeout(resolve,30));
-    }
+    const field=await frame.evaluate(brokerParameterBridge,{...args,action});
+    if(field.error){this.lastDiagnostic=await frame.evaluate(()=>({canvas:document.querySelectorAll('canvas').length,inputs:document.querySelectorAll('input,textarea').length,readonly:document.querySelectorAll('input[readonly]').length})).catch(()=>null);throw Error(field.error+' · ativação sem cliques no gráfico');}
     return field;
    };
-   let field=await inspect();
-   if(field.error){this.lastDiagnostic=await frame.evaluate(()=>({canvas:document.querySelectorAll('canvas').length,inputs:document.querySelectorAll('input,textarea').length,readonly:document.querySelectorAll('input[readonly]').length})).catch(()=>null);throw Error(field.error+(this.lastDiagnostic?' [painel: '+this.lastDiagnostic.canvas+' canvas, '+this.lastDiagnostic.inputs+' campos, '+this.lastDiagnostic.readonly+' somente leitura]':''));}
-   const locator=frame.locator(field.selector);
-   if(Number.isFinite(field.value)&&Math.abs(field.value-desired[kind])<0.000001){if(point&&field.type==='input')await page.keyboard.press('Tab');else if(point&&field.type==='popup')await page.mouse.click(viewportPoint.x,viewportPoint.y);continue;}
+   await inspect();fields.push({kind,args,inspect});
+  }
+  for(const {kind,args,inspect} of fields){
+   const field=await inspect(),locator=frame.locator(field.selector);
+   if(Number.isFinite(field.value)&&Math.abs(field.value-desired[kind])<0.000001)continue;
    if(field.type==='select')await locator.selectOption(field.optionValue,{timeout:500});
-   else if(field.type==='input'){
-    const text=kind==='amount'?String(desired[kind]):field.text;
-    if(field.keyboard){
-     const focus=await frame.evaluate(brokerParameterBridge,{...args,action:'focused'});
-     if(!focus.focused)throw Error('Editor da corretora perdeu o foco antes de digitar o valor.');
-     await page.keyboard.press('ControlOrMeta+A');
-     await page.keyboard.type(text,{delay:0});
-     await page.keyboard.press('Tab');
-    }else{await locator.fill(text,{timeout:500});await locator.press('Tab',{timeout:500});}
-   }else{
-    if(!point)await locator.click({timeout:500,noWaitAfter:true});
-    if(kind==='amount'){await this.keypad.write(provider,frame,expected.amount);if(point)await page.mouse.click(viewportPoint.x,viewportPoint.y);else await locator.click({timeout:500,noWaitAfter:true});}
+   else if(field.type==='input'){await locator.fill(kind==='amount'?String(desired[kind]):field.text,{timeout:500});await locator.press('Tab',{timeout:500});}
+   else{
+    await locator.click({timeout:500,noWaitAfter:true});
+    if(kind==='amount'){await this.keypad.write(provider,frame,expected.amount);const current=await inspect();await frame.locator(current.selector).click({timeout:500,noWaitAfter:true});}
     else{const option=await frame.evaluate(brokerParameterBridge,{...args,action:'option'});if(option.error)throw Error(option.error);await frame.locator(option.selector).click({timeout:500,noWaitAfter:true});}
    }
-   // Values must survive blur/re-render, not merely be typed into an editor.
-   if(point&&field.type!=='popup')await page.mouse.click(viewportPoint.x,viewportPoint.y);
-   let actual=await inspect('read');
-   if(point&&field.type==='input')await page.keyboard.press('Tab');
-   if(actual.error||!Number.isFinite(actual.value)||Math.abs(actual.value-desired[kind])>0.000001)throw Error(kind==='amount'?'Valor da entrada não confirmado no painel da corretora.':'Expiração não confirmada no painel da corretora.');
+   const actual=await inspect('read');if(!Number.isFinite(actual.value)||Math.abs(actual.value-desired[kind])>0.000001)throw Error(kind==='amount'?'Valor da entrada não confirmado no painel da corretora.':'Expiração não confirmada no painel da corretora.');
   }
   return{amount:expected.amount,durationMs:expected.durationMs};
  }
