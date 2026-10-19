@@ -29,6 +29,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {finalSignalSide} from './final-signal-direction.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 
@@ -986,13 +987,15 @@ export class DemoTradingRuntime{
       });
       const old=this.vnextWindowState;
       this.vnextWindowState=next;
+      // One outward inversion. Keep causal/locked market direction intact.
+      const emittedSide=finalSignalSide(next?.side);
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
       if(freshSignal){
         this.vnextWindowOutcomes.push({
           windowId:next.entryTriggeredAt,asset:next.asset,provider:snap.provider??null,entryReason:observation.reason,
           engineId:next.engineId,forecastMode:'now',
-          periodSeconds:next.holdingSeconds,side:next.side,
+          periodSeconds:next.holdingSeconds,side:emittedSide,
           entryAt:next.entryAt,exitAt:next.exitAt,
           entryPrice:next.entryPrice,verified:false
         });
@@ -1011,7 +1014,7 @@ export class DemoTradingRuntime{
       }
       const active=next?.phase==='fired'&&now<Number(next.exitAt);
       const anchor=active?{
-        ...next,projectedEntryPrice:next.entryPrice,
+        ...next,side:emittedSide,projectedEntryPrice:next.entryPrice,
         projectedExitPrice:null,actualHoldingSeconds:next.holdingSeconds,
         entryReadyNow:freshSignal
       }:null;
@@ -1031,9 +1034,9 @@ export class DemoTradingRuntime{
         opportunityWindow:next?{
           phase:next.phase,reason:next.reason,windowStartedAt:next.windowStartedAt,
           windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
-          exitAt:next.exitAt,side:next.side
+          exitAt:next.exitAt,side:emittedSide
         }:null,nowObservation:{
-          side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
+          side:finalSignalSide(observation.side),provisionalSide:finalSignalSide(observation.side||observation.provisionalSide||null),
           ready:observation.ready,reason:eligible.reason,
           observedAt:observation.observedAt,strength:observation.strength,
           price:Number(snap.price)||null,evaluatedAt:now
@@ -1053,7 +1056,7 @@ export class DemoTradingRuntime{
       const analysisResult={...analysis,asset:settings.asset,engineId:settings.engine,
         vnext,side:'WAIT',confidence:0,
         operationalSignal:{
-          asset:settings.asset,side:active?next.side:'AGUARDAR',
+          asset:settings.asset,side:active?emittedSide:'AGUARDAR',
           state:active?'EM ANDAMENTO':'ANALISANDO',
           ready:freshSignal,actionable:false,
           strength:observation.strength??0,
