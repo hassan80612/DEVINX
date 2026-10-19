@@ -1405,8 +1405,9 @@ export class LocalPlaywrightDriver{
             const r=el.getBoundingClientRect();
             if(ev.clientX>=r.right-12)return;
             drag={dx:ev.clientX-r.left,dy:ev.clientY-r.top,startX:ev.clientX,startY:ev.clientY,active:false,pointerId:ev.pointerId};
-            try{el.setPointerCapture(ev.pointerId)}catch{}
-            try{el.focus({preventScroll:true})}catch{}
+            // A pointer press is not a request to take keyboard focus.
+            // Dragging is pointer-driven. Leave focus with the broker's own
+            // inputs so the trading page keeps receiving physical typing.
           });
           el.addEventListener('pointermove',ev=>{
             if(!drag)return;
@@ -1420,19 +1421,9 @@ export class LocalPlaywrightDriver{
             el.style.top=Math.max(8,Math.min(maxY,ev.clientY-drag.dy))+'px';ev.preventDefault()
           });
           el.addEventListener('pointerup',stop);el.addEventListener('pointercancel',stop);
-          el.addEventListener('keydown',ev=>{
-            if(ev.target?.closest?.('button,select,input,textarea,summary,details,[contenteditable="true"]'))return;
-            const line=Math.max(52,Math.round(el.clientHeight*.10)),page=Math.max(140,Math.round(el.clientHeight*.78));
-            let handled=true;
-            if(ev.key==='ArrowDown')el.scrollBy({top:line,behavior:'smooth'});
-            else if(ev.key==='ArrowUp')el.scrollBy({top:-line,behavior:'smooth'});
-            else if(ev.key==='PageDown'||(ev.key===' '&&!ev.shiftKey))el.scrollBy({top:page,behavior:'smooth'});
-            else if(ev.key==='PageUp'||(ev.key===' '&&ev.shiftKey))el.scrollBy({top:-page,behavior:'smooth'});
-            else if(ev.key==='Home')el.scrollTo({top:0,behavior:'smooth'});
-            else if(ev.key==='End')el.scrollTo({top:el.scrollHeight,behavior:'smooth'});
-            else handled=false;
-            if(handled){ev.preventDefault();ev.stopPropagation()}
-          });
+          // No global hotkey interception. The floating analyst is visual
+          // and must not consume browser/Windows typing or navigation keys.
+          // Native editable elements retain their default keyboard behavior.
         }
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
