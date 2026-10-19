@@ -20,8 +20,14 @@ function closedCandles(candles,now){
  }
  const series=[...groups.values()].map(g=>[...g.values()].sort((a,b)=>a.from-b.from));
  // Never mix 1m and 5m bars into an artificial moving average.
- series.sort((a,b)=>b.length-a.length||b.at(-1).to-a.at(-1).to);
- return (series[0]||[]).slice(-100);
+ // Prefer the most RECENT completed feed period; a stale long series may
+ // contain more candles but cannot describe the market currently traded.
+ series.sort((a,b)=>b.at(-1).to-a.at(-1).to||b.length-a.length);
+ const latest=series[0]||[];
+ if(!latest.length)return [];
+ const period=latest.at(-1).to-latest.at(-1).from;
+ if(now-latest.at(-1).to>Math.max(period*3,15000))return [];
+ return latest.slice(-100);
 }
 function ema(rows,period){
  if(rows.length<period)return null;
@@ -41,9 +47,9 @@ export function historicalPriceStructure({candles=[],now=Date.now()}={}){
   const bar=rows[i],neighbors=rows.slice(Math.max(0,i-2),Math.min(rows.length,i+3)).filter(x=>x!==bar);
   const age=rows.length-1-i,weight=.5+.5*Math.exp(-age/50);
   points.push({price:bar.high,index:i,age,kind:'high',weight,
-    pivot:neighbors.length>=2&&neighbors.every(x=>x.high<bar.high)});
+    pivot:i>=2&&i+2<rows.length&&neighbors.length===4&&neighbors.every(x=>x.high<bar.high)});
   points.push({price:bar.low,index:i,age,kind:'low',weight,
-    pivot:neighbors.length>=2&&neighbors.every(x=>x.low>bar.low)});
+    pivot:i>=2&&i+2<rows.length&&neighbors.length===4&&neighbors.every(x=>x.low>bar.low)});
  }
  points.sort((a,b)=>a.price-b.price);
  const zones=[];
