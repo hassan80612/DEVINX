@@ -34,7 +34,7 @@ jobs:
           find sentinel-trading-lab/agent -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
           node --test tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
       - name: Install website build dependencies
-        run: npm ci --prefix sentinel-trading-lab --no-audit --no-fund
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
       - name: Full website prebuild and Next.js build
         run: npm run build --prefix sentinel-trading-lab
       - name: Produce exact Agent ZIP
