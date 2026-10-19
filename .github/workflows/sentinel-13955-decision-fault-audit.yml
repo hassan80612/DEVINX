@@ -1,0 +1,22 @@
+name: Sentinel 13.9.55 final-direction causal audit - no deployment
+on:
+  push:
+    branches:
+      - research/sentinel-13955-causal-analogue-number-fix-20261019
+    paths:
+      - 'scripts/sentinel-13955-decision-fault-audit.mjs'
+      - '.github/workflows/sentinel-13955-decision-fault-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax verification
+        run: node --check scripts/sentinel-13955-decision-fault-audit.mjs
+      - name: Read-only causal predictions against recorded future expiries
+        run: node scripts/sentinel-13955-decision-fault-audit.mjs
