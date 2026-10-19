@@ -1,4 +1,4 @@
-name: Sentinel 13.9.56 stage4 preview download integrity
+name: Sentinel 13.9.56 stage4 production download integrity
 on:
   push:
     branches: [fix/sentinel-13956-stage4-independent-outcomes-20261019]
@@ -15,7 +15,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HOST=https://sentinel-trading-mmh4u4671-iguassu-shop.vercel.app
+          HOST=https://trading.devinx.com.br
           # Stage4 candidate preview has passed deployment READY status.
           TMP="$(mktemp -d)"
           curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13956" -o "$TMP/agent-update.json"
