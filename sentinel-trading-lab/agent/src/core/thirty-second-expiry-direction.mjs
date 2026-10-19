@@ -1,4 +1,5 @@
 // Project observed trend + cycle phase to the selected 30s expiry. Read-only.
+import {observedNoise} from './forward-direction-quality.mjs';
 // Extrapolate observed trend + cycle phase to
 // t+30s by default, or the explicit verified broker deadline. The signal's
 // :27 manual-click lead must not leave a :57 projection under a :00 counter.
@@ -59,11 +60,19 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
  }
  const expectedLogMove=selected.predict(horizonMs/1000)-selected.predict(0);
  if(!Number.isFinite(expectedLogMove)||Math.abs(expectedLogMove)<1e-12)return none('neutral-30s-cycle-expectation');
+ // A curve fitted to PAST prices cannot authorise a directional prediction
+ // smaller than ordinary observed movement over the SAME expiry horizon.
+ // The 15%-of-noise coherence standard already exists in the core; it is
+ // not a claimed calibrated chance of winning a trade.
+ const noise=observedNoise({quotes:rows,now,horizonSeconds:horizonMs/1000});
+ if(!(noise>0)||Math.abs(expectedLogMove)<noise*.15)
+  return none('projection-below-observed-noise');
  const predictedPrice=price*Math.exp(expectedLogMove);
  if(!(Number.isFinite(predictedPrice)&&predictedPrice>0))return none('invalid-30s-cycle-expectation');
  return {ready:true,side:expectedLogMove>0?'CALL':'PUT',reason:'observed-trend-and-30s-cycle-projection',
   observedAt:quoteAt,entryPrice:price,predictedPrice,expectedLogMove,horizonMs,
   ...(projectionTargetAt==null?{}:{projectionTargetAt:Number(projectionTargetAt)}),
   fittedPeriodSeconds:selected.period,observedPoints:n,fitResidual:Math.sqrt(selected.sse/n),
+  expectedSignalToNoise:Math.abs(expectedLogMove)/noise,
   fitSelectionCriterion:best};
 }
