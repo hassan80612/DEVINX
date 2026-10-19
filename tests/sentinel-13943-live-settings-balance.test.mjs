@@ -11,8 +11,8 @@ for(const provider of ['iq_option','exnova']){
   d.ingest(provider,{name:'balance-changed',msg:{body:{balance_id:20,type:1,amount:600}}});assert.deepEqual(d.accountBalanceSnapshot(provider),first);
   d.ingest(provider,{name:'event',msg:{name:'balance-changed',body:{balance_id:10,type:4,current_balance:90}}});const next=d.accountBalanceSnapshot(provider);assert.equal(next.amount,90);assert.equal(next.revision,first.revision+1);
  });
- test(provider+': account change stops; missing native balance cannot be replaced by a manual number',async()=>{
- const x=setup(provider);await x.bot.start();x.balance(1000,'20');x.bot.watch();assert.equal(x.bot.enabled,false);assert.match(x.bot.message,/conta/);const y=setup(provider);y.c.brokerBalance=null;await assert.rejects(y.bot.start(),/saldo/);
+ test(provider+': account change stops; missing native balance does not block activation',async()=>{
+ const x=setup(provider);await x.bot.start();x.balance(1000,'20');x.bot.watch();assert.equal(x.bot.enabled,false);assert.match(x.bot.message,/conta/);const y=setup(provider);y.c.brokerBalance=null;await y.bot.start();assert.ok(y.bot.enabled);assert.equal(y.bot.status().brokerBalance,null);
  });
  test(provider+': pending debit is reserved even after expiry; delayed winning credit is reconciled',async()=>{
  const x=setup(provider);x.bot.configure({amount:10,stopLoss:10});await x.bot.start();await x.fire();x.advance(50);x.balance(90);x.bot.watch();assert.equal(x.bot.status().riskNetPnl,0);x.advance(30950);x.bot.watch();assert.ok(x.bot.enabled);assert.equal(x.bot.status().riskNetPnl,0);

@@ -72,7 +72,7 @@ test('late settlement updates an unknown ledger but cannot advance progression o
  await x.bot.start();assert.equal(x.bot.settle({provider:'iq_option',orderId:id,netPnl:-1}),false);assert.equal(x.bot.net,0);
 });
 test('activation cannot fake an unread balance from obsolete manual configuration',async()=>{
- const x=setup();x.c.brokerBalance=null;x.bot.configure({initialBalance:999,payoutPercent:86});await assert.rejects(x.bot.start(),/Aguardando saldo/);assert.equal(x.bot.enabled,false);
+ const x=setup();x.c.brokerBalance=null;x.bot.configure({initialBalance:999,payoutPercent:86});await x.bot.start();assert.equal(x.bot.enabled,true);assert.equal(x.bot.status().availableBalance,null);assert.equal(x.bot.status().calculatedBalance,null);
 });
 test('broker settlement parser subtracts stake from actual gross return and rejects generic profit',()=>{
  const known={orderId:'7',accountId:'10',amount:2};assert.equal(settlementFromFrame('exnova',{name:'option-closed',msg:{id:7,profit_amount:3.72}},known).netPnl,1.7200000000000002);

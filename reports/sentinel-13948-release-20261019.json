@@ -1,0 +1,42 @@
+{
+  "version": "13.9.48",
+  "build": "13.9.48-optional-balance-remap",
+  "baseCommit": "4e0c090f87a1477d90f4f72883c7454dc9e42f8c",
+  "rollbackBranch": "backup/sentinel-13.9.47-before-optional-balance-20261019",
+  "changes": [
+    "Optional balance at activation, selected signals and pre-click validation; no fabricated funds or baseline when unavailable",
+    "Confirmed broker settlements retain session loss and bounded martingale progression without a balance frame; late received funds do not reset session PnL",
+    "Do not wait for a balance credit after the identified order has settled; keep pending-order and account-switch protection",
+    "Remapping stake/expiry clears old parameter points while preserving CALL/PUT; the same correct points can be selected again",
+    "Allow mapped HTML fields over the canvas; identify the sole editable descendant of a labeled wrapper, including a label hit beside the editor; nested combobox plus input is one editor",
+    "Replace unverified mapping-ready message with explicit activation check"
+  ],
+  "validation": {
+    "prebuildTestsPassed": 418,
+    "nextProductionBuild": "passed",
+    "exactPayloadFiles": 119,
+    "zipCRC": "passed",
+    "browserReports": [
+      "sentinel-13948-remap-browser-fixture.json",
+      "sentinel-13948-mobile-browser-fixture.json"
+    ],
+    "priorNativeEditorAndPCBrowserRegressions": "passed",
+    "nativeBrokerOrders": false,
+    "nativeWindowsLaunch": false,
+    "accuracyGainClaimed": false
+  },
+  "limits": [
+    "Browser fixture verification covers both providers; actual broker editors still require a readable input or accessible duration option",
+    "No live trades or remote bot-start commands were sent"
+  ],
+  "artifacts": {
+    "Sentinel-Agent-13.9.48.exe": {
+      "bytes": 2688000,
+      "sha256": "5c66e0ec2662c47aca9d3d88f5e5917d9c96198f9bda349d80b9d5d4dcb12b73"
+    },
+    "agent_payload_v88.zip": {
+      "bytes": 415314,
+      "sha256": "019756cbb07b86b4d92d2199c788618dd8a8c66e56bafdf407ad1325ec401343"
+    }
+  }
+}

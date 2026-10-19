@@ -42,8 +42,20 @@ export function brokerParameterBridge({kind,marker,point,action='find',expectedM
  if(point){
   // A canvas text editor must expose an actual focused editable input. Without
   // one we cannot verify its value and do not send a trade.
-  fields=fields.filter(e=>{const r=e.getBoundingClientRect();return(e===focused&&editable(e))||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
+  const selected=new Set();
+  const expectedLabel=kind==='amount'?/amount|invest(?:ment|imento)?|stake|valor|importe|montant|quantia/i:/duration|expir|tempo|dura[çc][aã]o/i;
+  // A mapped point can hit the field label or wrapper beside its input.
+  // Accept only a bounded container explicitly naming this parameter and
+  // containing one editor; never choose an unrelated input by proximity.
+  for(const hit of document.elementsFromPoint(point.x,point.y)){
+   for(let p=hit,depth=0;p&&depth<3&&p!==document.body&&p!==document.documentElement;p=p.parentElement,depth++){
+    const editors=[...p.querySelectorAll(fieldSelector)].filter(editable);
+    if(editors.length===1&&expectedLabel.test(label(p)))selected.add(editors[0]);
+   }
+  }
+  fields=fields.filter(e=>{const r=e.getBoundingClientRect();return selected.has(e)||(e===focused&&editable(e))||(point.x>=r.left&&point.x<=r.right&&point.y>=r.top&&point.y<=r.bottom);});
  }else fields=fields.filter(e=>(kind==='amount'?/amount|invest(?:ment|imento)?|stake|valor|importe|montant|quantia/i:/duration|expir|tempo|dura[çc][aã]o/i).test(label(e)));
+ fields=fields.filter(e=>!fields.some(other=>other!==e&&e.contains(other)));
  if(fields.length!==1)return{code:fields.length?'ambiguous-editor':'editor-not-ready',error:kind==='amount'?'Campo de valor não identificado. Use Mapear controles.':'Campo de expiração não identificado. Use Mapear controles.'};
  const e=fields[0];e.setAttribute('data-sentinel-trade-'+kind,marker);
  const selector='[data-sentinel-trade-'+kind+'="'+marker+'"]';
