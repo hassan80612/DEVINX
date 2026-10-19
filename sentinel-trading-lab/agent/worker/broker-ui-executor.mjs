@@ -117,28 +117,40 @@ export class BrokerUiExecutor{
  }
  async prepare(provider,expected){this.checkContext(provider,expected);await this.controls(provider);return{ready:true};}
  async execute(provider,order){
-  let yes,no,sentYes,sentNo,timer;
+  let yes,no,sentYes,sentNo,timer,timeoutResolve;
   const confirmation=new Promise((resolve,reject)=>{yes=resolve;no=reject;});confirmation.catch(()=>{});
   const sent=new Promise((resolve,reject)=>{sentYes=resolve;sentNo=reject;});sent.catch(()=>{});
+  // A missing broker acknowledgement does NOT establish that the click
+  // failed. Return a PENDING state, never click a second time to compensate.
+  const timedOut=new Promise(resolve=>{timeoutResolve=resolve;});
   const attempt={provider,order,requestId:null,resolve:yes,reject:error=>{sentNo(error);no(error);},sent:sentYes};
-  // Serialize only the physical clicks and their outgoing messages. Do not
-  // wait for network acknowledgements between clicks in the same sequence.
   const click=this.clickQueue.catch(()=>{}).then(async()=>{
    this.checkContext(provider,order);const c=await this.controls(provider);
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    this.attempt=attempt;
-   timer=setTimeout(()=>attempt.reject(Error('Clique sem confirmação da corretora · não será repetido.')),8000);
+   timer=setTimeout(()=>{
+    timeoutResolve({pending:true,accepted:false,requestId:attempt.requestId,localId:order.id,
+      message:'Clique aguardando confirmação da corretora · sem repetir'});
+   },8000);
    const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clicked=true;};
    try{
     if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:500,noWaitAfter:true});}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
     else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});}
-    await sent;
-   }finally{if(this.attempt===attempt)this.attempt=null;}
+    // Do not await a broker socket frame forever. Late page-out and
+    // page-in frames still reconcile this very order asynchronously.
+    await Promise.race([sent,timedOut]);
+   }finally{
+    // If no page-out has yet arrived, retain only this pending attempt
+    // so a late page-out can still acquire its broker request ID.
+    if(this.attempt===attempt&&(!order.clicked||attempt.requestId))this.attempt=null;
+   }
   }).catch(error=>{attempt.reject(error);throw error;});
   this.clickQueue=click.catch(()=>{});
-  try{await click;return await confirmation;}finally{clearTimeout(timer);}
+  try{
+   await click;
+   return await Promise.race([confirmation,timedOut]);
+  }finally{clearTimeout(timer);}
  }
-
  observe(provider,frame,direction){
   if(!isExecutionFrame(frame))return;
   const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
