@@ -80,7 +80,31 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+ }
+ retireUnidentifiedBatch(batch){
+  // Only after the expiry+grace timeout: release the execution mutex.
+  // Retain the old attempt for a bounded best-effort late broker request
+  // correlation, without issuing a second click.
+  const a=this.unidentifiedClick;
+  if(a&&batch?.orders?.some(p=>p.id===a.order?.id)){
+   this.retiredAttempts.push({attempt:a,expiresAt:Date.now()+300000});
+   this.retiredAttempts=this.retiredAttempts.slice(-16);
+   if(this.attempt===a)this.attempt=null;
+   this.unidentifiedClick=null;
+  }
+ }
+ retiredAttempt(provider,body){
+  this.retiredAttempts=this.retiredAttempts.filter(p=>p.expiresAt>Date.now());
+  const value=body?.price??body?.amount,active=body?.active_id??body?.active;
+  const side=({call:'CALL',put:'PUT',buy:'CALL',sell:'PUT'})[String(body?.direction||body?.action||'').toLowerCase()];
+  const account=body?.user_balance_id??body?.balance_id;
+  const options=this.retiredAttempts.filter(p=>p.attempt.provider===provider&&
+   finite(value)&&Math.abs(Number(value)-Number(p.attempt.order.amount))<0.000001&&
+   side===p.attempt.order.side&&
+   (active==null||Number(active)===Number(p.attempt.order.activeId))&&
+   (account==null||p.attempt.order.accountId==null||String(account)===String(p.attempt.order.accountId)));
+  return options.length===1?options[0].attempt:null;
  }
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
@@ -162,7 +186,7 @@ export class BrokerUiExecutor{
   const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
   const body=frame?.msg?.body??frame?.msg??frame?.body;
   const rid=frame?.request_id==null?null:String(frame.request_id);
-  const a=direction==='page-out'?this.attempt:this.awaiting.get(provider+'|'+rid);
+  const a=direction==='page-out'?(this.attempt||this.retiredAttempt(provider,body)):this.awaiting.get(provider+'|'+rid);
   if(direction==='page-out'){
    if(!/(?:open-option|place-digital-option|buyv3)$/.test(name))return;
    const outboundKey=provider+'|'+rid;if(this.outboundSeen.has(outboundKey))return;this.outboundSeen.add(outboundKey);if(this.outboundSeen.size>4096)this.outboundSeen.delete(this.outboundSeen.values().next().value);
@@ -175,7 +199,8 @@ export class BrokerUiExecutor{
    if(!rid||!finite(value)||Math.abs(Number(value)-a.order.amount)>0.000001||
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
    if(account!=null)a.order.accountId=String(account);
-   a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
+   a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;
+   this.retiredAttempts=this.retiredAttempts.filter(p=>p.attempt!==a);this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
   }
   if(direction!=='page-in')return;
   if(a&&provider===a.provider&&rid&&rid===a.requestId){
