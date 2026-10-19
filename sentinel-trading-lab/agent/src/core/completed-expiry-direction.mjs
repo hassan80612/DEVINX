@@ -23,17 +23,18 @@ export class CompletedExpiryDirection{
    this.pending=pending;this.lastQuoteAt=ts;
   }
   if(!baseline.ready)return baseline;
-  const key=[ts,spot,projectionTargetAt,quoteHistory.length,quoteHistory[0]?.ts,baseline.side].join('|');
+  const deadline=projectionTargetAt==null?Number(now)+30000:Number(projectionTargetAt);
+  const key=[ts,spot,deadline,quoteHistory.length,quoteHistory[0]?.ts,baseline.side].join('|');
   let wide;
   if(this.cache?.key===key)wide=this.cache.forecast;
   else{
    wide=thirtySecondCycleForecast({quoteHistory,quoteAt:ts,price:spot,now,durationMs:30000,
-    projectionTargetAt,periodSearch:'wide'});
+    projectionTargetAt:deadline,periodSearch:'wide'});
    this.cache={key,forecast:wide};
   }
   const alternative=wide?.ready?wide:baseline;
   if(ts-this.lastIssued>=5000){
-   this.lastIssued=ts;this.pending.push({at:ts,dueAt:projectionTargetAt==null?ts+30000:Number(projectionTargetAt),
+   this.lastIssued=ts;this.pending.push({at:ts,dueAt:deadline,
     price:spot,base:baseline.side,wide:alternative.side});
   }
   // Before enough completed outcomes exist, use strong penalized-fit evidence

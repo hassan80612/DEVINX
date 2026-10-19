@@ -33,7 +33,7 @@ function fit(points,period){
 export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000,projectionTargetAt=null,periodSearch='baseline'}={}){
  const none=reason=>({ready:false,side:null,reason});
  if(durationMs!==30000||!(Number.isFinite(price)&&price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=1450))return none('invalid-30s-input');
- const horizonMs=projectionTargetAt==null?30000:Number(projectionTargetAt)-quoteAt;
+ const horizonMs=(projectionTargetAt==null?Number(now)+durationMs:Number(projectionTargetAt))-quoteAt;
  if(!(Number.isFinite(horizonMs)&&horizonMs>0&&horizonMs<=60000))return none('invalid-projection-deadline');
  const rows=quoteHistory.filter(q=>q.ts<=quoteAt&&(q.receivedAt??q.ts)<=now&&q.ts>=quoteAt-180000&&Number.isFinite(q.price)&&q.price>0).sort((a,b)=>a.ts-b.ts);
  if(rows.at(-1)?.ts!==quoteAt||rows.at(-1)?.price!==price)return none('unverified-live-quote');

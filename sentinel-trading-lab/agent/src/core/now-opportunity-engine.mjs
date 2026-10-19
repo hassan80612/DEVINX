@@ -173,12 +173,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // direction can use a projection fitted entirely to observed past prices.
   // The one-shot lifecycle below continues to hold a single immutable call.
   const forecast=Number(durationMs)===30000?
-   thirtySecondCycleForecast({...input,projectionTargetAt}):null;
+   thirtySecondCycleForecast({...input,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):null;
   // Preserve existing qualified entries. Historical price reactions below
   // can admit directly from current quotes without four newly closed bars.
   const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
   const decision=Number(durationMs)===30000&&expiryDirectionSelector?
-   expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt}):baseline;
+   expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):baseline;
   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
   // Historical reactions must agree with the projection actually selected
   // above. Comparing against the discarded narrow forecast can both veto
