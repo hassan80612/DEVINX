@@ -40,6 +40,6 @@ test('manual stop wins a race before an asynchronous click',async()=>{
 test('stale final signal never causes a late order',async()=>{
  const x=setup();await x.bot.start();x.c.analysis={vnext:{futureEntryAnchor:{context:'iq_option|EURUSDOTC|automatic|30000',phase:'fired',side:'CALL',entryTriggeredAt:T-2000,holdingSeconds:30,exitAt:T+28000}}};x.bot.pulse();await x.bot.inflight;assert.equal(x.calls.length,0);
 });
-test('paused analyst, lost license, changed provider or changed asset disarm locally',async()=>{
- for(const patch of [{state:'paused'},{licensed:false},{provider:'exnova'},{asset:'GBP/USD'}]){const x=setup();await x.bot.start();Object.assign(x.c,patch);await x.fire();assert.equal(x.bot.enabled,false);assert.equal(x.calls.length,0);}
+test('paused analyst, lost license, changed provider or changed asset temporarily suspend without dispatch',async()=>{
+ for(const patch of [{state:'paused'},{licensed:false},{provider:'exnova'},{asset:'GBP/USD'}]){const x=setup();await x.bot.start();Object.assign(x.c,patch);await x.fire();assert.equal(x.bot.enabled,true);assert.ok(x.bot.suspensionReason);assert.equal(x.calls.length,0);}
 });
