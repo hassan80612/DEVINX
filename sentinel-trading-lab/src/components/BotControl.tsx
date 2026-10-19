@@ -2,11 +2,11 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['amount','Valor por entrada','0.01'],['intervalMs','Intervalo entre entradas (segundos)','1'],['stopAfterMinutes','Parar em (min)','1'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
+const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['intervalMs','Intervalo entre entradas (segundos)','1'],['stopAfterMinutes','Parar em (min)','1'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
- const current=Number(bot?.capabilities?.brokerExecution)>=2;
+ const current=Number(bot?.capabilities?.brokerExecution)>=4;
  const [draft,setDraft]=useState<Record<string,string>>({});
  const dirty=useRef(new Set<string>());
  const [pending,setPending]=useState('');
@@ -39,11 +39,11 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   <div className="split"><h3>{t('Bot automático')}</h3><b aria-live="polite">{!bot?'—':bot.arming?t('Ativando…'):bot.enabled?'ON':'OFF'}</b></div>
   {!bot?<p className="muted">{t('Atualize o Agent no PC para controlar o bot pelo celular.')}</p>:<>
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
-   {!current&&<p role="status">{t('Atualize o Agent no PC para usar expiração automática e martingale.')}</p>}
+   {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
    <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} min="0" step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
    <p className="muted">{t('0 = sem limite')} · {t('O tempo conta desde o início da sessão. Limite de perda na moeda da conta.')}</p>
-   <p className="muted">{t('Próxima entrada')}: {Number(bot.nextAmount??bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
-   <small className="muted">{t('Valor dobra após perda confirmada. Ganho ou último nível concluído volta ao valor base. Empate mantém o nível.')}</small>
+   <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
+   <small className="muted">{t('Após perda da sequência: 2, 4, 8 cliques no próximo sinal, até o máximo definido. Ganho ou último nível concluído volta a 1 clique. Empate mantém o nível.')}</small>
    <div className="botControlActions">
     <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||!!bot.pending||bot.executing||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
     <button className="kill" disabled={!online||pending==='stop'} onClick={()=>void run('stop')}>{pending==='stop'?t('Parando…'):t('Parar bot')}</button>
@@ -51,7 +51,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    </div>
    <p role="status">{message||t(bot.message||'Desligado')}{bot.pending?' · '+bot.pending.side+' · '+t('Entrada em andamento'):''}</p>
    <p className="muted">{t(bot.brokerBalance?'Saldo recebido':'Saldo indisponível')}: {bot.brokerBalance?Number(bot.brokerBalance.amount).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
-   <small className="muted">{t('O bot aplica valor e expiração do analista na corretora. Martingale aumenta o valor, não a assertividade, e não garante recuperar perdas. Parar impede novas entradas.')}</small>
+   <small className="muted">{t('Ajuste manualmente valor e duração na corretora. O bot só clica CALL/PUT. Cada clique abre uma operação com o mesmo valor. Parar impede novos cliques.')}</small>
    {!online&&<p role="status">{t('Agent do PC offline. Abra o Agent para enviar comandos.')}</p>}
   </>}
  </section>;

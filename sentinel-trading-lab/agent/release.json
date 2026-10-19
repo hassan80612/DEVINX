@@ -1,6 +1,6 @@
 {
-  "version": "13.9.50",
-  "build": "13.9.50-canvas-activation-guard-input-diagnostic",
+  "version": "13.9.51",
+  "build": "13.9.51-clean-click-martingale",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

@@ -134,7 +134,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const vnext=!!s?.settings?.engine;
   // Duration selection is the lead time to a FUTURE entry.
   // Only the recorded entry schedule owns the hero countdown and direction.
-  const expiryChoices=vnext?[5,10,15,30]:[5,10,15,30,45,60,120,180,300,600,900,3600];
+  const expiryChoices=vnext?[5,10,15,30,60]:[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   const pausedReadings=s?.settings?.pausedReadings;
   const strategyCards=s?.lastResult?.analysis?.strategyCards;

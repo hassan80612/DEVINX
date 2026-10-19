@@ -1,0 +1,186 @@
+{
+  "realBrokerTested": false,
+  "nativeWindowsTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "canvas": false,
+      "rounds": [
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 0
+        },
+        {
+          "clicks": 2,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 32
+        },
+        {
+          "clicks": 4,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 100
+        },
+        {
+          "clicks": 8,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 234
+        },
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 0
+        }
+      ],
+      "noParameterEditors": true,
+      "noActivationClicks": true,
+      "chartZoomUntouched": true,
+      "realOrders": 0
+    },
+    {
+      "provider": "iq_option",
+      "canvas": true,
+      "rounds": [
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 0
+        },
+        {
+          "clicks": 2,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 31
+        },
+        {
+          "clicks": 4,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 100
+        },
+        {
+          "clicks": 8,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 266
+        },
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 0
+        }
+      ],
+      "noParameterEditors": true,
+      "noActivationClicks": true,
+      "chartZoomUntouched": true,
+      "realOrders": 0
+    },
+    {
+      "provider": "exnova",
+      "canvas": false,
+      "rounds": [
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 0
+        },
+        {
+          "clicks": 2,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 35
+        },
+        {
+          "clicks": 4,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 100
+        },
+        {
+          "clicks": 8,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 235
+        },
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 0
+        }
+      ],
+      "noParameterEditors": true,
+      "noActivationClicks": true,
+      "chartZoomUntouched": true,
+      "realOrders": 0
+    },
+    {
+      "provider": "exnova",
+      "canvas": true,
+      "rounds": [
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 0
+        },
+        {
+          "clicks": 2,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 32
+        },
+        {
+          "clicks": 4,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "loss",
+          "dispatchSpanMs": 111
+        },
+        {
+          "clicks": 8,
+          "side": "PUT",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 234
+        },
+        {
+          "clicks": 1,
+          "side": "CALL",
+          "unitAmount": 1,
+          "netResult": "win",
+          "dispatchSpanMs": 0
+        }
+      ],
+      "noParameterEditors": true,
+      "noActivationClicks": true,
+      "chartZoomUntouched": true,
+      "realOrders": 0
+    }
+  ]
+}

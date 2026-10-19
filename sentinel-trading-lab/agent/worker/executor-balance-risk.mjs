@@ -30,7 +30,7 @@ export class ExecutorBalanceRisk{
    if(!t.settled){
     // Keep the stake reserved until the identified order closes. An expired
     // quote or a pre-expiry debit does not prove that the operation lost.
-    if(b.revision>t.beforeRevision&&b.amount<=t.before-t.amount+0.000001)reserved=t.amount;
+    if(b.revision>t.beforeRevision)reserved=Math.min(t.amount,Math.max(0,t.before-b.amount));
     effective+=reserved;reconciling=now>=t.exitAt;
    }else{
     const expected=t.before+t.netPnl;

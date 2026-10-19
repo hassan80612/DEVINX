@@ -46,7 +46,7 @@ let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
-const uiExecutor=new BrokerUiExecutor(driver,{onSent:rid=>executor.sent(rid),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled)executor.stop('Bot parado · operação externa detectada; confira a conta.');}});
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled)executor.stop('Bot parado · operação externa detectada; confira a conta.');}});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
@@ -54,13 +54,10 @@ async function executorAction(action,payload={}){
  assertLicensedAccess();
  if(action==='executor-map'||action==='executor-map-save'){
   if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
-  if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL, PUT, valor e expiração no painel da corretora. Os cliques de indicação não operam.'};}
+  if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL e depois PUT no painel da corretora. Os cliques de indicação não operam.'};}
   const bindings=await uiExecutor.saveBinding(activeProvider,payload.binding);await mkdir(dirname(executorTargetsFile),{recursive:true});await writeFile(executorTargetsFile+'.tmp',JSON.stringify(bindings),{mode:0o600});await rename(executorTargetsFile+'.tmp',executorTargetsFile);
-  executor.message='Mapeamento salvo para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · Ligar bot verifica valor e expiração';return{ok:true,message:executor.message};
+  executor.message='CALL/PUT mapeados para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · pronto para ligar';return{ok:true,message:executor.message};
  }
- if(action==='executor-input-diagnostic'){uiExecutor.receiveDiagnostic(payload.diagnostic,activeProvider);return{ok:true};}
- if(action==='executor-diagnose'){if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar para verificar o teclado.');await uiExecutor.diagnose(activeProvider);executor.message='Verificação por 30 s · clique em Invest e tente digitar; nenhuma entrada será enviada';return{ok:true,message:executor.message};}
-
  if(action==='executor-config'){executor.configure(payload.patch||{});const serialized=JSON.stringify(executor.config);executorSettingsWrite=executorSettingsWrite.catch(()=>{}).then(async()=>{await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile+'.tmp',serialized,{mode:0o600});await rename(executorSettingsFile+'.tmp',executorSettingsFile);});await executorSettingsWrite;return{ok:true,message:'Configuração do bot aplicada'};}
  if(action==='executor-start'){try{if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){executor.stop(String(e?.message||e));throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
@@ -517,7 +514,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics(),controlDiagnostic:uiExecutor.controlDiagnostic||null},
+  return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
     timingDiagnostics:{evaluation:{...evaluationPerformance},brokerMaintenance:{...brokerMaintenancePerformance}},
     sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app','https://trading.devinx.com.br','https://sentinel.devinx.com.br'];
@@ -687,5 +684,4 @@ function shutdownWorker(){
 }
 process.once('SIGTERM',()=>{void shutdownWorker()});
 process.once('SIGINT',()=>{void shutdownWorker()});
-
 

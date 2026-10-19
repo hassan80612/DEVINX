@@ -1,4 +1,4 @@
-// UI click delivery remains at most once; .46 additionally verifies stake/expiry and broker acknowledgement.
+// UI delivery remains at most once; fixed broker parameters are user configured.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -13,5 +13,5 @@ test('actual rolling expiration starts at click time and broker acknowledgement 
  const x=setup();x.driver.execute=async(p,o)=>{x.advance(700);o.captureEntry();o.clicked=true;return{accepted:true,orderId:'local-1'};};await x.bot.start();const start=x.now();await x.fire();assert.equal(x.bot.pending.exitAt,start+30700);assert.equal(x.bot.net,0);assert.equal(x.bot.pending.executionSource,'broker');
 });
 test('worker starts a passive order observer and wires all settlement callbacks',()=>{
- const text=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');assert.match(text,/setExecutionObserver\(\(provider,frame,direction\)=>uiExecutor.observe/);assert.match(text,/onSettlement:event=>executor.settle\(event\)/);assert.match(text,/onSent:rid=>executor.sent\(rid\)/);
+ const text=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');assert.match(text,/setExecutionObserver\(\(provider,frame,direction\)=>uiExecutor.observe/);assert.match(text,/onSettlement:event=>executor.settle\(event\)/);assert.match(text,/onSent:\(rid,id\)=>executor.sent\(rid,id\)/);
 });

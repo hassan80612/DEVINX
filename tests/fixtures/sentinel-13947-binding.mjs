@@ -1,1 +1,0 @@
-export const binding={format:'sentinel-canvas-targets-v1',origin:'https://exnova.com',path:'/traderoom',canvas:{id:'room',domPath:'html:1/body:1/canvas:1',width:1000,height:800,viewportWidth:1000,viewportHeight:800,pixelRatio:1},targets:{CALL:{x:900,y:300},PUT:{x:900,y:400}}};

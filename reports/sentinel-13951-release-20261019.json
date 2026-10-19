@@ -1,0 +1,52 @@
+{
+  "version": "13.9.51",
+  "build": "13.9.51-clean-click-martingale",
+  "baseCommit": "14a0d0dc4c9f278708a79d22b9bd25d70c0e2491",
+  "replacesCommit": "1f680fc470fb42d22eb706384d8df5134235ea36",
+  "rollbackBranch": "backup/sentinel-13.9.50-before-clean-click-martingale-20261019",
+  "changes": [
+    "Start from actual pre-martingale 13.9.45 source tree; remove parameter editor, keypad hooks and diagnostic modules",
+    "Fixed broker stake; 1,2,4,8 direction clicks on successive losing sequences, with opt-in and user-selected maximum levels",
+    "Physical clicks do not wait for individual network acknowledgements; all identified child orders must settle before progressing once on aggregate PnL",
+    "Preserve 1 minute duration in settings, overlay, floating card and settings restore; retain phone controls, editable loss/time limits and passive received balance corrections",
+    "No amount or expiry field detection/editing, keyboard input, calculator or chart actions during activation; canvas mapping only CALL/PUT",
+    "Unknown/partial sequences stop without repeat; late settlements remain accounted for without advancing a new progression"
+  ],
+  "validation": {
+    "localPrebuildTestsPassed": 386,
+    "finalClickProgressionTestsPassed": 19,
+    "distinctRegressionTestsPassed": 388,
+    "nextProductionBuild": "passed",
+    "payloadFiles": 118,
+    "zipCRC": "passed",
+    "browserFixture": "sentinel-13951-click-browser-fixture.json",
+    "browserProviders": [
+      "iq_option",
+      "exnova"
+    ],
+    "browserModes": [
+      "HTML direction buttons with no parameter fields",
+      "mapped canvas direction targets"
+    ],
+    "browserEightClickMaximumDispatchMs": 266,
+    "noLiveOrders": true,
+    "realBrokerSessionTested": false,
+    "nativeWindowsLaunch": false
+  },
+  "limitations": [
+    "Broker stake and duration are set manually by the user; the bot never changes them.",
+    "Each click is a distinct broker order. Partial, rejected or unconfirmed sequences are not resent.",
+    "Existing signal freshness and stop controls can interrupt remaining clicks; already accepted orders stay tracked.",
+    "Native Windows and actual broker sessions have not been tested. Close Agent and broker windows to discard prior injected code before updating."
+  ],
+  "artifacts": {
+    "Sentinel-Agent-13.9.51.exe": {
+      "bytes": 2683904,
+      "sha256": "88878aedf4e9e4821eb0de338c1636484e6fb06a7822b84dd7f391e8242b07a9"
+    },
+    "agent_payload_v88.zip": {
+      "bytes": 411800,
+      "sha256": "0f5878418126ebd76832b339d61314951029e03c24ab936710c6d13d559d7ef1"
+    }
+  }
+}
