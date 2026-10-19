@@ -6,7 +6,9 @@ export async function decisionDeadlineRuntime(){
  const root=mkdtempSync(join(tmpdir(),'sentinel-decision-deadline-'));
  cpSync(new URL('../sentinel-trading-lab/agent/src/core/',import.meta.url),root,{recursive:true});
  const replace=(file,from,to)=>{
-  const p=join(root,file),s=readFileSync(p,'utf8');if(s.split(from).length!==2)throw Error('Unexpected correction boundary: '+file);
+  const p=join(root,file),s=readFileSync(p,'utf8');
+  if(s.includes(to)&&!s.includes(from))return;
+  if(s.split(from).length!==2)throw Error('Unexpected correction boundary: '+file);
   writeFileSync(p,s.replace(from,to));
  };
  replace('thirty-second-expiry-direction.mjs',

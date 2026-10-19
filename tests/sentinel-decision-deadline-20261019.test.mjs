@@ -1,6 +1,6 @@
 import {test,after} from 'node:test';import assert from 'node:assert/strict';
 import {decisionDeadlineRuntime} from '../experiments/decision-deadline-runtime-20261019.mjs';
-import {thirtySecondCycleForecast as original} from '../sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs';
+import {thirtySecondCycleForecast as original} from './fixtures/sentinel-13944-quote-clock-forecast.mjs';
 const fixed=await decisionDeadlineRuntime();after(()=>fixed.cleanup());
 const T=1792380000000,quotes=Array.from({length:181},(_,i)=>({ts:T-(180-i)*1000,price:Math.exp(.0001*Math.sin(i/8)+i*.0000005)}));
 const args={quoteHistory:quotes,quoteAt:T,price:quotes.at(-1).price,now:T+1100,durationMs:30000};
