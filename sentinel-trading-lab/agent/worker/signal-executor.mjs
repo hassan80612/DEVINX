@@ -37,7 +37,10 @@ export class SignalExecutor{
  }
  async start(){
   this.watch();
-  if(this.enabled||this.arming||this.pending||this.executing)throw Error('Bot já ligado ou com operação pendente.');
+  if(this.enabled||this.arming)throw Error('Bot já ligado ou em ativação.');
+  // A stopped bot can be rearmed while older broker orders are still
+  // reconciling. Keep that exact batch and its Martingale ledger intact.
+  const suspendedBatch=this.pending;
   const c=this.context(),cfg={...this.config};
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
   const broker=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
@@ -49,9 +52,36 @@ export class SignalExecutor{
   if(!(c.durationMs>0))throw Error('Selecione a expiração no analista.');
   this.arming=true;const generation=++this.generation;
   try{
+   // A previous multi-click dispatch may still be finishing after Stop.
+   // Do not reuse its in-flight clicks or allow a new batch to overlap it.
+   if(this.executing&&this.inflight)await this.inflight.catch(()=>{});
+   if(generation!==this.generation)throw Error('Reativação cancelada.');
    await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
    const current=this.context();
    if(generation!==this.generation||!this.sameContext(c,current)||c.durationMs!==current.durationMs||(broker&&current.brokerBalance&&String(broker.accountId)!==String(current.brokerBalance.accountId))||current.state!=='running'||!current.licensed)throw Error('Analista mudou durante a ativação.');
+   if(suspendedBatch&&this.pending===suspendedBatch){
+    // Do not reset seen signals, pending orders, balance reservations,
+    // session counters or Martingale level while an order is unresolved.
+    if(!this.session||!this.sameContext(this.session,current)||
+      Number(this.session.durationMs)!==Number(current.durationMs)||
+      suspendedBatch.provider!==current.provider||
+      this.session.accountId!=null&&current.brokerBalance?.accountId!=null&&
+        String(this.session.accountId)!==String(current.brokerBalance.accountId))
+      throw Error('Há uma operação pendente da conta/ativo anterior. Aguarde a confirmação para reiniciar com a nova configuração.');
+    if(this.deadlineAt&&this.clock()>=this.deadlineAt)
+      throw Error('Limite de tempo da sessão atingido. Aguarde o encerramento e inicie uma nova sessão.');
+    if(this.config.stopLoss>0&&this.riskNet()<=-this.config.stopLoss)
+      throw Error('Limite de perda atingido. Ajuste seu limite antes de reativar.');
+    this.session.engine=current.engine;
+    this.queuedSignal=null;
+    const currentSignal=executorSignal(current.analysis);
+    if(currentSignal)this.seen.add(currentSignal.id);
+    this.enabled=true;
+    const confirmed=suspendedBatch.orders.filter(order=>order.settled).length;
+    this.message='Ligado novamente · aguardando encerramentos da corretora ('+
+      confirmed+'/'+suspendedBatch.orders.length+') · sem duplicar entradas';
+    return this.status();
+   }
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
    this.startedAt=this.clock();this.deadlineAt=cfg.stopAfterMinutes?this.startedAt+cfg.stopAfterMinutes*60000:null;
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
