@@ -151,6 +151,9 @@ export class SignalExecutor{
    this.suspensionReason=blocker;
    if(this.config.stopLoss>0&&this.riskNet(balance)<=-this.config.stopLoss)
     this.stop('Bot parado · stop-loss atingido');
+   else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
+    !balance.reconciling&&balance.current.amount<this.config.amount)
+    this.stop('Bot parado · saldo da corretora insuficiente para 1 clique');
    else if(blocker)this.message='Ligado · suspenso por segurança: '+blocker;
    else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;this.sequence=0;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
   }
@@ -182,9 +185,15 @@ export class SignalExecutor{
   this.queuedSignal=null;
   const amount=money(this.config.amount*2**(this.config.martingaleEnabled?this.martingaleLevel:0));
   if(!Number.isFinite(amount)||amount>1000000){this.message='Ligado · valor inválido · próximo sinal';return;}
-  if(this.config.stopLoss>0&&amount>Math.max(0,this.config.stopLoss+this.riskNet(balance))+0.000001){this.stop('Bot parado · próxima entrada excede o limite de perda restante');return;}
+  if(this.config.stopLoss>0&&amount>Math.max(0,this.config.stopLoss+this.riskNet(balance))+0.000001){
+   this.stop('Bot parado · próxima entrada excede o stop-loss restante');
+   return;
+  }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
-  if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&balance.current.amount<amount){this.message='Ligado · saldo insuficiente · próximo sinal';return;}
+  if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&balance.current.amount<amount){
+   this.stop('Bot parado · saldo insuficiente para '+this.nextClicks()+' clique(s)');
+   return;
+  }
   const generation=this.generation,clickCount=this.nextClicks(),unitAmount=this.config.amount;
   // Never start an 8/16-click sequence that the measured native broker
   // throughput cannot fit inside the actual analyst entry window.
