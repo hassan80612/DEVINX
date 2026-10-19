@@ -33,6 +33,8 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    if(action==='start'){const result=await act('executor/start',{context:{provider:bot.provider,asset:s.liveBroker?.symbol||s.settings?.asset,durationMs:Number(s.settings?.orderDurationMs)}});if(result===false||result===null)setMessage(t('Não foi possível ligar o bot. Confira o aviso do Agent no PC.'));}
    else if(action==='stop')await act('executor/stop');
    else setMessage(t('Configuração do bot aplicada'));
+  }catch(error){
+   if(request===generation.current)setMessage(error instanceof Error?error.message:String(error||t('Não foi possível ligar o bot.')));
   }finally{if(request===generation.current){setPending('');lock.current=false;}}
  };
  return <section className="card botControl" aria-label={t('Bot automático')}>
