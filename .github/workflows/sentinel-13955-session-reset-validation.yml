@@ -1,0 +1,34 @@
+name: Sentinel 13.9.55 stop reset risk and calculations - candidate only
+on:
+  push:
+    branches:
+      - fix/sentinel-13955-session-reset-history-input-20261019
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/src/**'
+      - 'tests/**'
+      - '.github/workflows/sentinel-13955-session-reset-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13955-session-reset-verification
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax for Agent and focused regressions
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --test tests/sentinel-13955-session-and-calculation.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13953-broker-ack-timeout.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs
+      - name: Install package dependencies for full integration suite
+        run: npm ci --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund
+      - name: Full integration and TypeScript regression suite
+        run: npm run prebuild --prefix sentinel-trading-lab
