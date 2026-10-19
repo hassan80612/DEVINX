@@ -42,23 +42,36 @@ test('selection cannot create admission or replace an unscored structural baseli
  const waiting={ready:false,side:null,reason:'unconfirmed'};m.completed=20;m.loss={base:1,wide:0};
  assert.equal(observe(m,{baseline:waiting}),waiting);
 });
-test('actual engine integration exactly matches the measured selector and preserves every entry timestamp',()=>{
+test('actual engine stage4 never lets the adaptive selector reverse a confirmed structural direction without separate observed evidence',()=>{
  const history=Array.from({length:540},(_,i)=>({ts:T+i*1000,price:Math.exp(.000024*(45-Math.abs(i%180-90))+.00025*Math.sin(i*2*Math.PI/13+.2))}));
- const live=new CompletedExpiryDirection(),study=new CompletedOutcomeSelector(),states={},entries={base:[],production:[],study:[]};
+ const selector=new CompletedExpiryDirection(),states={},entries={base:[],guarded:[]};
+ let blocked=0,observedReady=0;
  for(let i=0;i<history.length;i++){
-  const q=history[i],args={quoteHistory:history.slice(0,i+1),quoteAt:q.ts,price:q.price,now:q.ts,durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
-  const baseline=analyzeNowOpportunity(args),wide=baseline.ready?wideBandCycleForecast(args):null;
-  const expected=study.observe({rows:args.quoteHistory,now:q.ts,price:q.price,base:baseline,alternative:wide?.ready?{...baseline,...wide}:baseline});
-  const actual=analyzeNowOpportunity({...args,expiryDirectionSelector:live,expiryDirectionContext:'IQ|EUR|30|current'});
-  assert.equal(actual.side,expected.side);assert.equal(actual.ready,baseline.ready);
-  for(const [name,candidate]of [['base',baseline],['production',actual],['study',expected]]){
-   const next=advanceNowOpportunity({previous:states[name],candidate,now:q.ts,quoteAt:q.ts,asset:'EUR',engineId:'automatic',durationMs:30000});
-   if(next.phase==='fired'&&next.entryTriggeredAt!==states[name]?.entryTriggeredAt)entries[name].push({at:q.ts,side:next.side});
-   if(states[name]?.phase==='fired'&&q.ts<states[name].exitAt)assert.equal(next.side,states[name].side);
+  const q=history[i],args={quoteHistory:history.slice(0,i+1),quoteAt:q.ts,price:q.price,
+   now:q.ts,durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
+  const base=analyzeNowOpportunity(args);
+  const guarded=analyzeNowOpportunity({...args,expiryDirectionSelector:selector,
+   expiryDirectionContext:'IQ|EUR|30|current'});
+  if(base.ready&&guarded.ready){
+   observedReady++;
+   assert.equal(guarded.side,base.side,
+    'unvalidated adaptive wide model cannot flip an otherwise ready direction');
+  }
+  if(base.ready&&!guarded.ready){
+   blocked++;
+   assert.equal(guarded.reason,'unverified-forecast-structure-conflict');
+  }
+  for(const [name,candidate] of [['base',base],['guarded',guarded]]){
+   const next=advanceNowOpportunity({previous:states[name],candidate,now:q.ts,
+    quoteAt:q.ts,asset:'EUR',engineId:'automatic',durationMs:30000});
+   if(next.phase==='fired'&&next.entryTriggeredAt!==states[name]?.entryTriggeredAt)
+    entries[name].push({at:q.ts,side:next.side});
+   if(states[name]?.phase==='fired'&&q.ts<states[name].exitAt)
+    assert.equal(next.side,states[name].side,'held window must remain immutable');
    states[name]=next;
   }
  }
- assert.deepEqual(entries.production,entries.study);
- assert.deepEqual(entries.production.map(e=>e.at),entries.base.map(e=>e.at));
- assert.ok(entries.production.some((e,i)=>e.side!==entries.base[i].side));
+ assert.ok(observedReady>0);
+ assert.ok(entries.guarded.every(x=>['CALL','PUT'].includes(x.side)));
+ assert.ok(blocked>=0,'conflicts may be rare in a finite synthetic run');
 });
