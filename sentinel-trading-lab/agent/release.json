@@ -1,6 +1,6 @@
 {
-  "version": "13.9.51",
-  "build": "13.9.51-clean-click-martingale",
+  "version": "13.9.52",
+  "build": "13.9.52-analyst-follow-reconciled",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
