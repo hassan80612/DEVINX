@@ -15,7 +15,7 @@ export class SignalExecutor{
  constructor({driver,context,clock=Date.now}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
-  this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;
+  this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.suspensionReason=null;
  }
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
@@ -30,7 +30,7 @@ export class SignalExecutor{
   this.config=next;
   if(!next.martingaleEnabled||this.martingaleLevel>next.martingaleLevels)this.martingaleLevel=0;
   if(this.enabled){
-   this.deadlineAt=next.stopAfterMinutes?this.startedAt+next.stopAfterMinutes*60000:null;
+   this.deadlineAt=null;
    this.watch();
   }
   return this.status();
@@ -88,19 +88,33 @@ export class SignalExecutor{
     return this.status();
    }
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
-   this.startedAt=this.clock();this.deadlineAt=cfg.stopAfterMinutes?this.startedAt+cfg.stopAfterMinutes*60000:null;
+   this.startedAt=this.clock();this.deadlineAt=null;
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    const opening=this.balanceRisk.begin(c.provider);if(opening&&cfg.amount>opening.amount)throw Error('Saldo recebido insuficiente para o valor por entrada.');
-   const preserving=this.unresolvedBatches.size>0;
    this.initialBalance=opening?.amount??null;
-   if(!preserving){this.sessionId++;this.net=0;this.executed=0;this.closed=0;this.history=[];this.ledger.clear();}
+   this.sessionId++;this.net=0;this.executed=0;this.closed=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
    const existing=executorSignal(c.analysis);if(existing)this.seen.add(existing.id);
-   this.enabled=true;this.message='Ligado · aguardando próximo CALL/PUT do analista';
+   this.suspensionReason=null;this.enabled=true;this.message='Ligado · sessão nova · aguardando próximo CALL/PUT do analista';
   }finally{this.arming=false;}
   return this.status();
  }
- stop(reason='Parado por você'){this.enabled=false;this.queuedSignal=null;this.generation++;this.message=reason;return this.status();}
+ stop(reason='Parado por você',{reset=false}={}){
+  this.enabled=false;this.queuedSignal=null;this.generation++;
+  if(reset){
+   // Stop clears the visible bot session, NOT an already-open broker trade.
+   // Old orders remain quarantined for correlated settlement only.
+   if(this.pending){const b=this.pending;b.detached=true;this.unresolvedBatches.set(b.id,b);this.pending=null;}
+   this.balanceRisk.trade=null;this.balanceRisk.session=null;
+   this.session=null;this.startedAt=null;this.deadlineAt=null;this.initialBalance=null;
+   this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;
+   this.executed=0;this.closed=0;this.net=0;this.history=[];
+   this.ledger.clear();this.seen.clear();this.sessionId++;
+   this.suspensionReason=null;
+   this.message='Desligado · sessão zerada; ordens já enviadas à corretora não são canceladas';
+  }else this.message=reason;
+  return this.status();
+ }
  observeBalance(value){this.balanceRisk.observe(value);}
  unresolvedExposure(){
   let amount=0;
