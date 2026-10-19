@@ -1,6 +1,6 @@
 {
-  "version": "13.9.55",
-  "build": "13.9.55-reset-balanced-structural-correction",
+  "version": "13.9.56",
+  "build": "13.9.56-independent-stage4-expiry-evidence",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
