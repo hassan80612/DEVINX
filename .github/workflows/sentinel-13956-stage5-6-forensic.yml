@@ -1,0 +1,23 @@
+name: Sentinel 13.9.56 stage5 and stage6 forensic - read only
+on:
+  push:
+    branches: [research/sentinel-13956-stage5-stage6-forensic-20261019]
+    paths:
+      - 'scripts/sentinel-13956-stage5-6-readonly-audit.mjs'
+      - '.github/workflows/sentinel-13956-stage5-6-forensic.yml'
+permissions:
+  contents: read
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify read-only script syntax
+        run: node --check scripts/sentinel-13956-stage5-6-readonly-audit.mjs
+      - name: Evaluate level confirmation priority and price/expiry origin
+        run: node scripts/sentinel-13956-stage5-6-readonly-audit.mjs
+      - name: Keep existing entry/level tests unchanged
+        run: node --test tests/sentinel-13931-selected-forecast-structure.test.mjs tests/sentinel-now-market-isolation-20261018.test.mjs tests/sentinel-13931-historical-structure.test.mjs
