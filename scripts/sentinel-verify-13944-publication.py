@@ -70,11 +70,14 @@ with tempfile.TemporaryDirectory(prefix='sentinel44-published-module-') as direc
     agent_root = tmp / 'sentinel-trading-lab/agent'
     agent_root.mkdir(parents=True)
     archive.extractall(agent_root)
-    for name in ['tests/sentinel-13943-live-settings-balance.test.mjs', 'tests/sentinel-13942-canvas-targets.test.mjs', 'tests/sentinel-13941-click-only.test.mjs', 'tests/sentinel-13940-manual-bankroll.test.mjs', 'tests/sentinel-13937-binary-objective.test.mjs', 'tests/sentinel-13937-expiry-reference.test.mjs', 'tests/sentinel-13936-observed-sampling.test.mjs', 'tests/fixtures/sentinel-binary-objective-counterexample-20261019.json', 'tests/fixtures/sentinel-13936-pattern-direction.mjs', 'tests/fixtures/sentinel-13936-completed-expiry-direction.mjs', 'tests/fixtures/sentinel-13935-aligned-forecast-reference.json', 'tests/sentinel-candle-quote-provenance-20261018.test.mjs', 'tests/sentinel-now-market-isolation-20261018.test.mjs', 'tests/sentinel-nested-settlement-balance-20261018.test.mjs']:
+    for name in ['tests/sentinel-13944-mobile-bot.test.mjs', 'tests/sentinel-13943-live-settings-balance.test.mjs', 'tests/sentinel-13942-canvas-targets.test.mjs', 'tests/sentinel-13941-click-only.test.mjs', 'tests/sentinel-13940-manual-bankroll.test.mjs', 'tests/sentinel-13937-binary-objective.test.mjs', 'tests/sentinel-13937-expiry-reference.test.mjs', 'tests/sentinel-13936-observed-sampling.test.mjs', 'tests/fixtures/sentinel-binary-objective-counterexample-20261018.json', 'tests/fixtures/sentinel-13936-pattern-direction.mjs', 'tests/fixtures/sentinel-13936-completed-expiry-direction.mjs', 'tests/fixtures/sentinel-13935-aligned-forecast-reference.json', 'tests/sentinel-candle-quote-provenance-20261018.test.mjs', 'tests/sentinel-now-market-isolation-20261018.test.mjs', 'tests/sentinel-nested-settlement-balance-20261018.test.mjs']:
         target = tmp / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(root / name, target)
-    result = subprocess.run(['node', '--test', 'tests/sentinel-13943-live-settings-balance.test.mjs', 'tests/sentinel-13942-canvas-targets.test.mjs', 'tests/sentinel-13941-click-only.test.mjs', 'tests/sentinel-13940-manual-bankroll.test.mjs', 'tests/sentinel-13937-binary-objective.test.mjs', 'tests/sentinel-13937-expiry-reference.test.mjs', 'tests/sentinel-13936-observed-sampling.test.mjs', 'tests/sentinel-candle-quote-provenance-20261018.test.mjs', 'tests/sentinel-now-market-isolation-20261018.test.mjs', 'tests/sentinel-nested-settlement-balance-20261018.test.mjs'], cwd=tmp, capture_output=True, text=True)
+    target = tmp / 'sentinel-trading-lab/src/lib/analyst-wire-v1.mjs'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(root / 'sentinel-trading-lab/src/lib/analyst-wire-v1.mjs', target)
+    result = subprocess.run(['node', '--test', 'tests/sentinel-13944-mobile-bot.test.mjs', 'tests/sentinel-13943-live-settings-balance.test.mjs', 'tests/sentinel-13942-canvas-targets.test.mjs', 'tests/sentinel-13941-click-only.test.mjs', 'tests/sentinel-13940-manual-bankroll.test.mjs', 'tests/sentinel-13937-binary-objective.test.mjs', 'tests/sentinel-13937-expiry-reference.test.mjs', 'tests/sentinel-13936-observed-sampling.test.mjs', 'tests/sentinel-candle-quote-provenance-20261018.test.mjs', 'tests/sentinel-now-market-isolation-20261018.test.mjs', 'tests/sentinel-nested-settlement-balance-20261018.test.mjs'], cwd=tmp, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
 
 report = {'verifiedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -84,7 +87,7 @@ report = {'verifiedAt': datetime.datetime.now(datetime.timezone.utc).isoformat()
     'downloads': {name: {'bytes': len(data), 'sha256': sha(data)} for name, data in files.items()},
     'payloadSha256': sha(payload), 'exactPayloadFiles': checked,
     'zipCRC': 'passed', 'embeddedPayload': 'exact-match', 'genericAliases': 'byte-identical',
-    'byteRange': byte_range, 'publishedPayloadRegressionTestsPassed': 103,
+    'byteRange': byte_range, 'publishedPayloadRegressionTestsPassed': 106,
     'localPrebuildTestsPassed': 392,
     'nativeWindowsLaunch': 'not-tested', 'liveAccuracyImprovement': 'not-established'}
 target = root / 'reports' / ('sentinel-13944-' + stage + '-verification-20261019.json')

@@ -13,3 +13,7 @@ Validação: 392 testes obrigatórios, 13 testes de contrato/API/assinatura, bui
 Os 75 arquivos do motor do analista permanecem idênticos à base preservada. Esta versão não anuncia melhora de assertividade. As hipóteses de inversão e novas regras continuam isoladas porque não demonstraram melhora consistente. O vídeo recuperado permite observar operações e perdas, mas não expõe a regra responsável por cada decisão.
 
 Base e rollback imediato: commit 32ba17004713a085ac8f0e16adc28da739896634, versão 13.9.43, deployment dpl_CP61ox6TuLVD2pPr3YW7m6Jtn8TE. O original 13.9.38 e seu backup continuam preservados.
+
+Consultas de diagnóstico de segurança do projeto retornam avisos pré-existentes sobre funções SECURITY DEFINER executáveis e outras configurações. Esta mudança preservou exatamente owner e ACL; esses avisos não foram apresentados como resolvidos.
+
+Publicação conferida: commit e885d12a06d5477e0dfcfed375a688d3397f230c; deployment de produção dpl_A1Mm34aDgbVwSzVD9GXdUF7a6yDT READY. URL imutável e trading.devinx.com.br serviram instalador e payload idênticos à construção local; 106 testes passaram sobre cada payload baixado. Download Range 206, ZIP/CRC, aliases e 118 arquivos exatos confirmados. A consulta de logs de erro/fatal deste deployment não retornou registros na janela inicial; tráfego limitado, sem operação real ou login de cliente testado.
