@@ -171,23 +171,28 @@ export class SignalExecutor{
  releaseExpiredBatch(now=this.clock()){
   const batch=this.pending;
   if(!batch||!batch.dispatchComplete||this.executing||!(Number(batch.exitAt)>0))return false;
-  // Final configured martingale stage cycles to the base stake whether
-  // the broker has reported WIN/LOSS or not. The real result reconciles later.
-  // Earlier stages still require broker outcomes to decide the next level.
+  // Broker result callbacks may arrive after option expiry. Never freeze all
+  // future entries for an unconfirmed historical result. At expiry + grace,
+  // reserve every unresolved stake and resume on the next NEW normal signal.
   const terminal=batch.terminalCycleConsumed===true;
-  const graceMs=terminal?1500:Math.max(45000,Math.min(90000,Number(batch.durationMs)||30000));
+  const graceMs=1500;
   if(now<Number(batch.exitAt)+graceMs||batch.orders.every(p=>p.settled))return false;
   batch.releasedAt=now;
-  if(terminal)batch.terminalCycleReleased=true;
+  batch.continuationReleased=true;
+  // The progression of an unconfirmed prior batch is UNKNOWN, not LOSS.
+  // A new independent cycle must start at base; late settlement updates
+  // actual session PnL, not the new cycle's martingale index.
+  if(!batch.progressionApplied){
+   batch.progressionApplied=true;
+   this.martingaleLevel=0;
+  }
   this.unresolvedBatches.set(batch.id,batch);
   this.pending=null;this.queuedSignal=null;
   // The outdated current-trade reservation is replaced by the worst-case
   // amount of all unresolved clicked children, enforced in riskNet().
   if(this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade=null;
   this.onBatchReleased?.(batch);
-  this.message=terminal?
-   'Último martingale encerrado · próximo sinal com 1 clique · resultado financeiro pendente':
-   'Ligado · resultado da corretora pendente; nível do martingale preservado · não aumentar risco sem confirmação';
+  this.message='Ligado · operação anterior vencida; próximo sinal com 1 clique · resultado financeiro pendente';
   return true;
  }
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
@@ -241,12 +246,10 @@ export class SignalExecutor{
     ' encerradas; '+d.waitingId+' sem ID) · nível preservado';
    return;
   }
-  // Earlier stages require broker results to select the next level.
-  // The terminal stage has already cycled to one and, once all positions
-  // expire, does not freeze future calls. Worst-case unknown stake remains
-  // reserved by riskNet(), balance limits and stop-loss.
+  // Already-expired broker orders never indefinitely freeze the next fresh
+  // entry. Their worst-case losses still count through riskNet() and stop-loss.
   if([...this.unresolvedBatches.values()].some(b=>!b.detached&&
-   b.sessionId===this.sessionId&&!b.terminalCycleReleased)){
+   b.sessionId===this.sessionId&&!b.continuationReleased)){
    if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.config.stopLoss+this.riskNet())+0.000001){
     this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
     return;
