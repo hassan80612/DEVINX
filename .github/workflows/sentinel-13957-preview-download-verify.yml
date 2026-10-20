@@ -1,4 +1,4 @@
-name: Sentinel 13.9.57 confirmed-level and broker preview integrity
+name: Sentinel 13.9.57 confirmed-level and broker production integrity
 on:
   push:
     branches: [fix/sentinel-13957-stage5-execution-safety-martingale3-20261019]
@@ -15,7 +15,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HOST=https://sentinel-trading-rg1ewfid7-iguassu-shop.vercel.app
+          HOST=https://trading.devinx.com.br
           # Stage4 candidate preview has passed deployment READY status.
           TMP="$(mktemp -d)"
           curl --fail --location --silent --show-error --max-time 50 "$HOST/downloads/agent-update.json?verify=13957" -o "$TMP/agent-update.json"
