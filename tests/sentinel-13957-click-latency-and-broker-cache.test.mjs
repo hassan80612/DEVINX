@@ -29,11 +29,23 @@ test('stage6: 60s entry retains 1.5s compatibility budget',async()=>{
  anchor(x,x.now(),60000);x.advance(1000);x.bot.pulse();await x.bot.inflight;
  assert.equal(x.calls.length,1);
 });
-test('stage6: measured batch feasibility applies the REAL deadline, not stale old 1500ms default',()=>{
+test('stage6: nine-click measured throughput uses bounded batch time, not 900ms first-click deadline',()=>{
  const ui=new BrokerUiExecutor({});
- ui.confirmedDispatchDurations.set(ui.dispatchKey('exnova',76),[200]);
- assert.equal(ui.batchFeasibility('exnova',{count:4,activeId:76,entryAt:2000,now:2200,maxEntryAgeMs:900}).safe,true);
- assert.equal(ui.batchFeasibility('exnova',{count:4,activeId:76,entryAt:2000,now:2500,maxEntryAgeMs:900}).safe,false);
+ const key=ui.dispatchKey('exnova',76);
+ ui.confirmedDispatchDurations.set(key,[120,145,160,175,200,210,220,3000]);
+ const opts={count:9,activeId:76,entryAt:2000,maxEntryAgeMs:900,maxBatchAgeMs:5000};
+ assert.equal(ui.batchFeasibility('exnova',{...opts,now:2200}).safe,true);
+ assert.equal(ui.batchFeasibility('exnova',{...opts,now:2600}).safe,true);
+ assert.equal(ui.batchFeasibility('exnova',{...opts,now:3000}).safe,false,'first click must still be timely');
+ ui.confirmedDispatchDurations.set(key,[750,850,900]);
+ assert.equal(ui.batchFeasibility('exnova',{...opts,now:2200}).safe,false,'measured slow broker cannot fit nine');
+});
+test('stage6: unknown throughput does not automatically reject nine clicks, but 27 needs calibration',()=>{
+ const ui=new BrokerUiExecutor({});
+ const opts={activeId:76,entryAt:5000,now:5100,maxEntryAgeMs:900,maxBatchAgeMs:5000};
+ assert.equal(ui.batchFeasibility('exnova',{...opts,count:9}).safe,true);
+ assert.equal(ui.batchFeasibility('exnova',{...opts,count:27}).safe,false);
+ assert.equal(ui.batchFeasibility('iq_option',{...opts,count:3}).safe,true);
 });
 test('operator responsiveness: reuse verified visible HTML controls within the same broker/asset instead of scanning all frames',async()=>{
  let evaluations=0,valid=true,activeId=76;
