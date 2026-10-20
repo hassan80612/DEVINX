@@ -504,7 +504,14 @@ export class SignalExecutor{
    if(late){
     if(batch.orders.every(o=>o.settled||!o.clicked||o.rejected)){
      this.unresolvedBatches.delete(batch.id);
-     if(batch.orders.every(o=>o.settled)&&batch.dispatchComplete)this.applyCompletedSequence(batch);
+     if(batch.orders.every(o=>o.settled)&&batch.dispatchComplete){
+      // Resolve the exact cached balance debit only if no subsequent
+      // physical operation has replaced its reservation. This avoids a
+      // phantom loss or stuck 'reconciling' while the broker payout is late.
+      if(this.balanceRisk.trade?.batchId===batch.id)
+       this.balanceRisk.close(batch.netPnl,this.clock());
+      this.applyCompletedSequence(batch);
+     }
     }
    }else this.finishBatch(batch);
   }
