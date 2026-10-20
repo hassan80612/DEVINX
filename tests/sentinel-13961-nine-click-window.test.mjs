@@ -46,7 +46,7 @@ for(const provider of ['iq_option','exnova']){
    holdingSeconds:30,exitAt:started+30000,entryPrice:1.1}}};
   x.advance(1100);x.bot.pulse();
   assert.equal(x.calls.length,0);
-  assert.match(x.bot.message,/Sinal antigo descartado/);
+  assert.match(x.bot.message,/Sinal recebido fora do prazo/);
  });
 }
 test('first click still has strict freshness; batch completion uses independent bounded time',()=>{
