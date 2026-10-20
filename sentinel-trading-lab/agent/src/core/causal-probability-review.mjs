@@ -67,7 +67,7 @@ export class CausalProbabilityReview{
    ts<=t&&t-ts<=1500&&Number.isFinite(p)&&p>0;
   if(!state.pending&&fresh&&weak&&!protectedTurn&&
     original?.ready===true&&SIDES.has(original.side)&&
-    Number.isFinite(pOpp)&&pOpp>=.58&&Number.isFinite(payout)&&
+    Number.isFinite(pOpp)&&pOpp>=.58&&
     t>=ts){
    // One candidate per selected expiry, never overlapping across the same context.
    state.pending={at:ts,dueAt:ts+Number(expiryMs),price:p,side:original.side};
