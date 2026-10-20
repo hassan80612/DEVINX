@@ -1,0 +1,25 @@
+name: Sentinel 13.9.59 lag and regime forensics - no production
+on:
+  push:
+    branches:
+      - research/sentinel-13959-entry-vs-click-20261020
+    paths:
+      - 'research/sentinel-13959-lag-regime-investigation.mjs'
+      - '.github/workflows/sentinel-13959-lag-regime-investigation.yml'
+      - 'sentinel-trading-lab/agent/src/core/**'
+permissions:
+  contents: read
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax checks
+        run: |
+          node --check research/sentinel-13959-lag-regime-investigation.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+      - name: Reproduce all decisions and delayed click counterfactuals
+        run: node research/sentinel-13959-lag-regime-investigation.mjs
