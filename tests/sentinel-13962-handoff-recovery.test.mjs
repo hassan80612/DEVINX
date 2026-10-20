@@ -56,6 +56,32 @@ for(const provider of ['iq_option','exnova']){
   assert.doesNotMatch(x.bot.message,/Sinal antigo|Sinal recebido fora do prazo/);
   assert.equal(x.calls.length,1);
  });
+
+ test(provider+': final martingale rolls to base without confirmed result; late closure cannot reset new cycle',async()=>{
+  const x=setup(provider);x.c.brokerBalance=null;
+  x.bot.configure({martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:3});
+  await x.bot.start();
+  for(const clicks of [1,3,9]){
+   await x.fire('CALL');
+   assert.equal(x.bot.pending.clickCount,clicks);
+   closeBatch(x,-1);
+  }
+  await x.fire('PUT');
+  const last=x.bot.pending;
+  assert.equal(last.clickCount,27);
+  assert.equal(x.bot.nextClicks(),1);
+  x.advance(32000);
+  await x.fire('CALL');
+  assert.equal(x.bot.pending.clickCount,1);
+  assert.equal(x.bot.unresolvedExposure(),27);
+  assert.equal(x.bot.net,-13);
+  for(const order of last.orders)assert.equal(x.bot.settle({
+   provider,orderId:order.orderId,accountId:'10',netPnl:-1,source:'broker'}),true);
+  assert.equal(x.bot.net,-40);
+  assert.equal(x.bot.nextClicks(),1);
+  closeBatch(x,-1);
+  assert.equal(x.bot.nextClicks(),3);
+ });
  test(provider+': overdue signal is still denied when no pending trade, protecting late entries',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   await x.bot.start();
