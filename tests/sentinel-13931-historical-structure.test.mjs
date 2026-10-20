@@ -66,7 +66,14 @@ test('candle correction and asset changes invalidate cached levels',()=>{
 test('historical rejection releases on the current quote without four newly closed blocks',()=>{
  const args={quoteHistory:reject,candles:candles(),price:reject.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
  const a=analyzeNowOpportunity(args);assert.equal(a.ready,true);assert.equal(a.side,'CALL');assert.equal(a.observedAt,T);
- for(const engineId of ['trend','support_resistance','fibonacci_retest','smart_confluence'])assert.equal(analyzeNowOpportunity({...args,engineId}).side,a.side);
+ const support=analyzeNowOpportunity({...args,engineId:'support_resistance'});
+ assert.equal(support.side,'CALL','the selected S/R specialist uses the observed rejection');
+ assert.equal(support.signalOwner,'selected-specialist');
+ for(const engineId of ['trend','fibonacci_retest','smart_confluence']){
+  const other=analyzeNowOpportunity({...args,engineId});
+  assert.equal(other.ready,false,'unqualified specialist must not inherit S/R entry');
+  assert.equal(other.side,null);
+ }
  const fired=advanceNowOpportunity({candidate:a,now:T,quoteAt:T,asset:'EUR',engineId:'automatic',durationMs:30000});
  assert.equal(fired.entryTriggeredAt,T);assert.equal(fired.exitAt,T+30000);
  const held=advanceNowOpportunity({previous:fired,candidate:{...a,side:'PUT',observedAt:T+1000},now:T+1000,quoteAt:T+1000,asset:'EUR',engineId:'automatic',durationMs:30000});
