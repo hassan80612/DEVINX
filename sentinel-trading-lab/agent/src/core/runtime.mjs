@@ -964,6 +964,12 @@ export class DemoTradingRuntime{
   }
   _signalValidationGate({analysis,snap,settings,now,monotonicNow=()=>performance.now()}){
     if(settings.engine&&this.forecastModel==='now-structural-v1'){
+      // engineCycle receives the clock captured BEFORE expensive analysis. The
+      // broker's first click must use the actual decision time instead: after
+      // a 27-click cycle the old timestamp can already be >900ms behind.
+      // Tests and offline replays without a real broker callback keep their
+      // supplied deterministic clock.
+      if(typeof this.onNowOpportunity==='function')now=Date.now();
       const expiryDirectionContext=[snap.provider,settings.asset,settings.orderDurationMs].join('|');
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
@@ -1026,6 +1032,11 @@ export class DemoTradingRuntime{
         entryReadyNow:freshSignal
       }:null;
       this.vnextFutureEntryAnchor=anchor;
+      // Deliver the confirmed signal directly to the local broker executor,
+      // BEFORE optional dashboards, research and the remaining engineCycle
+      // processing. The ordinary post-tick pulse remains a deduplicated backup.
+      if(anchor?.entryReadyNow&&typeof this.onNowOpportunity==='function')
+        this.onNowOpportunity(anchor);
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
       const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
         String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
