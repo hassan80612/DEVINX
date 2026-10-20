@@ -15,7 +15,7 @@ test('stage6: very slow broker cannot execute an aged 30s signal (no stop, no la
  anchor(x,x.now(),30000);x.advance(1000);x.bot.pulse();
  assert.equal(x.calls.length,0);
  assert.equal(x.bot.enabled,true);
- assert.match(x.bot.message,/Sinal antigo descartado/);
+ assert.match(x.bot.message,/Sinal recebido fora do prazo/);
 });
 test('stage6: a still-fresh 30s signal retains ordinary single-click semantics',async()=>{
  const x=setup();x.c.brokerBalance=null;await x.bot.start();
