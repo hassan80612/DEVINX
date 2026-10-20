@@ -193,6 +193,10 @@ export class SignalExecutor{
   // Unknown clicked orders cannot count as wins or losses. Do not start
   // another sequence while their outcome can change the progression.
   if([...this.unresolvedBatches.values()].some(b=>!b.detached&&b.sessionId===this.sessionId)){
+   if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.config.stopLoss+this.riskNet())+0.000001){
+    this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
+    return;
+   }
    this.message='Ligado · aguardando resultado de ordem anterior · martingale preservado';return;
   }
   const balance=this.balanceRisk.view(now);
