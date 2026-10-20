@@ -6,10 +6,20 @@ import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
 export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:900,other:1500});
+// Freshness of the FIRST broker entry differs from completion of an already
+// started multi-click batch. Each broker click has its own 30s expiry.
+export const MAX_BATCH_DISPATCH_MS=Object.freeze({five:850,short:1600,fifteen:2500,thirty:5000,other:8000});
 export function maxSignalAgeMs(durationMs){
  const ms=Number(durationMs);
  return ms<=15000?MAX_SIGNAL_TO_CLICK_AGE_MS.short:
   ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
+}
+export function maxBatchDispatchMs(durationMs){
+ const ms=Number(durationMs);
+ return ms<=5000?MAX_BATCH_DISPATCH_MS.five:
+  ms<=10000?MAX_BATCH_DISPATCH_MS.short:
+  ms<=15000?MAX_BATCH_DISPATCH_MS.fifteen:
+  ms<=30000?MAX_BATCH_DISPATCH_MS.thirty:MAX_BATCH_DISPATCH_MS.other;
 }
 export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,stopAfterMinutes:0,stopLoss:0,martingaleLevels:2,martingaleMultiplier:2,martingaleEnabled:false,maxConsecutiveLosses:0});
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
@@ -207,7 +217,8 @@ export class SignalExecutor{
   // trade: only a fully executed broker-confirmed batch changes progression.
   const canSend=this.driver.batchFeasibility?.(c.provider,{
    count:requestedClicks,activeId:c.activeId,entryAt:queued.at,now,
-   maxEntryAgeMs:maxSignalAgeMs(queued.durationMs)});
+   maxEntryAgeMs:maxSignalAgeMs(queued.durationMs),
+   maxBatchAgeMs:maxBatchDispatchMs(queued.durationMs)});
   if(canSend?.safe===false&&requestedClicks===1){
    this.message='Ligado · sinal atrasado, aguardando próximo';
    return;
@@ -232,20 +243,20 @@ export class SignalExecutor{
   }
   const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
   this.pending=batch;
-  const valid=()=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()-queued.at<=maxSignalAgeMs(queued.durationMs)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()-queued.at<=(clickIndex===0?maxSignalAgeMs(queued.durationMs):maxBatchDispatchMs(queued.durationMs))&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
   for(let i=0;i<clickCount;i++){
    const order={...queued,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
-   batch.orders.push(order);order.isValid=valid;
+   batch.orders.push(order);order.isValid=()=>valid(i);
    order.captureEntry=()=>{
     const snapshot=this.context();order.clickedAt=this.clock();order.exitAt=order.clickedAt+order.durationMs;batch.exitAt=Math.max(batch.exitAt,order.exitAt);this.lastEntryAt=order.at;
     if(!captured){captured=true;if(snapshot.brokerBalance!==undefined)this.balanceRisk.observe(snapshot.brokerBalance);this.balanceRisk.capture({...batch,exitAt:batch.exitAt});}
     if(num(snapshot.quote)&&Number(snapshot.quote)>0&&Number(snapshot.quoteAt)>0&&order.clickedAt-Number(snapshot.quoteAt)>=0&&order.clickedAt-Number(snapshot.quoteAt)<=2500){order.entryPrice=Number(snapshot.quote);order.entryQuoteAt=Number(snapshot.quoteAt);}
    };
    jobs.push(Promise.resolve().then(async()=>{
-    if(!valid())throw Object.assign(Error('Entrada cancelada antes do clique.'),{beforeClick:true});
+    if(!order.isValid())throw Object.assign(Error('Entrada cancelada antes do clique.'),{beforeClick:true});
     const result=await this.driver.execute(c.provider,order);
     if(result?.pending===true&&order.clicked===true){
      // The broker request/response may arrive later. Keep the exact
