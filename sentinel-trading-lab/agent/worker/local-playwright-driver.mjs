@@ -1545,9 +1545,10 @@ export class LocalPlaywrightDriver{
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PROJEÇÃO AO VIVO</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${liveForecastReady?price(liveReceipt.projectedPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">CALL ${liveProjection&&Number.isFinite(Number(liveProjection.callPct))?Math.round(Number(liveProjection.callPct))+'%':'—'}</span>
-                <span style="color:${putTone}">PUT ${liveProjection&&Number.isFinite(Number(liveProjection.putPct))?Math.round(Number(liveProjection.putPct))+'%':'—'}</span>
+                <span style="color:${callTone}">CALL ${d.vnext?.probability?.pCall!=null?Math.round(d.vnext.probability.pCall*100)+'% (estim.)':liveProjection&&Number.isFinite(Number(liveProjection.callPct))?Math.round(Number(liveProjection.callPct))+'% (técnico)':'—'}</span>
+                <span style="color:${putTone}">PUT ${d.vnext?.probability?.pPut!=null?Math.round(d.vnext.probability.pPut*100)+'% (estim.)':liveProjection&&Number.isFinite(Number(liveProjection.putPct))?Math.round(Number(liveProjection.putPct))+'% (técnico)':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
+                ${d.vnext?.probability?.pCall!=null?'<span style="font-size:9px;color:'+muted+'">Modelo 30–60s · estimativa não calibrada</span>':''}
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da previsão</summary>
