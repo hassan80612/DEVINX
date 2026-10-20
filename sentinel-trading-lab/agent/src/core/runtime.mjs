@@ -979,28 +979,19 @@ export class DemoTradingRuntime{
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
-      // Same original 13.9.66 decision path; its probability is display-only.
-      // The optional probability motor uses this estimate as a candidate.
-      const useProbability=this.forecastModel==='short-probability-v1'&&
-        settings.motorVariant!=='66'&&[30000,60000].includes(Number(settings.orderDurationMs));
-      const preliminary=[30000,60000].includes(Number(settings.orderDurationMs))?
-        shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
-          price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
-      const observation=useProbability?{
-        side:preliminary.side,ready:preliminary.ready,
-        provisionalSide:preliminary.pCall==null?null:preliminary.pCall>.5?'CALL':preliminary.pCall<.5?'PUT':null,
-        reason:preliminary.reason,observedAt:Number(snap.quoteTs),
-        entryPrice:preliminary.ready?Number(snap.price):null,
-        strength:preliminary.ready?Math.round(Math.max(preliminary.pCall,preliminary.pPut)*100):null,
-        expirySeconds:Number(settings.orderDurationMs)/1000
-      }:analyzeNowOpportunity({
+      // Original 13.9.66 decides first. Probability can only reject a
+      // strongly contradicted, weak signal, never flip or add waiting.
+      const original66=analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
-
         expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
+      const preliminary=[30000,60000].includes(Number(settings.orderDurationMs))?
+        shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+          price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
+      const observation=combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs});
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
@@ -1064,8 +1055,7 @@ export class DemoTradingRuntime{
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
         computedStatus:observation.ready?'observed-confirmation':'observing-now',
-        forecastFoundation:useProbability?'parametric-direction-probability-not-calibrated':'completed-structure-and-current-quote',
-        motorVariant:settings.motorVariant==='66'?'66':'probability',
+        forecastFoundation:'completed-structure-and-current-quote-with-statistical-confirmation',
         receipt:null,projection:null,targetAnchor:null,targetProjection:null,
         futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
         horizonForecasts:[],horizonMeasurements:[],
@@ -1080,7 +1070,7 @@ export class DemoTradingRuntime{
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           probabilityCalibrated:false,probabilitySource:preliminary?.source??null,
-          motorVariant:settings.motorVariant==='66'?'66':'probability'
+          probabilityInfluenced:observation.probabilityConflict===true
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
@@ -1104,7 +1094,7 @@ export class DemoTradingRuntime{
           activeUntil:active?next.exitAt:null
         },
         strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,entryPlanner:{modelVersion:useProbability?'short-probability-v1':'now-structural-v1',horizons:{}},
+        generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
 
         reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
           'Analisando o mercado atual para a próxima entrada.',observation.reason]
