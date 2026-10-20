@@ -1,0 +1,34 @@
+name: Sentinel 13.9.61 nine-click latency regression - isolated candidate
+on:
+  push:
+    branches: [fix/sentinel-13961-nine-click-dispatch-window-20261020]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/src/components/BotControl.tsx'
+      - 'tests/sentinel-13961-*'
+      - 'tests/sentinel-13957-*'
+      - '.github/workflows/sentinel-13961-nine-click-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13961-validation
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate nine real dispatches, timing, broker settlement and martingale regressions
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-13961-nine-click-window.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13960-own-sequence-and-strategy-switch.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13955-session-and-calculation.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs
+      - name: Install dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Full website prebuild and type check
+        run: |
+          npm run prebuild --prefix sentinel-trading-lab
+          cd sentinel-trading-lab && npx tsc --noEmit
