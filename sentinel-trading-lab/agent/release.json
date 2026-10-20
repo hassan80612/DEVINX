@@ -1,6 +1,6 @@
 {
-  "version": "13.9.57",
-  "build": "13.9.57-stage5-confirmed-levels-broker-latency-martingale3",
+  "version": "13.9.58",
+  "build": "13.9.58-safe-broker-martingale-continuity",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
