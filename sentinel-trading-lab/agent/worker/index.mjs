@@ -48,6 +48,12 @@ const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
 const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}}});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
+// An analyst-confirmed NOW decision must not wait for the rest of the heavy
+// cycle (research/dashboard/status). The post-tick pulse is deduplicated.
+runtime.onNowOpportunity=anchor=>{
+ try{executor.pulse(anchor);}
+ catch(e){executor.message='Falha ao entregar sinal imediato: '+String(e?.message||e);}
+};
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
