@@ -18,8 +18,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: sentinel-13957-regressions
-  cancel-in-progress: true
+  group: sentinel-13959-final-candidate-validation
+  cancel-in-progress: false
 jobs:
   validate:
     runs-on: ubuntu-latest
