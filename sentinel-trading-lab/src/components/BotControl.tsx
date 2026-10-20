@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
+const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleMultiplier','Multiplicador de cliques (2 ou 3)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
@@ -26,6 +26,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     for(const [key] of fields)if(dirty.current.has(key)){
      const n=Number(draft[key]);if(draft[key]===''||!Number.isFinite(n)||n<0||
       key==='martingaleLevels'&&(!Number.isInteger(n)||n>3)||
+      key==='martingaleMultiplier'&&(!Number.isInteger(n)||![2,3].includes(n))||
       key==='maxConsecutiveLosses'&&(!Number.isInteger(n)||n>50)){
       setMessage(t('Martingale: máximo de 3 níveis.'));return;
      }
@@ -46,12 +47,12 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   {!bot?<p className="muted">{t('Atualize o Agent no PC para controlar o bot pelo celular.')}</p>:<>
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
    {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
-   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} min="0" max={key==='martingaleLevels'?3:key==='maxConsecutiveLosses'?50:undefined} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
+   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} max={key==='martingaleLevels'?3:key==='martingaleMultiplier'?3:key==='maxConsecutiveLosses'?50:undefined} min={key==='martingaleMultiplier'?2:0} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
    <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
    {bot.brokerBalance&&(!(Number(bot.config?.stopLoss)>0)||Number(bot.config.stopLoss)>=Number(bot.brokerBalance.amount))&&<p role="status">{t('Atenção: o limite de perda não protege esta banca contra perdas elevadas.')}</p>}
    <p className="muted">{t('Sequências perdedoras confirmadas')}: {Number(bot.consecutiveLossBatches||0)} · {t('O limite por sequência é opcional e só conta resultados confirmados pela corretora.')}</p>
    <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
-   <small className="muted">{t('Após perda da sequência: 2, 4, 8 cliques no próximo sinal, até o máximo definido. Ganho ou último nível concluído volta a 1 clique. Empate mantém o nível.')}</small>
+   <small className="muted">{t('Progressão de cliques definida pelo multiplicador: 2× = 1→2→4→8 ou 3× = 1→3→9→27. Sinais ignorados não alteram o nível; somente a sequência encerrada pela corretora.')}</small>
    <div className="botControlActions">
     <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
     <button className="kill" disabled={!online||pending==='stop'} onClick={()=>void run('stop')}>{pending==='stop'?t('Parando…'):t('Parar bot')}</button>
