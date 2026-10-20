@@ -190,9 +190,12 @@ export class SignalExecutor{
   this.pending=null;
   // Keep a NEW signal queued while the old trade is closing, but only if
   // its original timestamp is still fresh when the executor retries.
-  // The outdated current-trade reservation is replaced by the worst-case
-  // amount of all unresolved clicked children, enforced in riskNet().
-  if(this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade=null;
+  // Do NOT clear the existing broker-balance debit reconciliation here:
+  // the option has expired, but the broker may have debited the stake without
+  // reporting the payout. Clearing trade would turn that unconfirmed debit
+  // into a fictitious realized loss in balanceRisk.view(). The next actual
+  // order safely replaces the snapshot at captureEntry; unresolved stakes
+  // remain separately reserved by riskNet().
   this.onBatchReleased?.(batch);
   this.message='Ligado · operação anterior vencida; próximo sinal com 1 clique · resultado financeiro pendente';
   return true;
