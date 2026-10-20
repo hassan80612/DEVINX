@@ -32,6 +32,7 @@ import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
+import {Probabilistic30s} from './probability-30s.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -84,6 +85,7 @@ export class DemoTradingRuntime{
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
     this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.probabilistic30=new Probabilistic30s();
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -974,12 +976,26 @@ export class DemoTradingRuntime{
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
-      const observation=analyzeNowOpportunity({
+      // 30-second direction is now determined EXCLUSIVELY by empirically
+      // validated, broker-quote-based logistic probabilities, not indicators,
+      // fitted sine waves, or the last candle. Unproven models MUST WAIT.
+      const usingProbabilities=Number(settings.orderDurationMs)===30000;
+      const probability=usingProbabilities?this.probabilistic30.observe({
+        provider:snap.provider,asset:settings.asset,quotes:snap.quoteHistory,
+        quoteAt:snap.quoteTs,price:Number(snap.price),now,payout:snap.payout
+      }):null;
+      const verdict=probability?.decision;
+      const observation=usingProbabilities?{
+        side:verdict?.side==='AGUARDAR'?null:verdict?.side||null,
+        provisionalSide:null,ready:verdict?.side==='CALL'||verdict?.side==='PUT',
+        observedAt:Number(snap.quoteTs),entryPrice:Number(snap.price),
+        strength:verdict?.side==='AGUARDAR'?0:Math.round(Math.max(verdict?.pCall||0,verdict?.pPut||0)*100),
+        reason:verdict?.reason||'collecting-probability-evidence'
+      }:analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
-
         expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
       const duration=brokerDurationGuard({snap,settings,now});
@@ -1045,7 +1061,7 @@ export class DemoTradingRuntime{
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
         computedStatus:observation.ready?'observed-confirmation':'observing-now',
-        forecastFoundation:'completed-structure-and-current-quote',
+        forecastFoundation:usingProbabilities?'validated-directional-logistic-30s':'completed-structure-and-current-quote',
         receipt:null,projection:null,targetAnchor:null,targetProjection:null,
         futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
         horizonForecasts:[],horizonMeasurements:[],
@@ -1057,7 +1073,11 @@ export class DemoTradingRuntime{
           side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
           ready:observation.ready,reason:eligible.reason,
           observedAt:observation.observedAt,strength:observation.strength,
-          price:Number(snap.price)||null,evaluatedAt:now
+          price:Number(snap.price)||null,evaluatedAt:now,
+          probabilityCall:verdict?.pCall??null,probabilityPut:verdict?.pPut??null,
+          probabilityTrainingSamples:probability?.samples??null,
+          probabilityQualified:probability?.validated??false,
+          probabilityReason:verdict?.reason??null
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
@@ -1081,9 +1101,9 @@ export class DemoTradingRuntime{
           activeUntil:active?next.exitAt:null
         },
         strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
+        generalConsensus:null,entryPlanner:{modelVersion:usingProbabilities?'gemini-logistic-30s-v1':'now-structural-v1',horizons:{}},
         reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
-          'Analisando o mercado atual para a próxima entrada.',observation.reason]
+          usingProbabilities?'Calculando probabilidade de CALL/PUT em 30s com resultados reais confirmados.':'Analisando o mercado atual para a próxima entrada.',observation.reason]
       };
       return{allowed:false,analysis:analysisResult,reasons:analysisResult.reasons};
     }
@@ -1447,8 +1467,8 @@ export class DemoTradingRuntime{
       latency:row.latency?{feedMs:Number(row.latency.feedMs||0),decisionMs:Number(row.latency.decisionMs||0),executionMs:Number(row.latency.executionMs||0)}:null
     }
   }
-  snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
+  snapshotPersistent(){return{version:3,probabilistic30:this.probabilistic30.snapshot(),forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
+  restore(data={}){this.probabilistic30=new Probabilistic30s(data.probabilistic30||{});this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
   delete this.settings.clockMode;
   // Preserve the supported 1m expiry on restart; migrate only unsupported
   // legacy durations to the default 30s operation.
