@@ -40,7 +40,7 @@ export function analystSnapshot(runtimeStatus,live){
   const compactVnext=runtimeStatus?.settings?.engine?{
     ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     ...(vnext.mode==='now'?{nowObservation:take(vnext.nowObservation,
-      ['side','provisionalSide','ready','reason','observedAt','evaluatedAt','probabilityCall','probabilityPut'])}:{}),
+      ['side','provisionalSide','ready','reason','observedAt','evaluatedAt','probabilityCall','probabilityPut','motorVariant'])}:{}),
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
@@ -89,7 +89,7 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
-    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,motorVariant:runtimeStatus?.settings?.motorVariant||'66',orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
+    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
     liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
