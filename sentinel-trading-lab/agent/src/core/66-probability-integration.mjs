@@ -21,7 +21,7 @@ export function combine66WithProbability(original,estimate,{durationMs}={}){
  // No added wait: only at the moment 66 was *already* about to release
  // a lower-strength directional trade, and only on very strong disagreement.
  if(!protectedReversal&&Number.isFinite(strength)&&strength>=0&&
-    strength<55&&pOpp>=.70){
+    strength<55&&pOpp>=.71){
   return {...original,ready:false,side:null,
    provisionalSide:original.side,probabilityConflict:true,
    reason:'probability-conflict-on-weak-66-signal'};
