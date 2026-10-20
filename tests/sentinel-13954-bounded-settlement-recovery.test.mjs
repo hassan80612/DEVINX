@@ -9,7 +9,7 @@ for(const provider of ['iq_option','exnova']){
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
   const old=x.bot.pending,oldId=old.orderId;
-  x.advance(31499);x.bot.watch();assert.equal(x.bot.pending,old,'do not overlap expiry');
+  x.advance(29999);x.bot.watch();assert.equal(x.bot.pending,old,'do not overlap still-open operation');
   x.advance(1);x.bot.watch();assert.equal(x.bot.pending,null);
   assert.equal(x.bot.unresolvedBatches.size,1);
   assert.equal(x.bot.unresolvedExposure(),1);
