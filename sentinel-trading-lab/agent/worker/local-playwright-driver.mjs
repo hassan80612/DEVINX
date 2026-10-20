@@ -1233,7 +1233,17 @@ export class LocalPlaywrightDriver{
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
-    const fullDomEveryMs=st.activeId!=null&&st.balance!=null?90000:30000;
+    // Deep DOM reads traverse the entire trading page (body.innerText,
+    // full selector map, layout boxes). Doing that every 90s on a healthy,
+    // already-authenticated 30s feed can stall chart rendering and delay the
+    // Playwright CALL/PUT dispatch. Prefer the broker's PASSIVE quote and
+    // balance events; keep the fast recovery schedule when the feed is stale.
+    const passiveStreamHealthy=st.activeId!=null&&st.balance!=null&&
+      st.balanceId!=null&&st.candles.length>=50&&
+      st.lastQuoteAt>0&&now-st.lastQuoteAt<=2500&&
+      candleFreshForState(st);
+    const fullDomEveryMs=passiveStreamHealthy?300000:
+      st.activeId!=null&&st.balance!=null?90000:30000;
     if(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
@@ -1241,8 +1251,13 @@ export class LocalPlaywrightDriver{
     // Missing balance must not trigger repeated broker base requests on every
     // maintenance cycle (2.5s). A regular bounded retry is sufficient;
     // explicit user refresh requests are still immediate.
-    const baseRetryMs=st.balance==null?15000:30000;
-    if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)await this.requestBaseData(provider).catch(()=>{});
+    // Full base-data requests (balances + initialization metadata) are
+    // unnecessary every 30s while the actual account and quotes arrive via
+    // read-only broker events. Never stop explicit refresh/recovery requests.
+    const baseRetryMs=st.balance==null?15000:
+      passiveStreamHealthy?120000:30000;
+    if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)
+      await this.requestBaseData(provider).catch(()=>{});
     const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     if(st.candles.length&&(!integrity.ok||st.candleActiveId==null||st.activeId==null||Number(st.candleActiveId)!==Number(st.activeId))){
       st.lastIntegrityError={...integrity,reason:integrity.ok?'active_id_do_historico_divergente':integrity.reason,at:Date.now(),activeId:st.activeId,candleActiveId:st.candleActiveId,symbol:st.symbol};
