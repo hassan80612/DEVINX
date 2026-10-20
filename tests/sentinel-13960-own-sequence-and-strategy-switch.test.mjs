@@ -73,7 +73,7 @@ for(const provider of ['iq_option','exnova']){
   settle(x,-1);
   assert.equal(x.bot.nextClicks(),9);
  });
- test(provider+': late complete settlement changes own progression once, no uncertain restart',async()=>{
+ test(provider+': late prior close reconciles ledger but leaves new cycle progression untouched',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
   await x.bot.start();await x.fire('CALL');settle(x,-1);
@@ -82,14 +82,14 @@ for(const provider of ['iq_option','exnova']){
   x.advance(80000);x.bot.watch();
   assert.equal(x.bot.pending,null);
   assert.equal(x.bot.unresolvedBatches.size,1);
-  assert.equal(x.bot.nextClicks(),3,'never reset on delayed close');
+  assert.equal(x.bot.nextClicks(),1,'unconfirmed prior batch restarts at base');
   const calls=x.calls.length;
-  await x.fire('CALL');assert.equal(x.calls.length,calls,'unknown broker orders block new spending');
+  await x.fire('CALL');assert.equal(x.calls.length,calls+1,'no indefinite broker result freeze');assert.equal(x.bot.pending.clickCount,1);
   for(const order of batch.orders){
    assert.equal(x.bot.settle({provider,orderId:order.orderId,netPnl:-1,source:'broker'}),true);
   }
   assert.equal(x.bot.unresolvedBatches.size,0);
-  assert.equal(x.bot.nextClicks(),9,'confirmed loss advances exactly once');
+  assert.equal(x.bot.nextClicks(),1,'late previous loss cannot rewrite newer cycle');
   assert.equal(x.bot.consecutiveLossBatches,2);
  });
 }
