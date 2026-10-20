@@ -60,9 +60,9 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  const verifiedPayout=Number.isFinite(payoutFrac)&&payoutFrac>0&&payoutFrac<=1;
  // A decision is allowed with an early technical estimate, but NOT certified
  // as profitable. The threshold is merely a conservative preliminary filter.
- const threshold=verifiedPayout?1/(1+payoutFrac)+.02:null;
- const side=verifiedPayout?(pCall>threshold?'CALL':pPut>threshold?'PUT':null):null;
- return {ready:side!==null,side,reason:!verifiedPayout?'payout-unavailable':side?'preliminary-short-probability':'no-preliminary-directional-advantage',
+ const threshold=verifiedPayout?Math.max(.59,1/(1+payoutFrac)+.02):.61;
+ const side=pCall>threshold?'CALL':pPut>threshold?'PUT':null;
+ return {ready:side!==null,side,reason:side?'preliminary-short-probability':'no-preliminary-directional-advantage',
   pCall,pPut,threshold,horizonSeconds:h,historySeconds:Math.round(span),quoteCount:recent.length,
   source:'parametric-unvalidated',calibrated:false,driftPerSecond,volPerRootSec};
 }
