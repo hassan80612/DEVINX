@@ -183,7 +183,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // The Automatic cycle predictor must not silently replace that strategy.
   if(engineId!=='automatic'){
    const specialist=analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'});
-   return {...specialist,engineId,qualityPolicy,contextStrategy:engineId,
+   // Explicit SUPPORT / RESISTANCE remains eligible on a freshly observed
+   // rejection using closed broker candles, even with <14s micro-history.
+   // Other selected specialists must not inherit its direction.
+   let chosen=specialist;
+   if(engineId==='support_resistance'){
+    const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
+    chosen=applyHistoricalPriceStructure({candidate:specialist,structure,...input});
+    chosen=applyCandleLevelRoute({candidate:chosen,map:structure.candleLevelMap,...input});
+    chosen=applyObservedLevelSequence({candidate:chosen,map:structure.candleLevelMap,...input});
+   }
+   return {...chosen,engineId,qualityPolicy,contextStrategy:engineId,
     marketShape:'selected-specialist',signalOwner:'selected-specialist'};
   }
   const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
