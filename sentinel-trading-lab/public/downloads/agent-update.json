@@ -1,1 +1,1 @@
-{"format":"sentinel-agent-update-v1","version":"13.9.59","build":"13.9.59-nonoverlap-specialist-loss-guard","zipSha256":"8c77056e45ee748c121cf1dde851a6d762999805d8b9a4b2d7ae4c43fbe41c1a"}
+{"format":"sentinel-agent-update-v1","version":"13.9.60","build":"13.9.60-strategy-expiry-lock-own-triple-martingale","zipSha256":"4e22d6fcb916723dc36d091d445140e545363e3346275e2953462c8973c71786"}
