@@ -979,8 +979,9 @@ export class DemoTradingRuntime{
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
-      // Original 13.9.66 decides first. Probability can only reject a
-      // strongly contradicted, weak signal, never flip or add waiting.
+      // Original 13.9.66 analyzes first. A strong, independently verified
+      // opposite-side record may override a weak decision on the SAME quote.
+      // No timers, broker requests or waiting are introduced here.
       const original66=analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
