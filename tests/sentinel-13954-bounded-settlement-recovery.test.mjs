@@ -4,7 +4,7 @@ import {setup} from './fixtures/executor-13946.mjs';
 import {BrokerUiExecutor} from '../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs';
 
 for(const provider of ['iq_option','exnova']){
- test(provider+': no perpetual freeze: after expiry +45s, next new analyst signal starts at 1 click',async()=>{
+ test(provider+': missing broker settlement preserves prior martingale and never starts another trade',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
@@ -20,14 +20,17 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.closed,0,'must not invent outcomes');
   assert.equal(x.bot.net,0);
   await x.fire('PUT');
-  assert.deepEqual(x.calls.map(o=>o.side),['CALL','PUT']);
-  assert.equal(x.bot.pending.side,'PUT');
+  assert.deepEqual(x.calls.map(o=>o.side),['CALL']);
+  assert.equal(x.bot.pending,null);
   const priorLevel=x.bot.martingaleLevel;
   assert.equal(x.bot.settle({provider,orderId:oldId,netPnl:-1,source:'broker'}),true);
   assert.equal(x.bot.closed,1);
   assert.equal(x.bot.net,-1);
   assert.equal(x.bot.unresolvedBatches.size,0);
-  assert.equal(x.bot.martingaleLevel,priorLevel,'late prior outcome cannot alter running Martingale');
+  assert.equal(x.bot.martingaleLevel,1,'the confirmed prior LOSS advances only after settlement');
+  assert.equal(priorLevel,0);
+  x.advance(31000);await x.fire('PUT');
+  assert.equal(x.bot.pending.clickCount,2,'new signal uses verified progression');
  });
  test(provider+': late accepted ID and later close still reconcile after recovering next signal',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
@@ -58,7 +61,7 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.net,0);
   assert.equal(x.bot.unresolvedBatches.size,1,'late outcome is still tracked');
  });
- test(provider+': Martingale never escalates from an unknown 2-click batch; next genuine signal resumes at 1 click',async()=>{
+ test(provider+': Martingale remains at existing level after UNKNOWN 2-click batch; awaits broker settlement',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
@@ -68,8 +71,11 @@ for(const provider of ['iq_option','exnova']){
   const old=x.bot.pending;assert.equal(old.orders.length,2);
   x.advance(75000);x.bot.watch();
   assert.equal(x.bot.pending,null);assert.equal(x.bot.unresolvedExposure(),2);
-  assert.equal(x.bot.nextClicks(),1);
-  await x.fire('CALL');assert.equal(x.bot.pending.clickCount,1);
+  assert.equal(x.bot.nextClicks(),2);
+  const priorCalls=x.calls.length;
+  await x.fire('CALL');
+  assert.equal(x.calls.length,priorCalls,'no new stake before confirmed settlement');
+  assert.equal(x.bot.pending,null);
   assert.equal(x.bot.closed,1);
  });
 }
