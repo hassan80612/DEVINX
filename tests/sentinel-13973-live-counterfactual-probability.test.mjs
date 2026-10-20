@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {performance} from 'node:perf_hooks';
+import {readFileSync} from 'node:fs';
 import {CausalProbabilityReview} from '../sentinel-trading-lab/agent/src/core/causal-probability-review.mjs';
 import {combine66WithProbability} from '../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs';
 const context='iq_option|EUR/USD|automatic|30000';
@@ -84,4 +85,19 @@ test('review is bounded, synchronous, and does not introduce a 30-second wait on
   quoteHistory:[{ts:anchor,price}],expiryMs:30000,original:candidate,estimate:prob,marketValid:true,payout:.8});
  assert.ok(performance.now()-started<500);
  assert.equal(audit.summary(context,.8).n,0);
+});
+
+test('both REAL and DEMO use the same evidence without extra broker/page queries',()=>{
+ const rt=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
+ const review=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-probability-review.mjs',import.meta.url),'utf8');
+ const probability=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs',import.meta.url),'utf8');
+ const entry=rt.slice(rt.indexOf('const probabilityProof='),rt.indexOf('const eligible=',rt.indexOf('const probabilityProof=')));
+ assert.ok(entry.includes('combine66WithProbability'));
+ assert.doesNotMatch(entry,/settings\.mode|===['"]demo['"]|===['"]real['"]/);
+ assert.ok(entry.includes('lastFastProbability')===false);
+ for(const code of [review,probability]){
+  assert.doesNotMatch(code,/\bawait\b|\bfetch\s*\(|setInterval\s*\(|setTimeout\s*\(|\bWebSocket\b|\bdriver\./);
+ }
+ assert.ok(rt.includes('quoteTs-cached.quoteTs<650'));
+ assert.ok(rt.includes('(original66.ready!==true||locked)'));
 });
