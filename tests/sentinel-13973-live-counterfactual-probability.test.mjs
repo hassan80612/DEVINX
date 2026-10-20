@@ -8,7 +8,7 @@ const candidate={ready:true,side:'CALL',strength:35,reason:'closed-structure-and
 const prob={pCall:.29,pPut:.71};
 const price=1.12345;
 const anchor=1792500000000;
-function feed(review,{contextId=context,duration=30000,sideAtExit='PUT',n=12,missing=false}={}){
+function feed(review,{contextId=context,duration=30000,sideAtExit='PUT',n=16,missing=false}={}){
  let summary;
  for(let i=0;i<n;i++){
   const at=anchor+i*(duration+2000),exitAt=at+duration;
@@ -21,11 +21,11 @@ function feed(review,{contextId=context,duration=30000,sideAtExit='PUT',n=12,mis
  }
  return summary;
 }
-test('12 independent, non-overlapping live opposite wins permit a weak-signal inversion',()=>{
+test('16 independent, non-overlapping live opposite wins permit a weak-signal inversion',()=>{
  const audit=new CausalProbabilityReview();
  const p=feed(audit);
- assert.equal(p.n,12);
- assert.equal(p.oppositeWins,12);
+ assert.equal(p.n,16);
+ assert.equal(p.oppositeWins,16);
  assert.equal(p.originalWins,0);
  assert.equal(p.approved,true);
  const modified=combine66WithProbability(candidate,prob,{durationMs:30000,proof:p});
@@ -48,7 +48,7 @@ test('strong original decisions and protected reversals are never inverted',()=>
 });
 test('wrong opposite direction blocks promotion instead of learning the wrong market',()=>{
  const p=feed(new CausalProbabilityReview(),{sideAtExit:'CALL'});
- assert.equal(p.n,12);
+ assert.equal(p.n,16);
  assert.equal(p.oppositeWins,0);
  assert.equal(p.approved,false);
  assert.equal(combine66WithProbability(candidate,prob,{durationMs:30000,proof:p}).side,'CALL');
@@ -64,9 +64,9 @@ test('probability quality is scoped by broker, asset, strategy, and duration',()
  for(const c of ['exnova|EUR/USD|automatic|30000','iq_option|EUR/USD OTC|automatic|30000','iq_option|EUR/USD|trend|30000','iq_option|EUR/USD|automatic|60000']){
   assert.equal(audit.summary(c,.8).approved,false);
  }
- const p=feed(audit,{contextId:'iq_option|EUR/USD|automatic|60000',duration:60000,n:12});
+ const p=feed(audit,{contextId:'iq_option|EUR/USD|automatic|60000',duration:60000,n:16});
  assert.equal(p.approved,true);
- assert.equal(audit.summary(context,.8).n,12);
+ assert.equal(audit.summary(context,.8).n,16);
 });
 test('if broker payout is unavailable, no shadow score is treated as profitable',()=>{
  const audit=new CausalProbabilityReview();feed(audit);
