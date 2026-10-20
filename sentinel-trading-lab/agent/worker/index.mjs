@@ -358,6 +358,10 @@ const brokerMaintenancePending=new Set();
 const brokerMaintenancePerformance={};
 const evaluationPerformance={lastMs:0,averageMs:0,slowCount:0,lastQuoteToDecisionAgeMs:null,lastEntryTimingDelayMs:null,lastEntryEventAt:0};
 function scheduleBrokerMaintenance(provider){
+ // A broker DOM scan/network maintenance request must never compete with
+ // actual CALL/PUT dispatch. It will retry next 2.5-second maintenance cycle
+ // without changing the model, price capture, expiry or balance handling.
+ if(executor.executing||uiExecutor.attempt)return;
  if(brokerMaintenancePending.has(provider))return;
  brokerMaintenancePending.add(provider);
  const started=Date.now();
@@ -387,10 +391,11 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   }
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
-  // Keep remote viewers fed with genuine broker ticks even when the selected
-  // forecast itself takes longer to compute. The post-analysis broadcast below
-  // will send any new qualified decision as soon as it exists.
-  void publishLiveFrame();
+  // Live broker quote events and the dedicated 220ms signed-feed timer
+  // already publish the latest pre-analysis source values. Do not duplicate
+  // the expensive mobile snapshot serialization in the critical quote->click
+  // path just before runtime.tick(). The post-decision publish below stays
+  // immediate so newly confirmed CALL/PUT still reaches mobile promptly.
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
   executor.pulse();
