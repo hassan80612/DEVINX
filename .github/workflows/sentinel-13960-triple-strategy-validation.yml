@@ -1,0 +1,34 @@
+name: Sentinel 13.9.60 hot strategy and triple-martingale regression - no production
+on:
+  push:
+    branches: [fix/sentinel-13960-own-triple-martingale-no-reset-20261020]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/src/components/BotControl.tsx'
+      - 'tests/sentinel-13960-*'
+      - 'tests/sentinel-13958-*'
+      - '.github/workflows/sentinel-13960-triple-strategy-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13960-regression-checks
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and bot broker safety / hot strategy checks
+        run: |
+          node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --test tests/sentinel-13960-own-sequence-and-strategy-switch.test.mjs tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-13955-session-and-calculation.test.mjs
+      - name: Install website dependencies
+        run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Full Sentinel regression prebuild and browser type check
+        run: |
+          npm run prebuild --prefix sentinel-trading-lab
+          cd sentinel-trading-lab && npx tsc --noEmit
