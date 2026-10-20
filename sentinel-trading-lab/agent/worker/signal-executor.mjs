@@ -174,20 +174,22 @@ export class SignalExecutor{
   // Broker result callbacks may arrive after option expiry. Never freeze all
   // future entries for an unconfirmed historical result. At expiry + grace,
   // reserve every unresolved stake and resume on the next NEW normal signal.
-  const terminal=batch.terminalCycleConsumed===true;
-  const graceMs=1500;
-  if(now<Number(batch.exitAt)+graceMs||batch.orders.every(p=>p.settled))return false;
+  // A confirmed trade expiry is the end of the occupied window. A further
+  // 1500ms broker-ack grace was skipping the NEXT 500/900ms-fresh signal.
+  // Unreported outcomes remain open in the risk ledger until identified.
+  if(now<Number(batch.exitAt)||batch.orders.every(p=>p.settled))return false;
   batch.releasedAt=now;
   batch.continuationReleased=true;
-  // The progression of an unconfirmed prior batch is UNKNOWN, not LOSS.
-  // A new independent cycle must start at base; late settlement updates
-  // actual session PnL, not the new cycle's martingale index.
-  if(!batch.progressionApplied){
-   batch.progressionApplied=true;
-   this.martingaleLevel=0;
-  }
+  // Unknown is NOT a loss. Present the base amount while awaiting broker
+  // settlement; if that identified close arrives BEFORE another physical
+  // entry, its actual result may still determine the next Martingale level.
+  // A later close cannot retroactively alter a newly started trade.
+  if(!batch.progressionApplied)batch.recoveryEligible=true;
+  this.martingaleLevel=0;
   this.unresolvedBatches.set(batch.id,batch);
-  this.pending=null;this.queuedSignal=null;
+  this.pending=null;
+  // Keep a NEW signal queued while the old trade is closing, but only if
+  // its original timestamp is still fresh when the executor retries.
   // The outdated current-trade reservation is replaced by the worst-case
   // amount of all unresolved clicked children, enforced in riskNet().
   if(this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade=null;
@@ -239,7 +241,8 @@ export class SignalExecutor{
   const queued=this.queuedSignal;if(!queued)return;
   const now=this.clock();
   if(this.pending){
-   this.queuedSignal=null;
+   // Do not consume the new signal ID merely because a previous batch is
+   // settling. It remains subject to the original strict entry deadline.
    const b=this.pending,closed=b.orders.filter(o=>o.settled).length;
    const d=this.unresolvedDetail(now);
    this.message='Ligado · aguardando resultado da sequência anterior ('+closed+'/'+b.orders.length+
@@ -299,6 +302,15 @@ export class SignalExecutor{
    return;
   }
   const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
+  // A new physical entry commits a NEW cycle. Historical unresolved
+  // settlements update financial PnL but never overwrite its progression.
+  for(const previous of this.unresolvedBatches.values()){
+   if(!previous.detached&&previous.sessionId===this.sessionId&&
+    previous.continuationReleased&&previous.recoveryEligible){
+    previous.recoveryEligible=false;
+    previous.progressionApplied=true;
+   }
+  }
   this.pending=batch;
   const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()-queued.at<=(clickIndex===0?maxSignalAgeMs(queued.durationMs):maxBatchDispatchMs(queued.durationMs))&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
@@ -431,6 +443,9 @@ export class SignalExecutor{
  // This handler also reconciles closures received after the timeout.
  applyCompletedSequence(batch){
   const full=batch.orders.length===batch.clickCount&&!batch.orders.some(p=>p.error);
+  // An earlier batch may close after expiry and before the next entry; that
+  // is still an ACTUAL broker outcome, not a fabricated loss.
+  // It is ineligible only after a newer physical batch has begun.
   if(!batch.progressionApplied){
    batch.progressionApplied=true;
    if(full)this.martingaleLevel=!this.config.martingaleEnabled?0:
