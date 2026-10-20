@@ -1,0 +1,30 @@
+name: Sentinel 13.9.66 no stuck window and late martingale accounting - isolated
+on:
+  push:
+    branches: [fix/sentinel-13966-late-settlement-and-queued-signal-20261020]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'tests/**'
+      - '.github/workflows/sentinel-13966-flow-validation.yml'
+permissions: {contents: read}
+concurrency:
+  group: sentinel-13966-flow-validation
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Node syntax and broker signal/martingale regression
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
+          node --test tests/sentinel-13966-causal-martingale-recovery.test.mjs tests/sentinel-13963-unresolved-continuity.test.mjs tests/sentinel-13962-handoff-recovery.test.mjs tests/sentinel-13961-nine-click-window.test.mjs tests/sentinel-13960-own-sequence-and-strategy-switch.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13955-session-and-calculation.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs
+      - name: Install frontend dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Type check all Sentinel
+        run: |
+          npm run prebuild --prefix sentinel-trading-lab
+          cd sentinel-trading-lab && npx tsc --noEmit
