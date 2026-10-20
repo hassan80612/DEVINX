@@ -1,13 +1,13 @@
 {
-  "version": "13.9.66",
-  "build": "13.9.66-fast-balance-late-pnl-queued-windows",
+  "version": "13.9.67",
+  "build": "13.9.67-isolated-broker-maintenance-low-latency",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "13.9.66-regression-replay-not-live-profitability",
+    "modelValidation": "13.9.67-regression-replay-not-live-profitability",
     "forecastModel": "now-structural-v1",
     "historicalStructure": {
       "closedCandles": 100,
