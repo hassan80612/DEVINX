@@ -844,7 +844,15 @@ export class DemoTradingRuntime{
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
         patch.asset!==this.settings.asset);
     if(changedForecastContext){
-      this.vnextWindowState=null;
+      // Strategy changes must not erase a live broker-expiry window.
+      // Keep its expiry as a lock; the NEW strategy may only fire after it.
+      // Asset, expiration or forecast-mode changes still reset context.
+      const engineOnlyChange=Object.prototype.hasOwnProperty.call(patch,'engine')&&
+       patch.engine!==this.settings.engine&&
+       (!Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')||Number(patch.orderDurationMs)===Number(this.settings.orderDurationMs))&&
+       (!Object.prototype.hasOwnProperty.call(patch,'asset')||patch.asset===this.settings.asset)&&
+       (!Object.prototype.hasOwnProperty.call(patch,'forecastMode')||patch.forecastMode===this.settings.forecastMode);
+      if(!engineOnlyChange)this.vnextWindowState=null;
       this.vnextWindowCheckedQuoteAt=0;
       this.vnextFutureEntryAnchor=null;
       this.vnextHorizonMatrix=null;
