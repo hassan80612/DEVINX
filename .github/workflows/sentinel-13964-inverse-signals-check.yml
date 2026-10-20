@@ -4,7 +4,7 @@ on:
     branches: [feat/sentinel-13964-invert-all-call-put-signals-20261020]
     paths:
       - 'sentinel-trading-lab/agent/**'
-      - 'tests/sentinel-13964-*'
+      - 'tests/**'
       - '.github/workflows/sentinel-13964-inverse-signals-check.yml'
 permissions:
   contents: read
