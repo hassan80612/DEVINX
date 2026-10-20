@@ -15,7 +15,7 @@ export class ExecutorBalanceRisk{
  }
  capture(order){
   const s=this.session,b=this.last;if(!s||!b||order.provider!==s.provider)return;
-  this.trade={amount:order.amount,exitAt:order.exitAt,before:b.amount,beforeRevision:b.revision};
+  this.trade={batchId:order.id,amount:order.amount,exitAt:order.exitAt,before:b.amount,beforeRevision:b.revision};
  }
  close(netPnl,now){
   if(this.trade)this.trade={...this.trade,settled:true,netPnl,closedAt:now,closeRevision:this.last?.revision};
