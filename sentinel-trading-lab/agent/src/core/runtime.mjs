@@ -1011,8 +1011,12 @@ export class DemoTradingRuntime{
             !(this.vnextWindowState?.phase==='fired'&&now<Number(this.vnextWindowState.exitAt||0)),
           payout:snap.payout
         }):null;
+      // Without authenticated payout, live REAL trading never grants the
+      // experimental direction-override authority used for DEMO evaluation.
+      const applicableProof=settings.mode==='real'&&probabilityProof?.payoutVerified!==true?
+        {...probabilityProof,approved:false}:probabilityProof;
       const observation=this.forecastModel==='short-probability-v1'?
-        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof}):original66;
+        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:applicableProof}):original66;
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
