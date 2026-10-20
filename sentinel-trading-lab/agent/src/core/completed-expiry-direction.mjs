@@ -5,7 +5,7 @@ import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 export class CompletedExpiryDirection{
  constructor(){this.reset(null);}
  reset(context){this.context=context;this.pending=[];this.loss={base:.5,wide:.5};
-  this.completed=0;this.lastIssued=-Infinity;this.lastQuoteAt=-Infinity;this.cache=null;}
+  this.completed=0;this.lastIssued=-Infinity;this.lastIssuedDueAt=-Infinity;this.lastQuoteAt=-Infinity;this.cache=null;}
  observe({context,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt=null}){
   if(this.context!==context)this.reset(context);
   const ts=Number(quoteAt),spot=Number(price);
@@ -33,8 +33,11 @@ export class CompletedExpiryDirection{
    this.cache={key,forecast:wide};
   }
   const alternative=wide?.ready?wide:baseline;
-  if(ts-this.lastIssued>=5000){
-   this.lastIssued=ts;this.pending.push({at:ts,dueAt:deadline,
+  // One completed 30s outcome must represent ONE independent training
+  // interval. Five-second starts overlap the same price leg six times.
+  if(ts>=this.lastIssuedDueAt&&deadline>ts){
+   this.lastIssued=ts;this.lastIssuedDueAt=deadline;
+   this.pending.push({at:ts,dueAt:deadline,
     price:spot,base:baseline.side,wide:alternative.side});
   }
   // Before enough completed outcomes exist, use strong penalized-fit evidence
