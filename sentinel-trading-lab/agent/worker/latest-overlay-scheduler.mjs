@@ -1,8 +1,8 @@
-// Protect the broker chart: at most one overlay update in flight, coalesce
+// Full nested DOM reconstruction is deliberately infrequent. The 250ms clock\n// is native to the browser; analyst CALL/PUT transitions remain urgent.\n// Protect the broker chart: at most one overlay update in flight, coalesce
 // superseded frames, and give the page breathing room after a slow render.
 // There must never be a catch-up loop when Playwright/page.evaluate stalls.
 export class LatestOverlayScheduler{
-  constructor(update,{minIntervalMs=2200,slowThresholdMs=800,slowCooldownMs=3200}={}){
+  constructor(update,{minIntervalMs=6000,slowThresholdMs=800,slowCooldownMs=8000}={}){
     this.update=update;this.pending=null;this.running=false;this.errors=0;
     this.minIntervalMs=minIntervalMs;this.slowThresholdMs=slowThresholdMs;
     this.slowCooldownMs=slowCooldownMs;this.nextAllowedAt=0;this.timer=null;
