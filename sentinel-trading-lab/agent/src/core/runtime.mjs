@@ -32,6 +32,7 @@ import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
+import {shortProbability} from './short-probability.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -130,7 +131,7 @@ export class DemoTradingRuntime{
     return this
   }
   _marketSnapshot(){
-    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(this.forecastModel==='now-structural-v1'||this.settings.engine==='automatic')&&this.externalMarket.quoteFeedValidated!=null?this.externalMarket.quoteFeedValidated===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...(this.externalMarket.candles||[])]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles||[])]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,historicalCandlesVerified:this.externalMarket.historicalCandlesVerified!=null?this.externalMarket.historicalCandlesVerified===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true)),brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
+    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)||this.settings.engine==='automatic')&&this.externalMarket.quoteFeedValidated!=null?this.externalMarket.quoteFeedValidated===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...(this.externalMarket.candles||[])]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles||[])]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,historicalCandlesVerified:this.externalMarket.historicalCandlesVerified!=null?this.externalMarket.historicalCandlesVerified===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true)),brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
     if(this.settings.requireLiveBroker)return{candles:[],quoteTs:0,price:0,source:'OFFLINE',balance:null,provider:null,mode:this.settings.mode,waitingLive:true,feedValidated:false};
     return this.feed.snapshot()
   }
@@ -812,7 +813,7 @@ export class DemoTradingRuntime{
       patch.forecastMode!=='continuous'&&Object.prototype.hasOwnProperty.call(patch,'engine')){
       patch={...patch};delete patch.engine;
     }
-    if(this.forecastModel==='now-structural-v1'){
+    if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
       // Explicit 5s–1m operation expiries. The shared 30s chart reference
       // does not override the holding period selected by the user.
       if(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')&&
@@ -963,7 +964,7 @@ export class DemoTradingRuntime{
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
   }
   _signalValidationGate({analysis,snap,settings,now,monotonicNow=()=>performance.now()}){
-    if(settings.engine&&this.forecastModel==='now-structural-v1'){
+    if(settings.engine&&['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
       // engineCycle receives the clock captured BEFORE expensive analysis. The
       // broker's first click must use the actual decision time instead: after
       // a 27-click cycle the old timestamp can already be >900ms behind.
@@ -974,7 +975,17 @@ export class DemoTradingRuntime{
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
-      const observation=analyzeNowOpportunity({
+      const preliminary=this.forecastModel==='short-probability-v1'&&
+        [30000,60000].includes(Number(settings.orderDurationMs))?
+        shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+          price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
+      const observation=preliminary?{
+        side:preliminary.side,ready:preliminary.ready,
+        reason:preliminary.reason,observedAt:Number(snap.quoteTs),
+        entryPrice:preliminary.ready?Number(snap.price):null,
+        strength:preliminary.ready?Math.round(Math.max(preliminary.pCall,preliminary.pPut)*100):null,
+        expirySeconds:Number(settings.orderDurationMs)/1000
+      }:analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
@@ -1045,7 +1056,7 @@ export class DemoTradingRuntime{
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
         computedStatus:observation.ready?'observed-confirmation':'observing-now',
-        forecastFoundation:'completed-structure-and-current-quote',
+        forecastFoundation:preliminary?'parametric-direction-probability-not-calibrated':'completed-structure-and-current-quote',
         receipt:null,projection:null,targetAnchor:null,targetProjection:null,
         futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
         horizonForecasts:[],horizonMeasurements:[],
@@ -1057,7 +1068,9 @@ export class DemoTradingRuntime{
           side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
           ready:observation.ready,reason:eligible.reason,
           observedAt:observation.observedAt,strength:observation.strength,
-          price:Number(snap.price)||null,evaluatedAt:now
+          price:Number(snap.price)||null,evaluatedAt:now,
+          probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
+          probabilityCalibrated:false,probabilitySource:preliminary?.source??null
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
@@ -1081,7 +1094,7 @@ export class DemoTradingRuntime{
           activeUntil:active?next.exitAt:null
         },
         strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
+        generalConsensus:null,entryPlanner:{modelVersion:preliminary?'short-probability-v1':'now-structural-v1',horizons:{}},
         reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
           'Analisando o mercado atual para a próxima entrada.',observation.reason]
       };
@@ -1448,7 +1461,7 @@ export class DemoTradingRuntime{
     }
   }
   snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
+  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
   delete this.settings.clockMode;
   // Preserve the supported 1m expiry on restart; migrate only unsupported
   // legacy durations to the default 30s operation.
