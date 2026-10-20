@@ -12,6 +12,7 @@ on:
       - 'tests/sentinel-13959-*.test.mjs'
       - 'tests/sentinel-13929-adaptive-expiry.test.mjs'
       - 'tests/sentinel-13931-historical-structure.test.mjs'
+      - 'tests/sentinel-video-consistency-20261016.test.mjs'
       - '.github/workflows/sentinel-13957-stage5-risk-latency-validation.yml'
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
           node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
           node --check sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
       - name: Focused closed-level / 3 Martingale / slow broker tests
-        run: node --test tests/sentinel-13929-adaptive-expiry.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-bootstrap-fit.test.mjs tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-multiscale-level-chain.test.mjs
+        run: node --test tests/sentinel-video-consistency-20261016.test.mjs tests/sentinel-13929-adaptive-expiry.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-bootstrap-fit.test.mjs tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-multiscale-level-chain.test.mjs
       - name: Install site dependencies
         run: npm install --prefix sentinel-trading-lab --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Full existing Next.js and Agent prebuild suite
