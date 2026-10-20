@@ -85,6 +85,7 @@ for(const provider of ['exnova','iq_option']){
 test('verified-loss cap appears in wire and local PC panel with current streak and unsafe balance warning',()=>{
  const x=setup('exnova');
  x.bot.configure({maxConsecutiveLosses:3,stopLoss:10000});
+ x.bot.observeBalance(x.c.brokerBalance);
  const state={...x.bot.status(),provider:'exnova',consecutiveLossBatches:2};
  const remote=unpackExecutor(packExecutor(state));
  assert.equal(remote.config.maxConsecutiveLosses,3);
