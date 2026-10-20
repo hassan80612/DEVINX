@@ -343,9 +343,11 @@ export class SignalExecutor{
   this.lastEntryAt=p.at;this.executed++;
   if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados'+(batch.martingaleFallback?' · martingale reduzido por lentidão':'');
  }
- finishBatch(batch){
-  if(this.pending!==batch||batch.detached||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
-  this.balanceRisk.close(batch.netPnl,this.clock());this.pending=null;
+ // Only broker-confirmed COMPLETE batches change the sequence.
+ // This handler also reconciles closures received after the timeout.
+ applyCompletedSequence(batch){
+  if(batch.progressionApplied)return;
+  batch.progressionApplied=true;
   const full=batch.orders.length===batch.clickCount&&!batch.orders.some(p=>p.error);
   if(full){
    this.martingaleLevel=!this.config.martingaleEnabled?0:batch.netPnl>0?0:batch.netPnl<0?(batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):(batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
@@ -360,6 +362,11 @@ export class SignalExecutor{
    }
   }
   if(this.enabled)this.message='Sequência concluída · próximo sinal: '+this.nextClicks()+' clique(s)';
+ }
+ finishBatch(batch){
+  if(this.pending!==batch||batch.detached||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
+  this.balanceRisk.close(batch.netPnl,this.clock());this.pending=null;
+  this.applyCompletedSequence(batch);
  }
  settle(event){
   const key=event.provider+'|'+event.orderId;
@@ -388,7 +395,10 @@ export class SignalExecutor{
   this.history=[row,...this.history.filter(x=>!(x.provider===row.provider&&x.orderId===row.orderId))].slice(0,5);
   if(p){p.settled=true;batch.netPnl=money(batch.netPnl+Number(event.netPnl));
    if(late){
-    if(batch.orders.every(o=>o.settled||!o.clicked||o.rejected))this.unresolvedBatches.delete(batch.id);
+    if(batch.orders.every(o=>o.settled||!o.clicked||o.rejected)){
+     this.unresolvedBatches.delete(batch.id);
+     if(batch.orders.every(o=>o.settled)&&batch.dispatchComplete)this.applyCompletedSequence(batch);
+    }
    }else this.finishBatch(batch);
   }
   if(this.enabled&&this.config.stopLoss>0&&this.riskNet()<=-this.config.stopLoss)this.stop('Bot parado · limite de perda da sessão atingido');
