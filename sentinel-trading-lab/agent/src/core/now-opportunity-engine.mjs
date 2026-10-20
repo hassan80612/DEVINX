@@ -154,6 +154,18 @@ function completedRangeStructure(quotes,now,noise,spot){
    'irregular-range-awaiting-current-turn'};
 }
 
+// A fitted cycle cannot independently override an OPPOSITE qualified
+// closed-price structure. This is a no-trade uncertainty verdict, not
+// an automatic reversal or a claimed increase in forecast accuracy.
+export function guardContraryCycle(structural,decision){
+ if(structural?.structuralReady!==true||!isSide(structural.structuralSide)||
+   decision?.ready!==true||!isSide(decision.side)||
+   structural.structuralSide===decision.side)return decision;
+ return {...decision,ready:false,side:null,
+  reason:'projection-conflicts-with-confirmed-structure',
+  structuralDisagreement:{structure:structural.structuralSide,projection:decision.side}};
+}
+
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
@@ -203,12 +215,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // model extrapolation alone is insufficient to open a new live position.
   // Later, an observed historical rejection or structure change may qualify
   // its OWN side; otherwise return WAIT rather than guess CALL/PUT.
-  const contradictory=original.structuralReady===true&&
-   isSide(original.structuralSide)&&decision.ready===true&&isSide(decision.side)&&
-   original.structuralSide!==decision.side;
-  const guarded=contradictory?{...decision,ready:false,side:null,
-   reason:'projection-conflicts-with-confirmed-structure',
-   structuralDisagreement:{structure:original.structuralSide,projection:decision.side}}:decision;
+  const guarded=guardContraryCycle(original,decision);
   const selectedForecast=decision.reason==='validated-structure-over-cycle'?null:
    forecast?.ready&&decision.ready?decision:forecast;
   const historical=applyHistoricalPriceStructure({candidate:{...guarded,pendingForecast:selectedForecast},structure,...input});
