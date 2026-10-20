@@ -37,6 +37,8 @@ export function analystSnapshot(runtimeStatus,live){
     historicalComparisons:Number(vnext.historicalComparisons||0),
     outcomesVerified:Number(vnext.outcomesVerified||0),
     receipt,
+    p:vnext.probability?.pCall!=null&&vnext.probability?.pPut!=null?
+      [Math.round(vnext.probability.pCall*100),Math.round(vnext.probability.pPut*100)]:null,
     targetAnchor:vnext.targetAnchor?take(vnext.targetAnchor,[
       'engineId','asset','side','issuedAt','expirySeconds','targetAt',
       'referencePrice','projectedPrice'
@@ -94,7 +96,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   if(!v)return null;
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
-    receipt:v.receipt,targetAnchor:v.targetAnchor,
+    receipt:v.receipt,targetAnchor:v.targetAnchor,p:v.p,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
   const trimmed={...snapshot,
