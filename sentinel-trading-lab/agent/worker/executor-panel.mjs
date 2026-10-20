@@ -9,7 +9,7 @@ const words={
 export function executorPanel(state,language='pt'){
  if(!state)return'';const w=words[language]||words.pt,c=state.config||{},disabled=state.enabled||state.arming||state.pending||state.executing?' disabled':'',startDisabled=state.enabled||state.arming?' disabled':'';
  const editingDisabled=state.arming?' disabled':'';
- const input=(key,label,value,step='1')=>'<label style="display:grid;gap:3px">'+label+'<input data-sentinel-executor-setting="'+key+'" type="number" min="0"'+(key==='martingaleLevels'?' max="3"':key==='martingaleMultiplier'?' max="3" min="2"':key==='maxConsecutiveLosses'?' max="50"':'')+' step="'+step+'" value="'+escape(value)+'"'+editingDisabled+' style="width:100%;min-width:0;box-sizing:border-box;background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px"></label>';
+ const input=(key,label,value,step='1')=>'<label style="display:grid;gap:3px">'+label+'<input data-sentinel-executor-setting="'+key+'" type="number" min="'+(key==='martingaleMultiplier'?'2':'0')+'"'+(key==='martingaleLevels'?' max="3"':key==='martingaleMultiplier'?' max="3"':key==='maxConsecutiveLosses'?' max="50"':'')+' step="'+step+'" value="'+escape(value)+'"'+editingDisabled+' style="width:100%;min-width:0;box-sizing:border-box;background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px"></label>';
  const mapLabel=({pt:'Mapear controles',en:'Map controls',es:'Mapear controles',fr:'Repérer les contrôles',ar:'تحديد عناصر التحكم'})[language]||'Map CALL/PUT';
 
  const providerLabel=state.provider==='iq_option'?'IQ Option':state.provider==='exnova'?'Exnova':'';
