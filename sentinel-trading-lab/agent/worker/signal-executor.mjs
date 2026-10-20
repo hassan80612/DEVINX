@@ -11,7 +11,7 @@ export function maxSignalAgeMs(durationMs){
  return ms<=15000?MAX_SIGNAL_TO_CLICK_AGE_MS.short:
   ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
 }
-export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,stopAfterMinutes:0,stopLoss:0,martingaleLevels:2,martingaleEnabled:false});
+export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,stopAfterMinutes:0,stopLoss:0,martingaleLevels:2,martingaleEnabled:false,maxConsecutiveLosses:0});
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const symbol=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const money=x=>Math.round(Number(x)*1000000)/1000000;
@@ -24,14 +24,14 @@ export class SignalExecutor{
  constructor({driver,context,clock=Date.now}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
-  this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.suspensionReason=null;this.hardHoldReason=null;
+  this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;
  }
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
   const next={...this.config};
   for(const key of Object.keys(DEFAULT_EXECUTOR_CONFIG))if(patch[key]!==undefined){if(key==='martingaleEnabled'){if(typeof patch[key]!=='boolean')throw Error('Ativação de martingale inválida.');next[key]=patch[key];}else next[key]=Number(patch[key]);}
   if(!num(next.amount)||next.amount<0||next.amount>1000000||!Number.isInteger(next.martingaleLevels)||next.martingaleLevels<0||next.martingaleLevels>MAX_MARTINGALE_LEVELS||!Number.isInteger(next.intervalMs)||next.intervalMs<5000||next.intervalMs>3600000||
-   !num(next.stopAfterMinutes)||next.stopAfterMinutes<0||next.stopAfterMinutes>1440||!num(next.stopLoss)||next.stopLoss<0||next.stopLoss>1e8)throw Error('Configuração do bot inválida.');
+   !num(next.stopAfterMinutes)||next.stopAfterMinutes<0||next.stopAfterMinutes>1440||!num(next.stopLoss)||next.stopLoss<0||next.stopLoss>1e8||!Number.isInteger(next.maxConsecutiveLosses)||next.maxConsecutiveLosses<0||next.maxConsecutiveLosses>50)throw Error('Configuração do bot inválida.');
   if(this.enabled){
    if(!(next.amount>0))throw Error('Valor por entrada deve ser positivo.');
   }
@@ -101,7 +101,7 @@ export class SignalExecutor{
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    const opening=this.balanceRisk.begin(c.provider);if(opening&&cfg.amount>opening.amount)throw Error('Saldo recebido insuficiente para o valor por entrada.');
    this.initialBalance=opening?.amount??null;
-   this.sessionId++;this.net=0;this.executed=0;this.closed=0;this.history=[];this.ledger.clear();
+   this.sessionId++;this.net=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
    const existing=executorSignal(c.analysis);if(existing)this.seen.add(existing.id);
    this.suspensionReason=null;this.hardHoldReason=null;this.enabled=true;this.message='Ligado · sessão nova · aguardando próximo CALL/PUT do analista';
@@ -117,7 +117,7 @@ export class SignalExecutor{
    this.balanceRisk.trade=null;this.balanceRisk.session=null;
    this.session=null;this.startedAt=null;this.deadlineAt=null;this.initialBalance=null;
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;
-   this.executed=0;this.closed=0;this.net=0;this.history=[];
+   this.executed=0;this.closed=0;this.net=0;this.consecutiveLossBatches=0;this.history=[];
    this.ledger.clear();this.seen.clear();this.sessionId++;
    this.suspensionReason=null;this.hardHoldReason=null;
    this.message='Desligado · sessão zerada; ordens já enviadas à corretora não são canceladas';
@@ -346,7 +346,18 @@ export class SignalExecutor{
   if(this.pending!==batch||batch.detached||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
   this.balanceRisk.close(batch.netPnl,this.clock());this.pending=null;
   const full=batch.orders.length===batch.clickCount&&!batch.orders.some(p=>p.error);
-  if(full)this.martingaleLevel=!this.config.martingaleEnabled?0:batch.netPnl>0?0:batch.netPnl<0?(batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):(batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
+  if(full){
+   this.martingaleLevel=!this.config.martingaleEnabled?0:batch.netPnl>0?0:batch.netPnl<0?(batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):(batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
+   // Only individually confirmed, COMPLETE net losing batches count.
+   // Zero means no streak limit and never changes the Martingale cap behavior.
+   if(batch.netPnl<0)this.consecutiveLossBatches++;
+   else if(batch.netPnl>0)this.consecutiveLossBatches=0;
+   if(this.enabled&&this.config.maxConsecutiveLosses>0&&
+     this.consecutiveLossBatches>=this.config.maxConsecutiveLosses){
+    this.stop('Bot parado · limite configurado de sequências perdedoras atingido');
+    return;
+   }
+  }
   if(this.enabled)this.message='Sequência concluída · próximo sinal: '+this.nextClicks()+' clique(s)';
  }
  settle(event){
@@ -385,5 +396,5 @@ export class SignalExecutor{
  nextClicks(){return 2**(this.config.martingaleEnabled?this.martingaleLevel:0);}
  nextAmount(){return money(this.config.amount*2**(this.config.martingaleEnabled?this.martingaleLevel:0));}
  riskNet(balance=this.balanceRisk.view(this.clock())){return Math.min(this.net,this.initialBalance!=null&&balance.source==='broker'?balance.net:this.net)-this.unresolvedExposure();}
- status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:4},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
+ status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:4},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
 }
