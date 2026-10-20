@@ -17,7 +17,7 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
  // non-overlapping expiry samples may authorize inversion. A probability
  // percentage by itself never has that power.
  if(weak&&!protectedReversal&&pOpp>=.60&&proof?.approved===true&&
-    Number(proof.n)>=12&&Number(proof.observedOppositeRate)>=.78){
+    Number(proof.n)>=16&&Number(proof.observedOppositeRate)>=.78){
   return {...original,side:original.side==='CALL'?'PUT':'CALL',
    reason:'locally-verified-opposite-direction',probabilityOverride:true,
    probabilityAgreement:pOpp,originalSide:original.side,
