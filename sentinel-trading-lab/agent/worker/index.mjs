@@ -54,6 +54,12 @@ runtime.onNowOpportunity=anchor=>{
  try{executor.pulse(anchor);}
  catch(e){executor.message='Falha ao entregar sinal imediato: '+String(e?.message||e);}
 };
+// Balance-changed is already observed passively from the live broker.
+ // Hand it to the risk engine immediately instead of waiting for next 400ms tick.
+ // Do not request balances or rescan the browser; forecast is untouched.
+driver.setBalanceUpdateHandler?.((provider,balance)=>{
+ if(provider===activeProvider)executor.observeBalance(balance);
+});
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
 async function executorAction(action,payload={}){
