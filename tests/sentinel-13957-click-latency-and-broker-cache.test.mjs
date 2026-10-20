@@ -55,7 +55,8 @@ test('operator responsiveness: reuse verified visible HTML controls within the s
   isEnabled:async()=>valid
  });
  const frame={
-  evaluate:async()=>{evaluations++;return{callSelector:'[data-sentinel-execution-call="c"]',
+  evaluate:async(_fn,arg)=>{evaluations++;if(arg?.callSelector)return valid;
+   return{callSelector:'[data-sentinel-execution-call="c"]',
     putSelector:'[data-sentinel-execution-put="p"]'};},
   locator:loc
  };
@@ -64,12 +65,12 @@ test('operator responsiveness: reuse verified visible HTML controls within the s
  const ui=new BrokerUiExecutor(driver);
  const first=await ui.controls('iq_option');
  const second=await ui.controls('iq_option');
- assert.equal(evaluations,1);
+ assert.equal(evaluations,2,'first full frame lookup + one cached browser-side safety check');
  assert.equal(first.frame,second.frame);
  valid=false;
  await ui.controls('iq_option');
- assert.equal(evaluations,2,'stale or disabled controls must be rediscovered');
+ assert.equal(evaluations,4,'stale or disabled controls must be rediscovered');
  valid=true;activeId=77;
  await ui.controls('iq_option');
- assert.equal(evaluations,3,'different asset ID must not inherit stale selectors');
+ assert.equal(evaluations,5,'different asset ID must not inherit stale selectors');
 });
