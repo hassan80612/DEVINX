@@ -119,7 +119,7 @@ export class Probabilistic30s {
   }
   if(!ctx.pending&&t>=ctx.lastQueued+30000){
    const x=probabilityFeatures(q,t);
-   if(x){ctx.pending={t,dueAt:t+30000,x,entryPrice:price};ctx.lastQueued=t}
+   if(x&&Number.isFinite(q.at(-1)?.price)){ctx.pending={t,dueAt:t+30000,x,entryPrice:q.at(-1).price};ctx.lastQueued=t}
   }
   // Revalidate only on new closed 40-row blocks; the market click path stays cheap.
   if(ctx.rows.length>=280&&ctx.rows.length-ctx.lastChecked>=40){
@@ -129,7 +129,10 @@ export class Probabilistic30s {
   }
   const x=probabilityFeatures(q,t);
   const p=ctx.model?callProbability(ctx.model,x):null;
-  const decision=ctx.assessment?.qualified&&p!=null?payoutDecision(p,payout):{side:'AGUARDAR',reason:ctx.rows.length<280?'collecting-30s-real-outcomes':'unproven-out-of-sample-edge'};
+  const b=payout>1&&payout<=100?payout/100:payout;
+  const validPayout=Number.isFinite(b)&&b>0&&b<=1;
+  const stillProfitable=validPayout&&Number(ctx.assessment?.lower99||0)>1/(1+b);
+  const decision=ctx.assessment?.qualified&&stillProfitable&&p!=null?payoutDecision(p,payout):{side:'AGUARDAR',reason:ctx.rows.length<280?'collecting-30s-real-outcomes':'unproven-out-of-sample-edge'};
   return {decision,samples:ctx.rows.length,validated:ctx.assessment?.qualified===true,assessment:ctx.assessment?{...ctx.assessment}:null,modelVersion:VERSION};
  }
  snapshot(){
