@@ -846,8 +846,7 @@ export class DemoTradingRuntime{
       (Object.prototype.hasOwnProperty.call(patch,'engine')&&
         patch.engine!==this.settings.engine)||
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
-        patch.asset!==this.settings.asset)||
-      false;
+        patch.asset!==this.settings.asset);
     if(changedForecastContext){
       // Strategy changes must not erase a live broker-expiry window.
       // Keep its expiry as a lock; the NEW strategy may only fire after it.
