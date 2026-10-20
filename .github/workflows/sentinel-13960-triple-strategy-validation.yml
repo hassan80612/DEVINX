@@ -9,6 +9,7 @@ on:
       - 'tests/sentinel-13958-*'
       - 'tests/sentinel-13951-*'
       - 'tests/sentinel-13955-*'
+      - 'tests/sentinel-13954-*'
       - '.github/workflows/sentinel-13960-triple-strategy-validation.yml'
 permissions:
   contents: read
