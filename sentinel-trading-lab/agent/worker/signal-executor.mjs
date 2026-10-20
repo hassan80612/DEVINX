@@ -192,7 +192,9 @@ export class SignalExecutor{
   if(this.pending){this.message='Ligado · aguardando encerramento da entrada anterior · nível preservado';return;}
   // Unknown clicked orders cannot count as wins or losses. Do not start
   // another sequence while their outcome can change the progression.
-  if(this.unresolvedBatches.size){this.message='Ligado · aguardando resultado de ordem anterior · martingale preservado';return;}
+  if([...this.unresolvedBatches.values()].some(b=>!b.detached&&b.sessionId===this.sessionId)){
+   this.message='Ligado · aguardando resultado de ordem anterior · martingale preservado';return;
+  }
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
   const generation=this.generation,requestedClicks=this.nextClicks(),unitAmount=this.config.amount;
