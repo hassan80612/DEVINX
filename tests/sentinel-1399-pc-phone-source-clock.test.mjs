@@ -51,7 +51,7 @@ test('full broker tick must expose an analysis while the worker clock is 500ms a
  const mobile=liveCardModel(mobileState(r,q,now),now,60,now);
  assert.equal(mobile.fresh,true);
  assert.equal(mobile.vnextMode,'now');
- assert.equal(mobile.vnextFutureEntryAnchor?.side,'CALL');
+ assert.equal(mobile.vnextFutureEntryAnchor?.side,'PUT','live phone displays the same intentionally reversed signal as PC and bot');
  assert.equal(mobile.vnextOpportunityWindow?.phase,'fired');
 });
 test('scanning never fabricates a window that hides the entire PC and mobile analysis',async()=>{
