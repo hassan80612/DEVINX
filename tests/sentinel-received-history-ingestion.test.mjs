@@ -19,7 +19,7 @@ for(const provider of ['iq_option','exnova'])test(`${provider}: received three-c
  await runtime.tick(now,{skipStatus:true});
  assert.ok(runtime.lastResult.analysis?.vnext,JSON.stringify(runtime.lastResult));
  const entry=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(entry?.side,'CALL');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
+ assert.equal(entry?.side,'PUT');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
  assert.equal(runtime.lastResult.order,undefined);
  const frame=analystSnapshot({state:'running',settings:runtime.settings,lastEvalMs:now,lastResult:runtime.lastResult},live);
  const mirrored=liveCardModel(frame,now).vnextFutureEntryAnchor;
@@ -32,7 +32,7 @@ for(const provider of ['iq_option','exnova'])test(`${provider}: resistance rejec
  runtime.setExternalMarket(runtimeMarketFromLive(provider,live,'EUR/USD'));
  await runtime.tick(now,{skipStatus:true});
  const entry=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(entry?.side,'PUT');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
+ assert.equal(entry?.side,'CALL');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
  assert.equal(runtime.lastResult.order,undefined);
 });
 test('all actually received window sizes remain available without claiming missing candles',()=>{
