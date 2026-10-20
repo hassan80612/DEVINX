@@ -600,6 +600,9 @@ export class LocalPlaywrightDriver{
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
+  // Push balance frames as soon as the broker emits them. This is passive:
+  // no new polling, DOM scan, socket or broker request.
+  setBalanceUpdateHandler(handler){this.balanceUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
   state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,screenCandidateSymbol:null,validatedAt:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],predictionCandles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
@@ -809,7 +812,7 @@ export class LocalPlaywrightDriver{
     // Do not infer quote freshness from the separate socket's heartbeat.
     // Receive validated live prices from the broker page even when the
     // independent socket is authenticated but provides only history.
-    const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt,quoteHistoryLength:st.quoteHistory.length};st.lastFrameAt=Date.now();let data=payload;
+    const st=this.state(provider);const oldBalanceRevision=Number(st.balanceRevision||0);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt,quoteHistoryLength:st.quoteHistory.length};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
     const frameKind=(String(data?.name||'')+' '+String(data?.msg?.name||data?.msg?.event||'')).toLowerCase();
@@ -855,6 +858,10 @@ export class LocalPlaywrightDriver{
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const assetChanged=(before.activeId!=null&&st.activeId!=null&&Number(before.activeId)!==Number(st.activeId))||(before.symbol&&st.symbol&&pairKey(before.symbol)!==pairKey(st.symbol))||(String(st.marketStatus||'').toLowerCase()==='switching'&&(before.activeId!==st.activeId||before.symbol!==st.symbol));
     const changed=before.quoteHistoryLength!==st.quoteHistory.length||before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
+    if(Number(st.balanceRevision||0)!==oldBalanceRevision&&this.balanceUpdateHandler){
+      const current=this.accountBalanceSnapshot(provider);
+      if(current)try{this.balanceUpdateHandler(provider,current)}catch{}
+    }
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
   }
   attachNetwork(provider,page){
