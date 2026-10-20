@@ -30,6 +30,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {invertPublishedSignal} from './published-signal-inversion.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 
@@ -1031,12 +1032,15 @@ export class DemoTradingRuntime{
         projectedExitPrice:null,actualHoldingSeconds:next.holdingSeconds,
         entryReadyNow:freshSignal
       }:null;
-      this.vnextFutureEntryAnchor=anchor;
+      // Publish the inverse direction once at the source. Keep the raw
+      // market decision and model calibration separate from executable side.
+      const publishedAnchor=invertPublishedSignal(anchor);
+      this.vnextFutureEntryAnchor=publishedAnchor;
       // Deliver the confirmed signal directly to the local broker executor,
       // BEFORE optional dashboards, research and the remaining engineCycle
       // processing. The ordinary post-tick pulse remains a deduplicated backup.
-      if(anchor?.entryReadyNow&&typeof this.onNowOpportunity==='function')
-        this.onNowOpportunity(anchor);
+      if(publishedAnchor?.entryReadyNow&&typeof this.onNowOpportunity==='function')
+        this.onNowOpportunity(publishedAnchor);
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
       const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
         String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
@@ -1425,9 +1429,13 @@ export class DemoTradingRuntime{
       this.pipelineTimings={analysisMs:Math.max(0,Date.now()-evaluationStartedAt),
         quoteAgeAtDecisionMs:snap.quoteTs?Math.max(0,Date.now()-Number(snap.quoteTs)):null,
         quoteAt:snap.quoteTs||null,completedAt:Date.now()};
-      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=this.immediateEvaluationSerial!==requestSerialAtStart?0:nextEvaluation(now,
+      // A single public copy drives PC overlay, signed phone mirror,
+      // status, the post-tick broker fallback and recent analysis.
+      // Never invert the market evidence itself or broker order history.
+      const publishedResult=invertPublishedSignal(result);
+      this.lastResult=publishedResult;this.lastEvalMs=now;this.nextEvalMs=this.immediateEvaluationSerial!==requestSerialAtStart?0:nextEvaluation(now,
         liveContinuous?1000:this.settings.schedule.intervalMs,now);
-      if(result.analysis)this.analyses.unshift(this._compactAnalysis({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency}));this.analyses=this.analyses.slice(0,180);
+      if(publishedResult.analysis)this.analyses.unshift(this._compactAnalysis({ts:iso(now),asset:this.settings.asset,...publishedResult.analysis,latency:result.latency}));this.analyses=this.analyses.slice(0,180);
       if(result.action==='DEMO_ORDER'){
         this.pending.push({orderId:result.order.id,side:result.order.side,referencePrice:result.order.referencePrice,amount:result.order.amount??result.amount,asset:result.order.asset||this.settings.asset,openedAt:result.order.openedAt||iso(now),external:!!result.order.external,provider:result.order.provider||this.externalMarket?.provider,settleAt:now+this.settings.orderDurationMs});
         this.audit.write({actorId:'engine',actorRole:'system',action:'order.demo_open',metadata:{orderId:result.order.id,asset:result.order.asset,side:result.order.side,amount:result.order.amount,confidence:result.order.confidence}});
