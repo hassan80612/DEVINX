@@ -1,14 +1,14 @@
 {
-  "version": "13.9.67",
-  "build": "13.9.67-isolated-broker-maintenance-low-latency",
+  "version": "13.9.70",
+  "build": "13.9.70-fast-probability-30s-60s-holding",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "13.9.67-regression-replay-not-live-profitability",
-    "forecastModel": "now-structural-v1",
+    "modelValidation": "conditional-Gaussian-direction-unvalidated-against-live-PnL",
+    "forecastModel": "short-probability-v1",
     "historicalStructure": {
       "closedCandles": 100,
       "emaPeriods": [
