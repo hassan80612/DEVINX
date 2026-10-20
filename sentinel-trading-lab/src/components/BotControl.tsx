@@ -7,6 +7,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
  const current=Number(bot?.capabilities?.brokerExecution)>=4;
+ const tripleReady=Number(bot?.capabilities?.brokerExecution)>=5;
  const [draft,setDraft]=useState<Record<string,string>>({});
  const dirty=useRef(new Set<string>());
  const [pending,setPending]=useState('');
@@ -47,7 +48,8 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   {!bot?<p className="muted">{t('Atualize o Agent no PC para controlar o bot pelo celular.')}</p>:<>
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
    {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
-   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} max={key==='martingaleLevels'?3:key==='martingaleMultiplier'?3:key==='maxConsecutiveLosses'?50:undefined} min={key==='martingaleMultiplier'?2:0} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
+   {!tripleReady&&current&&<p role="status">{t('Atualize o Agent para configurar martingale triplo; esta versão aceita apenas o multiplicador anterior.')}</p>}
+   <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} max={key==='martingaleLevels'?3:key==='martingaleMultiplier'?3:key==='maxConsecutiveLosses'?50:undefined} min={key==='martingaleMultiplier'?2:0} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current||(key==='martingaleMultiplier'&&!tripleReady)} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
    <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
    {bot.brokerBalance&&(!(Number(bot.config?.stopLoss)>0)||Number(bot.config.stopLoss)>=Number(bot.brokerBalance.amount))&&<p role="status">{t('Atenção: o limite de perda não protege esta banca contra perdas elevadas.')}</p>}
    <p className="muted">{t('Sequências perdedoras confirmadas')}: {Number(bot.consecutiveLossBatches||0)} · {t('O limite por sequência é opcional e só conta resultados confirmados pela corretora.')}</p>
