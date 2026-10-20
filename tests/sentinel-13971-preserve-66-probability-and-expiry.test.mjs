@@ -30,7 +30,7 @@ test('probability cannot reverse 66 without independently verified quote outcome
  const unapproved=combine66WithProbability(weak,estimate,{durationMs:30000});
  assert.equal(unapproved.side,'CALL');
  assert.equal(unapproved.ready,true);
- const proof={approved:true,n:15,observedOppositeRate:.8};
+ const proof={approved:true,n:16,observedOppositeRate:.8};
  const inverted=combine66WithProbability(weak,estimate,{durationMs:30000,proof});
  assert.equal(inverted.side,'PUT');
  assert.equal(inverted.probabilityOverride,true);
