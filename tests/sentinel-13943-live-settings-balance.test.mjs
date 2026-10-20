@@ -15,8 +15,8 @@ for(const provider of ['iq_option','exnova']){
  const x=setup(provider);await x.bot.start();x.balance(1000,'20');x.bot.watch();assert.equal(x.bot.enabled,true);assert.match(x.bot.message,/conta/);assert.ok(x.bot.suspensionReason);const y=setup(provider);y.c.brokerBalance=null;await y.bot.start();assert.ok(y.bot.enabled);assert.equal(y.bot.status().brokerBalance,null);
  });
  test(provider+': pending debit is reserved even after expiry; delayed winning credit is reconciled',async()=>{
- const x=setup(provider);x.bot.configure({amount:10,stopLoss:30});await x.bot.start();await x.fire();x.advance(50);x.balance(90);x.bot.watch();assert.equal(x.bot.status().riskNetPnl,0);x.advance(30950);x.bot.watch();assert.ok(x.bot.enabled);assert.equal(x.bot.status().riskNetPnl,-10,'after expiry unknown 10 stake must remain reserved, not counted as a confirmed loss');
- const id=x.bot.pending.orderId;x.bot.settle({provider,accountId:'10',orderId:id,netPnl:8});assert.equal(x.bot.net,8);assert.ok(x.bot.enabled);assert.equal(x.bot.status().balanceReconciling,true);x.balance(108);x.bot.watch();assert.equal(x.bot.status().riskNetPnl,8);assert.equal(x.bot.status().balanceReconciling,false);
+ const x=setup(provider);x.bot.configure({amount:10,stopLoss:30});await x.bot.start();await x.fire();const id=x.bot.pending.orderId;x.advance(50);x.balance(90);x.bot.watch();assert.equal(x.bot.status().riskNetPnl,0);x.advance(30950);x.bot.watch();assert.ok(x.bot.enabled);assert.equal(x.bot.status().riskNetPnl,-10,'after expiry unknown 10 stake must remain reserved, not counted as a confirmed loss');
+ x.bot.settle({provider,accountId:'10',orderId:id,netPnl:8});assert.equal(x.bot.net,8);assert.ok(x.bot.enabled);assert.equal(x.bot.status().balanceReconciling,true);x.balance(108);x.bot.watch();assert.equal(x.bot.status().riskNetPnl,8);assert.equal(x.bot.status().balanceReconciling,false);
  });
 }
 test('legacy minute timer is ignored: only user Stop, stop-loss and insufficient bank cause OFF',async()=>{
