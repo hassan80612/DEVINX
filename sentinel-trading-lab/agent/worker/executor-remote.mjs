@@ -1,5 +1,5 @@
 // Display only: no account IDs, order IDs, history or broker credentials.
-export const EXECUTOR_CONFIG_KEYS=['amount','initialBalance','payoutPercent','intervalMs','stopAfterMinutes','stopLoss','martingaleLevels','martingaleEnabled','maxConsecutiveLosses'];
+export const EXECUTOR_CONFIG_KEYS=['amount','initialBalance','payoutPercent','intervalMs','stopAfterMinutes','stopLoss','martingaleLevels','martingaleEnabled','maxConsecutiveLosses','martingaleMultiplier'];
 export function packExecutor(s){
  if(!s)return null;
  return [s.enabled?1:0,s.arming?1:0,s.executing?1:0,
