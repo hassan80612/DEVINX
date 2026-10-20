@@ -192,7 +192,21 @@ export class SignalExecutor{
   if(this.pending){this.message='Ligado · aguardando encerramento da entrada anterior';return;}
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
-  const amount=money(this.config.amount*2**(this.config.martingaleEnabled?this.martingaleLevel:0));
+  const generation=this.generation,requestedClicks=this.nextClicks(),unitAmount=this.config.amount;
+  // If the broker cannot fit a full Martingale within the analyst window,
+  // use one timely baseline click rather than starving every future signal.
+  // Never create a partial Martingale or click after the entry deadline.
+  const canSend=this.driver.batchFeasibility?.(c.provider,{
+   count:requestedClicks,activeId:c.activeId,entryAt:queued.at,now,
+   maxEntryAgeMs:maxSignalAgeMs(queued.durationMs)});
+  if(canSend?.safe===false&&requestedClicks===1){
+   this.message='Ligado · sinal atrasado, aguardando próximo';
+   return;
+  }
+  const martingaleFallback=canSend?.safe===false&&requestedClicks>1;
+  const clickCount=martingaleFallback?1:requestedClicks;
+  const martingaleLevel=martingaleFallback?0:this.martingaleLevel;
+  const amount=money(unitAmount*clickCount);
   if(!Number.isFinite(amount)||amount>1000000){this.message='Ligado · valor inválido · próximo sinal';return;}
   if(this.config.stopLoss>0&&amount>Math.max(0,this.config.stopLoss+this.riskNet(balance))+0.000001){
    this.stop('Bot parado · próxima entrada excede o limite de perda restante (stop-loss)');
@@ -200,20 +214,16 @@ export class SignalExecutor{
   }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
   if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&balance.current.amount<amount){
-   this.stop('Bot parado · saldo insuficiente para '+this.nextClicks()+' clique(s)');
+   this.stop('Bot parado · saldo insuficiente para '+clickCount+' clique(s)');
    return;
   }
-  const generation=this.generation,clickCount=this.nextClicks(),unitAmount=this.config.amount;
-  // Never start an 8/16-click sequence that the measured native broker
-  // throughput cannot fit inside the actual analyst entry window.
-  const canSend=this.driver.batchFeasibility?.(c.provider,{
-   count:clickCount,activeId:c.activeId,entryAt:queued.at,now,
-   maxEntryAgeMs:maxSignalAgeMs(queued.durationMs)});
-  if(canSend?.safe===false){
-   this.message='Ligado · sequência ignorada inteira antes de clicar: '+canSend.reason;
-   return;
+  if(martingaleFallback){
+   // Full multi-click sequence never began. Reset to a normal batch;
+   // progress again only from identified broker settlements.
+   this.martingaleLevel=0;
+   this.message='Ligado · corretora lenta para '+requestedClicks+' cliques; entrada normal de 1 clique';
   }
-  const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel:this.martingaleLevel,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
+  const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
   this.pending=batch;
   const valid=()=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()-queued.at<=maxSignalAgeMs(queued.durationMs)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
@@ -330,7 +340,7 @@ export class SignalExecutor{
   batch.executionSource=p.executionSource='broker';batch.accountId=p.accountId;batch.orderId??=p.orderId;batch.exitAt=Math.max(batch.exitAt,p.exitAt);
   p.executionSource=event.source||'broker';if(batch.detached)return;
   this.lastEntryAt=p.at;this.executed++;
-  if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados';
+  if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados'+(batch.martingaleFallback?' · martingale reduzido por lentidão':'');
  }
  finishBatch(batch){
   if(this.pending!==batch||batch.detached||!batch.dispatchComplete||!batch.orders.length||!batch.orders.every(p=>p.settled))return;
