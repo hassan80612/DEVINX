@@ -1,13 +1,13 @@
 {
-  "version": "13.9.71",
-  "build": "13.9.71-keep-13967-site-66-and-rapid-probability",
+  "version": "13.9.72",
+  "build": "13.9.72-single-66-integrated-lightweight-probability",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "13.9.66-original-decision-preserved-probability-not-calibrated",
+    "modelValidation": "uncalibrated-probability-soft-filter-original-66-regression-tested",
     "forecastModel": "short-probability-v1",
     "historicalStructure": {
       "closedCandles": 100,
