@@ -164,12 +164,23 @@ export class BrokerUiExecutor{
   const cached=this.cachedHtmlControls.get(provider);
   if(cached&&cached.page===page&&cached.token===token&&Date.now()-cached.at<=1200){
    try{
-    const call=cached.frame.locator(cached.callSelector),put=cached.frame.locator(cached.putSelector);
-    const [cn,pn,cv,pv,ce,pe]=await Promise.all([
-     call.count(),put.count(),call.isVisible({timeout:80}),put.isVisible({timeout:80}),
-     call.isEnabled({timeout:80}),put.isEnabled({timeout:80})]);
-    if(cn===1&&pn===1&&cv&&pv&&ce&&pe)
-     return{frame:cached.frame,callSelector:cached.callSelector,putSelector:cached.putSelector};
+    // Validate both cached controls in ONE browser evaluation instead of
+    // six separate Playwright roundtrips on every physical click. Keep the
+    // same uniqueness, visibility and disabled-state requirements.
+    const usable=await cached.frame.evaluate(({callSelector,putSelector})=>{
+     const valid=selector=>{
+      const nodes=document.querySelectorAll(selector);
+      if(nodes.length!==1)return false;
+      const el=nodes[0],style=getComputedStyle(el),rect=el.getBoundingClientRect();
+      return style.display!=='none'&&style.visibility!=='hidden'&&
+       rect.width>0&&rect.height>0&&
+       !el.matches(':disabled,[aria-disabled="true"],[inert]')&&
+       !el.closest('[inert]')&&
+       !el.closest('fieldset:disabled');
+     };
+     return valid(callSelector)&&valid(putSelector);
+    },{callSelector:cached.callSelector,putSelector:cached.putSelector});
+    if(usable)return{frame:cached.frame,callSelector:cached.callSelector,putSelector:cached.putSelector};
    }catch{}
   }
   this.cachedHtmlControls.delete(provider);
