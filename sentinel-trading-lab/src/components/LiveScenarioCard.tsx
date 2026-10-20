@@ -195,10 +195,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div><small>PROJEÇÃO AO VIVO</small><strong>{forecastReadable?price(liveForecast.projectedPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label={forecastDelayed?'Últimos percentuais recebidos; cotação atrasada, não operar': 'Índices atualizados da previsão'}>
-      <span>CALL <b>{liveProjection?.callPct==null?'—':liveProjection.callPct+'%'}</b></span>
-      <span>PUT <b>{liveProjection?.putPct==null?'—':liveProjection.putPct+'%'}</b></span>
+      <span>CALL <b>{m.vnextProbability?.callPct!=null?m.vnextProbability.callPct+'% (estim.)':liveProjection?.callPct==null?'—':liveProjection.callPct+'% (técnico)'}</b></span>
+      <span>PUT <b>{m.vnextProbability?.putPct!=null?m.vnextProbability.putPct+'% (estim.)':liveProjection?.putPct==null?'—':liveProjection.putPct+'% (técnico)'}</b></span>
     </div>
     <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes da previsão</summary>
+      {m.vnextProbability&&<small>Probabilidade aproximada em 30–60s de cotações. NÃO calibrada nem usada para alterar CALL/PUT do motor 66.</small>}
       <small>Motor calculado: {liveForecast?.engineId?liveForecast.engineId.replaceAll('_',' ').toUpperCase():'AGUARDANDO'} · Último cálculo {liveForecast?.issuedAt?clock(liveForecast.issuedAt):'—'} · Referência {liveForecast?.referencePrice?price(liveForecast.referencePrice):'—'}</small>
       <small data-testid="mobile-feed-path">Cotação PC na transmissão: {m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'} · Idade do pacote no celular: {m.transportAge===null?'sem push recente':m.transportAge+'s'}. {forecastDelayed?'Previsão retida apenas para consulta; não é entrada atual.':''}</small>
       <small data-testid="forecast-forward-outcome-research">Conferências no vencimento (pesquisa): {(m.vnextHorizonMeasurements||[]).length?
