@@ -115,8 +115,7 @@ test('panel never steals physical keyboard focus and 8/16 batch feasibility is m
  assert.doesNotMatch(s,/el\.focus\(\{preventScroll:true\}\)/);
  assert.doesNotMatch(s,/el\.addEventListener\('keydown'/);
  const ui=new BrokerUiExecutor({});
- for(const count of [8,16]){
-  const x=ui.batchFeasibility('exnova',{count,activeId:76,entryAt:1800000000000,now:1800000000000});
-  assert.equal(x.safe,false);
- }
+ const fresh={activeId:76,entryAt:1800000000000,now:1800000000000,maxEntryAgeMs:900,maxBatchAgeMs:5000};
+ assert.equal(ui.batchFeasibility('exnova',{...fresh,count:8}).safe,true,'lack of samples alone must not reject eight clicks');
+ assert.equal(ui.batchFeasibility('exnova',{...fresh,count:16}).safe,false,'large uncalibrated batches remain blocked');
 });
