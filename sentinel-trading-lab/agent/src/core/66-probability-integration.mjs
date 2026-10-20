@@ -1,5 +1,5 @@
 // Original 13.9.66 is authoritative until genuinely comparable live broker
-// quote outcomes show a profitable opposite-side advantage for weak signals.
+// quote outcomes show a consistent opposite-side advantage for weak signals.
 // This callback never waits, calls a broker or schedules an operation.
 const SIDES=new Set(['CALL','PUT']);
 export function combine66WithProbability(original,estimate,{durationMs,proof=null}={}){
