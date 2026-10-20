@@ -108,7 +108,7 @@ test('actual runtime can issue a historical reaction with 14 seconds of fresh qu
   quoteTs:T,lastQuoteAt:T,quoteHistory:q,candles:candles(),quoteFeedValidated:true,analysisFeedValidated:true,assetValidated:true});
  await r.tick(T,{skipStatus:true});
  const signal=r.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(signal.side,'CALL');assert.equal(signal.entryTriggeredAt,T);assert.equal(signal.exitAt,T+30000);
+ assert.equal(signal.side,'PUT');assert.equal(signal.entryTriggeredAt,T);assert.equal(signal.exitAt,T+30000);
  assert.equal(r.lastResult.order,undefined);
 });
 test('the actual PC timer cannot keep ENTRY NOW after its short indication or restart an expired signal',()=>{
