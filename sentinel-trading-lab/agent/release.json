@@ -1,13 +1,13 @@
 {
-  "version": "13.9.72",
-  "build": "13.9.72-single-66-integrated-lightweight-probability",
+  "version": "13.9.73",
+  "build": "13.9.73-causal-counterfactual-fast-broker-safe",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "uncalibrated-probability-soft-filter-original-66-regression-tested",
+    "modelValidation": "unverified-in-live-trading-direction-override-only-after-16-independent-quote-expiries-no-guaranteed-win-rate",
     "forecastModel": "short-probability-v1",
     "historicalStructure": {
       "closedCandles": 100,
