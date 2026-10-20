@@ -28,12 +28,15 @@ export class CausalProbabilityReview{
   const payoutOk=Number.isFinite(fraction)&&fraction>=.5&&fraction<=1;
   const required=payoutOk?1/(1+fraction):null;
   const lower=wilsonLower(wins,n);
-  // Lower confidence bound above the broker payout break-even, plus margin,
-  // after 16 comparable, non-overlapping, real broker-quote observations.
-  const approved=payoutOk&&n>=this.minSamples&&wins/n>=.78&&lower>required+.02;
+  // A broker may omit payout from its passive quote feed. In that case we
+  // can measure *directional* evidence, never profitability. Require the
+  // stricter lower confidence bound and allow experiments only in DEMO.
+  const requiredLower=payoutOk?Math.max(.60,required+.02):.65;
+  const approved=n>=this.minSamples&&wins/n>=.78&&lower>requiredLower;
   return {n,oppositeWins:wins,originalWins:n-wins,
    observedOppositeRate:n?wins/n:null,lowerBound:lower,
-   approved:!!approved,threshold:required,
+   approved:!!approved,payoutVerified:!!payoutOk,
+   directionalOnly:!payoutOk,threshold:required,
    source:'observed-broker-quotes-not-broker-trade-settlement'};
  }
  observe({context,now,quoteAt,price,quoteHistory,expiryMs,
