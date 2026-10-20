@@ -1,0 +1,33 @@
+name: Sentinel 13.9.65 broker responsiveness and causal direction replay - NO PRODUCTION
+on:
+  push:
+    branches: [perf/sentinel-13965-broker-render-and-accuracy-replay-20261020]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'tests/sentinel-13965-*'
+      - 'research/sentinel-13965-*'
+      - '.github/workflows/sentinel-13965-perf-accuracy-replay.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-13965-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify DOM throttle and broker operation regression
+        run: |
+          set -euo pipefail
+          node --test tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-13963-unresolved-continuity.test.mjs tests/sentinel-13962-handoff-recovery.test.mjs tests/sentinel-13961-nine-click-window.test.mjs tests/sentinel-13960-own-sequence-and-strategy-switch.test.mjs tests/sentinel-13959-decision-integrity-risk.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-short-expiry-and-broker-performance-13919.test.mjs
+      - name: Replay already-recorded real broker quote samples without lookahead
+        run: node research/sentinel-13965-expiry-causal-diagnostics.mjs
+      - name: Install web build dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Check production Next build types
+        run: |
+          npm run prebuild --prefix sentinel-trading-lab
+          cd sentinel-trading-lab && npx tsc --noEmit
