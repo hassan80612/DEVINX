@@ -30,7 +30,7 @@ export class CausalProbabilityReview{
   const lower=wilsonLower(wins,n);
   // A broker may omit payout from its passive quote feed. In that case we
   // can measure *directional* evidence, never profitability. Require the
-  // stricter lower confidence bound and allow experiments only in DEMO.
+  // stricter directional confidence threshold, regardless of account mode.
   const requiredLower=payoutOk?Math.max(.60,required+.02):.65;
   const approved=n>=this.minSamples&&wins/n>=.78&&lower>requiredLower;
   return {n,oppositeWins:wins,originalWins:n-wins,
