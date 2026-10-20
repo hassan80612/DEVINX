@@ -74,6 +74,6 @@ test('mismatch between selected 60s and broker confirmed 30s blocks the operatio
 });
 test('worker 60s acceptance, not unsupported 2m-15m promise',()=>{
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
- assert.match(code,/\\[5000,10000,15000,30000,60000\\]\\.includes\\(n\\)/);
+ assert.ok(code.includes('[5000,10000,15000,30000,60000].includes(n)'));
  assert.match(code,/orderDurationMs:n,forecastHorizonSeconds:30/);
 });
