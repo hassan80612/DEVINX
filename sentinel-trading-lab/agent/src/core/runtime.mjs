@@ -981,6 +981,7 @@ export class DemoTradingRuntime{
           price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
       const observation=preliminary?{
         side:preliminary.side,ready:preliminary.ready,
+        provisionalSide:preliminary.pCall==null?null:preliminary.pCall>.5?'CALL':preliminary.pCall<.5?'PUT':null,
         reason:preliminary.reason,observedAt:Number(snap.quoteTs),
         entryPrice:preliminary.ready?Number(snap.price):null,
         strength:preliminary.ready?Math.round(Math.max(preliminary.pCall,preliminary.pPut)*100):null,
