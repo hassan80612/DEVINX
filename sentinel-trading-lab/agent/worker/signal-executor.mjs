@@ -144,16 +144,23 @@ export class SignalExecutor{
  releaseExpiredBatch(now=this.clock()){
   const batch=this.pending;
   if(!batch||!batch.dispatchComplete||this.executing||!(Number(batch.exitAt)>0))return false;
-  const graceMs=Math.max(45000,Math.min(90000,Number(batch.durationMs)||30000));
+  // Final configured martingale stage cycles to the base stake whether
+  // the broker has reported WIN/LOSS or not. The real result reconciles later.
+  // Earlier stages still require broker outcomes to decide the next level.
+  const terminal=batch.terminalCycleConsumed===true;
+  const graceMs=terminal?1500:Math.max(45000,Math.min(90000,Number(batch.durationMs)||30000));
   if(now<Number(batch.exitAt)+graceMs||batch.orders.every(p=>p.settled))return false;
   batch.releasedAt=now;
+  if(terminal)batch.terminalCycleReleased=true;
   this.unresolvedBatches.set(batch.id,batch);
   this.pending=null;this.queuedSignal=null;
   // The outdated current-trade reservation is replaced by the worst-case
   // amount of all unresolved clicked children, enforced in riskNet().
   if(this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade=null;
   this.onBatchReleased?.(batch);
-  this.message='Ligado · resultado da corretora pendente; nível do martingale preservado · não aumentar risco sem confirmação';
+  this.message=terminal?
+   'Último martingale encerrado · próximo sinal com 1 clique · resultado financeiro pendente':
+   'Ligado · resultado da corretora pendente; nível do martingale preservado · não aumentar risco sem confirmação';
   return true;
  }
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
@@ -204,9 +211,12 @@ export class SignalExecutor{
    this.message='Ligado · aguardando resultado da sequência anterior ('+closed+'/'+b.orders.length+' encerradas) · martingale preservado';
    return;
   }
-  // Unknown clicked orders cannot count as wins or losses. Do not start
-  // another sequence while their outcome can change the progression.
-  if([...this.unresolvedBatches.values()].some(b=>!b.detached&&b.sessionId===this.sessionId)){
+  // Earlier stages require broker results to select the next level.
+  // The terminal stage has already cycled to one and, once all positions
+  // expire, does not freeze future calls. Worst-case unknown stake remains
+  // reserved by riskNet(), balance limits and stop-loss.
+  if([...this.unresolvedBatches.values()].some(b=>!b.detached&&
+   b.sessionId===this.sessionId&&!b.terminalCycleReleased)){
    if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.config.stopLoss+this.riskNet())+0.000001){
     this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
     return;
@@ -314,6 +324,16 @@ export class SignalExecutor{
     return;
    }
    if(!batch.orders.length){if(this.pending===batch)this.pending=null;this.balanceRisk.trade=null;return;}
+   // The terminal stage is consumed once actual physical clicks have
+   // completed dispatch. This changes only NEXT click count, never PnL.
+   // No physical click means the stage remains pending for another signal.
+   if(this.config.martingaleEnabled&&
+    batch.martingaleLevel===this.config.martingaleLevels&&
+    batch.martingaleLevel>0&&!batch.detached){
+    batch.terminalCycleConsumed=true;
+    batch.progressionApplied=true;
+    this.martingaleLevel=0;
+   }
    if(batch.orders.every(p=>p.state==='accepted'||p.settled))batch.state='accepted';
    if(batch.orders.length!==batch.clickCount&&this.enabled){
     // Do not recreate missing clicks. Stay armed, but any already-clicked
@@ -374,17 +394,22 @@ export class SignalExecutor{
  // Only broker-confirmed COMPLETE batches change the sequence.
  // This handler also reconciles closures received after the timeout.
  applyCompletedSequence(batch){
-  if(batch.progressionApplied)return;
-  batch.progressionApplied=true;
   const full=batch.orders.length===batch.clickCount&&!batch.orders.some(p=>p.error);
-  if(full){
-   this.martingaleLevel=!this.config.martingaleEnabled?0:batch.netPnl>0?0:batch.netPnl<0?(batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):(batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
-   // Only individually confirmed, COMPLETE net losing batches count.
-   // Zero means no streak limit and never changes the Martingale cap behavior.
+  if(!batch.progressionApplied){
+   batch.progressionApplied=true;
+   if(full)this.martingaleLevel=!this.config.martingaleEnabled?0:
+    batch.netPnl>0?0:batch.netPnl<0?
+    (batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):
+    (batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
+  }
+  // Broker accounting and streak guard remain independent of stage cycling.
+  // A late final-stage settlement may not overwrite a NEW cycle's level.
+  if(full&&!batch.lossStreakApplied){
+   batch.lossStreakApplied=true;
    if(batch.netPnl<0)this.consecutiveLossBatches++;
    else if(batch.netPnl>0)this.consecutiveLossBatches=0;
    if(this.enabled&&this.config.maxConsecutiveLosses>0&&
-     this.consecutiveLossBatches>=this.config.maxConsecutiveLosses){
+    this.consecutiveLossBatches>=this.config.maxConsecutiveLosses){
     this.stop('Bot parado · limite configurado de sequências perdedoras atingido');
     return;
    }
