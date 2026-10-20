@@ -1954,9 +1954,6 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
-            <div data-sentinel-motor-switch style="display:flex;justify-content:flex-end;align-items:center;margin:-4px 0 6px;font-size:10px;color:${goldSoft};gap:5px">
-              <span>MOTOR</span><select data-sentinel-setting="motorVariant" title="Escolher a lógica de decisão sem alterar o site ou a corretora" style="background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:7px;padding:4px 7px;font-size:10px;font-weight:750"><option value="probability" ${d.motorVariant!=='66'?'selected':''}>Probabilidade 30/60s</option><option value="66" ${d.motorVariant==='66'?'selected':''}>66 original + probabilidade</option></select>
-            </div>
             <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:9px;align-items:end;padding:9px 11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
                 <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
@@ -1990,7 +1987,7 @@ export class LocalPlaywrightDriver{
                 <span style="color:${putTone}">${tr('PERÍODO APÓS')} ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${tr(liveNow?'AO VIVO':'COTAÇÃO ATRASADA')}</span>
               </div>
-              <div data-sentinel-probability-30s style="font-size:10px;color:${goldSoft};margin-top:6px;font-weight:750;line-height:1.5">CALL ${d.vnext?.nowObservation?.probabilityCall==null?'—':Math.round(d.vnext.nowObservation.probabilityCall*100)+'%'} · PUT ${d.vnext?.nowObservation?.probabilityPut==null?'—':Math.round(d.vnext.nowObservation.probabilityPut*100)+'%'} · ESTIMATIVA NÃO CALIBRADA · MOTOR ${d.motorVariant==='66'?'66':'PROB.'}</div>
+              <div data-sentinel-probability-30s style="font-size:10px;color:${goldSoft};margin-top:6px;font-weight:750;line-height:1.5">CALL ${d.vnext?.nowObservation?.probabilityCall==null?'—':Math.round(d.vnext.nowObservation.probabilityCall*100)+'%'} · PUT ${d.vnext?.nowObservation?.probabilityPut==null?'—':Math.round(d.vnext.nowObservation.probabilityPut*100)+'%'} · ESTIMATIVA NÃO CALIBRADA</div>
             <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">${tr(nowMode?'Detalhes do sinal atual':'Detalhes da entrada futura')}</summary>
                  
