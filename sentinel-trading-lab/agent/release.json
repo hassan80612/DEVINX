@@ -1,13 +1,13 @@
 {
-  "version": "13.9.62",
-  "build": "13.9.62-immediate-now-handoff-after-fourth",
+  "version": "13.9.63",
+  "build": "13.9.63-expiry-continues-unresolved-broker-orders",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "13.9.62-regression-replay-not-live-profitability",
+    "modelValidation": "13.9.63-regression-replay-not-live-profitability",
     "forecastModel": "now-structural-v1",
     "historicalStructure": {
       "closedCandles": 100,
