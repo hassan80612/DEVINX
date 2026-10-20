@@ -86,7 +86,7 @@ export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
-    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -988,9 +988,26 @@ export class DemoTradingRuntime{
         qualityPolicy:'adaptive-market-v17',
         expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
-      const preliminary=this.forecastModel==='short-probability-v1'&&[30000,60000].includes(Number(settings.orderDurationMs))?
-        shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
-          price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
+      // Read-only arithmetic on the existing broker feed, never another
+      // browser action. When the 66 is waiting or an operation is locked,
+      // reuse a sub-second estimate instead of rescanning 3000 ticks.
+      // Every new actionable original-66 signal is evaluated fresh.
+      let preliminary=null;
+      if(this.forecastModel==='short-probability-v1'&&[30000,60000].includes(Number(settings.orderDurationMs))){
+        const quoteTs=Number(snap.quoteTs||0);
+        const context=[snap.provider,settings.asset,settings.orderDurationMs].join('|');
+        const cached=this.lastFastProbability;
+        const locked=this.vnextWindowState?.phase==='fired'&&now<Number(this.vnextWindowState.exitAt||0);
+        const reuse=cached?.context===context&&quoteTs>=cached.quoteTs&&
+          quoteTs-cached.quoteTs<650&&now-quoteTs<=1200&&
+          (original66.ready!==true||locked);
+        if(reuse)preliminary=cached.value;
+        else {
+          preliminary=shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+            price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now});
+          this.lastFastProbability={context,quoteTs,value:preliminary};
+        }
+      }
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
