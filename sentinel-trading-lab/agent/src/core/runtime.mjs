@@ -34,6 +34,7 @@ import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strate
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
 import {combine66WithProbability} from './66-probability-integration.mjs';
+import {CausalProbabilityReview} from './causal-probability-review.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -85,7 +86,7 @@ export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
-    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -990,7 +991,6 @@ export class DemoTradingRuntime{
       const preliminary=this.forecastModel==='short-probability-v1'&&[30000,60000].includes(Number(settings.orderDurationMs))?
         shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
           price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
-      const observation=this.forecastModel==='short-probability-v1'?combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs}):original66;
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
@@ -1000,6 +1000,17 @@ export class DemoTradingRuntime{
         Number(settings.orderDurationMs)<=30000?1450:
         Number(settings.orderDurationMs)<=60000?1950:2500;
       const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs;
+      // Collect a real quote-at-expiry shadow comparison on the PC only.
+      // It is in-memory, non-overlapping and never waits for a result.
+      const probabilityProof=this.forecastModel==='short-probability-v1'?
+        this.probabilityReview.observe({
+          context:[snap.provider||'',settings.asset,settings.engine,settings.orderDurationMs].join('|'),
+          now,quoteAt:snap.quoteTs,price:snap.price,quoteHistory:snap.quoteHistory,
+          expiryMs:settings.orderDurationMs,original:original66,estimate:preliminary,
+          marketValid:duration.allowed&&entryQuoteFresh,payout:snap.payout
+        }):null;
+      const observation=this.forecastModel==='short-probability-v1'?
+        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof}):original66;
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
@@ -1069,7 +1080,8 @@ export class DemoTradingRuntime{
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           probabilityCalibrated:false,probabilitySource:preliminary?.source??null,
-          probabilityInfluenced:observation.probabilityConflict===true
+          probabilityInfluenced:observation.probabilityOverride===true,
+          probabilitySamples:probabilityProof?.n??0
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
