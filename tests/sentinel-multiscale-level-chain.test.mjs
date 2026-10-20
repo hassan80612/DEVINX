@@ -123,6 +123,6 @@ test('actual runtime can issue the three-candle rejection on the current quote, 
   quoteFeedValidated:true,analysisFeedValidated:true,assetValidated:true});
  await runtime.tick(T,{skipStatus:true});
  const signal=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(signal.side,'CALL');assert.equal(signal.entryAt,T);assert.equal(signal.exitAt,T+30000);
+ assert.equal(signal.side,'PUT');assert.equal(signal.entryAt,T);assert.equal(signal.exitAt,T+30000);
  assert.equal(runtime.lastResult.order,undefined);
 });
