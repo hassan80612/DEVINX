@@ -24,16 +24,20 @@ test('original 66 side preserved if probability agrees or is missing',()=>{
  assert.equal(combine66WithProbability(buy,{pCall:.69,pPut:.31},{durationMs:30000}).side,'CALL');
  assert.equal(combine66WithProbability(buy,{pCall:.3,pPut:.7},{durationMs:60000}).side,'CALL');
 });
-test('opposing strong estimate can block weak entry, never invert CALL/PUT',()=>{
+test('probability cannot reverse 66 without independently verified quote outcomes',()=>{
  const weak={ready:true,side:'CALL',strength:35,reason:'closed-structure-and-live-impulse'};
- const conflict=combine66WithProbability(weak,{pCall:.28,pPut:.72},{durationMs:30000});
- assert.equal(conflict.ready,false);
- assert.equal(conflict.side,null);
- assert.equal(conflict.probabilityConflict,true);
- assert.equal(conflict.reason,'probability-conflict-on-weak-66-signal');
- assert.equal(combine66WithProbability({...weak,strength:75},{pCall:.28,pPut:.72},{durationMs:30000}).side,'CALL');
- assert.equal(combine66WithProbability({...weak,strength:null,reason:'closed-range-extreme-reversal-confirmed'},{pCall:.28,pPut:.72},{durationMs:30000}).side,'CALL');
- assert.equal(combine66WithProbability(weak,{pCall:.28,pPut:.72},{durationMs:15000}).side,'CALL');
+ const estimate={pCall:.28,pPut:.72};
+ const unapproved=combine66WithProbability(weak,estimate,{durationMs:30000});
+ assert.equal(unapproved.side,'CALL');
+ assert.equal(unapproved.ready,true);
+ const proof={approved:true,n:15,observedOppositeRate:.8};
+ const inverted=combine66WithProbability(weak,estimate,{durationMs:30000,proof});
+ assert.equal(inverted.side,'PUT');
+ assert.equal(inverted.probabilityOverride,true);
+ assert.equal(inverted.originalSide,'CALL');
+ assert.equal(combine66WithProbability({...weak,strength:75},estimate,{durationMs:30000,proof}).side,'CALL');
+ assert.equal(combine66WithProbability({...weak,strength:null,reason:'closed-range-extreme-reversal-confirmed'},estimate,{durationMs:30000,proof}).side,'CALL');
+ assert.equal(combine66WithProbability(weak,estimate,{durationMs:15000,proof}).side,'CALL');
 });
 test('new integration performs no async waits and costs little per decision',()=>{
  const q=quotes(60),p=q.at(-1);
