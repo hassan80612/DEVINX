@@ -26,7 +26,7 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.pending.clickCount,2);
   assert.equal(x.bot.enabled,true);
  });
- test(provider+': late settlement is quarantined after grace, and bot resumes only on next NEW signal',async()=>{
+ test(provider+': late settlement blocks new stake until identified result; then resumes on a NEW signal',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
@@ -37,15 +37,18 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.unresolvedBatches.size,1);
   assert.equal(x.bot.nextClicks(),1,'unknown result never escalates Martingale');
   assert.equal(x.bot.net,0,'unknown result never fabricates a loss');
-  assert.match(x.bot.message,/resultado pendente/);
+  assert.match(x.bot.message,/resultado da corretora pendente/);
   const before=x.calls.length;
   await x.fire('PUT');
-  assert.equal(x.calls.length,before+1,'only the NEXT real analyst signal is allowed');
-  assert.equal(x.bot.pending.clickCount,1);
+  assert.equal(x.calls.length,before,'unknown broker outcome cannot silently restart at one click');
+  assert.equal(x.bot.pending,null);
   assert.ok(x.bot.settle({provider,orderId:oldId,netPnl:-1,source:'broker'}));
   assert.equal(x.bot.unresolvedBatches.size,0);
-  assert.equal(x.bot.nextClicks(),1,'old settled result cannot retroactively change a newer Martingale');
+  assert.equal(x.bot.nextClicks(),2,'identified loss advances the bot-owned progression exactly once');
   assert.equal(x.bot.enabled,true);
+  x.advance(31000);
+  await x.fire('PUT');
+  assert.equal(x.bot.pending.clickCount,2,'only a NEW signal may resume after broker reconciliation');
  });
  test(provider+': grouped closing packet completes two identified martingale orders, rejects unknown and duplicates',()=>{
   const matched=[],ui=new BrokerUiExecutor({}, {onSettlement:e=>matched.push(e)});
