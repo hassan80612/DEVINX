@@ -4,33 +4,23 @@ import {setup} from './fixtures/executor-13946.mjs';
 import {BrokerUiExecutor} from '../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs';
 
 for(const provider of ['iq_option','exnova']){
- test(provider+': missing broker settlement preserves prior martingale and never starts another trade',async()=>{
+ test(provider+': missing settlement releases at option expiry and continues at base with all risk reserved',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
   const old=x.bot.pending,oldId=old.orderId;
-  x.advance(74999);x.bot.watch();
-  assert.equal(x.bot.pending,old,'never allow overlap before expiry + grace');
-  x.advance(1);x.bot.watch();
-  assert.equal(x.bot.enabled,true);
-  assert.equal(x.bot.pending,null);
+  x.advance(31499);x.bot.watch();assert.equal(x.bot.pending,old,'do not overlap expiry');
+  x.advance(1);x.bot.watch();assert.equal(x.bot.pending,null);
   assert.equal(x.bot.unresolvedBatches.size,1);
   assert.equal(x.bot.unresolvedExposure(),1);
   assert.equal(x.bot.nextClicks(),1);
-  assert.equal(x.bot.closed,0,'must not invent outcomes');
-  assert.equal(x.bot.net,0);
-  await x.fire('PUT');
-  assert.deepEqual(x.calls.map(o=>o.side),['CALL']);
-  assert.equal(x.bot.pending,null);
-  const priorLevel=x.bot.martingaleLevel;
+  assert.equal(x.bot.closed,0);assert.equal(x.bot.net,0);
+  await x.fire('PUT');assert.deepEqual(x.calls.map(o=>o.side),['CALL','PUT']);
+  assert.equal(x.bot.pending.clickCount,1);
   assert.equal(x.bot.settle({provider,orderId:oldId,netPnl:-1,source:'broker'}),true);
-  assert.equal(x.bot.closed,1);
-  assert.equal(x.bot.net,-1);
+  assert.equal(x.bot.closed,1);assert.equal(x.bot.net,-1);
   assert.equal(x.bot.unresolvedBatches.size,0);
-  assert.equal(x.bot.martingaleLevel,1,'the confirmed prior LOSS advances only after settlement');
-  assert.equal(priorLevel,0);
-  x.advance(31000);await x.fire('PUT');
-  assert.equal(x.bot.pending.clickCount,2,'new signal uses verified progression');
+  assert.equal(x.bot.nextClicks(),1,'late loss must not change newer normal cycle');
  });
  test(provider+': late accepted ID and later close still reconcile after recovering next signal',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
@@ -61,23 +51,24 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.net,0);
   assert.equal(x.bot.unresolvedBatches.size,1,'late outcome is still tracked');
  });
- test(provider+': Martingale remains at existing level after UNKNOWN 2-click batch; awaits broker settlement',async()=>{
+ test(provider+': missing result from intermediate martingale releases normal next entry',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();await x.fire('CALL');
-  x.advance(30000);assert.ok(x.bot.settle({provider,orderId:x.bot.pending.orderId,netPnl:-1,source:'broker'}));
+  x.advance(30000);
+  assert.ok(x.bot.settle({provider,orderId:x.bot.pending.orderId,netPnl:-1,source:'broker'}));
   assert.equal(x.bot.nextClicks(),2);
   x.advance(1000);await x.fire('PUT');
   const old=x.bot.pending;assert.equal(old.orders.length,2);
-  x.advance(75000);x.bot.watch();
+  x.advance(31500);x.bot.watch();
   assert.equal(x.bot.pending,null);assert.equal(x.bot.unresolvedExposure(),2);
-  assert.equal(x.bot.nextClicks(),2);
-  const priorCalls=x.calls.length;
-  await x.fire('CALL');
-  assert.equal(x.calls.length,priorCalls,'no new stake before confirmed settlement');
-  assert.equal(x.bot.pending,null);
-  assert.equal(x.bot.closed,1);
+  assert.equal(x.bot.nextClicks(),1);
+  const priorCalls=x.calls.length;await x.fire('CALL');
+  assert.equal(x.calls.length,priorCalls+1);
+  assert.equal(x.bot.pending.clickCount,1);
+  assert.equal(x.bot.closed,1,'no invented intermediate broker outcome');
  });
+
 }
 
 test('the broker unknown-click mutex ages out only for its original quarantined batch',async()=>{
