@@ -20,13 +20,20 @@ function liveMicro(quoteHistory=[],last,vol,baseSeconds,now=Date.now()){
  const latest=points.at(-1);
  const current=latest?.price??Number(last);
  const atAgo=(ms)=>{
-   const target=(latest?.ts??now)-ms;let best=null;
-   for(const p of points){if(p.ts<=target)best=p;else break}
-   return best?.price??points[0]?.price??current
+   if(!latest)return null;
+   const target=latest.ts-ms;let before=null,after=null;
+   for(const p of points){if(p.ts<=target)before=p;else{after=p;break}}
+   if(!before)return null;
+   if(before.ts===target)return before.price;
+   if(!after)return null;
+   const gap=after.ts-before.ts;
+   if(gap<=0||gap>Math.min(2500,Math.max(2000,ms*.4)))return null;
+   return before.price+(after.price-before.price)*(target-before.ts)/gap
  };
- const d2=current-atAgo(2000),d5=current-atAgo(5000),d15=current-atAgo(15000),d30=current-atAgo(30000),d60=current-atAgo(60000);
+ const [a2,a5,a15,a30,a60]=[2000,5000,15000,30000,60000].map(atAgo);
+ const d2=a2==null?0:current-a2,d5=a5==null?0:current-a5,d15=a15==null?0:current-a15,d30=a30==null?0:current-a30,d60=a60==null?0:current-a60;
  const span=points.length>1?points.at(-1).ts-points[0].ts:0;
- const ready=points.length>=10&&span>=12000;
+ const ready=points.length>=10&&span>=30000&&[a2,a5,a15,a30].every(Number.isFinite);
  const safeBase=Math.max(5,Number(baseSeconds||60));
  const expected=(secs)=>Math.max(Math.abs(current)*.000005,Math.abs(vol||0)*Math.sqrt(Math.max(1,secs)/safeBase));
  const expected2=expected(2),expected5=expected(5),expected15=expected(15),expected30=expected(30);
