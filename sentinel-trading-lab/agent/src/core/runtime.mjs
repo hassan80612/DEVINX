@@ -1007,7 +1007,9 @@ export class DemoTradingRuntime{
           context:[snap.provider||'',settings.asset,settings.engine,settings.orderDurationMs].join('|'),
           now,quoteAt:snap.quoteTs,price:snap.price,quoteHistory:snap.quoteHistory,
           expiryMs:settings.orderDurationMs,original:original66,estimate:preliminary,
-          marketValid:duration.allowed&&entryQuoteFresh,payout:snap.payout
+          marketValid:duration.allowed&&entryQuoteFresh&&
+            !(this.vnextWindowState?.phase==='fired'&&now<Number(this.vnextWindowState.exitAt||0)),
+          payout:snap.payout
         }):null;
       const observation=this.forecastModel==='short-probability-v1'?
         combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof}):original66;
