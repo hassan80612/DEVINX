@@ -135,6 +135,33 @@ export class SignalExecutor{
   return this.status();
  }
  observeBalance(value){this.balanceRisk.observe(value);}
+ // Defensive reconciliation: a batch with all broker-identified results
+ // should never remain in the old pending/unresolved maps after callback
+ // ordering changes. Never infer an unreported result from a price move.
+ reconcileCompletedBatches(){
+  const pending=this.pending;
+  if(pending?.dispatchComplete&&!this.executing&&pending.orders.length&&
+   pending.orders.every(o=>o.settled))this.finishBatch(pending);
+  for(const [id,b] of this.unresolvedBatches){
+   if(!b.dispatchComplete||!b.orders.every(o=>o.settled||!o.clicked||o.rejected))continue;
+   this.unresolvedBatches.delete(id);
+   if(!b.detached&&b.sessionId===this.sessionId&&
+    b.orders.length===b.clickCount&&b.orders.every(o=>o.settled))
+    this.applyCompletedSequence(b);
+  }
+ }
+ unresolvedDetail(now=this.clock()){
+  const batches=[this.pending,...this.unresolvedBatches.values()]
+   .filter(b=>b&&!b.detached&&b.sessionId===this.sessionId);
+  const outstanding=batches.flatMap(b=>b.orders)
+   .filter(o=>o.clicked&&!o.settled&&!o.rejected);
+  const waitingId=outstanding.filter(o=>!o.orderId).length;
+  const waitingResult=outstanding.length-waitingId;
+  const earliestExit=batches.reduce((m,b)=>
+   Number(b.exitAt)>0?Math.min(m,Number(b.exitAt)):m,Infinity);
+  return{batches:batches.length,orders:outstanding.length,waitingId,
+   waitingResult,overdueMs:Number.isFinite(earliestExit)?Math.max(0,now-earliestExit):0};
+ }
  unresolvedExposure(){
   let amount=0;
   for(const batch of this.unresolvedBatches.values())for(const p of batch.orders)
@@ -169,6 +196,7 @@ export class SignalExecutor{
   if(!this.enabled&&!this.pending)return;
   const now=this.clock(),c=this.context(),p=this.pending;
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
+  this.reconcileCompletedBatches();
   const balance=this.balanceRisk.view(now);
   if(this.enabled){
    const blocker=this.hardHoldReason||(!c.licensed||c.state!=='running'?'aguardando analista/acesso':
@@ -208,7 +236,9 @@ export class SignalExecutor{
   if(this.pending){
    this.queuedSignal=null;
    const b=this.pending,closed=b.orders.filter(o=>o.settled).length;
-   this.message='Ligado · aguardando resultado da sequência anterior ('+closed+'/'+b.orders.length+' encerradas) · martingale preservado';
+   const d=this.unresolvedDetail(now);
+   this.message='Ligado · aguardando resultado da sequência anterior ('+closed+'/'+b.orders.length+
+    ' encerradas; '+d.waitingId+' sem ID) · nível preservado';
    return;
   }
   // Earlier stages require broker results to select the next level.
@@ -222,7 +252,10 @@ export class SignalExecutor{
     return;
    }
    this.queuedSignal=null;
-   this.message='Ligado · aguardando resultado de ordem anterior · martingale preservado';return;
+   const d=this.unresolvedDetail(now);
+   this.message='Ligado · aguardando corretora: '+d.orders+' ordem(ns) sem resultado ('+
+    d.waitingId+' sem ID; '+d.waitingResult+' com ID) · nível preservado';
+   return;
   }
   if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||queued.durationMs!==c.durationMs||now>=queued.exitAt){
    this.queuedSignal=null;
@@ -460,5 +493,6 @@ export class SignalExecutor{
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
  nextAmount(){return money(this.config.amount*this.nextClicks());}
  riskNet(balance=this.balanceRisk.view(this.clock())){return Math.min(this.net,this.initialBalance!=null&&balance.source==='broker'?balance.net:this.net)-this.unresolvedExposure();}
- status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
+ status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
+  unresolvedDetail:this.unresolvedDetail(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
 }
