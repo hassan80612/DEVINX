@@ -336,11 +336,24 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  const horizon=Number(durationMs);
  if(!(horizon>=5000&&horizon<=3600000))return null;
  const key=[...(provider==null?[]:[String(provider).toLowerCase()]),String(asset).toUpperCase(),String(engineId),horizon].join('|');
- const old=previous?.context===key?previous:null;
+ // Retain the previous expiry when ONLY the strategy changes on the same
+ // provider, asset and duration; old CALL/PUT must never be shown as a new
+ // strategy's trade, and a hot switch must never duplicate open windows.
+ const sameMarket=previous?.asset===String(asset).toUpperCase()&&
+  Number(previous?.holdingSeconds)*1000===horizon&&
+  String(previous?.context||'').split('|').slice(0,-2).join('|')===key.split('|').slice(0,-2).join('|');
+ const old=sameMarket?previous:null;
  const fresh=Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500;
- if(old?.phase==='fired'&&now<old.exitAt)
+ if(old?.phase==='fired'&&now<old.exitAt){
+  if(old.context!==key)return{context:key,engineId,asset:String(asset).toUpperCase(),
+   phase:'scanning',reason:'strategy-switch-awaiting-previous-expiry',
+   side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
+   windowStartedAt:null,windowEndsAt:0,observationSide:candidate?.side||null,
+   lastObservedAt:Number(quoteAt)||null,lastExpiryAt:Number(old.exitAt),
+   holdingSeconds:horizon/1000,delaySeconds:horizon/1000};
   return {...old,entryReadyNow:false,observationSide:candidate?.side||null,
     lastObservedAt:Number(quoteAt)||null};
+ }
  const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
  // Do not manufacture an instant re-entry from the same tick captured
  // before the previous option actually expired.
