@@ -68,10 +68,14 @@ test('probability quality is scoped by broker, asset, strategy, and duration',()
  assert.equal(p.approved,true);
  assert.equal(audit.summary(context,.8).n,16);
 });
-test('if broker payout is unavailable, no shadow score is treated as profitable',()=>{
+test('missing broker payout permits directional evidence but never claims profitability',()=>{
  const audit=new CausalProbabilityReview();feed(audit);
- assert.equal(audit.summary(context,null).approved,false);
- assert.equal(audit.summary(context,.2).approved,false);
+ const unpriced=audit.summary(context,null);
+ assert.equal(unpriced.approved,true);
+ assert.equal(unpriced.payoutVerified,false);
+ assert.equal(unpriced.directionalOnly,true);
+ assert.equal(unpriced.threshold,null);
+ assert.equal(audit.summary(context,.2).payoutVerified,false);
 });
 test('review is bounded, synchronous, and does not introduce a 30-second wait on individual quotes',()=>{
  const audit=new CausalProbabilityReview();
