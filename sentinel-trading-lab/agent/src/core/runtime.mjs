@@ -987,10 +987,10 @@ export class DemoTradingRuntime{
         qualityPolicy:'adaptive-market-v17',
         expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
-      const preliminary=[30000,60000].includes(Number(settings.orderDurationMs))?
+      const preliminary=this.forecastModel==='short-probability-v1'&&[30000,60000].includes(Number(settings.orderDurationMs))?
         shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
           price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
-      const observation=combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs});
+      const observation=this.forecastModel==='short-probability-v1'?combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs}):original66;
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
