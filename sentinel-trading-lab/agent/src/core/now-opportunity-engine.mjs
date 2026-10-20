@@ -167,6 +167,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // randomized-price A/B showed such overrides sharply increased losses.
  if(qualityPolicy==='adaptive-market-v17'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
+  // A manually chosen specialist must make its own CALL/PUT decision.
+  // The Automatic cycle predictor must not silently replace that strategy.
+  if(engineId!=='automatic'){
+   const specialist=analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'});
+   return {...specialist,engineId,qualityPolicy,contextStrategy:engineId,
+    marketShape:'selected-specialist',signalOwner:'selected-specialist'};
+  }
   const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
   const context=automaticChartContext({...input,base:original});
   // Preserve the existing admission and exact entry timestamp. Only the 30s
@@ -191,9 +198,20 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // Historical reactions must agree with the projection actually selected
   // above. Comparing against the discarded narrow forecast can both veto
   // an agreeing reaction and allow one that contradicts the selected side.
+  // Forecasts describe fitted past prices, not guaranteed continuation.
+  // When closed-price structure currently confirms the OPPOSITE side, a
+  // model extrapolation alone is insufficient to open a new live position.
+  // Later, an observed historical rejection or structure change may qualify
+  // its OWN side; otherwise return WAIT rather than guess CALL/PUT.
+  const contradictory=original.structuralReady===true&&
+   isSide(original.structuralSide)&&decision.ready===true&&isSide(decision.side)&&
+   original.structuralSide!==decision.side;
+  const guarded=contradictory?{...decision,ready:false,side:null,
+   reason:'projection-conflicts-with-confirmed-structure',
+   structuralDisagreement:{structure:original.structuralSide,projection:decision.side}}:decision;
   const selectedForecast=decision.reason==='validated-structure-over-cycle'?null:
    forecast?.ready&&decision.ready?decision:forecast;
-  const historical=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:selectedForecast},structure,...input});
+  const historical=applyHistoricalPriceStructure({candidate:{...guarded,pendingForecast:selectedForecast},structure,...input});
   const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
   const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
   delete located.pendingForecast;
@@ -213,12 +231,14 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
   const contextStrategy=useLearning?'mean_reversion':'trend';
-  if(useLearning)return {...structural,...learning,engineId,qualityPolicy,
+  const qualifiedStructure={structuralReady:structural.ready===true,
+   structuralSide:structural.ready===true?structural.side:null};
+  if(useLearning)return {...structural,...learning,...qualifiedStructure,engineId,qualityPolicy,
    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
    contextStrategy:engineId==='automatic'?contextStrategy:engineId,
    signalOwner:'shared-market-base'};
-  return {...structural,engineId,qualityPolicy,
+  return {...structural,...qualifiedStructure,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?'trend':engineId,
    signalOwner:'shared-market-base'};
  }
