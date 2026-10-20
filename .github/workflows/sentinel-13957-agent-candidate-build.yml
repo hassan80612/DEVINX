@@ -1,8 +1,8 @@
-name: Sentinel 13.9.57 confirmed levels, safe timing, Martingale3 build - no production
+name: Sentinel 13.9.58 confirmed levels, safe timing, Martingale3 build - no production
 on:
   push:
     branches:
-      - fix/sentinel-13957-stage5-execution-safety-martingale3-20261019
+      - fix/sentinel-13958-martingale-continuidade-20261019
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/src/components/BotControl.tsx'
@@ -12,7 +12,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: sentinel-13957-safe-agent-build
+  group: sentinel-13958-safe-agent-build
   cancel-in-progress: false
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
-          node --test tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13956-stage4-independent-outcomes.test.mjs tests/sentinel-13955-session-and-calculation.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13953-broker-ack-timeout.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
+          node --test tests/sentinel-13958-slow-broker-continuity.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13957-click-latency-and-broker-cache.test.mjs tests/sentinel-13956-stage4-independent-outcomes.test.mjs tests/sentinel-13955-session-and-calculation.test.mjs tests/sentinel-13954-bounded-settlement-recovery.test.mjs tests/sentinel-13953-safe-restart.test.mjs tests/sentinel-13953-broker-ack-timeout.test.mjs tests/sentinel-13952-continuous-bot.test.mjs tests/sentinel-13951-click-martingale.test.mjs tests/sentinel-nested-settlement-balance-20261018.test.mjs
       - name: Install website build dependencies
         run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
       - name: Full website prebuild and Next.js build
@@ -49,10 +49,10 @@ jobs:
           agent=root/'agent'
           dl=root/'public/downloads'
           release=json.loads((agent/'release.json').read_text())
-          assert release['version']=='13.9.57' and release['build']=='13.9.57-stage5-confirmed-levels-broker-latency-martingale3'
+          assert release['version']=='13.9.58' and release['build']=='13.9.58-safe-broker-martingale-continuity'
           manifest=json.loads((dl/'agent-update.json').read_text())
           payload=(dl/'agent_payload_v88.zip').read_bytes()
-          exe=(dl/'Sentinel-Agent-13.9.57.exe').read_bytes()
+          exe=(dl/'Sentinel-Agent-13.9.58.exe').read_bytes()
           assert manifest['version']==release['version'] and manifest['build']==release['build']
           assert manifest['zipSha256']==hashlib.sha256(payload).hexdigest()
           assert exe[:2]==b'MZ' and len(exe)>1_000_000 and payload in exe
@@ -64,7 +64,7 @@ jobs:
             for name in z.namelist():
               if name.endswith('/'):continue
               assert z.read(name)==(agent/name).read_bytes(),name
-          with zipfile.ZipFile(dl/'Sentinel-Agent-13.9.57-Alternativo.zip') as z:
+          with zipfile.ZipFile(dl/'Sentinel-Agent-13.9.58-Alternativo.zip') as z:
             assert z.testzip() is None
             assert z.read('agent_payload_v88.zip')==payload
             assert z.read('install-agent-v88.ps1')==(dl/'install-agent-v88.ps1').read_bytes()
@@ -76,8 +76,8 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.57.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.57-Alternativo.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.58.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.58-Alternativo.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
           if ! git diff --cached --quiet; then
-            git commit -m 'build(sentinel): verified 13.9.57 Agent - candidate branch only'
-            git push origin HEAD:fix/sentinel-13957-stage5-execution-safety-martingale3-20261019
+            git commit -m 'build(sentinel): verified 13.9.58 Agent - candidate branch only'
+            git push origin HEAD:fix/sentinel-13958-martingale-continuidade-20261019
           fi
