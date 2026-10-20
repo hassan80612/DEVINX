@@ -61,9 +61,9 @@ try{
   const cases={
    released:run(rows,publishedEngine.analyzeNowOpportunity,publishedSelector.CompletedExpiryDirection,true),
    baselineWithoutSelector:run(rows,publishedEngine.analyzeNowOpportunity,publishedSelector.CompletedExpiryDirection,false),
-   newGuardOldSelector:run(rows,candidateAnalyze,publishedSelector.CompletedExpiryDirection,true),
-   oldGuardNewSelector:run(rows,publishedEngine.analyzeNowOpportunity,CandidateSelector,true),
-   candidate:run(rows,candidateAnalyze,CandidateSelector,true),
+   candidateEngineLegacySelector:run(rows,candidateAnalyze,publishedSelector.CompletedExpiryDirection,true),
+   releasedEngineNewSelector:run(rows,publishedEngine.analyzeNowOpportunity,CandidateSelector,true),
+   candidateWithNewSelector:run(rows,candidateAnalyze,CandidateSelector,true),
    candidateWithoutSelector:run(rows,candidateAnalyze,CandidateSelector,false)
   };
   for(const [name,value] of Object.entries(cases))
