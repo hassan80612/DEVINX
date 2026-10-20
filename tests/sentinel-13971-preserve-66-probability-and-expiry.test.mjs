@@ -70,14 +70,14 @@ test('signed mobile packet preserves engine and probabilities without altering c
   agentVersion:'13.9.71',state:'running',settings:{engine:'automatic',motorVariant:'66',orderDurationMs:60000},
   lastResult:{asset:'EUR/USD',analysis:{vnext:{
    mode:'now',engineId:'automatic',expirySeconds:60,
-   nowObservation:{side:'CALL',ready:true,observedAt:now,evaluatedAt:now,probabilityCall:.62,probabilityPut:.38},
+   nowObservation:{side:'CALL',ready:true,observedAt:now,evaluatedAt:now,probabilityCall:.62,probabilityPut:.38,motorVariant:'66'},
    futureEntryAnchor:{delaySeconds:60,side:'CALL',issuedAt:now,holdingSeconds:60,entryAt:now,exitAt:now+60000,entryReadyNow:true,phase:'fired',entryTriggeredAt:now},
    opportunityWindow:{phase:'fired',windowStartedAt:now,windowEndsAt:now+60000}
   }}}};
  const frame=analystSnapshot(runtimeStatus,{symbol:'EUR/USD',validatedSymbol:'EUR/USD',quote:1.2,lastQuoteAt:now,assetValidated:true,analysisFeedValidated:true});
  const fitted=fitAnalystFrame(frame);
  assert.ok(fitted);
- assert.equal(fitted.settings.motorVariant,'66');
+ assert.equal(fitted.lastResult.analysis.vnext.nowObservation.motorVariant,'66');
  assert.equal(fitted.lastResult.analysis.vnext.nowObservation.probabilityCall,.62);
  assert.equal(fitted.lastResult.analysis.vnext.nowObservation.probabilityPut,.38);
  assert.ok(Buffer.byteLength(JSON.stringify(fitted))<=3000);
