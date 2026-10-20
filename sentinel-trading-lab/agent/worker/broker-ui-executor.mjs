@@ -109,23 +109,34 @@ export class BrokerUiExecutor{
  // Time actually observed between beginning broker-control lookup and
  // a matching native broker page-out request. Never fabricate throughput.
  dispatchKey(provider,activeId){return String(provider)+'|'+String(activeId);}
- batchFeasibility(provider,{count,activeId,entryAt,now,maxEntryAgeMs=1500}={}){
+ batchFeasibility(provider,{count,activeId,entryAt,now,maxEntryAgeMs=1500,maxBatchAgeMs=maxEntryAgeMs}={}){
   if(!Number.isInteger(count)||count<1)return{safe:false,reason:'Quantidade inválida de cliques'};
-  if(count===1)return{safe:true,reason:'Entrada única'};
-  const samples=this.confirmedDispatchDurations.get(this.dispatchKey(provider,activeId))||[];
-  if(!samples.length)return{safe:false,reason:'Ainda não há velocidade de cliques confirmada para essa corretora e ativo'};
-  // Match the active signal-to-click age budget, rather than assuming
-  // the old 1500ms window for every short-expiry operation.
-  // Predict the start
-  // of the final click from the slowest recently measured native dispatch.
-  // If not feasible, reject the WHOLE batch rather than sending 6 of 8.
-  const observedMax=Math.max(...samples);
-  const remaining=Number(entryAt)+Math.min(1500,Math.max(0,Number(maxEntryAgeMs)))-Number(now);
-  const lastStartDelay=(count-1)*observedMax;
+  const initialAge=Number(now)-Number(entryAt);
+  const firstWindow=Number(maxEntryAgeMs);
+  if(!Number.isFinite(initialAge)||initialAge<0||!Number.isFinite(firstWindow)||firstWindow<=0||initialAge>firstWindow)
+   return{safe:false,reason:'Sinal antigo: primeiro clique fora do prazo'};
+  if(count===1)return{safe:true,reason:'Primeiro clique no prazo'};
+  // The entry freshness deadline applies to CLICK ONE only. Applying it
+  // to the entire batch wrongly rejects nine sequential clicks at 30s expiry.
+  const remaining=Number(entryAt)+Number(maxBatchAgeMs)-Number(now);
+  if(!(remaining>0))return{safe:false,reason:'Janela de cliques encerrada'};
+  const samples=(this.confirmedDispatchDurations.get(this.dispatchKey(provider,activeId))||[])
+   .filter(x=>Number.isFinite(x)&&x>0).slice(-12);
+  // Broker UI measurements are gathered only after real confirmed orders;
+  // no data is NOT proof that the broker cannot fit a 3- or 9-click batch.
+  // Unknown 27-click throughput stays disabled until calibrated.
+  if(!samples.length)return count<=9?
+   {safe:true,observedSamples:0,reason:'Velocidade ainda não medida · cada clique será verificado durante o envio'}:
+   {safe:false,observedSamples:0,reason:'Sequência acima de 9 cliques exige velocidade medida'};
+  // Use the recent 75th percentile (with 25% margin), not one historical
+  // slow spike as though it were the speed of EVERY future click.
+  const sorted=[...samples].sort((a,b)=>a-b);
+  const p75=sorted[Math.ceil(sorted.length*.75)-1];
+  const lastStartDelay=(count-1)*Math.ceil(p75*1.25);
   return lastStartDelay<remaining?
    {safe:true,estimatedLastClickDelayMs:lastStartDelay,observedSamples:samples.length}:
    {safe:false,estimatedLastClickDelayMs:lastStartDelay,observedSamples:samples.length,
-    reason:'Sequência de '+count+' cliques não cabe no prazo de entrada com a velocidade observada'};
+    reason:'Sequência de '+count+' cliques excede a janela com a velocidade medida'};
  }
  restoreBindings(value){for(const provider of ['iq_option','exnova'])if(value?.[provider])try{this.canvasBindings[provider]=normalizeCanvasBinding(value[provider]);}catch{}return this.canvasBindings;}
  async beginCalibration(provider){
