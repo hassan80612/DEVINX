@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {analyzeNowOpportunity,guardContraryCycle} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
+import {analyzeNowOpportunity,annotateForecastStructureConflict} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 import {CompletedExpiryDirection} from '../sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs';
 import {setup} from './fixtures/executor-13946.mjs';
 import {executorPanel} from '../sentinel-trading-lab/agent/worker/executor-panel.mjs';
@@ -24,15 +24,16 @@ test('selected TREND specialist uses observed trend; mean reversion is NOT silen
  assert.equal(mean.ready,false);
  assert.equal(mean.side,null);
 });
-test('opposing unconfirmed fitted cycle returns WAIT instead of guessing contra-structure',()=>{
+test('observed trend/cycle disagreement is recorded WITHOUT a harmful unvalidated veto',()=>{
  const structural={structuralReady:true,structuralSide:'CALL'};
  const projected={ready:true,side:'PUT',reason:'observed-trend-and-30s-cycle-projection'};
- const blocked=guardContraryCycle(structural,projected);
- assert.equal(blocked.ready,false);assert.equal(blocked.side,null);
- assert.equal(blocked.reason,'projection-conflicts-with-confirmed-structure');
- assert.deepEqual(blocked.structuralDisagreement,{structure:'CALL',projection:'PUT'});
- assert.equal(guardContraryCycle(structural,{...projected,side:'CALL'}).ready,true);
- assert.strictEqual(guardContraryCycle({structuralReady:false},projected),projected);
+ const annotated=annotateForecastStructureConflict(structural,projected);
+ assert.equal(annotated.ready,true);
+ assert.equal(annotated.side,'PUT');
+ assert.equal(annotated.reason,projected.reason);
+ assert.deepEqual(annotated.structuralDisagreement,{structure:'CALL',projection:'PUT'});
+ assert.strictEqual(annotateForecastStructureConflict(structural,{...projected,side:'CALL'}).side,'CALL');
+ assert.strictEqual(annotateForecastStructureConflict({structuralReady:false},projected),projected);
 });
 test('adaptive cycle calibration never counts six overlapping five-second starts as six independent horizons',()=>{
  const selector=new CompletedExpiryDirection();
