@@ -12,7 +12,7 @@ function wilsonLower(wins,total,z=1.645){
  return clamp01((p+zz/(2*total)-z*Math.sqrt(p*(1-p)/total+zz/(4*total*total)))/(1+zz/total));
 }
 export class CausalProbabilityReview{
- constructor({minSamples=12,maxContexts=16,maxSettled=60}={}){
+ constructor({minSamples=16,maxContexts=16,maxSettled=60}={}){
   this.minSamples=minSamples;this.maxContexts=maxContexts;this.maxSettled=maxSettled;
   this.contexts=new Map();
  }
@@ -29,7 +29,7 @@ export class CausalProbabilityReview{
   const required=payoutOk?1/(1+fraction):null;
   const lower=wilsonLower(wins,n);
   // Lower confidence bound above the broker payout break-even, plus margin,
-  // after 12 comparable, non-overlapping, real broker-quote observations.
+  // after 16 comparable, non-overlapping, real broker-quote observations.
   const approved=payoutOk&&n>=this.minSamples&&wins/n>=.78&&lower>required+.02;
   return {n,oppositeWins:wins,originalWins:n-wins,
    observedOppositeRate:n?wins/n:null,lowerBound:lower,
