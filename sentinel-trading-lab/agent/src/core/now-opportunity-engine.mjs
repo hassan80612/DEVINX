@@ -181,7 +181,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const input={quoteHistory,price,quoteAt,now,durationMs};
   // A manually chosen specialist must make its own CALL/PUT decision.
   // The Automatic cycle predictor must not silently replace that strategy.
-  if(engineId!=='automatic'){
+  if(engineId!=='automatic'&&Number(durationMs)===30000){
    const specialist=analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'});
    // Explicit SUPPORT / RESISTANCE remains eligible on a freshly observed
    // rejection using closed broker candles, even with <14s micro-history.
@@ -248,8 +248,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
   const contextStrategy=useLearning?'mean_reversion':'trend';
-  const qualifiedStructure={structuralReady:structural.ready===true,
-   structuralSide:structural.ready===true?structural.side:null};
+  const qualifiedStructure=Number(durationMs)===30000?{structuralReady:structural.ready===true,
+   structuralSide:structural.ready===true?structural.side:null}:{};
   if(useLearning)return {...structural,...learning,...qualifiedStructure,engineId,qualityPolicy,
    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
