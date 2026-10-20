@@ -851,7 +851,8 @@ export class DemoTradingRuntime{
        patch.engine!==this.settings.engine&&
        (!Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')||Number(patch.orderDurationMs)===Number(this.settings.orderDurationMs))&&
        (!Object.prototype.hasOwnProperty.call(patch,'asset')||patch.asset===this.settings.asset)&&
-       (!Object.prototype.hasOwnProperty.call(patch,'forecastMode')||patch.forecastMode===this.settings.forecastMode);
+       (!Object.prototype.hasOwnProperty.call(patch,'forecastMode')||patch.forecastMode===this.settings.forecastMode||
+        this.settings.forecastMode==null&&patch.forecastMode==='continuous');
       if(!engineOnlyChange)this.vnextWindowState=null;
       this.vnextWindowCheckedQuoteAt=0;
       this.vnextFutureEntryAnchor=null;
