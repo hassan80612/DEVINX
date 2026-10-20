@@ -164,7 +164,7 @@ export class SignalExecutor{
     !balance.reconciling&&balance.current.amount<this.config.amount)
     this.stop('Bot parado · saldo da corretora insuficiente para 1 clique');
    else if(blocker)this.message='Ligado · suspenso por segurança: '+blocker;
-   else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;this.sequence=0;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
+   else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
   }
   if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider)this.session.accountId=String(balance.current.accountId);
   if(this.enabled)this.releaseExpiredBatch(now);
