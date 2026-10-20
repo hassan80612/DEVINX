@@ -1,13 +1,13 @@
 {
-  "version": "13.9.59",
-  "build": "13.9.59-nonoverlap-specialist-loss-guard",
+  "version": "13.9.60",
+  "build": "13.9.60-strategy-expiry-lock-own-triple-martingale",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "automatic-market-base-selected-specialists-30s",
-    "modelValidation": "13.9.59-regression-replay-not-live-profitability",
+    "modelValidation": "13.9.60-regression-replay-not-live-profitability",
     "forecastModel": "now-structural-v1",
     "historicalStructure": {
       "closedCandles": 100,
