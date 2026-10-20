@@ -1086,7 +1086,8 @@ export class DemoTradingRuntime{
           observedAt:observation.observedAt,strength:observation.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
-          probabilityCalibrated:false,probabilitySource:preliminary?.source??null
+          probabilityCalibrated:false,probabilitySource:preliminary?.source??null,
+          motorVariant:settings.motorVariant==='66'?'66':'probability'
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
