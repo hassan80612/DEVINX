@@ -187,9 +187,9 @@ export class SignalExecutor{
      ' fechadas'+(unidentified?', '+unidentified+' clique(s) sem ID':'')+') · sem repetir entradas';
   }
  }
- pulse(){
+ pulse(freshAnchor=null){
   this.watch();if(!this.enabled||this.suspensionReason)return;
-  const c=this.context(),s=executorSignal(c.analysis);
+  const c=this.context(),s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
   if(s?.engineId&&s.engineId!==c.engine)return;
   if(s&&!this.seen.has(s.id)){
    this.seen.add(s.id);if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
@@ -198,8 +198,12 @@ export class SignalExecutor{
   }
   const queued=this.queuedSignal;if(!queued)return;
   const now=this.clock();
-  if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||queued.durationMs!==c.durationMs||now>=queued.exitAt){this.queuedSignal=null;this.message='Sinal antigo descartado · aguardando próximo';return;}
-  if(this.pending){this.message='Ligado · aguardando encerramento da entrada anterior · nível preservado';return;}
+  if(this.pending){
+   this.queuedSignal=null;
+   const b=this.pending,closed=b.orders.filter(o=>o.settled).length;
+   this.message='Ligado · aguardando resultado da sequência anterior ('+closed+'/'+b.orders.length+' encerradas) · martingale preservado';
+   return;
+  }
   // Unknown clicked orders cannot count as wins or losses. Do not start
   // another sequence while their outcome can change the progression.
   if([...this.unresolvedBatches.values()].some(b=>!b.detached&&b.sessionId===this.sessionId)){
@@ -207,7 +211,14 @@ export class SignalExecutor{
     this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
     return;
    }
+   this.queuedSignal=null;
    this.message='Ligado · aguardando resultado de ordem anterior · martingale preservado';return;
+  }
+  if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||queued.durationMs!==c.durationMs||now>=queued.exitAt){
+   this.queuedSignal=null;
+   const age=now-queued.at;
+   this.message='Sinal recebido fora do prazo ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms) · aguardando nova análise';
+   return;
   }
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
