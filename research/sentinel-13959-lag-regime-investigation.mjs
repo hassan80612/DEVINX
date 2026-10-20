@@ -70,11 +70,14 @@ function replay(data,label,engine='automatic'){
 }
 for(const name of ['sentinel-user-video-broker-6dp-20261016.json','sentinel-user-video-20261016.json']){
  const data=JSON.parse(readFileSync(new URL('../tests/fixtures/'+name,import.meta.url),'utf8'));
- const r=replay(data,name,'automatic');
+ for(const engine of [...new Set(['automatic',data.engineId,'trend','mean_reversion','support_resistance','smart_confluence'])].filter(Boolean)){
+ const r=replay(data,name,engine);
  console.log('DIAG_SUMMARY '+JSON.stringify({...r,details:undefined}));
+ if(engine!=='automatic'&&engine!==data.engineId)continue;
  for(const e of r.details)console.log('DIAG_TRADE '+JSON.stringify({
   dataset:name,time:e.time,side:e.side,reason:e.reason,structuralReady:e.structuralReady,
   structuralSide:e.structuralSide,trend30:e.trend30,momentum3:e.momentum3,priorMove:e.priorMove,
   shortMove:e.shortMove,price:e.price,expiryPrice:e.expiryPrice,
   result:e.result,lag1s:e.lags[1000].result,lag2s:e.lags[2000].result,lag3s:e.lags[3000].result}));
+ }
 }
