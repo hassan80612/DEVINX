@@ -93,7 +93,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.immediateEvaluationSerial=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,motorVariant:'probability',uiLanguage:'pt',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -804,6 +804,15 @@ export class DemoTradingRuntime{
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
   patchSettings(patch={},actor='user'){
     patch={...patch};delete patch.clockMode;
+    if(Object.prototype.hasOwnProperty.call(patch,'motorVariant')){
+      if(!['probability','66'].includes(patch.motorVariant))throw new Error('invalid_motor_variant');
+      if(patch.motorVariant!==this.settings.motorVariant){
+        if(this.vnextWindowState?.phase==='fired'&&Date.now()<Number(this.vnextWindowState.exitAt||0))
+          throw new Error('wait_for_option_expiry_to_change_motor');
+        this.vnextWindowState=null;
+        this.nextEvalMs=0;
+      }
+    }
     if(Object.prototype.hasOwnProperty.call(patch,'uiLanguage')&&
        !['pt','en'].includes(patch.uiLanguage))throw new Error('invalid_ui_language');
     if(patch.engine==='selective_forecast')patch={...patch,engine:'automatic',forecastMode:'selective'};
@@ -843,7 +852,9 @@ export class DemoTradingRuntime{
       (Object.prototype.hasOwnProperty.call(patch,'engine')&&
         patch.engine!==this.settings.engine)||
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
-        patch.asset!==this.settings.asset);
+        patch.asset!==this.settings.asset)||
+      (Object.prototype.hasOwnProperty.call(patch,'motorVariant')&&
+        patch.motorVariant!==this.settings.motorVariant);
     if(changedForecastContext){
       // Strategy changes must not erase a live broker-expiry window.
       // Keep its expiry as a lock; the NEW strategy may only fire after it.
@@ -871,7 +882,7 @@ export class DemoTradingRuntime{
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
-    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const resetOperational=['asset','engine','motorVariant','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
     this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
@@ -975,11 +986,14 @@ export class DemoTradingRuntime{
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
-      const preliminary=this.forecastModel==='short-probability-v1'&&
-        [30000,60000].includes(Number(settings.orderDurationMs))?
+      // Same original 13.9.66 decision path; its probability is display-only.
+      // The optional probability motor uses this estimate as a candidate.
+      const useProbability=this.forecastModel==='short-probability-v1'&&
+        settings.motorVariant!=='66'&&[30000,60000].includes(Number(settings.orderDurationMs));
+      const preliminary=[30000,60000].includes(Number(settings.orderDurationMs))?
         shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
           price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
-      const observation=preliminary?{
+      const observation=useProbability?{
         side:preliminary.side,ready:preliminary.ready,
         provisionalSide:preliminary.pCall==null?null:preliminary.pCall>.5?'CALL':preliminary.pCall<.5?'PUT':null,
         reason:preliminary.reason,observedAt:Number(snap.quoteTs),
@@ -1057,7 +1071,8 @@ export class DemoTradingRuntime{
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
         computedStatus:observation.ready?'observed-confirmation':'observing-now',
-        forecastFoundation:preliminary?'parametric-direction-probability-not-calibrated':'completed-structure-and-current-quote',
+        forecastFoundation:useProbability?'parametric-direction-probability-not-calibrated':'completed-structure-and-current-quote',
+        motorVariant:settings.motorVariant==='66'?'66':'probability',
         receipt:null,projection:null,targetAnchor:null,targetProjection:null,
         futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
         horizonForecasts:[],horizonMeasurements:[],
@@ -1095,7 +1110,8 @@ export class DemoTradingRuntime{
           activeUntil:active?next.exitAt:null
         },
         strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,entryPlanner:{modelVersion:preliminary?'short-probability-v1':'now-structural-v1',horizons:{}},
+        generalConsensus:null,entryPlanner:{modelVersion:useProbability?'short-probability-v1':'now-structural-v1',horizons:{}},
+
         reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
           'Analisando o mercado atual para a próxima entrada.',observation.reason]
       };
@@ -1464,6 +1480,7 @@ export class DemoTradingRuntime{
   snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
   restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
   delete this.settings.clockMode;
+  if(!['probability','66'].includes(this.settings.motorVariant))this.settings.motorVariant='probability';
   // Preserve the supported 1m expiry on restart; migrate only unsupported
   // legacy durations to the default 30s operation.
   if(![5000,10000,15000,30000,60000].includes(Number(this.settings.orderDurationMs)))
