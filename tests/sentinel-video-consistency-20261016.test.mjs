@@ -77,13 +77,16 @@ test('5s, 10s, 15s and 60s policies remain identical to the pinned production mo
   }
  }
 });
-test('every visible strategy receives the same corrected common base',()=>{
+test('manual 30s strategies no longer silently inherit the automatic cycle decision',()=>{
  for(const time of ['13:54:52','13:55:53','13:57:29']){
-  const input=at(time),common=analyzeNowOpportunity(input);
-  for(const engineId of ['automatic','trend','fibonacci_retest','support_resistance','smart_confluence']){
+  const input=at(time);
+  for(const engineId of ['trend','fibonacci_retest','support_resistance','smart_confluence']){
    const result=analyzeNowOpportunity({...input,engineId});
-   assert.equal(result.ready,common.ready);assert.equal(result.side,common.side);
+   assert.equal(result.contextStrategy,engineId);
+   assert.equal(result.signalOwner,'selected-specialist');
+   if(result.ready)assert.ok(['CALL','PUT'].includes(result.side));
   }
+  assert.equal(analyzeNowOpportunity({...input,engineId:'automatic'}).signalOwner,'shared-market-base');
  }
 });
 test('runtime emits exactly the replayed entries and preserves one signal throughout each 30s expiry',()=>{
