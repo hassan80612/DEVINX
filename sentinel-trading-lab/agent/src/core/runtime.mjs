@@ -17,6 +17,7 @@ import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {shortProbability} from './short-probability.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
@@ -885,6 +886,10 @@ export class DemoTradingRuntime{
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
       const model=singleEngineForecast({settings,snap,now});
+      // Sidecar only: does not modify model, receipt, timer, side or admission.
+      const sidecarProbability=[30000,60000].includes(Number(settings.orderDurationMs))?
+        shortProbability({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+          price:snap.price,durationMs:settings.orderDurationMs,payout:snap.payout,now}):null;
       // Compute the same SELECTED engine for each genuinely distinct future
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
       const matrix=forwardHorizonMatrix({
@@ -938,7 +943,7 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,targetAnchor,
+        vnext:{...model,probability:sidecarProbability,evaluation:undefined,targetAnchor,
           horizonForecasts:matrix.rows,
           horizonMeasurements:horizonAudit.summaries,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
