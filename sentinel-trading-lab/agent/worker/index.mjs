@@ -117,7 +117,7 @@ async function publishLiveFrame(){
   // The start/end of EVERY PC window is a first-class real-time transition,
   // even when both old and new windows are still in 'scanning' phase.
   // A NEW pinned future-entry clock must bypass routine quote pacing.
-  const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
+  const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.motorVariant,runtime.settings.orderDurationMs,
     liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
     mobileEntry?.phase,mobileEntry?.entryTriggeredAt,
     pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
@@ -129,7 +129,7 @@ async function publishLiveFrame(){
   // refreshes. Deliver these without a second half-second wait. Everything
   // else retains the original pacing and 3000-byte bound.
   const sourceEventKey=[
-    runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
+    runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.motorVariant,runtime.settings.orderDurationMs,
     pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
     mobileEntry?.entryTriggeredAt,mobileEntry?.phase
   ].join('|');
@@ -223,6 +223,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       const optional=key!=='strategy';
       if(!(optional&&String(value)==='none')&&!allowed.includes(String(value)))throw new Error('invalid_strategy');
       runtime.patchSettings({[key]:String(value)},'overlay');
+      runtime.requestImmediateEvaluation?.();
+    }else if(key==='motorVariant'){
+      const variant=String(value);
+      if(!['probability','66'].includes(variant))throw new Error('invalid_motor_variant');
+      runtime.patchSettings({motorVariant:variant},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
       const n=Number(value);if(![5000,10000,15000,30000,60000].includes(n))throw new Error('invalid_short_operation_duration');
@@ -482,7 +487,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       screenCandidateSymbol:view.liveBroker?.screenCandidateSymbol||null,
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
-      engine:view.settings?.engine||null,forecastMode:view.settings?.forecastMode||'continuous',
+      engine:view.settings?.engine||null,motorVariant:view.settings?.motorVariant||'probability',forecastMode:view.settings?.forecastMode||'continuous',
       uiLanguage:view.settings?.uiLanguage||'pt',
        vnext:a.vnext||null,
        strategy:view.settings?.strategy||'smart_confluence',
