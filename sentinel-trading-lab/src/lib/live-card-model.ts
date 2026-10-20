@@ -46,6 +46,14 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     Number(vnext.targetAnchor.expirySeconds)===horizon?vnext.targetAnchor:null;
   const vnextProjection=vnextReceipt&&vnext?.projection?.kind!=='invalid'?
     vnext.projection:null;
+  const probable=matchingMarket&&vnext?.engineId===s?.settings?.engine?(
+    Array.isArray(vnext?.p)?vnext.p:
+    vnext?.probability?.pCall!=null&&vnext?.probability?.pPut!=null?
+      [Math.round(vnext.probability.pCall*100),Math.round(vnext.probability.pPut*100)]:null
+  ):null;
+  const vnextProbability=probable&&probable.length===2&&
+    probable.every((x:any)=>Number.isFinite(Number(x)))?
+    {callPct:Number(probable[0]),putPct:Number(probable[1]),calibrated:false}:null;
   const vnextTargetProjection=vnextTargetAnchor&&vnext?.targetProjection?
     vnext.targetProjection:null;
   // PC sends full model rows, mobile signed broadcast sends compact numeric
@@ -139,7 +147,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextProbability,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
