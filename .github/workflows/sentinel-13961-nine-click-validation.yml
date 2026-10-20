@@ -7,6 +7,7 @@ on:
       - 'sentinel-trading-lab/src/components/BotControl.tsx'
       - 'tests/sentinel-13961-*'
       - 'tests/sentinel-13957-*'
+      - 'tests/sentinel-13955-*'
       - '.github/workflows/sentinel-13961-nine-click-validation.yml'
 permissions:
   contents: read
