@@ -5,6 +5,7 @@ on:
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'tests/sentinel-13965-*'
+      - 'tests/sentinel-13957-click-latency-and-broker-cache.test.mjs'
       - 'research/sentinel-13965-*'
       - '.github/workflows/sentinel-13965-perf-accuracy-replay.yml'
 permissions:
