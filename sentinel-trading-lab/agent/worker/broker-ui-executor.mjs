@@ -80,7 +80,7 @@ export function inspectTradeControls({marker}){
 
 export class BrokerUiExecutor{
  constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.confirmedDispatchDurations=new Map();this.cachedHtmlControls=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.recentCloseFrames=[];this.confirmedDispatchDurations=new Map();this.cachedHtmlControls=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
  }
  retireUnidentifiedBatch(batch){
   // Only after the expiry+grace timeout: release the execution mutex.
@@ -267,6 +267,15 @@ export class BrokerUiExecutor{
    this.awaiting.set(provider+'|'+rid,a);if(this.awaiting.size>2048)this.awaiting.delete(this.awaiting.keys().next().value);this.onSent(rid,a.order.id);a.sent?.();return;
   }
   if(direction!=='page-in')return;
+  // A 15s option can CLOSE before a slow broker sends its order ACK.
+  // Keep recent close packets briefly so a later identified order can be
+  // settled from that SAME broker event, never from inferred candle prices.
+  const closed=closingKind(frame);
+  if(closed){
+   this.recentCloseFrames=this.recentCloseFrames.filter(x=>Date.now()-x.at<=120000);
+   this.recentCloseFrames.push({provider,frame,at:Date.now()});
+   if(this.recentCloseFrames.length>60)this.recentCloseFrames.splice(0,this.recentCloseFrames.length-60);
+  }
   if(a&&provider===a.provider&&rid&&rid===a.requestId){
    const id=body&&typeof body==='object'?(body.id??body.option_id??body.position_id??body.order_id):finite(body)?body:null;
    const failed=body?.isSuccessful===false||body?.success===false||body?.error||name==='error';
@@ -277,13 +286,21 @@ export class BrokerUiExecutor{
     if(finite(opening)&&Number(opening)>0)result.entryPrice=Number(opening);
     const expires=body?.expiration_time??body?.expired;
     if(finite(expires))result.exitAt=Number(expires)<1e12?Number(expires)*1000:Number(expires);
-    this.orders.set(provider+'|'+id,{...a.order,provider,orderId:String(id)});
+    const identified={...a.order,provider,orderId:String(id)};
+    this.orders.set(provider+'|'+id,identified);
     if(this.orders.size>2048)this.orders.delete(this.orders.keys().next().value);
     this.awaiting.delete(provider+'|'+rid);
     this.onAccepted({...result,provider});a.resolve(result);
+    // Replay only an exact matching broker option/position ID and valid
+    // payout from the previously buffered close packets.
+    for(const cached of this.recentCloseFrames){
+     if(cached.provider!==provider)continue;
+     const settled=settlementFromFrame(provider,cached.frame,identified);
+     if(settled){this.orders.delete(provider+'|'+id);this.onSettlement(settled);break;}
+    }
    }
   }
-  if(!closingKind(frame))return;
+  if(!closed)return;
   // Finish every identified child contained in a batched broker response.
   for(const [key,known] of [...this.orders]){
    if(known.provider!==provider)continue;
