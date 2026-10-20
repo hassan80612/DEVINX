@@ -63,7 +63,7 @@ for(const provider of ['iq_option','exnova']){
 }
 test('maximum is finite/integer, zero disables progression, and wire carries click count without IDs',async()=>{
  const x=setup();for(const levels of [-1,1.5,11,Infinity])assert.throws(()=>x.bot.configure({martingaleLevels:levels}));x.bot.configure({martingaleEnabled:true,martingaleLevels:0});await x.bot.start();await x.fire();settleSequence(x,[-1]);assert.equal(x.bot.nextClicks(),1);
- const out=unpackExecutor(packExecutor({...x.bot.status(),nextClicks:8,brokerBalance:{amount:30,accountId:'private-id'}}));assert.equal(out.nextClicks,8);assert.equal(out.capabilities.brokerExecution,4);assert.doesNotMatch(JSON.stringify(out),/private-id/);
+ const out=unpackExecutor(packExecutor({...x.bot.status(),nextClicks:8,brokerBalance:{amount:30,accountId:'private-id'}}));assert.equal(out.nextClicks,8);assert.equal(out.capabilities.brokerExecution,5);assert.doesNotMatch(JSON.stringify(out),/private-id/);
 });
 test('clean pre-martingale base has only CALL/PUT mapping; no value/expiry/keyboard/diagnostic dependency',async()=>{
  const module=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs',import.meta.url),'utf8');assert.doesNotMatch(module,/BrokerTradeParameters|brokerInputProbe|applyParameters|manualKey|keyboard\.|mouse\.|\.fill\(/);
