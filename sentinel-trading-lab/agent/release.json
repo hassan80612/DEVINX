@@ -1,12 +1,12 @@
 {
   "version": "13.4.66",
-  "build": "13.4.66-multihorizon-forward-1010",
+  "build": "13.4.66-probability-sidecar-30s-60s-20261020",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "research-preview-manual-only"
+    "modelValidation": "original-66-forecast-unchanged-probability-display-uncalibrated"
   }
 }
