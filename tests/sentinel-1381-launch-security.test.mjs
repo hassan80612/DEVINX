@@ -47,7 +47,7 @@ test('Broker page contains only explicit selected broker launch controls and com
  assert.match(broker,/Conexão do PC/);
  assert.doesNotMatch(broker,/ID ativo|Última candle|Protocolo|checklist|Sugestão de ativo/);
 });
-test('Localized Kiwify renewal goes directly to a trusted checkout; marketing is transparent',()=>{
+test('Localized Kiwify purchase goes directly to a trusted checkout; marketing is transparent',()=>{
  const checkout=src('src/app/api/checkout/route.ts');
  const ui=src('src/app/console/page.tsx');
  const home=src('src/app/page.tsx');
@@ -79,15 +79,15 @@ test('Passive observer preserves historical responses and coalesces selected liv
  assert.match(src,/await s\.page\.evaluate\(\(d\)=>/);
 });
 
-test('US$10 offer forces English on Sentinel plan page independently from prior browser language',()=>{
+test('US$100 offer forces English on Sentinel plan page independently from prior browser language',()=>{
  const plans=readFileSync(new URL('../sentinel-trading-lab/src/app/planos/LocalizedPlans.tsx',import.meta.url),'utf8');
  const commercial=readFileSync(new URL('../sentinel-trading-lab/src/lib/commercial.ts',import.meta.url),'utf8');
  assert.match(plans,/chosen==='intl'\|\|chosen==='international'/);
  assert.match(plans,/setLanguage\(usd\?'en':'pt'\)/);
  assert.match(plans,/const international=market\?market==='INTL':language==='en'/);
  assert.match(plans,/const price=international\?SENTINEL_PLANS\.INTL\.priceDisplay:SENTINEL_PLANS\.BR\.priceDisplay/);
- assert.match(commercial,/BR:\{name:'DevinX Trading Lab',amount:55,currency:'BRL'/);
- assert.match(commercial,/INTL:\{name:'DevinX Trading Lab',amount:10,currency:'USD'/);
+ assert.match(commercial,/BR:\{name:'DevinX Trading Lab',amount:549,currency:'BRL'/);
+ assert.match(commercial,/INTL:\{name:'DevinX Trading Lab',amount:100,currency:'USD'/);
  assert.match(commercial,/url\.searchParams\.set\('region','intl'\)/);
  assert.doesNotMatch(commercial,/url\.searchParams\.set\('intl','1'\)/);
  // Native text belongs to the third-party Kiwify page, not the Sentinel.
