@@ -25,8 +25,8 @@ export default function LocalizedPlans({brCheckout,intlCheckout}:{brCheckout:str
   const price=international?SENTINEL_PLANS.INTL.priceDisplay:SENTINEL_PLANS.BR.priceDisplay;
   const checkout=international?intlCheckout:brCheckout;
   return <div className={styles.plansCard} data-testid="localized-plan-price" data-currency={international?'USD':'BRL'}>
-    <div className={styles.plansTop}><div><span><T>PLANO SENTINEL</T></span><h2>DevinX Trading Lab</h2></div><span className={styles.plansCycle}><T>PAGAMENTO ÚNICO</T></span></div>
-    <div className={styles.plansPrice}><strong>{price}</strong><span><T>licença permanente</T></span></div>
+    <div className={styles.plansTop}><div><span><T>PLANO SENTINEL</T></span><h2>DevinX Trading Lab</h2></div><span className={styles.plansCycle}>{international?'ONE-TIME PAYMENT':'PAGAMENTO ÚNICO'}</span></div>
+    <div className={styles.plansPrice}><strong>{price}</strong><span>{international?'permanent account access':'acesso permanente'}</span></div>
     <p><T>Acesso ao card, às estratégias técnicas, aos alertas de reversão e ao controle remoto do Agent instalado em seu PC.</T></p>
     <ul>
       <li><T>Leituras de mercado e alertas CALL/PUT</T></li>
@@ -35,8 +35,8 @@ export default function LocalizedPlans({brCheckout,intlCheckout}:{brCheckout:str
       <li><T>Agent Windows e conexão de leitura com IQ Option / Exnova</T></li>
       <li><T>Estratégias, conta e gerenciamento do dispositivo</T></li>
     </ul>
-    {checkout?<a className={styles.primary} href={checkout} rel="noopener noreferrer"><T>Comprar acesso na Kiwify ↗</T></a>:<div className={styles.plansPending} role="status"><strong><T>Pagamento em preparação</T></strong><span><T>O checkout desta moeda ainda não está disponível.</T></span></div>}
-    <small className={styles.plansFootnote}><T>Sem promessa de lucros. Trading envolve risco de perda. Pagamento único: acesso permanente à conta após confirmação da compra, sujeito às condições de uso e estorno. Confira o preço final na Kiwify.</T></small>
+    {checkout?<a className={styles.primary} href={checkout} rel="noopener noreferrer">{international?'Purchase on Kiwify ↗':'Comprar acesso na Kiwify ↗'}</a>:<div className={styles.plansPending} role="status"><strong><T>Pagamento em preparação</T></strong><span><T>O checkout desta moeda ainda não está disponível.</T></span></div>}
+    <small className={styles.plansFootnote}>{international?'No profit or accuracy guarantees. Trading carries a substantial risk of loss. One-time payment grants permanent account access after approval, subject to terms and refunds. Check the final price at Kiwify.':'Sem promessa de lucros. Trading envolve risco de perda. Pagamento único: acesso permanente à conta após confirmação da compra, sujeito às condições de uso e estorno. Confira o preço final na Kiwify.'}</small>
     <div style={{marginTop:12,fontSize:12,opacity:.75}}>{international?'International billing · USD':'Pagamento Brasil · BRL'}</div>
   </div>;
 }
