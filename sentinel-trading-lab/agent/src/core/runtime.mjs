@@ -1034,7 +1034,7 @@ export class DemoTradingRuntime{
       // means directional evidence ONLY; never advertise measured profit.
       // Compute the SAME 8s/60s market readings visible on PC/mobile
       // BEFORE deciding, on existing broker quotes only (no extra browser IO).
-      const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
+      const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now,quoteAt:snap.quoteTs});
       const pressure=this.forecastModel==='short-probability-v1'?
         currentMarketConflict({original:original66,estimate:preliminary,
           cards:readings.cards,durationMs:settings.orderDurationMs}):{conflict:false};
