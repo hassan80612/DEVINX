@@ -372,7 +372,7 @@ function Membership({account}:{account:any}){
    <h2><T>Seu acesso ao Sentinel</T></h2>
    <p><strong>{localizedPrice}</strong> · <T>Uma compra aprovada libera acesso permanente à conta. Sem mensalidade ou renovação obrigatória.</T></p>
    <div className="sentinelMembershipSummary"><div><small><T>Estado do plano</T></small><strong>{profile.role==='master'?'MASTER':active?'ATIVO':'AGUARDANDO ATIVAÇÃO'}</strong></div><div><small><T>Validade</T></small><strong>{profile.role==='master'?'Permanente':expiry}</strong></div><div><small><T>PCs permitidos</T></small><strong>{profile.max_devices||1}</strong></div></div>
-   <div className="sentinelMembershipActions"><span>{localizedPrice}</span><a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Comprar acesso</T></a></div>
+   <div className="sentinelMembershipActions"><span>{localizedPrice} · {intl?'one-time':'pagamento único'}</span>{!active&&<a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Comprar acesso</T></a>}</div>
  </section>
 }
 
@@ -465,7 +465,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
   const[adminBusy,setAdminBusy]=useState(false);
   const[msg,setMsg]=useState('');
   const[email,setEmail]=useState('');
-  const[days,setDays]=useState('30');
+  
   const[query,setQuery]=useState('');
   const[onlineOnly,setOnlineOnly]=useState(false);
 
@@ -474,7 +474,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
 
   const admin=async(payload:any)=>{setAdminBusy(true);setMsg('');try{const r=await fetch('/api/master',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_action_failed');await load();return true}catch(e:any){setMsg(String(e?.message||e));return false}finally{setAdminBusy(false)}};
 
-  const grantByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}const ok=await admin({action:'grant_agent_by_email',value:{email:clean,days:days==='forever'?null:Number(days)}});if(ok)setMsg(days==='forever'?'Agent liberado sem vencimento para '+clean+'.':'Agent liberado por '+days+' dias para '+clean+'.')};
+  const grantByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}const ok=await admin({action:'grant_agent_by_email',value:{email:clean,days:null}});if(ok)setMsg('Agent liberado sem vencimento para '+clean+'.')};
   const revokeByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}if(!window.confirm('Bloquear o Agent desta conta agora?'))return;const ok=await admin({action:'revoke_agent_by_email',value:{email:clean}});if(ok)setMsg('Agent bloqueado para '+clean+'.')};
   const revokeSessionsByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}if(!window.confirm('Encerrar as sessões web desta conta?'))return;const ok=await admin({action:'revoke_sessions_by_email',value:{email:clean}});if(ok)setMsg('Sessões encerradas para '+clean+'.')};
 
@@ -501,7 +501,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
       <div className="split"><div><div className="eyebrow"><T>LIBERAÇÃO RÁPIDA</T></div><h3><T>Liberar Agent por e-mail</T></h3><p className="muted"><T>A conta precisa existir. Compras confirmadas liberam acesso permanente sem renovação.</T></p></div><Pill tone="good"><T>POR CONTA</T></Pill></div>
       <div className="formgrid three topgap">
         <label className="field"><span><T>E-mail da conta</T></span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="cliente@email.com"/></label>
-        <label className="field"><span><T>Validade</T></span><select value={days} onChange={e=>setDays(e.target.value)}><option value="7"><T>7 dias</T></option><option value="30"><T>30 dias</T></option><option value="90"><T>90 dias</T></option><option value="365"><T>1 ano</T></option><option value="forever"><T>Sem vencimento</T></option></select></label>
+        <div className="field"><span><T>Licença</T></span><strong><T>Sem vencimento</T></strong></div>
         <div className="field"><span><T>Ações</T></span><div className="actions"><button className="primary" disabled={adminBusy||!email.trim()} onClick={grantByEmail}><T>Liberar</T></button><button className="secondary" disabled={adminBusy||!email.trim()} onClick={revokeSessionsByEmail}><T>Encerrar sessões</T></button><button className="kill" disabled={adminBusy||!email.trim()} onClick={revokeByEmail}><T>Bloquear</T></button></div></div>
       </div>
     </section>
@@ -526,7 +526,7 @@ function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
   const[plan,setPlan]=useState(String(a.plan||'free'));
   useEffect(()=>{setPlan(String(a.plan||'free'))},[a.plan]);
   const cmd=(d:any,command:string)=>admin({action:'device_command',accountId:a.id,deviceId:d.id,value:{command}});
-  const grant30=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:new Date(Date.now()+30*86400000).toISOString()}});
+  
   const grantForever=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:null}});
   const blockAgent=()=>window.confirm('Bloquear o Agent desta conta?')&&admin({action:'set_agent_access',accountId:a.id,value:{enabled:false,expiresAt:null}});
   const expiry=a.accessExpiresAt?new Date(a.accessExpiresAt).toLocaleString('pt-BR'):'Sem vencimento';
@@ -540,7 +540,7 @@ function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
     </div>
 
     <div className="actions topgap">
-      {a.role!=='master'&&<><button className="primary" disabled={busy} onClick={grant30}><T>Liberar 30 dias</T></button><button className="secondary" disabled={busy} onClick={grantForever}><T>Liberar sem vencimento</T></button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}><T>Bloquear Agent</T></button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}><T>Salvar plano</T></button></>}
+      {a.role!=='master'&&<><button className="secondary" disabled={busy} onClick={grantForever}><T>Liberar sem vencimento</T></button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}><T>Bloquear Agent</T></button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}><T>Salvar plano</T></button></>}
       <button className="secondary" disabled={busy} onClick={()=>window.confirm('Encerrar as outras sessões desta conta?')&&admin({action:'revoke_sessions',accountId:a.id,value:{}})}><T>Encerrar sessões</T></button>
     </div>
 
@@ -571,12 +571,12 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
    <section className="card span12">
      <div className="split"><h3>{t('Minha conta Sentinel')}</h3><Pill tone={access?'good':'bad'}>{access?t('Ativa'):t('Acesso inativo')}</Pill></div>
      <div className="stack topgap"><Row k="E-mail" v={account?.user?.email||'—'}/>
-       <Row k="Plano" v={p.role==='master'?'MASTER':'30 dias'}/>
+       <Row k="Plano" v={p.role==='master'?'MASTER':'Pagamento único'}/>
        <Row k="Validade" v={p.role==='master'?'Permanente':expiry}/>
        <Row k="Agent" v={agent.worker?t('Online'):t('Offline')}/>
      </div>
      <div className="actions topgap">
-       <a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Renovar acesso na Kiwify')}</a>
+       {!access&&<a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Comprar na Kiwify')}</a>}
        <a className="secondary linkbtn accountAgentDownload" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Instalar / atualizar Agent')}</a>
        <AgentZipDownload/>
      </div>
