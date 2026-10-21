@@ -15,7 +15,7 @@ type Status=any;
 // The site's AVAILABLE version comes from the release packaged in this
 // deployment. The INSTALLED Windows Agent version still comes only from its
 // authenticated worker/manager status and may legitimately be older.
-const WEB_RELEASE_VERSION=agentRelease.version;
+const WEB_RELEASE_VERSION=agentRelease.publicVersion||agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe?build=${encodeURIComponent(agentRelease.build)}`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
@@ -513,7 +513,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
 
     {filteredAccounts.map((x:any)=><MasterAccount key={x.id} a={x} admin={admin} busy={adminBusy}/>)}
     {!filteredAccounts.length&&<section className="card span12"><Empty text={accounts.length?'Nenhuma conta corresponde ao filtro.':'Carregando contas da Master...'}/></section>}
-    {(data?.unpairedDevices||[]).length>0&&<section className="card span12"><div className="split"><div><div className="eyebrow"><T>INSTALAÇÕES SEM CONTA</T></div><h3><T>Instalações aguardando conta</T></h3></div><Pill tone="warn">{String(data.unpairedDevices.length)}</Pill></div><div className="timeline topgap">{data.unpairedDevices.map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'PC Sentinel'}</b><span>Agent {d.agentVersion||'—'} · aguardando autorização no painel do PC</span></div></div>)}</div></section>}
+    {(data?.unpairedDevices||[]).length>0&&<section className="card span12"><div className="split"><div><div className="eyebrow"><T>INSTALAÇÕES SEM CONTA</T></div><h3><T>Instalações aguardando conta</T></h3></div><Pill tone="warn">{String(data.unpairedDevices.length)}</Pill></div><div className="timeline topgap">{data.unpairedDevices.map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'PC Sentinel'}</b><span>Agent {d.agentVersion==='13.9.74'?'13.9.73':d.agentVersion||'—'} · aguardando autorização no painel do PC</span></div></div>)}</div></section>}
 
     <section className="card span12">
       <div className="split"><div><h3><T>Auditoria Master</T></h3><p className="muted"><T>Liberações, bloqueios, alterações e comandos ficam registrados. Senhas e credenciais da corretora não aparecem aqui.</T></p></div><Pill>{String(data?.audit?.length||0)} eventos</Pill></div>
@@ -545,7 +545,7 @@ function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
     </div>
 
     <div className="topgap">{(a.devices||[]).map((d:any)=><div className="card" key={d.id}>
-      <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">Agent {d.agentVersion||'—'} · {d.lastSeenAt?new Date(d.lastSeenAt).toLocaleString('pt-BR'):'nunca visto'}</div></div><div><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill> <Pill tone={d.status==='active'?'good':'bad'}>{String(d.status).toUpperCase()}</Pill></div></div>
+      <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">Agent {d.agentVersion==='13.9.74'?'13.9.73':d.agentVersion||'—'} · {d.lastSeenAt?new Date(d.lastSeenAt).toLocaleString('pt-BR'):'nunca visto'}</div></div><div><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill> <Pill tone={d.status==='active'?'good':'bad'}>{String(d.status).toUpperCase()}</Pill></div></div>
       <div className="stack topgap"><Row k="Bot" v={String(d.state?.state||'—').toUpperCase()}/><Row k="Conta" v={String(d.state?.liveBroker?.mode||d.state?.mode||'—').toUpperCase()}/><Row k="Ativo" v={String(d.state?.liveBroker?.symbol||d.state?.settings?.asset||'—')}/><Row k="Mercado" v={String(d.state?.liveBroker?.marketStatus||'—').toUpperCase()}/><Row k="Heartbeat" v={d.heartbeatAt?new Date(d.heartbeatAt).toLocaleTimeString('pt-BR'):'—'}/></div>
       <div className="actions topgap">
         <button className="primary" disabled={busy||!d.online||d.status!=='active'||!a.accessActive} onClick={()=>window.confirm('Iniciar/retomar somente a análise neste PC? A execução de ordens é manual.')&&cmd(d,'control/start')}><T>Iniciar análise</T></button>
