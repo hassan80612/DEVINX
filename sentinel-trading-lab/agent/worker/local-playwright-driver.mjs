@@ -11,7 +11,7 @@ import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
-import {armNativeInvestControl,readNativeInvestMapping,clearNativeInvestMapping,inspectNativeInvestControl} from './broker-native-multiply.mjs';
+import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
@@ -1366,92 +1366,105 @@ export class LocalPlaywrightDriver{
     return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,quoteFeedValidated,historicalCandlesVerified,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
 
-  async nativeInvestMap(provider,{kind,action}={}){
-    if(!['multiply','divide'].includes(kind)&&action!=='test')throw Error('Controle inválido.');
-    const sess=await this.session(provider);
-    if(!sess?.page||sess.background)throw Error('Abra a corretora visível.');
-    const frames=sess.page.frames();
+  async nativeInvestMap(provider,{action}={}){
+    // Explicit-only interaction, no extra polling or new broker requests.
+    const session=await this.session(provider);
+    if(!session?.page||session.background||session.page.isClosed?.())throw Error('Abra a corretora visível.');
+    const frames=session.page.frames();
     if(action==='arm'){
-      let attached=0;
-      for(const frame of frames){const v=await frame.evaluate(armNativeInvestControl,{kind}).catch(()=>null);if(v?.ok)attached++;}
-      if(!attached)throw Error('Não foi possível preparar mapeamento na corretora.');
-      return{ok:true,message:'Abra Invest e clique no '+(kind==='multiply'?'×':'÷')+' nativo. O clique será capturado sem alterar o valor.'};
+      let ready=0;
+      for(const frame of frames){
+        const out=await frame.evaluate(armNativeInvestRoute).catch(()=>null);
+        if(out?.ok)ready++;
+      }
+      if(!ready)throw Error('Não consegui iniciar o mapeamento na corretora.');
+      return{ok:true,message:'Na corretora: clique em Invest, depois × e depois ÷. Volte e use Salvar caminho.'};
     }
     if(action==='save'){
-      const choices=[];
+      const complete=[];
       for(const frame of frames){
-        const pick=await frame.evaluate(readNativeInvestMapping,{kind}).catch(()=>null);
-        if(!pick?.selector)continue;
-        let origin;try{origin=new URL(frame.url()).origin}catch{continue}
-        choices.push({...pick,origin});
-      }
-      for(const frame of frames)await frame.evaluate(clearNativeInvestMapping).catch(()=>{});
-      if(choices.length!==1)throw Error('Controle não identificado. Use Mapear e clique no '+(kind==='multiply'?'×':'÷')+' da corretora.');
-      if(!this.nativeMapCache){
-        try{this.nativeMapCache=JSON.parse(await readFile(resolve(this.dataDir,'..','broker-native-invest-controls.json'),'utf8'))}catch{this.nativeMapCache={}}
-      }
-      const entry=this.nativeMapCache[provider]||{};
-      entry[kind]={selector:choices[0].selector,origin:choices[0].origin,label:choices[0].label};
-      this.nativeMapCache[provider]=entry;
-      const file=resolve(this.dataDir,'..','broker-native-invest-controls.json');
-      await mkdir(resolve(this.dataDir,'..'),{recursive:true});
-      await writeFile(file+'.tmp',JSON.stringify(this.nativeMapCache),{mode:0o600});
-      await rename(file+'.tmp',file);
-      return{ok:true,message:(kind==='multiply'?'×':'÷')+' mapeado e salvo para a corretora. Nenhuma ordem enviada.'};
-    }
-    if(action==='test'){
-      // This explicit DEMO-only test uses the broker's own × and ÷ controls,
-      // never sends a trade, and validates that Invest returns to the base.
-      if(!this.nativeMapCache){
-        try{this.nativeMapCache=JSON.parse(await readFile(resolve(this.dataDir,'..','broker-native-invest-controls.json'),'utf8'))}catch{this.nativeMapCache={}}
-      }
-      const pair=this.nativeMapCache?.[provider];
-      if(!pair?.multiply||!pair?.divide)throw Error('Mapeie × e ÷ antes de testar.');
-      if(pair.multiply.origin!==pair.divide.origin)throw Error('× e ÷ foram mapeados em telas diferentes.');
-      const matches=frames.filter(frame=>{try{return new URL(frame.url()).origin===pair.multiply.origin}catch{return false}});
-      let chosen=null;
-      for(const frame of matches){
-        const [mul,div]=await Promise.all([
-          frame.evaluate(inspectNativeInvestControl,{selector:pair.multiply.selector,kind:'multiply'}).catch(()=>null),
-          frame.evaluate(inspectNativeInvestControl,{selector:pair.divide.selector,kind:'divide'}).catch(()=>null)]);
-        if(mul?.valid&&div?.valid){if(chosen)throw Error('Controles duplicados em múltiplos painéis.');chosen=frame;}
-      }
-      if(!chosen)throw Error('Abra o teclado Invest da corretora; × e ÷ devem estar visíveis.');
-      const before=await chosen.evaluate(readBrokerTradeStake).catch(()=>null);
-      if(!(before>0))throw Error('Não consegui ler o Invest antes do teste; não alterei nada.');
-      let clicked=false,after=null,restored=null;
-      try{
-        await chosen.locator(pair.multiply.selector).click({timeout:850,noWaitAfter:true});
-        clicked=true;
-        after=await chosen.evaluate(readBrokerTradeStake).catch(()=>null);
-        if(!(after>before*1.001))throw Error('Não foi possível confirmar multiplicação do Invest.');
-      }finally{
-        if(clicked){
-          // Revert the test even when confirmation is missing.
-          try{await chosen.locator(pair.divide.selector).click({timeout:850,noWaitAfter:true});restored=await chosen.evaluate(readBrokerTradeStake).catch(()=>null);}catch{}
+        const found=await frame.evaluate(readNativeInvestRoute).catch(()=>null);
+        if(found?.complete&&found.steps?.length===3){
+          let origin;try{origin=new URL(frame.url()).origin}catch{continue}
+          complete.push({origin,steps:found.steps});
         }
       }
-      if(!(restored>0&&Math.abs(restored-before)<=0.011))
-        throw Error('Retorno ao Invest original não confirmado; confira o valor manualmente.');
-      return{ok:true,multiplier:Math.round((after/before)*100)/100,
-        message:'Teste aprovado: Invest '+before+' → '+after+' → '+restored+'. Nenhuma operação aberta.'};
+      for(const frame of frames)await frame.evaluate(clearNativeInvestRoute).catch(()=>{});
+      if(complete.length!==1)throw Error('Caminho incompleto. Faça Invest → × → ÷ nessa ordem antes de salvar.');
+      const data={version:2,origin:complete[0].origin,steps:complete[0].steps};
+      const p=resolve(this.dataDir,'..','broker-native-invest-controls.json');
+      if(!this.nativeMapCache){
+        try{this.nativeMapCache=JSON.parse(await readFile(p,'utf8'))}catch{this.nativeMapCache={}}
+      }
+      this.nativeMapCache[provider]=data;
+      await mkdir(resolve(this.dataDir,'..'),{recursive:true});
+      await writeFile(p+'.tmp',JSON.stringify(this.nativeMapCache),{mode:0o600});
+      await rename(p+'.tmp',p);
+      return{ok:true,message:'Caminho Invest → × → ÷ mapeado e salvo. Nenhuma operação enviada.'};
     }
-    if(action==='status'){
+    if(action==='test'||action==='status'){
       if(!this.nativeMapCache){
         try{this.nativeMapCache=JSON.parse(await readFile(resolve(this.dataDir,'..','broker-native-invest-controls.json'),'utf8'))}catch{this.nativeMapCache={}}
       }
-      const m=this.nativeMapCache?.[provider]?.[kind];
-      if(!m)return{ok:true,mapped:false,message:'Controle não mapeado.'};
-      let visibleNow=false;
-      for(const frame of frames){
-        let origin;try{origin=new URL(frame.url()).origin}catch{continue}
-        if(origin!==m.origin)continue;
-        const v=await frame.evaluate(inspectNativeInvestControl,{selector:m.selector,kind}).catch(()=>null);
-        if(v?.valid)visibleNow=true;
+      const entry=this.nativeMapCache?.[provider];
+      if(entry?.version!==2||!Array.isArray(entry.steps)||entry.steps.length!==3||
+        entry.steps[0].step!=='open'||entry.steps[1].step!=='multiply'||entry.steps[2].step!=='divide')
+        throw Error('Primeiro mapeie o caminho completo: Invest → × → ÷.');
+      if(action==='status')return{ok:true,mapped:true,message:'Caminho completo salvo para esta corretora.'};
+      // Test native route only from a user command with bot OFF.
+      const candidates=frames.filter(frame=>{try{return new URL(frame.url()).origin===entry.origin}catch{return false}});
+      const steps=entry.steps,matched=[];
+      for(const candidate of candidates){
+        const target=await candidate.evaluate(inspectNativeInvestTarget,{entry:steps[0]}).catch(()=>null);
+        if(target?.valid)matched.push({frame:candidate,open:target});
       }
-      return{ok:true,mapped:true,visibleNow,message:visibleNow?'Controle nativo mapeado e visível.':'Controle salvo; abra Invest na corretora para verificar.'};
+      if(matched.length!==1)throw Error('Invest não identificado de forma única na tela atual. Nenhum clique enviado.');
+      const {frame,open}=matched[0];
+      // Follow the REAL broker path: Invest -> native popup -> × / ÷.
+      // Avoid toggling Invest closed when the user already has it open.
+      let multiply=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[1]}).catch(()=>null);
+      if(!multiply?.valid){
+        await frame.locator(steps[0].selector).click({position:open.position,timeout:1000,noWaitAfter:true});
+        await new Promise(resolve=>setTimeout(resolve,100));
+        multiply=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[1]}).catch(()=>null);
+      }
+      const divide=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[2]}).catch(()=>null);
+      if(!multiply?.valid||!divide?.valid)throw Error('Teclado da corretora não abriu ou botões × e ÷ mudaram de posição. Nenhuma multiplicação executada.');
+      const base=await frame.evaluate(readNativeInvestAmount,{entry:steps[0]}).catch(()=>null);
+      if(!(base>0))throw Error('Não consegui conferir o valor inicial do Invest. Nenhuma multiplicação executada.');
+      let multiplierValue=null,back=null,multiplied=false;
+      try{
+        await frame.locator(steps[1].selector).click({position:multiply.position,timeout:1000,noWaitAfter:true});
+        multiplied=true;
+        await new Promise(resolve=>setTimeout(resolve,100));
+        multiplierValue=await frame.evaluate(readNativeInvestAmount,{entry:steps[0]}).catch(()=>null);
+        if(!(Number(multiplierValue)>Number(base)*1.001))
+          throw Error('× não alterou o Invest como esperado. Tentarei restaurar com ÷.');
+      }finally{
+        if(multiplied){
+          try{
+            let inverse=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[2]}).catch(()=>null);
+            if(!inverse?.valid){
+              // Some broker skins close the popup after multiplication.
+              const opener=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[0]}).catch(()=>null);
+              if(opener?.valid){
+                await frame.locator(steps[0].selector).click({position:opener.position,timeout:1000,noWaitAfter:true});
+                await new Promise(resolve=>setTimeout(resolve,100));
+                inverse=await frame.evaluate(inspectNativeInvestTarget,{entry:steps[2]}).catch(()=>null);
+              }
+            }
+            if(inverse?.valid)await frame.locator(steps[2].selector).click({position:inverse.position,timeout:1000,noWaitAfter:true});
+            await new Promise(resolve=>setTimeout(resolve,100));
+            back=await frame.evaluate(readNativeInvestAmount,{entry:steps[0]}).catch(()=>null);
+          }catch{}
+        }
+      }
+      if(!(back>0&&Math.abs(Number(back)-Number(base))<=.011))
+        throw Error('Não foi possível confirmar o retorno ao Invest inicial. Confira manualmente antes de operar.');
+      return{ok:true,multiplier:Math.round((multiplierValue/base)*100)/100,
+        message:'Caminho aprovado: '+base+' → '+multiplierValue+' → '+back+'. Nenhuma operação aberta.'};
     }
-    throw Error('Ação do mapeamento inválida.');
+    throw Error('Ação inválida.');
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1950,8 +1963,8 @@ export class LocalPlaywrightDriver{
             const nativeMap=ev.target?.closest?.('[data-sentinel-native-map]');
             if(nativeMap){
               ev.preventDefault();ev.stopPropagation();
-              const [mode,kind]=String(nativeMap.getAttribute('data-sentinel-native-map')||'').split(':');
-              run({action:'native-invest-map',mode,kind});return;
+              const mode=String(nativeMap.getAttribute('data-sentinel-native-map')||'');
+              run({action:'native-invest-map',mode});return;
             }
             const botButton=ev.target?.closest?.('[data-sentinel-executor-action]');
             if(botButton){ev.preventDefault();ev.stopPropagation();run({action:'executor-'+botButton.getAttribute('data-sentinel-executor-action')});return;}
@@ -2050,7 +2063,7 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;gap:4px;align-items:center">
                 <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
                 <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
-                <button data-sentinel-native-map="arm:multiply" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Mapear ×</button><button data-sentinel-native-map="save:multiply" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Salvar ×</button><button data-sentinel-native-map="arm:divide" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Mapear ÷</button><button data-sentinel-native-map="save:divide" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Salvar ÷</button><button data-sentinel-native-map="test:multiply" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Testar ×/÷</button><button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
+                <button data-sentinel-native-map="arm" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Mapear caminho</button><button data-sentinel-native-map="save" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Salvar caminho</button><button data-sentinel-native-map="test" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Testar caminho</button><button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
             <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:9px;align-items:end;padding:9px 11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">

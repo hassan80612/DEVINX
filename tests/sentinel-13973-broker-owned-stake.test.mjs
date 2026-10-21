@@ -88,12 +88,15 @@ test('removed virtual keyboard and added safe native broker controls with verifi
  assert.doesNotMatch(worker,/action==='invest-keypad'/);
  assert.doesNotMatch(driver,/data-sentinel-invest-keypad-toggle|async investKeypad\(/);
  assert.match(worker,/action==='native-invest-map'/);
- assert.match(driver,/data-sentinel-native-map="arm:multiply"/);
- assert.match(driver,/data-sentinel-native-map="arm:divide"/);
- assert.match(driver,/data-sentinel-native-map="test:multiply"/);
+ assert.match(driver,/data-sentinel-native-map="arm"/);
+ assert.match(driver,/data-sentinel-native-map="save"/);
+ assert.match(driver,/data-sentinel-native-map="test"/);
  assert.match(driver,/broker-native-invest-controls\.json/);
- assert.match(driver,/await chosen\.evaluate\(readBrokerTradeStake\)/);
- assert.match(driver,/Math\.abs\(restored-before\)<=0\.011/);
+ assert.match(driver,/await frame\.locator\(steps\[0\]\.selector\)\.click/);
+ assert.match(driver,/await frame\.locator\(steps\[1\]\.selector\)\.click/);
+ assert.match(driver,/await frame\.locator\(steps\[2\]\.selector\)\.click/);
+ assert.match(driver,/await frame\.evaluate\(readNativeInvestAmount/);
+ assert.match(driver,/Math\.abs\(Number\(back\)-Number\(base\)\)<=\.011/);
  assert.match(exe,/freshBalance\(/);
 });
 test('legacy cached Invest above an OLD balance never falsely refuses arming',async()=>{
@@ -106,4 +109,14 @@ test('legacy cached Invest above an OLD balance never falsely refuses arming',as
  await bot.start();
  assert.equal(bot.enabled,true,'an old received balance is not authoritative for current Invest');
  bot.stop();
+});
+
+test('native Invest route maps opener, multiply and divide with no broker requests',async()=>{
+ const file=await import('../sentinel-trading-lab/agent/worker/broker-native-invest-route.mjs');
+ for(const name of ['armNativeInvestRoute','readNativeInvestRoute','clearNativeInvestRoute','inspectNativeInvestTarget','readNativeInvestAmount'])
+  assert.equal(typeof file[name],'function');
+ const text=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-invest-route.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(text,/\bfetch\s*\(|XMLHttpRequest|setInterval\s*\(|\.keyboard\./);
+ assert.match(text,/pointerdown/);
+ assert.match(text,/state\.stage===3/);
 });
