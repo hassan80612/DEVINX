@@ -57,7 +57,7 @@ test('Localized Kiwify purchase goes directly to a trusted checkout; marketing i
  assert.match(middleware,/p==='\/api\/checkout'/);
  assert.match(middleware,/p==='\/termos'/);
  assert.match(middleware,/p==='\/privacidade'/);
- assert.match(home,/Não garante assertividade nem ganhos/);
+ assert.match(home,/Não há garantia de acertos ou lucros/);
  assert.match(home,/href="\/termos"/);
  assert.match(home,/href="\/privacidade"/);
  assert.doesNotMatch(home,/90%|80%|assertividade elevada/);
