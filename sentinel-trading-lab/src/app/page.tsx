@@ -8,15 +8,15 @@ export default function Home(){
  const {language}=useSentinelLocale();
  const english=language==='en';
  const copy=english?{
-  eyebrow:'PROFESSIONAL MARKET ANALYSIS SOFTWARE',
-  heading:'Your technical market analyst, alongside your decisions.',
-  lead:'DevinX Trading Lab combines real-time quotes, completed market structure, trends, retracements and projected CALL/PUT scenarios into one clear view. Instead of switching between tools, focus on what the market is doing and your chosen entry and expiry.',
+  eyebrow:'MARKET ANALYST + OPTIONAL AUTOMATED TRADING BOT',
+  heading:'Market analysis and an automated bot, with you in control.',
+  lead:'Sentinel Trading Lab combines live market quotes, trends, retracements and projected CALL/PUT scenarios with an optional automatic trading bot for IQ Option and Exnova. Enable or disable order execution from the Windows Agent.',
   brokerIntro:'READS MARKET DATA FROM',
   call:'Buy permanent access',login:'Sign in',create:'Create my account',
   price:SENTINEL_PLANS.INTL.priceDisplay,cycle:'One-time purchase · no monthly fee',
-  bullets:[['Forward scenarios','Price and time projections for your selected expiry.'],['Trend & reversal context','Completed-candle structure, retracements and directional changes.'],['Live dashboard','Windows Agent and the same account on PC or mobile.']],
+  bullets:[['Forward scenarios','Price and time projections for your selected expiry.'],['Trend & reversal context','Completed-candle structure, retracements and directional changes.'],['Automated bot (optional)','Enable automatic order execution in the Windows Agent; monitor analysis on PC or mobile.']],
   how:'A straightforward way to start',steps:[['01','Purchase','Complete the secure Kiwify checkout.'],['02','Create your account','Use the SAME email address as on your payment.'],['03','Connect','Install the Windows Agent, sign in and choose your broker.']],
-  disclaimer:'Professional analysis software, not a guarantee of accuracy, profit, or suitable investment advice. Trades are placed manually. IQ Option and Exnova are independent trademarks; Sentinel is not affiliated with or endorsed by them.',
+  disclaimer:'Market analysis and optional automated order execution. When the bot is enabled, it can place trades on your broker account. Accuracy and profit are not guaranteed; losses are possible. This is not personalized investment advice. IQ Option and Exnova are independent trademarks; Sentinel is not affiliated with or endorsed by them.',
   renew:'One approved purchase provides permanent account access. No subscription or mandatory renewal.',
   sample:'Illustrative layout — not an actual signal',see:'What your analyst examines',
   quote:'MARKET CONTEXT',status:'Technical view',security:'Individual login + approved license',
@@ -27,7 +27,7 @@ export default function Home(){
    ['01','Prepare the computer','Install the latest Sentinel Windows Agent and sign in to the same Sentinel account. Keep the computer awake; a locked screen is fine if the Agent and browser keep running.'],
    ['02','Pair the computer','In the PC dashboard, open your account and check the linked computer. If requested, use the SNTL code displayed by the Agent to pair it.'],
    ['03','Connect the broker on the PC','Open IQ Option or Exnova through the Agent, sign in, choose the asset and make sure live quotes are being received.'],
-   ['04','Start the analysis','In the Market card, select a strategy and the expiry (for example 30 or 60 seconds). Confirm that the Agent and broker connection are online.'],
+   ['04','Analyze or enable the bot','In the Market card, select a strategy and expiry. If you want automatic order execution, enable the bot on the PC; otherwise you can follow the analysis without automatic trades.'],
    ['05','Open on your phone','Visit trading.devinx.com.br, sign in with the SAME Sentinel account and open Market. Use the floating-card mode for a compact display. No Agent installation is required on the phone.'],
    ['06','Read signals, do not guess','ANALYZING means there is no confirmed entry. ENTER NOW · CALL/PUT marks the Agent-confirmed moment. OPERATION IN PROGRESS is an existing signal, not an instruction to enter late. Match the broker expiry manually.'],
    ['07','If the card stops updating','Check that the PC is powered on and awake, Agent running, broker still signed in, asset unchanged, and both devices connected to the internet. Stale prices and an offline Agent are not live signals.']
@@ -39,18 +39,18 @@ export default function Home(){
    ['OPERATION IN PROGRESS','The earlier entry is already underway. It must not be treated as a fresh entry.'],
    ['AGENT OFF / STALE QUOTE','PC or price feed interrupted. Restore the computer connection; do not act on old data.']
   ],
-  mobileFooter:'The phone is a synchronized display, not a second trading engine. The Sentinel never places trades automatically, and signal accuracy or profit is not guaranteed.',
+  mobileFooter:'The phone mirrors the Windows Agent; it is not a second trading engine. Automatic order execution is available only when the bot is enabled on the PC. Signals and trades may lose; profit is not guaranteed.',
   terms:'Terms of use',privacy:'Privacy'
  }:{
-  eyebrow:'SOFTWARE PROFISSIONAL DE ANÁLISE DE MERCADO',
-  heading:'Seu analista técnico de mercado, ao lado das suas decisões.',
-  lead:'O DevinX Trading Lab reúne cotações em tempo real, estrutura anterior do mercado, tendências, retrações e projeções de cenários CALL/PUT em uma leitura objetiva. Você acompanha o comportamento do ativo e o momento previsto para entrada e vencimento, sem precisar alternar entre várias ferramentas.',
+  eyebrow:'ANALISTA DE MERCADO + BOT AUTOMÁTICO OPCIONAL',
+  heading:'Análise de mercado e bot automático, sob seu controle.',
+  lead:'O Sentinel Trading Lab reúne cotações em tempo real, tendências, retrações e projeções de CALL/PUT. Além do analista, possui bot que pode executar operações automaticamente na IQ Option e Exnova quando ativado pelo usuário no Agent Windows.',
   brokerIntro:'ANÁLISE PARA OS MERCADOS DE',
   call:'Comprar acesso sem vencimento',login:'Entrar',create:'Criar minha conta',
   price:SENTINEL_PLANS.BR.priceDisplay,cycle:'Pagamento único · sem mensalidade',
-  bullets:[['Cenários futuros','Projeções de preço e horário para o vencimento escolhido.'],['Tendências e reversões','Leitura da estrutura das velas concluídas, retrações e possíveis viradas.'],['Painel ao vivo','Agent Windows e acompanhamento na mesma conta pelo PC ou celular.']],
+  bullets:[['Cenários futuros','Projeções de preço e horário para o vencimento escolhido.'],['Tendências e reversões','Leitura da estrutura das velas concluídas, retrações e possíveis viradas.'],['Bot automático opcional','Ative a execução automática pelo Agent Windows; acompanhe a análise no PC ou celular.']],
   how:'Como começar sem complicação',steps:[['01','Compre','Finalize o pagamento seguro na Kiwify.'],['02','Crie sua conta','Use o MESMO e-mail informado no pagamento.'],['03','Conecte','Instale o Agent Windows, entre na conta e escolha a corretora.']],
-  disclaimer:'Não garante assertividade nem ganhos. Software de análise profissional, sem promessa de lucro ou aconselhamento personalizado. Operações são manuais e podem gerar perdas. IQ Option e Exnova são marcas de terceiros; o Sentinel não é afiliado ou endossado por elas.',
+  disclaimer:'Análise de mercado com bot de execução automática opcional. Quando ativado no Agent Windows, o bot pode abrir operações na corretora. Não há garantia de acertos ou lucros; operações podem gerar perdas. Não constitui aconselhamento personalizado. IQ Option e Exnova são marcas de terceiros, sem vínculo com o Sentinel.',
   renew:'Compra única com acesso permanente à conta. Sem mensalidade nem renovação obrigatória.',
   sample:'Visual ilustrativo — não é sinal de entrada',see:'O que o analista acompanha',
   quote:'CONTEXTO DO MERCADO',status:'Leitura técnica',security:'Login individual + licença aprovada',
@@ -61,7 +61,7 @@ export default function Home(){
    ['01','Prepare o computador','Instale a versão mais recente do Sentinel Agent Windows e entre na mesma conta Sentinel. O PC pode ficar com a tela bloqueada, desde que o Agent e o navegador continuem funcionando.'],
    ['02','Vincule o computador','No painel pelo PC, confira o computador vinculado à conta. Quando solicitado, utilize o código SNTL mostrado pelo Agent para vincular o PC.'],
    ['03','Conecte a corretora pelo PC','Abra IQ Option ou Exnova pelo Agent, faça login, escolha o ativo e confirme que as cotações ao vivo estão chegando.'],
-   ['04','Inicie a análise','No card Mercado, selecione a estratégia e o vencimento (por exemplo, 30 ou 60 segundos). Confirme que o Agent e a conexão com a corretora estão online.'],
+   ['04','Analise ou ative o bot','No card Mercado, escolha a estratégia e o vencimento. Se desejar execução automática, ligue o bot pelo computador; caso contrário, acompanhe apenas a análise.'],
    ['05','Abra no celular','Acesse trading.devinx.com.br, entre na MESMA conta Sentinel e abra Mercado. O modo flutuante deixa o card compacto. Não instale o Agent no celular.'],
    ['06','Entenda o momento do sinal','ANALISANDO significa que ainda não há entrada confirmada. ENTRADA AGORA · CALL/PUT marca o momento identificado pelo Agent. OPERAÇÃO EM ANDAMENTO é um sinal já emitido, não um convite para entrar atrasado. Confira a expiração manualmente na corretora.'],
    ['07','Se o card parar de atualizar','Confirme que o PC está ligado e sem suspensão, o Agent aberto, a corretora conectada, o ativo correto e a internet ativa nos dois aparelhos. Cotação atrasada ou Agent offline não é sinal ao vivo.']
@@ -73,7 +73,7 @@ export default function Home(){
    ['OPERAÇÃO EM ANDAMENTO','O sinal anterior já está em andamento. Não é uma nova entrada.'],
    ['AGENT OFF / COTAÇÃO ATRASADA','Conexão com PC ou preços interrompida. Recupere o Agent; não opere com dados antigos.']
   ],
-  mobileFooter:'O celular exibe o que o PC analisa: não é um segundo motor. O Sentinel não executa operações automaticamente e não garante acerto nem lucro.',
+  mobileFooter:'O celular acompanha a análise do Agent no PC e não executa ordens por conta própria. O bot pode operar automaticamente quando ativado no computador. Não há garantia de acertos ou lucros.',
   terms:'Termos de uso',privacy:'Privacidade'
  };
  const market=english?'INTL':'BR';
