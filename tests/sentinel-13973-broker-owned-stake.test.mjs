@@ -64,7 +64,7 @@ test('no new broker network queries, repeated UI scan, or duration-change blocki
  const stake=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-trade-stake.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(stake,/\bfetch\s*\(|\bawait\b|setTimeout\s*\(|setInterval\s*\(|XMLHttpRequest|MutationObserver/);
  const broker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs',import.meta.url),'utf8');
- assert.doesNotMatch(broker,/const currentStake=await c\\.frame\\.evaluate\\(readBrokerTradeStake\\)/);
+ assert.doesNotMatch(broker,/const currentStake=await c\.frame\.evaluate\(readBrokerTradeStake\)/);
  assert.match(broker,/a\.order\.useBrokerStake/);
  assert.doesNotMatch(broker,/setBrokerExpiration|selectExpiration|setBrokerDuration/);
 });
