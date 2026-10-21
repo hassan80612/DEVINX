@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
+import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
@@ -200,7 +201,7 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);await this.controls(provider);return{ready:true};}
+ async prepare(provider,expected){this.checkContext(provider,expected);const c=await this.controls(provider);const amount=await c.frame.evaluate(readBrokerTradeStake).catch(()=>null);return{ready:true,amount};}
  async execute(provider,order){
   let yes,no,sentYes,sentNo,timer,timeoutResolve;
   const confirmation=new Promise((resolve,reject)=>{yes=resolve;no=reject;});confirmation.catch(()=>{});
@@ -217,6 +218,10 @@ export class BrokerUiExecutor{
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
+   // Use the amount currently visible in the BROKER at the moment of entry;
+   // this one lightweight DOM read runs only at physical click, never per tick.
+   const currentStake=await c.frame.evaluate(readBrokerTradeStake).catch(()=>null);
+   if(Number(currentStake)>0){try{order.useBrokerStake?.(Number(currentStake));}catch(e){throw errorBefore(String(e?.message||e));}}
    this.attempt=attempt;
    timer=setTimeout(()=>{
     timeoutResolve({pending:true,accepted:false,requestId:attempt.requestId,localId:order.id,
@@ -263,6 +268,9 @@ export class BrokerUiExecutor{
    const value=body?.price??body?.amount;
    const directionSide=({call:'CALL',put:'PUT',buy:'CALL',sell:'PUT'})[String(body?.direction||body?.action||'').toLowerCase()];
    const active=body?.active_id??body?.active;
+   // Broker's actual outgoing order is authoritative for accounting, including
+   // changes to the trade-size input made after the bot was activated.
+   if(finite(value)&&Number(value)>0)a.order.useBrokerStake?.(Number(value),{confirmed:true});
    if(!rid||!finite(value)||Math.abs(Number(value)-a.order.amount)>0.000001||
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
    if(account!=null)a.order.accountId=String(account);
