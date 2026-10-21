@@ -12,7 +12,7 @@ export default function PlansPage(){
     <div className={styles.ambient} aria-hidden="true"/>
     <header className={styles.nav}><Link href="/" className={styles.brand}><span className={styles.brandIcon}>DX</span><span><strong>DEVINX</strong><small>TRADING LAB</small></span></Link><LanguageSwitcher/><Link href="/login" className={styles.navLogin}><T>Entrar ↗</T></Link></header>
     <section className={styles.plansHero}>
-      <span className={styles.kicker}><T>SEU SENTINEL · ACESSO POR 30 DIAS</T></span>
+      <span className={styles.kicker}><T>SEU SENTINEL · COMPRA ÚNICA</T></span>
       <h1><T>Seu mercado. Seu analista.</T><em><T> Um único plano.</T></em></h1>
       <p><T>O Agent analisa no PC e transmite o acompanhamento ao card do Sentinel no celular. Os alertas CALL/PUT e reversões ajudam na leitura, mas não executam ordens.</T></p>
       <LocalizedPlans brCheckout={brCheckout} intlCheckout={intlCheckout}/>
