@@ -126,3 +126,17 @@ test('overlay reconciling is deferred while the broker click runs',async()=>{
  await new Promise(ok=>setTimeout(ok,90));assert.equal(renders,0);
  busy=false;await new Promise(ok=>setTimeout(ok,310));assert.equal(renders,1);
 });
+
+test('fixed-mode martingale does not reset on a broker settlement delayed beyond expiry',async()=>{
+ const x=fixture();x.c.durationMs=5000;
+ x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleLevels:3,martingaleMultiplier:2});
+ await x.bot.start();x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,1);
+ x.setTime(5000);x.bot.pulse();
+ assert.equal(x.calls.length,1,'unknown result must not authorize another trade');
+ assert.ok(x.bot.pending,'open broker order is still tracked');
+ x.bot.settle({provider:'exnova',orderId:x.calls[0].id,netPnl:-1,source:'broker'});
+ assert.equal(x.bot.martingaleLevel,1);
+ x.setTime(10000);x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,3,'next fresh cadence uses 2 clicks after confirmed loss');
+});

@@ -194,6 +194,14 @@ export class SignalExecutor{
   // 1500ms broker-ack grace was skipping the NEXT 500/900ms-fresh signal.
   // Unreported outcomes remain open in the risk ledger until identified.
   if(now<Number(batch.exitAt)||batch.orders.every(p=>p.settled))return false;
+  // In fixed CALL/PUT martingale, a late broker settlement must NOT turn
+  // an unknown outcome into a baseline trade. Keep the bot armed, skip
+  // expired cadence slots, and resume only after the real result arrives.
+  if(batch.independent&&this.config.martingaleEnabled&&
+     batch.orders.some(p=>p.clicked&&!p.settled&&!p.rejected)){
+    this.message='Ligado · aguardando resultado da corretora para o próximo martingale';
+    return false;
+  }
   batch.releasedAt=now;
   batch.continuationReleased=true;
   // Unknown is NOT a loss. Present the base amount while awaiting broker
