@@ -266,7 +266,7 @@ export class SignalExecutor{
       this.nextScheduledAt=due+interval*(Math.floor((clockNow-due)/interval)+1);
       const quoteAt=Number(c.quoteAt||0),price=Number(c.quote||0);
       if(!this.pending&&!this.executing&&quoteAt>0&&quoteAt<=clockNow&&clockNow-quoteAt<=2500&&price>0)
-        s={id:'independent|'+this.sessionId+'|'+due,engineId:c.engine,side:mode==='call'?'CALL':'PUT',
+        s={id:'independent|'+this.sessionId+'|'+mode+'|'+due,engineId:c.engine,side:mode==='call'?'CALL':'PUT',
            at:clockNow,exitAt:clockNow+c.durationMs,entryPrice:price,durationMs:c.durationMs,independent:true};
       else this.message='Ligado · entrada programada pulada: cotação atrasada ou corretora ocupada';
     }
@@ -351,7 +351,12 @@ export class SignalExecutor{
    }
   }
   this.pending=batch;
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()-queued.at<=(clickIndex===0?maxSignalAgeMs(queued.durationMs):maxBatchDispatchMs(queued.durationMs))&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  // Signal freshness was checked BEFORE entering the broker click queue.
+  // Resolving already-existing broker controls takes bounded time; never
+  // reapply the shorter analyst admission timeout after preparation.
+  // The probability filter is untouched. Real clicks remain expiry-bounded.
+  const physicalClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+Math.max(2500,maxBatchDispatchMs(queued.durationMs)));
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=physicalClickDeadline&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
