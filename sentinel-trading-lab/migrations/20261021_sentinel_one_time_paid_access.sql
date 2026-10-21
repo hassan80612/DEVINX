@@ -42,8 +42,11 @@ returns boolean language sql stable security definer set search_path='' as $$
     ) or (
       a.status='active'
       and a.agent_enabled=true
-      and a.plan in ('sentinel-kiwify-one-time','sentinel-kiwify-usd50-prepaid-30d','manual')
-      and (a.access_expires_at is null or a.access_expires_at>now())
+      and (
+        (a.plan='sentinel-kiwify-one-time' and a.access_expires_at is null)
+        or (a.plan='manual' and (a.access_expires_at is null or a.access_expires_at>now()))
+        or (a.plan='sentinel-kiwify-usd50-prepaid-30d' and a.access_expires_at>now())
+      )
     )
     from sentinel_app.accounts a where a.id=p_account_id
   ),false)
