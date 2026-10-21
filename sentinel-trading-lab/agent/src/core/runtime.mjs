@@ -1498,9 +1498,8 @@ export class DemoTradingRuntime{
   restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
   delete this.settings.clockMode;
   delete this.settings.motorVariant;
-  // Preserve the supported 1m expiry on restart; migrate only unsupported
-  // legacy durations to the default 30s operation.
-  if(![5000,10000,15000,30000,60000].includes(Number(this.settings.orderDurationMs)))
+  // Persist all user-selected 5s to 5m durations across Agent restarts.
+  if(![5000,10000,15000,30000,60000,120000,300000].includes(Number(this.settings.orderDurationMs)))
     this.settings.orderDurationMs=30000;
   this.settings.forecastHorizonSeconds=30;
   this.settings.engine=normalizeUserStrategy(this.settings.engine);
