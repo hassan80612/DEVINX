@@ -68,8 +68,6 @@ export class SignalExecutor{
   const openingBalance=broker?.amount;
   if(c.state!=='running')throw Error('Inicie o analista antes de ligar o bot.');
   if(!c.licensed||!c.provider||!c.asset)throw Error('Conecte a corretora e inicie o analista.');
-  if(!(cfg.amount>0))throw Error('Valor por entrada deve ser positivo.');
-  if(broker&&cfg.amount>openingBalance)throw Error('Saldo recebido insuficiente para o valor por entrada.');
   if(!(c.durationMs>0))throw Error('Selecione a expiração no analista.');
   this.arming=true;const generation=++this.generation;
   try{
@@ -82,8 +80,16 @@ export class SignalExecutor{
     // buttons to be visible during the result screen. Check broker identity
     // without touching the controls; map controls only for NEW physical clicks.
     this.driver.checkContext?.(c.provider,c);
-   }else await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
+   }else{
+    const prepared=await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
+    const selectedAmount=Number(prepared?.amount);
+    if(Number.isFinite(selectedAmount)&&selectedAmount>0){
+      cfg.amount=money(selectedAmount);this.config.amount=cfg.amount;
+    }
+   }
    const current=this.context();
+   if(!(cfg.amount>0))throw Error('Valor da entrada ainda não identificado na corretora.');
+   if(broker&&cfg.amount>openingBalance)throw Error('Saldo recebido insuficiente para o valor da corretora.');
    if(generation!==this.generation||!this.sameContext(c,current)||c.durationMs!==current.durationMs||(broker&&current.brokerBalance&&String(broker.accountId)!==String(current.brokerBalance.accountId))||current.state!=='running'||!current.licensed)throw Error('Analista mudou durante a ativação.');
    if(suspendedBatch&&this.pending===suspendedBatch){
     // Do not reset seen signals, pending orders, balance reservations,
@@ -338,6 +344,16 @@ export class SignalExecutor{
   for(let i=0;i<clickCount;i++){
    const order={...queued,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
    batch.orders.push(order);order.isValid=()=>valid(i);
+   order.useBrokerStake=(source,{confirmed=false}={})=>{
+    const stake=money(Number(source));
+    if(!(stake>0)||stake>1000000)return;
+    if(!confirmed&&this.config.stopLoss>0&&stake>Math.max(0,this.config.stopLoss+this.riskNet())+1e-6)
+     throw Error('O valor escolhido na corretora excede o stop-loss restante.');
+    order.amount=stake;this.config.amount=stake;batch.unitAmount=stake;
+    batch.amount=money(batch.orders.reduce((sum,x)=>sum+Number(x.amount||0),0));
+    if(this.balanceRisk.trade?.batchId===batch.id&&!this.balanceRisk.trade.settled)
+     this.balanceRisk.trade.amount=batch.amount;
+   };
    order.captureEntry=()=>{
     const snapshot=this.context();order.clickedAt=this.clock();order.exitAt=order.clickedAt+order.durationMs;batch.exitAt=Math.max(batch.exitAt,order.exitAt);this.lastEntryAt=order.at;
     if(!captured){captured=true;if(snapshot.brokerBalance!==undefined)this.balanceRisk.observe(snapshot.brokerBalance);this.balanceRisk.capture({...batch,exitAt:batch.exitAt});}
