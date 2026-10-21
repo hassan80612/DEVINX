@@ -37,13 +37,13 @@ const COPY={
     storeFeaturesTitle:"LOJA · TUDO PARA ORGANIZAR E VENDER",
     financeJump:"Financeiro",storeJump:"Loja",
     sentinelJump:"Sentinel",
-    sentinelTag:"SENTINEL TRADING LAB · ANÁLISE DE MERCADO",
+    sentinelTag:"SENTINEL TRADING LAB · ANÁLISE E BOT AUTOMÁTICO",
     sentinelLine1:"Seu analista técnico profissional de mercado.",
-    sentinelText:"Análise em tempo real, estrutura de velas, tendências, retrações e cenários CALL/PUT. Um painel profissional para acompanhar IQ Option e Exnova com clareza; as operações são manuais.",
+    sentinelText:"Análise em tempo real, tendências, retrações e cenários CALL/PUT para IQ Option e Exnova. Inclui bot de execução automática de operações, que você pode ativar ou desligar no Agent Windows.",
     sentinelPrimary:"Conhecer o analista",
     sentinelLogin:"Já tenho acesso · Entrar",
     sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE",
-    sentinelAccess:"ACESSO AO ANALISTA",sentinelCycle:"30 dias · compra única",sentinelPreview:"PRÉVIA ILUSTRATIVA",sentinelPreviewTitle:"PAINEL DE ANÁLISE",sentinelPreviewDetail:"Estrutura · tendência · cenários"
+    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pagamento único · acesso permanente",sentinelPreview:"PRÉVIA ILUSTRATIVA",sentinelPreviewTitle:"PAINEL DE ANÁLISE",sentinelPreviewDetail:"Estrutura · tendência · cenários"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -73,13 +73,13 @@ const COPY={
     storeFeaturesTitle:"STORE · EVERYTHING TO ORGANIZE AND SELL",
     financeJump:"Finance",storeJump:"Store",
     sentinelJump:"Sentinel",
-    sentinelTag:"SENTINEL TRADING LAB · MARKET ANALYSIS",
+    sentinelTag:"SENTINEL TRADING LAB · ANALYSIS + AUTOMATED BOT",
     sentinelLine1:"Professional technical market analysis.",
-    sentinelText:"Live prices, completed candle structure, trends, retracements and CALL/PUT scenarios for IQ Option and Exnova. You remain in control of every trade.",
+    sentinelText:"Live market analysis, trends and CALL/PUT scenarios for IQ Option and Exnova, plus an automated trading bot you can enable or disable from the Windows Agent.",
     sentinelPrimary:"Explore Sentinel",
     sentinelLogin:"I have access · Sign in",
     sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS",
-    sentinelAccess:"ANALYST ACCESS",sentinelCycle:"30 days · one-time purchase",sentinelPreview:"ILLUSTRATIVE PREVIEW",sentinelPreviewTitle:"MARKET ANALYSIS",sentinelPreviewDetail:"Structure · trend · scenarios"
+    sentinelAccess:"ANALYST + BOT",sentinelCycle:"One-time purchase · permanent access",sentinelPreview:"ILLUSTRATIVE PREVIEW",sentinelPreviewTitle:"MARKET ANALYSIS",sentinelPreviewDetail:"Structure · trend · scenarios"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -111,11 +111,11 @@ const COPY={
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANÁLISIS DE MERCADO",
     sentinelLine1:"Tu analista técnico profesional.",
-    sentinelText:"Sigue escenarios CALL/PUT, cambios de precio y alertas. El análisis es informativo; operas manualmente.",
+    sentinelText:"Análisis de mercado y escenarios CALL/PUT para IQ Option y Exnova, con un bot de ejecución automática que puedes activar o desactivar en el Agent Windows.",
     sentinelPrimary:"Conocer Sentinel",
     sentinelLogin:"Ya tengo acceso · Entrar",
     sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS",
-    sentinelAccess:"ACCESO AL ANALISTA",sentinelCycle:"30 días · compra única",sentinelPreview:"VISTA ILUSTRATIVA",sentinelPreviewTitle:"ANÁLISIS DE MERCADO",sentinelPreviewDetail:"Estructura · tendencia · escenarios"
+    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pago único · acceso permanente",sentinelPreview:"VISTA ILUSTRATIVA",sentinelPreviewTitle:"ANÁLISIS DE MERCADO",sentinelPreviewDetail:"Estructura · tendencia · escenarios"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -147,11 +147,11 @@ const COPY={
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANALYSE DE MARCHÉ",
     sentinelLine1:"Votre analyste technique professionnel.",
-    sentinelText:"Suivez les scénarios CALL/PUT, les variations de prix et les alertes. Analyse informative ; ordres manuels.",
+    sentinelText:"Analyse des marchés et scénarios CALL/PUT sur IQ Option et Exnova, avec un bot de passage d'ordres automatique activable ou désactivable dans l'Agent Windows.",
     sentinelPrimary:"Découvrir Sentinel",
     sentinelLogin:"J'ai un accès · Connexion",
     sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS",
-    sentinelAccess:"ACCÈS ANALYSTE",sentinelCycle:"30 jours · achat unique",sentinelPreview:"APERÇU ILLUSTRATIF",sentinelPreviewTitle:"ANALYSE DU MARCHÉ",sentinelPreviewDetail:"Structure · tendance · scénarios"
+    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Paiement unique · accès permanent",sentinelPreview:"APERÇU ILLUSTRATIF",sentinelPreviewTitle:"ANALYSE DU MARCHÉ",sentinelPreviewDetail:"Structure · tendance · scénarios"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -183,11 +183,11 @@ const COPY={
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · MARKTANALYSE",
     sentinelLine1:"Ihr professioneller technischer Analyst.",
-    sentinelText:"Verfolgen Sie CALL/PUT-Szenarien, Kursbewegungen und Warnungen. Nur informative Analyse; Trades bleiben manuell.",
+    sentinelText:"Marktanalyse und CALL/PUT-Szenarien für IQ Option und Exnova, mit einem automatischen Trading-Bot, den Sie im Windows-Agent aktivieren oder deaktivieren können.",
     sentinelPrimary:"Sentinel entdecken",
     sentinelLogin:"Zugang vorhanden · Anmelden",
     sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN",
-    sentinelAccess:"ANALYSTENZUGANG",sentinelCycle:"30 Tage · Einmalkauf",sentinelPreview:"BEISPIELANSICHT",sentinelPreviewTitle:"MARKTANALYSE",sentinelPreviewDetail:"Struktur · Trend · Szenarien"
+    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Einmalzahlung · dauerhafter Zugang",sentinelPreview:"BEISPIELANSICHT",sentinelPreviewTitle:"MARKTANALYSE",sentinelPreviewDetail:"Struktur · Trend · Szenarien"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -219,11 +219,11 @@ const COPY={
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · تحليل الأسواق",
     sentinelLine1:"رؤية أوضح لحركة السوق.",
-    sentinelText:"تابع سيناريوهات CALL و PUT وتحركات الأسعار وتنبيهات السوق. التحليل معلوماتي والصفقات تتم يدوياً.",
+    sentinelText:"تحليل للسوق وسيناريوهات CALL وPUT على IQ Option وExnova، مع بوت لتنفيذ الصفقات تلقائياً يمكنك تشغيله أو إيقافه من برنامج Windows Agent.",
     sentinelPrimary:"تعرف على Sentinel",
     sentinelLogin:"لدي حساب · دخول",
     sentinelFeaturesTitle:"SENTINEL · المزايا",
-    sentinelAccess:"الوصول إلى المحلل",sentinelCycle:"30 يومًا · شراء لمرة واحدة",sentinelPreview:"عرض توضيحي",sentinelPreviewTitle:"تحليل السوق",sentinelPreviewDetail:"الهيكل · الاتجاه · السيناريوهات"
+    sentinelAccess:"المحلل + البوت",sentinelCycle:"دفع مرة واحدة · وصول دائم",sentinelPreview:"عرض توضيحي",sentinelPreviewTitle:"تحليل السوق",sentinelPreviewDetail:"الهيكل · الاتجاه · السيناريوهات"
   }
 } as const;
 
@@ -316,12 +316,12 @@ const FINANCE_FEATURES={
 } as const;
 
 const SENTINEL_FEATURES={
-  "pt-BR":["Análise Contínua","Cenários CALL e PUT","Previsões para o vencimento escolhido","Leitura de tendências e reversões","IQ Option e Exnova","Acompanhamento no PC e celular"],
-  en:["Continuous analysis","CALL and PUT scenarios","Chosen expiry forecasts","Trend and reversal context","IQ Option and Exnova","PC and phone access"],
-  es:["Análisis continuo","Escenarios CALL y PUT","Pronósticos hasta el vencimiento","Tendencias y reversiones","IQ Option y Exnova","Acceso desde PC y móvil"],
-  fr:["Analyse continue","Scénarios CALL et PUT","Prévisions à l'échéance choisie","Tendances et retournements","IQ Option et Exnova","PC et téléphone"],
-  de:["Kontinuierliche Analyse","CALL/PUT-Szenarien","Prognosen zur gewählten Laufzeit","Trends und Umkehrungen","IQ Option und Exnova","PC und Smartphone"],
-  ar:["تحليل مستمر","سيناريوهات CALL و PUT","توقعات حتى انتهاء المدة","الاتجاهات والانعكاسات","IQ Option و Exnova","الوصول من الكمبيوتر والهاتف"]
+  "pt-BR":["Análise Contínua","Bot de execução automática opcional","Cenários CALL e PUT","Previsões para o vencimento escolhido","Leitura de tendências e reversões","IQ Option e Exnova","Acompanhamento no PC e celular"],
+  en:["Continuous analysis","Optional automated trading bot","CALL and PUT scenarios","Chosen expiry forecasts","Trend and reversal context","IQ Option and Exnova","PC and phone access"],
+  es:["Análisis continuo","Bot automático opcional","Escenarios CALL y PUT","Pronósticos hasta el vencimiento","Tendencias y reversiones","IQ Option y Exnova","Acceso desde PC y móvil"],
+  fr:["Analyse continue","Bot automatique en option","Scénarios CALL et PUT","Prévisions à l'échéance choisie","Tendances et retournements","IQ Option et Exnova","PC et téléphone"],
+  de:["Kontinuierliche Analyse","Optionaler automatischer Trading-Bot","CALL/PUT-Szenarien","Prognosen zur gewählten Laufzeit","Trends und Umkehrungen","IQ Option und Exnova","PC und Smartphone"],
+  ar:["تحليل مستمر","بوت تداول تلقائي اختياري","سيناريوهات CALL و PUT","توقعات حتى انتهاء المدة","الاتجاهات والانعكاسات","IQ Option و Exnova","الوصول من الكمبيوتر والهاتف"]
 } as const;
 
 const STORE_FEATURES=[
@@ -367,7 +367,7 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
   const financeVisible=visibility.finance;
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
-  const showStore=locale==="pt-BR";
+  const showStore=false; // Hide only the HomeHub store card and shortcut. Store data/routes remain intact.
   const intl=locale!=="pt-BR";
   const financeFeatures=FINANCE_FEATURES[activeLocale];
   const financePrice=pricingForLocale(DEVINX_SUBSCRIPTION_PLANS[0],locale);
@@ -413,7 +413,7 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
           <div className={styles.sentinelOffer}>
             <div>
               <small>{c.sentinelAccess}</small>
-              <strong>{intl?'US$ 10':'R$ 55'}</strong>
+              <strong>{intl?'US$ 100':'R$ 549'}</strong>
             </div>
             <span>{c.sentinelCycle}</span>
           </div>
@@ -453,7 +453,7 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
         </aside>
       </div>
       <FeatureGrid title={c.sentinelFeaturesTitle} items={SENTINEL_FEATURES[activeLocale]}/>
-      <p className={styles.sentinelRisk}>{locale==='pt-BR'?'Não executa ordens e não garante resultados. Mercado envolve risco de perdas.': 'No automatic orders or guaranteed returns. Trading involves risk.'}</p>
+      <p className={styles.sentinelRisk}>{locale==='pt-BR'?'O bot pode enviar ordens automaticamente quando ativado pelo usuário. Não há garantia de acertos ou lucros; operações envolvem risco de perdas.': 'When enabled, the bot can place orders automatically. Accuracy and profits are not guaranteed; trading involves risk of loss.'}</p>
     </section>
 
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
