@@ -82,7 +82,7 @@ export default function Home(){
   <div className={styles.glow} aria-hidden="true"/>
   <header className={styles.nav}>
    <Link href="/" className={styles.brand}><span className={styles.symbol}>DX</span><span><strong>DEVINX</strong><small>TRADING LAB</small></span></Link>
-   <div className={styles.navRight}><LanguageSwitcher/><Link href="/login" className={styles.login}>{copy.login}</Link></div>
+   <div className={styles.navRight}><LanguageSwitcher/><Link href="/como-usar-bot" className={styles.login}>{english?'How to use the bot':'Como usar o bot'}</Link><Link href="/login" className={styles.login}>{copy.login}</Link></div>
   </header>
 
   <div className={styles.container}>
