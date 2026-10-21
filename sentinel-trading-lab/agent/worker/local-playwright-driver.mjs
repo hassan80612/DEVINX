@@ -1809,7 +1809,7 @@ export class LocalPlaywrightDriver{
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
             const ex=ev.target?.closest?.('[data-sentinel-executor-setting]');
-            if(ex){const key=ex.getAttribute('data-sentinel-executor-setting');run({action:'executor-config',patch:{[key]:ex.type==='checkbox'?ex.checked:Number(ex.value)}});setTimeout(()=>{el.dataset.selectLock='0';ex.blur?.()},160);return;}
+            if(ex){const key=ex.getAttribute('data-sentinel-executor-setting');run({action:'executor-config',patch:{[key]:key==='directionMode'?ex.value:ex.type==='checkbox'?ex.checked:Number(ex.value)}});setTimeout(()=>{el.dataset.selectLock='0';ex.blur?.()},160);return;}
 
             const tt=ev.target?.closest?.('[data-sentinel-total-threshold]');
             if(tt){
