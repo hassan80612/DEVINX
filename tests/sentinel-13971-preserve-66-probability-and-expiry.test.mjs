@@ -94,5 +94,5 @@ test('no MOTOR dropdown on PC or mobile; 60s setting retained',()=>{
  assert.doesNotMatch(driver,/data-sentinel-motor-switch|data-sentinel-setting="motorVariant"/);
  assert.doesNotMatch(phone,/\{t\('Motor'\)\}/);
  assert.ok(driver.includes('data-sentinel-probability-30s'));
- assert.ok(worker.includes('[5000,10000,15000,30000,60000].includes(n)'));
+ assert.ok(worker.includes('[5000,10000,15000,30000,60000,120000,300000].includes(n)'));
 });
