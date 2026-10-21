@@ -1,5 +1,5 @@
 /**
- * VNext presentation-only historic market totals.
+ * VNext causal, quote-only historic market pressure readings.
  *
  * TOTAL MERCADO AGORA: recent 8-second quote movement.
  * TOTAL ESTRUTURA ANTERIOR: previous 60-second quote movement.
@@ -9,7 +9,9 @@
  * price and expiry belong in Projeção Futura, not in these cards.
  *
  * These are normalized observational indices, NOT win rates, calibrated
- * probabilities, trading signals or weighted votes on any strategy engine.
+ * probabilities, or trading directions. A separate, expiry-verified safety
+ * policy MAY use a verified conflict to veto a weak entry. The raw card
+ * percentages must never be mistaken for independent success probabilities.
  */
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 function quoteBefore(rows,at){
@@ -26,11 +28,11 @@ function reading(id,label,value,hint){
     hint,kind:'directional-pressure-not-probability'
   });
 }
-export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now()}={}){
+export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now(),quoteAt=now}={}){
   const map=new Map();
   for(const x of Array.isArray(quoteHistory)?quoteHistory:[]){
-    const ts=Number(x?.ts),p=Number(x?.price);
-    if(Number.isFinite(ts)&&ts<=now&&Number.isFinite(p)&&p>0)map.set(ts,p);
+    const ts=Number(x?.ts),p=Number(x?.price),received=Number(x?.receivedAt??ts);
+    if(Number.isFinite(ts)&&ts<=Math.min(now,quoteAt)&&received<=now&&Number.isFinite(p)&&p>0)map.set(ts,p);
   }
   const rows=[...map].sort((a,b)=>a[0]-b[0]).slice(-900)
     .map(([ts,price])=>({ts,price}));
