@@ -92,6 +92,6 @@ test('Invest virtual keyboard is user-controlled, browser-expiry disagreement do
  assert.match(driver,/action==='map-start'/);
  assert.match(driver,/action==='map-save'/);
  assert.match(driver,/broker-invest-mappings\.json/);
- assert.match(driver,/\.fill\(String\(intended\)/);
+ assert.match(driver,/\.fill\(String\(wanted\)/);
  assert.doesNotMatch(driver,/el\.tabIndex=0/);
 });
