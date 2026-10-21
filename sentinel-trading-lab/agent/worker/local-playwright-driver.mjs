@@ -1,5 +1,5 @@
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
-import {mkdir,rm} from 'node:fs/promises';
+import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
 import {executorPanel} from './executor-panel.mjs';
 import {isExecutionFrame} from './broker-ui-executor.mjs';
 import {resolve, join} from 'node:path';
@@ -11,6 +11,7 @@ import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
+import {findBrokerInvestInput,readSelectedInvestInput,stageInvestMapping,collectedInvestMapping,stopInvestMapping} from './broker-invest-keypad.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -1363,6 +1364,71 @@ export class LocalPlaywrightDriver{
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
     return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,quoteFeedValidated,historicalCandlesVerified,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
+
+  async readSavedInvestMappings(){
+    if(this.investMapCache)return this.investMapCache;
+    let data={};
+    try{const saved=JSON.parse(await readFile(resolve(this.dataDir,'..','broker-invest-mappings.json'),'utf8'));
+      for(const broker of ['iq_option','exnova'])if(
+        typeof saved?.[broker]?.selector==='string'&&saved[broker].selector.length<220&&
+        typeof saved?.[broker]?.origin==='string'&&saved[broker].origin.length<250
+      )data[broker]={selector:saved[broker].selector,origin:saved[broker].origin};
+    }catch{}
+    this.investMapCache=data;
+    return data;
+  }
+  async investKeypad(provider,{action='inspect',amount=null,expectedPrevious=null}={}){
+    const sess=await this.session(provider);
+    if(!sess?.page||sess.background||sess.page.isClosed?.())throw Error('Abra a corretora visível.');
+    const frames=sess.page.frames();
+    if(action==='map-start'){
+      for(const frame of frames)await frame.evaluate(stageInvestMapping).catch(()=>{});
+      return{ok:true,message:'Clique no campo Invest da corretora, depois confirme o mapeamento.'};
+    }
+    if(action==='map-save'){
+      const selected=[];
+      for(const frame of frames){
+        const result=await frame.evaluate(collectedInvestMapping).catch(()=>null);
+        if(result?.selector){let origin;try{origin=new URL(frame.url()).origin}catch{continue}
+          selected.push({...result,origin});}
+      }
+      for(const frame of frames)await frame.evaluate(stopInvestMapping).catch(()=>{});
+      if(selected.length!==1)throw Error('Selecione apenas um campo Invest editável na corretora.');
+      const data=await this.readSavedInvestMappings();
+      data[provider]={selector:selected[0].selector,origin:selected[0].origin};
+      const filename=resolve(this.dataDir,'..','broker-invest-mappings.json');
+      await mkdir(resolve(this.dataDir,'..'),{recursive:true});
+      await writeFile(filename+'.tmp',JSON.stringify(data),{mode:0o600});
+      await rename(filename+'.tmp',filename);
+      return{ok:true,amount:selected[0].value,message:'Invest mapeado e salvo para esta corretora.'};
+    }
+    const saved=(await this.readSavedInvestMappings())[provider];
+    const found=[];
+    for(const frame of frames){
+      let origin;try{origin=new URL(frame.url()).origin}catch{continue}
+      if(saved&&origin!==saved.origin)continue;
+      const marker='si-'+Math.random().toString(36).slice(2);
+      const info=await frame.evaluate(findBrokerInvestInput,{marker,...(saved?{mappedSelector:saved.selector}:{})}).catch(()=>null);
+      if(info?.count>0)found.push({frame,...info});
+    }
+    if(found.length!==1||found[0].count!==1||!found[0].selector)
+      throw Error('Invest não localizado com segurança. Use Mapear Invest; nenhuma operação enviada.');
+    const target=found[0];
+    if(action==='inspect')return{ok:true,amount:target.value,message:'Invest localizado na corretora.'};
+    if(action!=='apply')throw Error('Ação inválida.');
+    const wanted=Number(amount),previous=Number(expectedPrevious);
+    if(!Number.isFinite(wanted)||wanted<0.01||wanted>1000000)throw Error('Valor inválido.');
+    if(!Number.isFinite(previous)||previous<=0||Math.abs(previous-target.value)>0.000001)
+      throw Error('O Invest mudou; abra novamente o teclado para conferir.');
+    const loc=target.frame.locator(target.selector);
+    await loc.fill(String(wanted),{timeout:1400});
+    await loc.press('Tab',{timeout:500}).catch(()=>{});
+    await new Promise(resolve=>setTimeout(resolve,90));
+    const actual=await target.frame.evaluate(readSelectedInvestInput,{marker:target.marker}).catch(()=>null);
+    if(!Number.isFinite(Number(actual))||Math.abs(Number(actual)-wanted)>0.000001)
+      throw Error('Invest não confirmado na corretora. Nenhuma operação enviada.');
+    return{ok:true,amount:Number(actual),message:'Invest confirmado. Nenhuma operação enviada.'};
+  }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
     try{
@@ -1402,7 +1468,7 @@ export class LocalPlaywrightDriver{
             fontSize:'13px',lineHeight:'1.30',padding:'12px',pointerEvents:'auto',userSelect:'none',fontVariantNumeric:'tabular-nums',overflowAnchor:'none',textRendering:'optimizeLegibility',
             scrollbarWidth:'thin',scrollbarColor:'#385461 transparent',outline:'none'
           });
-          el.tabIndex=0;
+          // Do not let the panel container take focus from broker Invest fields.
           try{
             const saved=JSON.parse(localStorage.getItem('sentinel-overlay-pos-v1')||'null');
             if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
@@ -1857,6 +1923,50 @@ export class LocalPlaywrightDriver{
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
           });
           el.addEventListener('click',ev=>{
+            if(ev.target?.closest?.('[data-sentinel-invest-keypad-toggle]')){
+              ev.preventDefault();ev.stopPropagation();
+              let pad=host.shadowRoot.getElementById('sentinel-invest-keypad');
+              if(pad){pad.remove();return;}
+              pad=document.createElement('div');pad.id='sentinel-invest-keypad';
+              Object.assign(pad.style,{position:'fixed',right:'8px',bottom:'8px',zIndex:'2147483647',width:'245px',background:'#102630',color:'#fff',padding:'12px',border:'1px solid #c6a65a',borderRadius:'12px',boxShadow:'0 10px 32px #000a',fontFamily:'Segoe UI,Arial,sans-serif',fontSize:'12px'});
+              pad.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Teclado Invest</b><button data-sentinel-keypad-close style="padding:3px 8px">×</button></div><div style="font-size:10px;margin-bottom:6px">Apenas Invest da corretora. Sem operar.</div><input aria-label="Valor do Invest" data-sentinel-keypad-value inputmode="decimal" style="width:100%;box-sizing:border-box;height:35px;font-size:18px;text-align:right;background:#06161c;color:white;border:1px solid #789"/><div data-sentinel-keypad-keys style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:8px 0"></div><div style="display:flex;gap:4px;margin-bottom:6px"><button data-sentinel-keypad-map style="flex:1;padding:6px">Mapear Invest</button><button data-sentinel-keypad-save style="flex:1;padding:6px">Confirmar mapa</button></div><button data-sentinel-keypad-apply style="width:100%;padding:8px;border:0;border-radius:5px;background:#c5a557;color:#12151a;font-weight:700">Aplicar no Invest</button><div data-sentinel-keypad-status role="status" style="padding-top:6px;min-height:22px"></div>';
+              host.shadowRoot.appendChild(pad);
+              for(const digit of ['1','2','3','4','5','6','7','8','9','0',',','⌫']){
+                const b=document.createElement('button');b.setAttribute('data-sentinel-keypad-digit',digit);b.textContent=digit;b.style.cssText='padding:8px;background:#23404b;color:white;border:1px solid #4a6773;border-radius:5px;font-size:16px';pad.querySelector('[data-sentinel-keypad-keys]').appendChild(b);
+              }
+              pad.addEventListener('click',async e=>{
+                if(e.target?.closest?.('[data-sentinel-keypad-close]')){pad.remove();return;}
+                const display=pad.querySelector('[data-sentinel-keypad-value]'),status=pad.querySelector('[data-sentinel-keypad-status]');
+                const digit=e.target?.getAttribute?.('data-sentinel-keypad-digit');
+                if(digit!=null){display.value=digit==='⌫'?display.value.slice(0,-1):display.value+(digit===','?'.':digit);return;}
+                const mapStart=e.target?.closest?.('[data-sentinel-keypad-map]');
+                const mapSave=e.target?.closest?.('[data-sentinel-keypad-save]');
+                if((mapStart||mapSave)&&pad.dataset.busy!=='1'){
+                  pad.dataset.busy='1';status.textContent='Mapeamento Invest...';
+                  try{
+                    const res=await window.__sentinelOverlayAction?.({action:'invest-keypad',mode:mapStart?'map-start':'map-save'});
+                    if(!res?.ok)throw Error(res?.message||'Falha no mapeamento');
+                    if(mapSave&&Number(res.amount)>0){pad.dataset.original=String(res.amount);display.value=String(res.amount);}
+                    status.textContent=res.message||'Mapeado';
+                  }catch(error){status.textContent=String(error?.message||error);}finally{pad.dataset.busy='0';}
+                  return;
+                }
+                if(!e.target?.closest?.('[data-sentinel-keypad-apply]')||pad.dataset.busy==='1')return;
+                pad.dataset.busy='1';status.textContent='Conferindo Invest...';
+                try{
+                  const amount=Number(display.value.replace(',','.'));
+                  const res=await window.__sentinelOverlayAction?.({action:'invest-keypad',mode:'apply',amount,expectedPrevious:Number(pad.dataset.original)});
+                  if(!res?.ok)throw Error(res?.message||'Invest não confirmado');
+                  pad.dataset.original=String(res.amount);display.value=String(res.amount);status.textContent='Invest confirmado. Sem operar.';
+                }catch(error){status.textContent=String(error?.message||error);}finally{pad.dataset.busy='0';}
+              });
+              const display=pad.querySelector('[data-sentinel-keypad-value]'),status=pad.querySelector('[data-sentinel-keypad-status]');
+              status.textContent='Localizando Invest...';
+              void Promise.resolve(window.__sentinelOverlayAction?.({action:'invest-keypad',mode:'inspect'}))
+                .then(res=>{if(!pad.isConnected)return;if(!res?.ok)throw Error(res?.message||'Invest não encontrado');pad.dataset.original=String(res.amount);display.value=String(res.amount);status.textContent='Invest localizado. Informe o novo valor.';})
+                .catch(error=>{if(pad.isConnected)status.textContent=String(error?.message||error)});
+              return;
+            }
             const botButton=ev.target?.closest?.('[data-sentinel-executor-action]');
             if(botButton){ev.preventDefault();ev.stopPropagation();run({action:'executor-'+botButton.getAttribute('data-sentinel-executor-action')});return;}
 
@@ -1954,7 +2064,7 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;gap:4px;align-items:center">
                 <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
                 <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
-                <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
+                <button data-sentinel-invest-keypad-toggle title="Teclado opcional para o Invest da corretora" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Teclado Invest</button><button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
             <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:9px;align-items:end;padding:9px 11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">

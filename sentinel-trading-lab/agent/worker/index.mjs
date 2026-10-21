@@ -196,6 +196,12 @@ async function ensureLocalCockpitBroker(provider){
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
   if(action.startsWith('executor-')){if(action!=='executor-stop'&&provider!==activeProvider)throw Error('Selecione a corretora ativa.');return executorAction(action,payload);}
+  if(action==='invest-keypad'){
+    assertLicensedAccess();
+    if(provider!==activeProvider)throw Error('Selecione a corretora ativa.');
+    if(executor.enabled||executor.arming||executor.executing||executor.pending)throw Error('Desligue o bot antes de editar o Invest.');
+    return driver.investKeypad(provider,{action:payload.mode,amount:payload.amount,expectedPrevious:payload.expectedPrevious});
+  }
   if(!['pause','stop'].includes(action))assertLicensedAccess();
   if(action==='start'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;

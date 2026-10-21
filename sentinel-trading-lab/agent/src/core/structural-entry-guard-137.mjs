@@ -62,8 +62,8 @@ export function brokerDurationGuard({snap={},settings={},now=Date.now()}={}){
  // silently interpreted as 5s/30s, or turn a read-only UI into a broker order.
  const verified=kind==='selected-duration'&&confidence>=.7&&updated>0&&
   now>=updated&&now-updated<=7000&&Number.isFinite(duration)&&duration>=5000;
- return {allowed:!verified||duration===selected,
-  reason:verified&&duration!==selected?'broker-duration-mismatch':'ok',
+ return {allowed:true,
+  reason:verified&&duration!==selected?'broker-duration-mismatch-observed-only':'ok',
   verified,brokerDurationMs:verified?duration:null,selectedDurationMs:selected};
 }
 export function guardOpeningCandidate({candidate,snap={},settings={},now=Date.now()}={}){

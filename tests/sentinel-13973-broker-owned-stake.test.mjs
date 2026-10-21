@@ -80,3 +80,18 @@ test('cosmetic market-card changes do not force urgent broker UI renders',()=>{
  assert.match(scheduler,/minIntervalMs=6000/);
  assert.match(scheduler,/this.running||!this.pending/);
 });
+
+test('Invest virtual keyboard is user-controlled, browser-expiry disagreement does not veto',()=>{
+ const guard=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/structural-entry-guard-137.mjs',import.meta.url),'utf8');
+ assert.match(guard,/allowed:true/);
+ const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+ assert.match(worker,/action==='invest-keypad'/);
+ assert.match(worker,/executor\.enabled\|\|executor\.arming\|\|executor\.executing\|\|executor\.pending/);
+ const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ assert.match(driver,/async investKeypad\(/);
+ assert.match(driver,/action==='map-start'/);
+ assert.match(driver,/action==='map-save'/);
+ assert.match(driver,/broker-invest-mappings\.json/);
+ assert.match(driver,/\.fill\(String\(intended\)/);
+ assert.doesNotMatch(driver,/el\.tabIndex=0/);
+});
