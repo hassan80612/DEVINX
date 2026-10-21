@@ -31,7 +31,7 @@ const tabDefs=[
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
   {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
   {key:'Settings',label:'Minha conta',icon:'⚙',group:'Conta',title:'Minha conta',subtitle:'Seu acesso, licença e Agent Windows.'},
-  {key:'Membership',label:'Renovar',icon:'◈',group:'Conta',title:'Renovar acesso',subtitle:'Continuar no checkout seguro da Kiwify.'},
+  {key:'Membership',label:'Licença',icon:'◈',group:'Conta',title:'Sua licença',subtitle:'Pagamento único, sem renovação.'},
   {key:'Master Console',label:'Master',icon:'◆',group:'Admin',title:'Master Sentinel',subtitle:'Gerencie clientes, licenças, PCs e suporte remoto.'}
 ] as const;
 const money=(n:any)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n||0));
@@ -46,8 +46,8 @@ function friendlyError(error:any){
     pc_offline:'Agent do PC está offline. Abra o Sentinel Agent no computador e tente novamente.',
     pc_nao_vinculado:'Este PC ainda não está vinculado à sua conta.',
     agent_access_required:'Esta conta ainda não tem acesso liberado ao Agent.',
-    agent_access_inactive:'O acesso deste Agent está bloqueado ou vencido.',
-    subscription_inactive:'O acesso deste Agent está bloqueado ou vencido.',
+    agent_access_inactive:'O acesso deste Agent está bloqueado ou ainda não foi ativado.',
+    subscription_inactive:'O acesso deste Agent está bloqueado ou ainda não foi ativado.',
     agent_not_paired:'O Agent ainda não está vinculado à conta.',
     broker_open_requires_manual_action:'Use o botão Abrir corretora para iniciar a primeira sessão.',
     broker_open_timeout:'O Agent tentou abrir a corretora, mas o navegador não respondeu a tempo. Reinicie o Agent e tente novamente.',
@@ -334,7 +334,7 @@ export default function Page(){
       (s||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} onNavigate={setTab}/>:<OfflinePanel/>;
   },[compactAnalyst,tab,s,busy,agent,account,isMaster,source]);
   const mobileMain=[['Market Analysis','Mercado','⌁'],['Strategies','Estratégias','◇'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
-  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><ActiveBrowserSession/><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/devinx-icon.svg" alt="DevinX Trading Lab"/></div><div><span>DEVINX</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>x.key==='Membership'?window.location.assign('/api/checkout?market='+(language==='en'?'INTL':'BR')):setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
+  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><ActiveBrowserSession/><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/devinx-icon.svg" alt="DevinX Trading Lab"/></div><div><span>DEVINX</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
     <main className="main"><header className="topbar"><div className="pageHeading"><div className="eyebrow">{'DEVINX TRADING LAB'} · WEB {WEB_RELEASE_VERSION}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
         <div className="runtimeBadges"><span className="privateBadge">🔒 {account?.profile?.role==='master'?'MASTER':t('PRIVADO')}</span><Pill tone={agent.process?'good':'neutral'}>{t(agent.process?'AGENT ONLINE':'AGENT OFF')}</Pill><Pill tone={agent.worker?'good':'neutral'}>{t(agent.worker?'WORKER ONLINE':'WORKER OFF')}</Pill><Pill tone={String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='demo'?'good':String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='real'?'bad':'neutral'}>{t('CONTA')} {t(modeLabel(s?.liveBroker?.mode||s?.mode||'—'))}</Pill><Pill tone={s?.state==='error'?'bad':s?.state==='running'?'good':'neutral'}>{t(String(s?.state||'offline').toUpperCase())}</Pill></div>
         <div className="topUtility"><LanguageSwitcher/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{try{const response=await fetch('/api/auth/logout',{method:'POST'});if(!response.ok)throw new Error('logout_unconfirmed');window.location.replace('/')}catch{setErr(language==='en'?'Logout could not be confirmed. Please try again.':'Não foi possível confirmar a saída. Tente novamente.')}}}>{t('Sair')}</button></div>
@@ -342,7 +342,7 @@ export default function Page(){
       {(!agent.process||tab==='Market Analysis')&&<div className="agentbanner"><div className="agentIcon">↓</div><div className="agentText"><b>{language==='en'?'Start here: install the Windows Agent':'Comece por aqui: instale o Agent Windows'}</b><span>{language==='en'?'Download and open the installer on your computer. Then choose IQ Option or Exnova in Broker. Your account is recognized automatically.':'Baixe e abra o instalador no computador. Depois, escolha IQ Option ou Exnova em Corretora. Sua conta é reconhecida automaticamente.'}</span></div><div className="agentActions sentinelPcOnly">{agentAccess?<><a className="primary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{language==='en'?'Install Agent':'Instalar Agent'} · {AVAILABLE_AGENT_VERSION}</a><AgentZipDownload/></>:<a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Ativar acesso')}</a>}</div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>{t('Agent aberto, worker parado.')}</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button></div>}
       {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(compactAnalyst||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act} compact={compactAnalyst} onToggleCompact={toggleCompactAnalyst}/>}{(compactAnalyst||tab==='Market Analysis')&&<BotControl s={s} act={act} online={!!agent.worker}/>} {!compactAnalyst&&content}</main>
-      <nav className="mobileDock">{mobileMain.map(([k,l,i])=><button key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setMobileMore(false)}}><i>{i}</i><span>{t(l)}</span></button>)}<button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><i>•••</i><span>{t('Mais')}</span></button></nav>{mobileMore&&<div className="mobileMorePanel">{visibleTabs.filter(x=>!mobileMain.some(([k])=>k===x.key)).map(x=><button key={x.key} onClick={()=>{if(x.key==='Membership')window.location.assign('/api/checkout?market='+(language==='en'?'INTL':'BR'));else setTab(x.key);setMobileMore(false)}}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div>}
+      <nav className="mobileDock">{mobileMain.map(([k,l,i])=><button key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setMobileMore(false)}}><i>{i}</i><span>{t(l)}</span></button>)}<button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><i>•••</i><span>{t('Mais')}</span></button></nav>{mobileMore&&<div className="mobileMorePanel">{visibleTabs.filter(x=>!mobileMain.some(([k])=>k===x.key)).map(x=><button key={x.key} onClick={()=>{setTab(x.key);setMobileMore(false)}}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div>}
     </div>}
 
 
@@ -363,16 +363,16 @@ function Panel({name,s,act,busy,agent,agentCommand,account,onNavigate}:{name:str
 function Membership({account}:{account:any}){
  const {language}=useSentinelLocale();
  const intl=language==='en';
- const localizedPrice=intl?'US$ 50':'R$ 280';
+ const localizedPrice=intl?'US$ 100':'R$ 549';
  const profile=account?.profile||{};
  const active=profile.role==='master'||profile.access_active===true;
- const expiry=profile.access_expires_at?new Date(profile.access_expires_at).toLocaleDateString('pt-BR'):'Sem vencimento definido';
+ const expiry=profile.access_expires_at?new Date(profile.access_expires_at).toLocaleDateString('pt-BR'):'Permanente';
  return <section className="sentinelMembership">
-   <span className="sentinelEyebrow"><T>PLANO E RENOVAÇÃO</T></span>
+   <span className="sentinelEyebrow"><T>LICENÇA E PAGAMENTO ÚNICO</T></span>
    <h2><T>Seu acesso ao Sentinel</T></h2>
-   <p><strong>{localizedPrice} / {intl?'30 days':'30 dias'}</strong> · <T>Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.</T></p>
+   <p><strong>{localizedPrice}</strong> · <T>Uma compra aprovada libera acesso permanente à conta. Sem mensalidade ou renovação obrigatória.</T></p>
    <div className="sentinelMembershipSummary"><div><small><T>Estado do plano</T></small><strong>{profile.role==='master'?'MASTER':active?'ATIVO':'AGUARDANDO ATIVAÇÃO'}</strong></div><div><small><T>Validade</T></small><strong>{profile.role==='master'?'Permanente':expiry}</strong></div><div><small><T>PCs permitidos</T></small><strong>{profile.max_devices||1}</strong></div></div>
-   <div className="sentinelMembershipActions"><span>{localizedPrice} / {intl?'30 days':'30 dias'}</span><a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Renovar ou comprar acesso</T></a></div>
+   <div className="sentinelMembershipActions"><span>{localizedPrice}</span><a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Comprar acesso</T></a></div>
  </section>
 }
 
@@ -498,7 +498,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
     </section>
 
     <section className="card span7">
-      <div className="split"><div><div className="eyebrow"><T>LIBERAÇÃO RÁPIDA</T></div><h3><T>Liberar Agent por e-mail</T></h3><p className="muted"><T>A conta precisa existir. O mesmo controle depois será alimentado automaticamente pelo pagamento e vencimento.</T></p></div><Pill tone="good"><T>POR CONTA</T></Pill></div>
+      <div className="split"><div><div className="eyebrow"><T>LIBERAÇÃO RÁPIDA</T></div><h3><T>Liberar Agent por e-mail</T></h3><p className="muted"><T>A conta precisa existir. Compras confirmadas liberam acesso permanente sem renovação.</T></p></div><Pill tone="good"><T>POR CONTA</T></Pill></div>
       <div className="formgrid three topgap">
         <label className="field"><span><T>E-mail da conta</T></span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="cliente@email.com"/></label>
         <label className="field"><span><T>Validade</T></span><select value={days} onChange={e=>setDays(e.target.value)}><option value="7"><T>7 dias</T></option><option value="30"><T>30 dias</T></option><option value="90"><T>90 dias</T></option><option value="365"><T>1 ano</T></option><option value="forever"><T>Sem vencimento</T></option></select></label>
@@ -584,7 +584,7 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
    {s?.runtimeKind==='persistent-worker'&&<section className="card span12 accountAgentCard">
      <div className="accountAgentCopy">
        <h3>{t('Agent neste computador')}</h3>
-       <p className="muted">{t('O Agent permanece instalado, mas só libera novas análises com login ativo e acesso vigente. Não é necessário vincular o celular.')}</p>
+       <p className="muted">{t('O Agent permanece instalado e libera análises com login ativo e licença aprovada. Não é necessário vincular o celular.')}</p>
      </div>
      <div className="accountAgentActions">
        <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button>
