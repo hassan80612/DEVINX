@@ -28,14 +28,10 @@ export function executorPanel(state,language='pt'){
   ar:['الوضع','تلقائي','CALL فقط','PUT فقط','الفاصل بين الصفقات']
  }[language]||['Modo','Automático','Somente CALL','Somente PUT','Intervalo entre entradas'];
  const mode=c.directionMode||'automatic';
- const modeSelect='<label style="display:grid;gap:3px">'+modeNames[0]+'<select data-sentinel-executor-setting="directionMode"'+(state.enabled?' disabled':'')+
+ const modeSelect='<label style="display:grid;gap:3px">'+modeNames[0]+'<select data-sentinel-executor-setting="directionMode"'+
    ' style="background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px">'+
    ['automatic','call','put'].map((x,i)=>'<option value="'+x+'"'+(mode===x?' selected':'')+'>'+modeNames[i+1]+'</option>').join('')+'</select></label>';
- const intervalSelect=mode==='automatic'?'':'<label style="display:grid;gap:3px">'+modeNames[4]+
-   '<select data-sentinel-executor-setting="intervalMs"'+(state.enabled?' disabled':'')+
-   ' style="background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px">'+
-   [5,10,15,30,60,120,300].map(n=>'<option value="'+n*1000+'"'+(Number(c.intervalMs)===n*1000?' selected':'')+'>'+(n>=60?n/60+' min':n+'s')+'</option>').join('')+
-   '</select></label>';
+ const intervalSelect=mode==='automatic'?'':'<small style="align-self:center">Segue o tempo escolhido no analista</small>';
   const broker=state.brokerBalance;
  const streakLabel=({pt:'Máximo de sequências perdedoras (0 = sem limite)',en:'Maximum losing batches (0 = unlimited)',es:'Máximo de secuencias perdedoras (0 = sin límite)',fr:'Séries perdantes maximales (0 = illimité)',ar:'أقصى سلاسل خسارة (0 = بدون حد)'})[language]||'Maximum losing batches (0 = unlimited)';
  const multiplierLabel=({pt:'Multiplicador de cliques (2 ou 3)',en:'Click multiplier (2 or 3)',es:'Multiplicador de clics (2 o 3)',fr:'Multiplicateur de clics (2 ou 3)',ar:'مضاعف النقرات (2 أو 3)'})[language]||'Click multiplier (2 or 3)';
