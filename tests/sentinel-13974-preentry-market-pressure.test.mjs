@@ -71,7 +71,7 @@ test('completed structural reversals, missing readings, neutral signals, and 15s
  assert.equal(currentMarketConflict({original,estimate,cards:[],durationMs:30000}).conflict,false);
  assert.equal(currentMarketConflict({original,estimate,cards,durationMs:15000}).conflict,false);
  assert.equal(currentMarketConflict({original,estimate:null,cards,durationMs:30000}).conflict,false);
- assert.equal(applyMarketPressureGuard({...original,strength:75},original,pressure(),{n:20,approved:true}).ready,true);
+ assert.equal(applyMarketPressureGuard({...original,strength:75},{...original,strength:75},pressure(),{n:20,approved:true}).ready,true);
  assert.equal(applyMarketPressureGuard(original,original,pressure(),{n:15,approved:true}).ready,true);
 });
 test('late quotes do not become verified quote-at-expiry results',()=>{
