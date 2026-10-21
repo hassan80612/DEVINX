@@ -5,14 +5,19 @@ import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
-export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:900,other:1500});
+export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:1600,thirty:6000,other:7000});
 // Freshness of the FIRST broker entry differs from completion of an already
 // started multi-click batch. Each broker click has its own 30s expiry.
 export const MAX_BATCH_DISPATCH_MS=Object.freeze({five:850,short:1600,fifteen:2500,thirty:5000,other:8000});
 export function maxSignalAgeMs(durationMs){
  const ms=Number(durationMs);
- return ms<=15000?MAX_SIGNAL_TO_CLICK_AGE_MS.short:
-  ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
+ // A broker DOM search is asynchronous. The previous 500/900/1500ms gate
+ // repeatedly invalidated legitimate approved signals before the click.
+ // Never wait this long intentionally: dispatch immediately and accept only
+ // transport lag still within the ORIGINAL trade window.
+ return Math.min(ms<=5000?1600:ms<=10000?2800:ms<=15000?4000:
+   ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other,
+   Math.max(0,ms-250));
 }
 export function maxBatchDispatchMs(durationMs){
  const ms=Number(durationMs);
@@ -288,7 +293,7 @@ export class SignalExecutor{
     d.waitingId+' sem ID; '+d.waitingResult+' com ID) · nível preservado';
    return;
   }
-  if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||queued.durationMs!==c.durationMs||now>=queued.exitAt){
+  if(now<queued.at||now-queued.at>maxSignalAgeMs(queued.durationMs)||now>=queued.exitAt){
    this.queuedSignal=null;
    const age=now-queued.at;
    this.message='Sinal recebido fora do prazo ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms) · aguardando nova análise';
@@ -337,7 +342,7 @@ export class SignalExecutor{
    }
   }
   this.pending=batch;
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()-queued.at<=(clickIndex===0?maxSignalAgeMs(queued.durationMs):maxBatchDispatchMs(queued.durationMs))&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()-queued.at<=(clickIndex===0?maxSignalAgeMs(queued.durationMs):maxBatchDispatchMs(queued.durationMs))&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
@@ -390,12 +395,12 @@ export class SignalExecutor{
     // A clearly cancelled before-click attempt can be skipped without
     // turning the automation OFF or manufacturing a Martingale loss.
     if(!order.clicked&&e?.beforeClick===true){
-     if(this.enabled)this.message='Ligado · sinal ignorado antes do clique · próximo sinal do analista';
+     if(this.enabled)this.message='Ligado · clique não realizado: '+order.error+' · aguardando próximo sinal';
      return;
     }
     // Explicit broker rejection and genuine state mismatches are distinct
     // from a delayed broker acknowledgement.
-    if(this.enabled)this.message='Ligado · entrada rejeitada antes da confirmação: '+order.error+' · próximo sinal';
+    if(this.enabled)this.message='Ligado · entrada não confirmada: '+order.error+' · próximo sinal';
    }));
   }
   this.inflight=Promise.allSettled(jobs).then(()=>{
