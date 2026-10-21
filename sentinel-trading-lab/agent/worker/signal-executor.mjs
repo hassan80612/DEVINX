@@ -34,7 +34,7 @@ export class SignalExecutor{
  constructor({driver,context,clock=Date.now}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
-  this.nextScheduledAt=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;
+  this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;
  }
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
@@ -45,9 +45,17 @@ export class SignalExecutor{
   if(this.enabled){
    if(!(next.amount>0))throw Error('Valor por entrada deve ser positivo.');
   }
-  if(this.enabled&&next.directionMode!==this.config.directionMode)throw Error('Pare o bot antes de trocar Automático, CALL e PUT.');
-  // Automatic follows qualified signals. CALL/PUT cadence ignores their direction.
-  if(next.directionMode!==this.config.directionMode||next.intervalMs!==this.config.intervalMs)this.nextScheduledAt=null;
+  // A running bot can change its direction LIVE. The existing open orders stay intact.
+  // Fixed-direction scheduling follows the duration already chosen on the analyst.
+  if(next.directionMode!==this.config.directionMode){
+   this.queuedSignal=null;
+   this.nextScheduledAt=this.clock();
+   this.lastCadenceDurationMs=null;
+   if(next.directionMode==='automatic'){
+    const current=executorSignal(this.context().analysis);
+    if(current)this.seen.add(current.id);
+   }
+  }
   this.config=next;
   if(!next.martingaleEnabled||this.martingaleLevel>next.martingaleLevels)this.martingaleLevel=0;
   if(this.enabled){
@@ -115,7 +123,7 @@ export class SignalExecutor{
     return this.status();
    }
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
-   this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;
+   this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    const opening=this.balanceRisk.begin(c.provider);if(opening&&cfg.amount>opening.amount)throw Error('Saldo recebido insuficiente para o valor por entrada.');
    this.initialBalance=opening?.amount??null;
@@ -133,7 +141,7 @@ export class SignalExecutor{
    // Old orders remain quarantined for correlated settlement only.
    if(this.pending){const b=this.pending;b.detached=true;for(const p of b.orders)p.detached=true;this.unresolvedBatches.set(b.id,b);this.pending=null;}
    this.balanceRisk.trade=null;this.balanceRisk.session=null;
-   this.session=null;this.startedAt=null;this.deadlineAt=null;this.nextScheduledAt=null;this.initialBalance=null;
+   this.session=null;this.startedAt=null;this.deadlineAt=null;this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.initialBalance=null;
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;
    this.executed=0;this.closed=0;this.net=0;this.consecutiveLossBatches=0;this.history=[];
    this.ledger.clear();this.seen.clear();this.sessionId++;
@@ -246,9 +254,15 @@ export class SignalExecutor{
   const clockNow=this.clock();let s;
   if(mode==='automatic')s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
   else {
+    // NO separate interval. The analyst's one selected duration is the cadence.
+    const interval=Number(c.durationMs);
+    if(!(interval>=5000&&interval<=300000))return;
+    if(this.lastCadenceDurationMs!==interval){
+     this.lastCadenceDurationMs=interval;
+     this.nextScheduledAt=clockNow;
+    }
     const due=Number(this.nextScheduledAt??clockNow);
     if(clockNow>=due){
-      const interval=Number(this.config.intervalMs);
       this.nextScheduledAt=due+interval*(Math.floor((clockNow-due)/interval)+1);
       const quoteAt=Number(c.quoteAt||0),price=Number(c.quote||0);
       if(!this.pending&&!this.executing&&quoteAt>0&&quoteAt<=clockNow&&clockNow-quoteAt<=2500&&price>0)
