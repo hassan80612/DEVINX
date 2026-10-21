@@ -32,6 +32,7 @@ import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
+import {currentMarketConflict,MarketPressureEvidence,applyMarketPressureGuard} from './market-pressure-entry-guard.mjs';
 import {shortProbability} from './short-probability.mjs';
 import {combine66WithProbability} from './66-probability-integration.mjs';
 import {CausalProbabilityReview} from './causal-probability-review.mjs';
@@ -86,7 +87,7 @@ export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
-    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.marketPressureEvidence=new MarketPressureEvidence();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -1031,8 +1032,24 @@ export class DemoTradingRuntime{
         }):null;
       // Same proof requirements for DEMO and REAL. Unknown broker payout
       // means directional evidence ONLY; never advertise measured profit.
-      const observation=this.forecastModel==='short-probability-v1'?
+      // Compute the SAME 8s/60s market readings visible on PC/mobile
+      // BEFORE deciding, on existing broker quotes only (no extra browser IO).
+      const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
+      const pressure=this.forecastModel==='short-probability-v1'?
+        currentMarketConflict({original:original66,estimate:preliminary,
+          cards:readings.cards,durationMs:settings.orderDurationMs}):{conflict:false};
+      const pressureProof=this.forecastModel==='short-probability-v1'?
+        this.marketPressureEvidence.observe({
+          context:[snap.provider||'',settings.asset,settings.engine,settings.orderDurationMs].join('|'),
+          now,quoteAt:snap.quoteTs,price:snap.price,quoteHistory:snap.quoteHistory,
+          expiryMs:settings.orderDurationMs,original:original66,pressure,
+          marketValid:duration.allowed&&entryQuoteFresh&&
+            !(this.vnextWindowState?.phase==='fired'&&now<Number(this.vnextWindowState.exitAt||0))
+        }):null;
+      const combined=this.forecastModel==='short-probability-v1'?
         combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof}):original66;
+      const observation=this.forecastModel==='short-probability-v1'?
+        applyMarketPressureGuard(combined,original66,pressure,pressureProof):combined;
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
@@ -1079,7 +1096,6 @@ export class DemoTradingRuntime{
       // processing. The ordinary post-tick pulse remains a deduplicated backup.
       if(anchor?.entryReadyNow&&typeof this.onNowOpportunity==='function')
         this.onNowOpportunity(anchor);
-      const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
       const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
         String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
         String(x.provider??'').toLowerCase()===String(snap.provider??'').toLowerCase()&&
@@ -1103,7 +1119,10 @@ export class DemoTradingRuntime{
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           probabilityCalibrated:false,probabilitySource:preliminary?.source??null,
           probabilityInfluenced:observation.probabilityOverride===true,
-          probabilitySamples:probabilityProof?.n??0
+          probabilitySamples:probabilityProof?.n??0,
+          marketPressureConflict:pressure.conflict===true,
+          marketPressureBlocked:observation.marketPressureBlocked===true,
+          marketPressureSamples:pressureProof?.n??0
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
