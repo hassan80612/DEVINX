@@ -20,7 +20,23 @@ export function executorPanel(state,language='pt'){
  fr:['Solde du courtier (dernier reçu)','Pas encore reçu · solde manuel utilisé','Variation du solde de séance','Les limites sont modifiables en cours. Arrêter réinitialise la séance du robot ; montant, rendement et intervalle valent pour les prochaines entrées. Le solde manuel vaut pour une nouvelle séance.','Résultat non confirmé'],
  ar:['رصيد المنصة (آخر تحديث مستلم)','لم يصل بعد · استخدام الرصيد اليدوي','تغير الرصيد خلال الجلسة','يمكن تعديل الحدود أثناء التشغيل. الوقت محسوب من بداية الجلسة؛ القيمة والعائد والفاصل للدخول التالي. الرصيد اليدوي لجلسة جديدة.','نتيجة غير مؤكدة']
  };const info=detailWords[language]||detailWords.pt;
- const broker=state.brokerBalance;
+ const modeNames={
+  pt:['Modo','Automático','Somente CALL','Somente PUT','Intervalo entre entradas'],
+  en:['Mode','Automatic','CALL only','PUT only','Entry interval'],
+  es:['Modo','Automático','Solo CALL','Solo PUT','Intervalo entre entradas'],
+  fr:['Mode','Automatique','CALL uniquement','PUT uniquement','Intervalle entre entrées'],
+  ar:['الوضع','تلقائي','CALL فقط','PUT فقط','الفاصل بين الصفقات']
+ }[language]||['Modo','Automático','Somente CALL','Somente PUT','Intervalo entre entradas'];
+ const mode=c.directionMode||'automatic';
+ const modeSelect='<label style="display:grid;gap:3px">'+modeNames[0]+'<select data-sentinel-executor-setting="directionMode"'+(state.enabled?' disabled':'')+
+   ' style="background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px">'+
+   ['automatic','call','put'].map((x,i)=>'<option value="'+x+'"'+(mode===x?' selected':'')+'>'+modeNames[i+1]+'</option>').join('')+'</select></label>';
+ const intervalSelect=mode==='automatic'?'':'<label style="display:grid;gap:3px">'+modeNames[4]+
+   '<select data-sentinel-executor-setting="intervalMs"'+(state.enabled?' disabled':'')+
+   ' style="background:#0a272b;color:#fff;border:1px solid #8a7848;border-radius:5px;padding:5px">'+
+   [5,10,15,30,60,120,300].map(n=>'<option value="'+n*1000+'"'+(Number(c.intervalMs)===n*1000?' selected':'')+'>'+(n>=60?n/60+' min':n+'s')+'</option>').join('')+
+   '</select></label>';
+  const broker=state.brokerBalance;
  const streakLabel=({pt:'Máximo de sequências perdedoras (0 = sem limite)',en:'Maximum losing batches (0 = unlimited)',es:'Máximo de secuencias perdedoras (0 = sin límite)',fr:'Séries perdantes maximales (0 = illimité)',ar:'أقصى سلاسل خسارة (0 = بدون حد)'})[language]||'Maximum losing batches (0 = unlimited)';
  const multiplierLabel=({pt:'Multiplicador de cliques (2 ou 3)',en:'Click multiplier (2 or 3)',es:'Multiplicador de clics (2 o 3)',fr:'Multiplicateur de clics (2 ou 3)',ar:'مضاعف النقرات (2 أو 3)'})[language]||'Click multiplier (2 or 3)';
  const streakInfo=({pt:'Sequências perdedoras confirmadas',en:'Confirmed losing batches',es:'Secuencias perdedoras confirmadas',fr:'Séries perdantes confirmées',ar:'سلاسل الخسارة المؤكدة'})[language]||'Confirmed losing batches';
@@ -39,7 +55,7 @@ export function executorPanel(state,language='pt'){
  const progression=Array.from({length:Math.min(3,c.martingaleEnabled?c.martingaleLevels||0:0)+1},(_,i)=>multiplier**i+' '+clicksWord).join(' → ');
  const last=state.history?.[0];
  const outcome=({pt:{win:'Ganho',loss:'Perda',tie:'Empate'},en:{win:'Win',loss:'Loss',tie:'Tie'},es:{win:'Ganancia',loss:'Pérdida',tie:'Empate'},fr:{win:'Gain',loss:'Perte',tie:'Égalité'},ar:{win:'ربح',loss:'خسارة',tie:'تعادل'}}[language]||{win:'Win',loss:'Loss',tie:'Tie'})[last?.result]||'';
- return '<details data-sentinel-preserve-open="1" data-sentinel-executor-panel style="margin:8px 0;padding:9px;border:1px solid #a88c47;border-radius:9px;font-size:11px;color:inherit"><summary style="cursor:pointer;font-weight:750">'+w[0]+(providerLabel?' · '+providerLabel:'')+' · '+(state.enabled?'ON':'OFF')+'</summary><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px">'+
+ return '<details data-sentinel-preserve-open="1" data-sentinel-executor-panel style="margin:8px 0;padding:9px;border:1px solid #a88c47;border-radius:9px;font-size:11px;color:inherit"><summary style="cursor:pointer;font-weight:750">'+w[0]+(providerLabel?' · '+providerLabel:'')+' · '+(state.enabled?'ON':'OFF')+'</summary><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px">'+modeSelect+intervalSelect+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px">'+
  input('amount',w[1],c.amount,'0.01')+
  
  input('stopLoss',l[0],c.stopLoss,'0.01')+input('maxConsecutiveLosses',streakLabel,c.maxConsecutiveLosses??0)+input('martingaleLevels',l[1],Math.min(3,c.martingaleLevels??2))+input('martingaleMultiplier',multiplierLabel,multiplier)+'<label style="display:flex;align-items:center;gap:7px"><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+editingDisabled+'>'+({pt:'Ativar martingale',en:'Enable martingale',es:'Activar martingala',fr:'Activer la martingale',ar:'تفعيل المضاعفة'}[language]||'Enable martingale')+'</label>'+'</div><small>'+w[8]+'</small><div style="margin-top:6px;line-height:1.4">'+l[7]+'</div>'+balanceHtml+(unprotected?'<div role="status" style="margin-top:6px;color:#ffd18e">'+escape(lossWarning)+'</div>':'')+'<div style="margin-top:5px">'+escape(streakInfo)+': '+Number(state.consecutiveLossBatches||0)+'</div>'+ 
