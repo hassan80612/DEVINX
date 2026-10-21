@@ -25,7 +25,7 @@ function fixture(){
 }
 for(const [mode,expected] of [['call','CALL'],['put','PUT']]){
  test('scheduled '+mode+' ignores analyst direction and issues one '+expected+' each five seconds',async()=>{
-  const x=fixture();x.bot.configure({directionMode:mode,intervalMs:5000});
+  const x=fixture();x.c.durationMs=5000;x.bot.configure({directionMode:mode});
   await x.bot.start();
   for(const ms of [0,5000,10000,15000,20000]){
    x.setTime(ms);
@@ -37,14 +37,14 @@ for(const [mode,expected] of [['call','CALL'],['put','PUT']]){
   assert.equal(x.calls.length,5);
   assert.deepEqual(x.calls.map(v=>v.side),Array(5).fill(expected));
   assert.deepEqual(x.calls.map(v=>v.at),[0,5000,10000,15000,20000].map(x=>x+START));
-  assert.ok(x.calls.every(v=>v.durationMs===60000));
+  assert.ok(x.calls.every(v=>v.durationMs===5000));
   assert.equal(x.bot.pending,null);
   assert.equal(x.bot.unresolvedBatches.size,5,'all 5 simultaneous live orders are still identified and tracked');
   assert.equal(x.bot.enabled,true);
  });
 }
 test('fixed-direction scheduler skips stale quotes and does not catch up with duplicate clicks',async()=>{
- const x=fixture();x.bot.configure({directionMode:'call',intervalMs:5000});await x.bot.start();
+ const x=fixture();x.c.durationMs=5000;x.bot.configure({directionMode:'call'});await x.bot.start();
  x.bot.pulse();await x.bot.inflight;assert.equal(x.calls.length,1);
  x.setTime(30000);x.c.quoteAt=START; x.bot.pulse();assert.equal(x.calls.length,1);
  x.setTime(35000); x.bot.pulse();await x.bot.inflight;assert.equal(x.calls.length,2);
@@ -60,22 +60,32 @@ test('Automatic ignores cadence and remains dependent on its actual final signal
  x.bot.pulse();await x.bot.inflight;
  assert.equal(x.calls.length,1);assert.equal(x.calls[0].side,'PUT');
 });
-test('must manually stop before changing direction mode',async()=>{
- const x=fixture();await x.bot.start();
- assert.throws(()=>x.bot.configure({directionMode:'call'}),/Pare o bot/);
- x.bot.stop();x.bot.configure({directionMode:'call'});assert.equal(x.bot.config.directionMode,'call');
+test('switch CALL and PUT live without stopping and without dropping tracked open broker orders',async()=>{
+ const x=fixture();x.c.durationMs=5000;await x.bot.start();
+ x.bot.configure({directionMode:'call'});
+ x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,1);assert.equal(x.calls[0].side,'CALL');
+ x.bot.configure({directionMode:'put'});
+ assert.equal(x.bot.enabled,true);
+ assert.equal(x.bot.unresolvedBatches.size,1);
+ x.setTime(5000);x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,2);assert.equal(x.calls[1].side,'PUT');
+ x.bot.configure({directionMode:'automatic'});
+ assert.equal(x.bot.enabled,true);
+ assert.equal(x.bot.unresolvedBatches.size,2);
+ x.setTime(10000);x.bot.pulse();assert.equal(x.calls.length,2);
 });
 test('new controls preserve old status length and decode optional string direction',()=>{
- const x=fixture();x.bot.configure({directionMode:'call',intervalMs:10000});
+ const x=fixture();x.c.durationMs=10000;x.bot.configure({directionMode:'call'});
  const packed=packExecutor(x.bot.status()),decoded=unpackExecutor(packed);
  assert.equal(packed.length,19);
  assert.equal(decoded.config.directionMode,'call');
- assert.equal(decoded.config.intervalMs,10000);
+ assert.equal(decoded.config.directionMode,'call');
  const oldPack=structuredClone(packed);oldPack[3].pop();
  assert.equal(unpackExecutor(oldPack).config.directionMode,undefined);
  const html=executorPanel(x.bot.status(),'pt');
  assert.match(html,/Somente CALL/);assert.match(html,/Somente PUT/);
- assert.match(html,/data-sentinel-executor-setting="intervalMs"/);
+ assert.doesNotMatch(html,/data-sentinel-executor-setting="intervalMs"/);
 });
 test('2m 5m are accepted without entering the 30s probability override',()=>{
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
