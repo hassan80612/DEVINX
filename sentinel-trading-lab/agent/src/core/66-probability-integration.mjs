@@ -23,5 +23,13 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
    probabilityAgreement:pOpp,originalSide:original.side,
    originalStrength:Number(strength),probabilityEvidenceSamples:proof.n};
  }
+ // Only veto a strong observed counter-trend pullback; do not guess the
+ // opposite trade or weaken level/retest reversals already recognized.
+ if(!protectedReversal&&estimate.fastReversalAgainst30s===true&&
+    estimate.trendSide===original.side&&estimate.fastSide!==original.side&&
+    estimate.ready===true&&pOpp>=.64){
+  return {...original,ready:false,side:null,reason:'rapid-countertrend-retraction-risk',
+    probabilityOverride:false,probabilityAgreement:pSame,probabilityConflict:pOpp};
+ }
  return {...original,probabilityAgreement:pSame,probabilityOverride:false};
 }

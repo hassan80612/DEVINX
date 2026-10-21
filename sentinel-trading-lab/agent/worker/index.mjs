@@ -301,7 +301,16 @@ async function enforceAccessLease(){
   return false;
 }
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
-async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
+// Serialize periodic and UI writes to prevent racing over the same .tmp file,
+// which could silently revert a saved user-selected expiration on restart.
+let stateSaveQueue=Promise.resolve();
+function saveState(){
+ stateSaveQueue=stateSaveQueue.catch(()=>{}).then(async()=>{
+  try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}
+  catch(e){console.error('state_save_error',e)}
+ });
+ return stateSaveQueue;
+}
 await loadState();
 try{
  const saved=JSON.parse(await readFile(executorSettingsFile,'utf8'));

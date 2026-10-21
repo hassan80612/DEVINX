@@ -96,3 +96,17 @@ test('no MOTOR dropdown on PC or mobile; 60s setting retained',()=>{
  assert.ok(driver.includes('data-sentinel-probability-30s'));
  assert.ok(worker.includes('[5000,10000,15000,30000,60000,120000,300000].includes(n)'));
 });
+
+test('large rapid retracement vetoes stale trend entry but never manufactures an opposite trade',()=>{
+ let price=1.1;const now=1820000000000,q=[];
+ for(let i=0;i<=90;i++){price+=i>85?-.000075:.00002;q.push({ts:now+i*1000,price})}
+ const last=q.at(-1),estimate=shortProbability({quoteHistory:q,quoteAt:last.ts,price:last.price,durationMs:30000,payout:.8,now:last.ts});
+ assert.equal(estimate.fastReversalAgainst30s,true);
+ assert.ok(estimate.pPut>=.64);
+ const original={ready:true,side:'CALL',strength:86,reason:'closed-structure-and-live-impulse',observedAt:last.ts,entryPrice:last.price};
+ const held=combine66WithProbability(original,estimate,{durationMs:30000});
+ assert.equal(held.ready,false);assert.equal(held.side,null);
+ assert.equal(held.reason,'rapid-countertrend-retraction-risk');
+ assert.equal(combine66WithProbability({...original,reason:'confirmed-retest-at-level'},estimate,{durationMs:30000}).side,'CALL');
+ assert.equal(combine66WithProbability(original,estimate,{durationMs:120000}).side,'CALL');
+});

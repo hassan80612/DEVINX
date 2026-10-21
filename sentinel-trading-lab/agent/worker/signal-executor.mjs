@@ -194,11 +194,13 @@ export class SignalExecutor{
   // 1500ms broker-ack grace was skipping the NEXT 500/900ms-fresh signal.
   // Unreported outcomes remain open in the risk ledger until identified.
   if(now<Number(batch.exitAt)||batch.orders.every(p=>p.settled))return false;
-  // In fixed CALL/PUT martingale, a late broker settlement must NOT turn
-  // an unknown outcome into a baseline trade. Keep the bot armed, skip
-  // expired cadence slots, and resume only after the real result arrives.
+  // A late broker settlement cannot freeze fixed-direction martingale forever.
+  // Keep a brief close-ack grace, then quarantine unknown orders with stake
+  // reserved. Never invent a win/loss; a late settlement can still apply before
+  // the next physical batch, otherwise new cadence resumes at baseline.
   if(batch.independent&&this.config.martingaleEnabled&&
-     batch.orders.some(p=>p.clicked&&!p.settled&&!p.rejected)){
+     batch.orders.some(p=>p.clicked&&!p.settled&&!p.rejected)&&
+     now<Number(batch.exitAt)+2500){
     this.message='Ligado · aguardando resultado da corretora para o próximo martingale';
     return false;
   }
@@ -325,7 +327,7 @@ export class SignalExecutor{
   const canSend=this.driver.batchFeasibility?.(c.provider,{
    count:requestedClicks,activeId:c.activeId,entryAt:queued.at,now,
    maxEntryAgeMs:maxSignalAgeMs(queued.durationMs),
-   maxBatchAgeMs:maxSignalAgeMs(queued.durationMs)});
+   maxBatchAgeMs:maxBatchDispatchMs(queued.durationMs)});
   if(canSend?.safe===false&&requestedClicks===1){
    this.message='Ligado · sinal atrasado, aguardando próximo';
    return;
@@ -359,15 +361,17 @@ export class SignalExecutor{
    }
   }
   this.pending=batch;
-  // The strict original signal freshness is also the last-click deadline.
-  // Never trade a signal seconds after it was confirmed.
-  const physicalClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=physicalClickDeadline&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  // The FIRST broker click must meet the strict signal freshness limit.
+  // Subsequent martingale clicks have a separate, bounded batch deadline;
+  // they can never continue beyond this operation's selected expiry.
+  const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
+  const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
   for(let i=0;i<clickCount;i++){
-   const order={...queued,entryDeadlineAt:physicalClickDeadline,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
+   const order={...queued,entryDeadlineAt:i===0?firstClickDeadline:batchClickDeadline,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
    batch.orders.push(order);order.isValid=()=>valid(i);
    order.useBrokerStake=(source,{confirmed=false}={})=>{
     const stake=money(Number(source));
@@ -437,7 +441,7 @@ export class SignalExecutor{
    // No physical click means the stage remains pending for another signal.
    if(this.config.martingaleEnabled&&
     batch.martingaleLevel===this.config.martingaleLevels&&
-    batch.martingaleLevel>0&&!batch.detached){
+    batch.martingaleLevel>0&&!batch.detached&&batch.orders.length===batch.clickCount){
     batch.terminalCycleConsumed=true;
     batch.progressionApplied=true;
     this.martingaleLevel=0;

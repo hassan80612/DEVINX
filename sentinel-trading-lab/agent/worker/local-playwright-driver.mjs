@@ -1735,7 +1735,8 @@ export class LocalPlaywrightDriver{
         const strategyActiveCount=Math.max(0,Number(strategySummary.activeCount??strategyConfluence.activeCount??0));
         const strategyCallPct=Number.isFinite(Number(strategySummary.callPct))?Number(strategySummary.callPct):50;
         const strategyPutPct=Number.isFinite(Number(strategySummary.putPct))?Number(strategySummary.putPct):50;
-        const executionPlan=planner[String(Math.round(duration/1000))]||planner['30']||null;
+        // A missing 1m/2m/5m plan must never silently be shown as 30s.
+        const executionPlan=planner[String(Math.round(duration/1000))]||null;
         const generalStrictSide=String(generalConsensus.side||'AGUARDAR').toUpperCase(),generalLeanSide=String(generalConsensus.leanSide||generalStrictSide||'AGUARDAR').toUpperCase(),generalState=String(generalConsensus.state||'FORMANDO').toUpperCase();
         const generalCall=Number.isFinite(Number(generalConsensus.displayCallPct))?Number(generalConsensus.displayCallPct):Number.isFinite(Number(generalConsensus.callScore))?Number(generalConsensus.callScore):null;
         const generalPut=Number.isFinite(Number(generalConsensus.displayPutPct))?Number(generalConsensus.displayPutPct):Number.isFinite(Number(generalConsensus.putScore))?Number(generalConsensus.putScore):null;

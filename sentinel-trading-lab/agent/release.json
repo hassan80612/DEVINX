@@ -1,6 +1,6 @@
 {
-  "version": "13.9.74",
-  "build": "13.9.73-surgical-modes-2m5m-broker-stake-rev1",
+  "version": "13.9.75",
+  "build": "13.9.75-batched-martingale-retraction-expiry-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.73"
+  "publicVersion": "13.9.75"
 }

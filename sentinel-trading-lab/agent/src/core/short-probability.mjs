@@ -47,11 +47,20 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  }
  if(span<29||gaps>1||!(quadratic>=0))return wait('incomplete-recent-price-path');
  const r30=logs.find(x=>x.seconds===30).value;
- const instant=logs.find(x=>x.seconds===5)||logs.find(x=>x.seconds===3);
+ const five=logs.find(x=>x.seconds===5),three=logs.find(x=>x.seconds===3);
+ const instant=five||three;
  const contrary=instant&&Math.sign(instant.value)!==Math.sign(r30)&&Math.abs(instant.value)>1e-9;
  const adjusted=driftPerSecond*(contrary?.55:1);
  // Noise and finite-sample shrinkage avoid treating a clean-looking trend as certainty.
  const volPerRootSec=Math.max(Math.sqrt(quadratic/span),Math.abs(r30)/Math.sqrt(30)*.3,1e-8);
+ // Require TWO independently observed fast windows opposing the 30s trend;
+ // filter minor one-tick noise rather than assuming a confirmed reversal.
+ const fastReversalAgainst30s=!!(five&&three&&r30!==0&&
+   Math.sign(five.value)===Math.sign(three.value)&&
+   Math.sign(five.value)===-Math.sign(r30)&&
+   Math.abs(five.value)>=volPerRootSec*Math.sqrt(5)*.55);
+ const trendSide=r30>0?'CALL':r30<0?'PUT':null;
+ const fastSide=five?.value>0?'CALL':five?.value<0?'PUT':null;
  const rawZ=adjusted*h/(volPerRootSec*Math.sqrt(h));
  const shrunkZ=clamp(rawZ*.27,-.65,.65);
  const pCall=clamp(sigmoid(1.5*shrunkZ),.275,.725),pPut=1-pCall;
@@ -64,5 +73,6 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  const side=pCall>threshold?'CALL':pPut>threshold?'PUT':null;
  return {ready:side!==null,side,reason:side?'preliminary-short-probability':'no-preliminary-directional-advantage',
   pCall,pPut,threshold,horizonSeconds:h,historySeconds:Math.round(span),quoteCount:recent.length,
-  source:'parametric-unvalidated',calibrated:false,driftPerSecond,volPerRootSec};
+  source:'parametric-unvalidated',calibrated:false,driftPerSecond,volPerRootSec,
+  fastReversalAgainst30s,trendSide,fastSide};
 }

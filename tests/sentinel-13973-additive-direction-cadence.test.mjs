@@ -140,3 +140,63 @@ test('fixed-mode martingale does not reset on a broker settlement delayed beyond
  x.setTime(10000);x.bot.pulse();await x.bot.inflight;
  assert.equal(x.calls.length,3,'next fresh cadence uses 2 clicks after confirmed loss');
 });
+
+test('nine sequential martingale clicks finish within bounded batch time',async()=>{
+ const x=fixture();x.c.durationMs=30000;
+ x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
+ await x.bot.start();x.bot.martingaleLevel=2;
+ const old=x.bot.driver.execute;let step=0;
+ x.bot.driver.execute=async(p,order)=>{x.setTime((++step)*350);return old(p,order)};
+ x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,9);
+ assert.equal(x.calls[0].at,START+350,'first click still punctual');
+ assert.equal(x.calls.at(-1).at,START+3150,'last click fits bounded window');
+ assert.equal(x.bot.enabled,true);
+});
+test('a first martingale click arriving late never starts the batch',async()=>{
+ const x=fixture();x.c.durationMs=30000;
+ x.bot.configure({directionMode:'put',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
+ await x.bot.start();x.bot.martingaleLevel=2;
+ x.bot.driver.execute=async(_,order)=>{x.setTime(1100);assert.equal(order.isValid(),false);throw Object.assign(Error('late first'),{beforeClick:true})};
+ x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,0);
+ assert.equal(x.bot.enabled,true);
+});
+test('partial terminal martingale cannot reset its stage until fully executed',async()=>{
+ const x=fixture();x.c.durationMs=30000;
+ x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
+ await x.bot.start();x.bot.martingaleLevel=2;
+ const old=x.bot.driver.execute;let step=0;
+ x.bot.driver.execute=async(p,o)=>{x.setTime((++step)*700);if(!o.isValid())throw Object.assign(Error('batch over'),{beforeClick:true});return old(p,o)};
+ x.bot.pulse();await x.bot.inflight;
+ assert.ok(x.calls.length>0&&x.calls.length<9);
+ assert.equal(x.bot.martingaleLevel,2);
+});
+test('missing broker settlement does not indefinitely freeze fixed-direction entries',async()=>{
+ const x=fixture();x.c.durationMs=5000;
+ x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleMultiplier:2,martingaleLevels:3});
+ await x.bot.start();x.bot.pulse();await x.bot.inflight;
+ x.setTime(5100);x.bot.watch();assert.ok(x.bot.pending,'broker-close grace stays in effect');
+ x.setTime(7600);x.bot.watch();
+ assert.equal(x.bot.pending,null);
+ assert.equal(x.bot.enabled,true);
+ assert.equal(x.bot.unresolvedBatches.size,1);
+ assert.equal(x.bot.nextClicks(),1,'unknown outcome cannot manufacture martingale loss');
+ x.setTime(10000);x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,2,'fresh next slot resumes; missed slot never repeats');
+});
+test('30s forecast reference cannot reset selected duration through update or restart',()=>{
+ const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+ for(const duration of [60000,120000,300000]){
+  rt.patchSettings({orderDurationMs:duration},'test');
+  rt.patchSettings({forecastHorizonSeconds:30},'test');
+  assert.equal(rt.settings.orderDurationMs,duration);
+  const restored=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+  restored.restore({settings:{...rt.settings}});
+  assert.equal(restored.settings.orderDurationMs,duration);
+ }
+ const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+ assert.match(worker,/let stateSaveQueue=Promise\.resolve\(\)/);
+ const overlay=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(overlay,/planner\['30'\]\|\|null/);
+});
