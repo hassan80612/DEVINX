@@ -71,7 +71,8 @@ test('no new broker network queries, repeated UI scan, or duration-change blocki
 
 test('cosmetic market-card changes do not force urgent broker UI renders',()=>{
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
- const section=worker.slice(worker.indexOf('const overlayTimingKey='),worker.indexOf('overlayUpdates.publish('));
+ const start=worker.indexOf('overlayTimingKey=[');
+ const section=worker.slice(start,worker.indexOf('overlayUpdates.publish(',start));
  assert.match(section,/const overlayActionKey=/);
  assert.match(section,/const urgentOverlay=overlayActionKey!==lastOverlayActionKey/);
  assert.doesNotMatch(section,/const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey/);
