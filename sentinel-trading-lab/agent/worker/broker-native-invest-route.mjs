@@ -4,6 +4,16 @@ export function armNativeInvestRoute(){
  window.__sentinelNativeRouteCleanup?.();
  const state={stage:0,steps:[],lastAt:Date.now(),swallowClick:false};
  window.__sentinelNativeRoute=state;
+ const showProgress=message=>{
+  // Local display only; no agent requests, timers, or market reads.
+  const panel=document.getElementById('sentinel-trading-overlay-host')?.shadowRoot?.getElementById('sentinel-trading-overlay');
+  if(!panel)return;
+  panel.dataset.nativeMapStatus=message;
+  panel.dataset.nativeMapTone='pending';
+  const node=panel.querySelector('[data-sentinel-native-map-status]');
+  if(node){node.textContent=message;node.setAttribute('data-state','pending');}
+ };
+ showProgress('MAPEANDO 0/3 · Clique em Invest na corretora.');
  const sane=el=>{
   if(!el?.tagName||!el?.getBoundingClientRect||el.closest?.('#sentinel-trading-overlay-host'))return false;
   const r=el.getBoundingClientRect(),cs=getComputedStyle(el);
@@ -74,6 +84,9 @@ export function armNativeInvestRoute(){
   const step=state.stage===0?'open':state.stage===1?'multiply':'divide';
   state.steps.push({...target,step});
   state.stage++;state.lastAt=Date.now();
+  showProgress(state.stage===1?'MAPEANDO 1/3 · Invest registrado. Clique em ×.':
+    state.stage===2?'MAPEANDO 2/3 · × registrado. Clique em ÷.':
+    'MAPEANDO 3/3 · Invest, × e ÷ capturados. Volte e clique Salvar caminho.');
   if(step!=='open'){
    state.swallowClick=true;ev.preventDefault();ev.stopImmediatePropagation();
   }

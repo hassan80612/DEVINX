@@ -120,3 +120,17 @@ test('native Invest route maps opener, multiply and divide with no broker reques
  assert.match(text,/pointerdown/);
  assert.match(text,/state\.stage===3/);
 });
+
+test('native Invest mapping reports each captured control persistently and never discards partial mapping',()=>{
+ const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const route=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-invest-route.mjs',import.meta.url),'utf8');
+ assert.match(driver,/data-sentinel-native-map-status/);
+ assert.match(driver,/data-sentinel-native-map="status"/);
+ assert.match(driver,/el\.dataset\.nativeMapStatus/);
+ assert.match(driver,/reconcile\(el,template\.content\);[\s\S]*?mappingStatus\.textContent=el\.dataset\.nativeMapStatus/);
+ assert.match(driver,/NÃO SALVO · '[+]count[+]'\/3 capturados/);
+ assert.match(driver,/if\(complete\.length!==1\)\{[\s\S]*?return\{ok:false,step:count/);
+ assert.match(route,/MAPEANDO 1\/3/);
+ assert.match(route,/MAPEANDO 2\/3/);
+ assert.match(route,/MAPEANDO 3\/3/);
+});

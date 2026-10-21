@@ -1381,16 +1381,22 @@ export class LocalPlaywrightDriver{
       return{ok:true,message:'Na corretora: clique em Invest, depois × e depois ÷. Volte e use Salvar caminho.'};
     }
     if(action==='save'){
-      const complete=[];
+      const complete=[],progress=[];
       for(const frame of frames){
         const found=await frame.evaluate(readNativeInvestRoute).catch(()=>null);
+        if(found)progress.push(Math.min(3,Math.max(0,Number(found.step)||0)));
         if(found?.complete&&found.steps?.length===3){
           let origin;try{origin=new URL(frame.url()).origin}catch{continue}
           complete.push({origin,steps:found.steps});
         }
       }
+      if(complete.length!==1){
+        const count=progress.length?Math.max(...progress):0;
+        const missing=count===0?'Invest':count===1?'×':count===2?'÷':'um controle válido';
+        // Leave the mapping armed so the user can finish it without restarting.
+        return{ok:false,step:count,message:'NÃO SALVO · '+count+'/3 capturados. Falta '+missing+'. Complete Invest → × → ÷ e salve novamente.'};
+      }
       for(const frame of frames)await frame.evaluate(clearNativeInvestRoute).catch(()=>{});
-      if(complete.length!==1)throw Error('Caminho incompleto. Faça Invest → × → ÷ nessa ordem antes de salvar.');
       const data={version:2,origin:complete[0].origin,steps:complete[0].steps};
       const p=resolve(this.dataDir,'..','broker-native-invest-controls.json');
       if(!this.nativeMapCache){
@@ -1407,10 +1413,23 @@ export class LocalPlaywrightDriver{
         try{this.nativeMapCache=JSON.parse(await readFile(resolve(this.dataDir,'..','broker-native-invest-controls.json'),'utf8'))}catch{this.nativeMapCache={}}
       }
       const entry=this.nativeMapCache?.[provider];
-      if(entry?.version!==2||!Array.isArray(entry.steps)||entry.steps.length!==3||
-        entry.steps[0].step!=='open'||entry.steps[1].step!=='multiply'||entry.steps[2].step!=='divide')
-        throw Error('Primeiro mapeie o caminho completo: Invest → × → ÷.');
-      if(action==='status')return{ok:true,mapped:true,message:'Caminho completo salvo para esta corretora.'};
+      const saved=entry?.version===2&&Array.isArray(entry.steps)&&entry.steps.length===3&&
+        entry.steps[0].step==='open'&&entry.steps[1].step==='multiply'&&entry.steps[2].step==='divide';
+      if(action==='status'){
+        const stages=[];
+        for(const frame of frames){
+          const read=await frame.evaluate(readNativeInvestRoute).catch(()=>null);
+          if(read)stages.push(Math.min(3,Math.max(0,Number(read.step)||0)));
+        }
+        const stage=stages.length?Math.max(...stages):0;
+        if(stage>0)return{ok:true,mapped:Boolean(saved),step:stage,message:stage===3?
+          'CAPTURADO 3/3 · Clique Salvar caminho para gravar no Agent.':
+          'EM MAPEAMENTO '+stage+'/3 · Falta '+(stage===1?'×':'÷')+' e depois Salvar caminho.'};
+        return{ok:true,mapped:Boolean(saved),message:saved?
+          'SALVO NO AGENT · Invest → × → ÷. Ainda não significa teste aprovado.':
+          'NÃO MAPEADO · Nenhum caminho completo salvo para esta corretora.'};
+      }
+      if(!saved)throw Error('Caminho ainda não salvo. Clique Mapear caminho, depois Invest → × → ÷, e finalmente Salvar caminho.');
       // Test native route only from a user command with bot OFF.
       const candidates=frames.filter(frame=>{try{return new URL(frame.url()).origin===entry.origin}catch{return false}});
       const steps=entry.steps,matched=[];
@@ -1904,12 +1923,32 @@ export class LocalPlaywrightDriver{
           const run=async payload=>{
             const msg=el.querySelector('[data-sentinel-control-msg]');if(msg)msg.textContent='Aplicando…';
             const botAction=String(payload.action||'').startsWith('executor-');
+            const nativeAction=payload.action==='native-invest-map',nativeMode=String(payload.mode||'');
+            const showNative=(value,tone='pending')=>{
+              if(!nativeAction)return;
+              el.dataset.nativeMapStatus=String(value||'');
+              el.dataset.nativeMapTone=tone;
+              const target=el.querySelector('[data-sentinel-native-map-status]');
+              if(target){target.textContent=el.dataset.nativeMapStatus;target.dataset.state=tone;}
+            };
             const showBot=text=>{if(!botAction)return;el.dataset.executorActionMessage=text;el.dataset.executorActionAt=String(Date.now());const target=el.querySelector('[data-sentinel-executor-action-msg]');if(target)target.textContent=text;};
+            if(nativeAction)showNative(nativeMode==='arm'?'MAPEANDO 0/3 · Clique em Invest na corretora.':
+              nativeMode==='save'?'Conferindo caminho Invest → × → ÷...':
+              nativeMode==='test'?'TESTANDO · Verificando se o Invest volta ao valor original...':'Consultando status...');
             showBot('Aplicando…');
             try{
               if(typeof window.__sentinelOverlayAction!=='function')throw Error('Conexão com o Agent indisponível. Reconecte a corretora pelo Agent.');
-              const res=await window.__sentinelOverlayAction(payload);if(msg)msg.textContent=res?.message||'Aplicado';showBot(res?.message||'Aplicado');
-            }catch(e){const text='Erro: '+String(e?.message||e);if(msg)msg.textContent=text;showBot(text);}
+              const res=await window.__sentinelOverlayAction(payload);
+              if(nativeAction&&res?.ok===false){showNative(res.message||'Mapeamento não confirmado','error');return;}
+              if(msg)msg.textContent=res?.message||'Aplicado';
+              if(nativeAction)showNative(res?.message||'Ação concluída',nativeMode==='test'?'success':nativeMode==='save'?'saved':nativeMode==='arm'?'pending':'info');
+              showBot(res?.message||'Aplicado');
+            }catch(e){
+              const text='Erro: '+String(e?.message||e);
+              if(msg)msg.textContent=text;
+              if(nativeAction)showNative(text,'error');
+              showBot(text);
+            }
           };
           el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))el.dataset.selectLock='1'},true);
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
@@ -2063,9 +2102,10 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;gap:4px;align-items:center">
                 <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
                 <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
-                <button data-sentinel-native-map="arm" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Mapear caminho</button><button data-sentinel-native-map="save" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Salvar caminho</button><button data-sentinel-native-map="test" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Testar caminho</button><button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
+                <button data-sentinel-native-map="arm" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Mapear caminho</button><button data-sentinel-native-map="save" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Salvar caminho</button><button data-sentinel-native-map="test" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Testar caminho</button><button data-sentinel-native-map="status" style="padding:6px 9px;border:1px solid ${panelBorder};border-radius:7px;background:rgba(215,182,93,.12);color:${goldSoft};font-size:10px;cursor:pointer">Ver status</button><button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
+            <div data-sentinel-native-map-status role="status" aria-live="polite" style="margin:5px 0;padding:7px 10px;border:1px solid ${panelBorder};border-radius:7px;font-size:11px;font-weight:750;line-height:1.35;color:${ink};background:${fieldBg}">MAPEAMENTO INVEST · Sem confirmação nesta sessão. Clique Ver status para consultar.</div>
             <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:9px;align-items:end;padding:9px 11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
                 <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
@@ -2335,6 +2375,11 @@ export class LocalPlaywrightDriver{
           while(parent.childNodes.length>nextChildren.length)parent.lastChild.remove();
         };
         reconcile(el,template.content);
+        const mappingStatus=el.querySelector('[data-sentinel-native-map-status]');
+        if(mappingStatus){
+          mappingStatus.textContent=el.dataset.nativeMapStatus||'MAPEAMENTO INVEST · Sem confirmação nesta sessão. Clique Ver status para consultar.';
+          mappingStatus.dataset.state=el.dataset.nativeMapTone||'info';
+        }
         const executorActionMsg=el.querySelector('[data-sentinel-executor-action-msg]');
         if(executorActionMsg)executorActionMsg.textContent=Date.now()-Number(el.dataset.executorActionAt||0)<5000?el.dataset.executorActionMessage||'':'';
         // Clock updates in the overlay DOM without re-running the motor,
