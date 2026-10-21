@@ -61,7 +61,15 @@ export function stageInvestMapping(){
   if(el.getAttribute('aria-readonly')==='true')return;
   const rect=el.getBoundingClientRect(),style=getComputedStyle(el);
   if(rect.width<20||rect.height<10||style.display==='none'||style.visibility==='hidden')return;
-  const selector=stableInvestSelector(el);
+  const quote=v=>JSON.stringify(String(v));
+  let selector=null;
+  for(const [attr,v] of [['id',el.id],['data-testid',el.getAttribute('data-testid')],
+    ['data-test',el.getAttribute('data-test')],['name',el.name],
+    ['aria-label',el.getAttribute('aria-label')]]){
+    if(!v||String(v).length>120)continue;
+    const one='['+attr+'='+quote(v)+']';
+    try{if(document.querySelectorAll(one).length===1){selector=one;break}}catch{}
+  }
   if(!selector)return;
   window.__sentinelInvestSelection={selector,at:Date.now()};
   document.removeEventListener('click',capture,true);
@@ -74,8 +82,20 @@ export function stageInvestMapping(){
 export function collectedInvestMapping(){
  const selected=window.__sentinelInvestSelection;
  if(!selected||!selected.selector||Date.now()-selected.at>120000)return null;
- const info=findBrokerInvestInput({marker:'verify-mapped',mappedSelector:selected.selector});
- return info?.count===1&&info?.selector?{selector:selected.selector,value:info.value}:null;
+ const found=[...document.querySelectorAll(selected.selector)];
+ if(found.length!==1)return null;
+ const el=found[0];
+ if(el.disabled||el.readOnly||el.getAttribute('aria-readonly')==='true'||
+   el.closest('[inert],[aria-hidden="true"],#sentinel-trading-overlay-host'))return null;
+ const rect=el.getBoundingClientRect(),style=getComputedStyle(el);
+ if(rect.width<20||rect.height<10||style.display==='none'||style.visibility==='hidden')return null;
+ let raw=String(el.value??el.textContent??'').trim().replace(/[\s\u00a0]/g,'').replace(/^(R\$|US\$|\$|€|£)/,'');
+ if(!raw||!/^[0-9][0-9.,]*$/.test(raw))return null;
+ const comma=raw.lastIndexOf(','),dot=raw.lastIndexOf('.');
+ if(comma>=0&&dot>=0)raw=comma>dot?raw.replace(/\./g,'').replace(',','.'):raw.replace(/,/g,'');
+ else if(comma>=0)raw=raw.replace(',','.');
+ const amount=Number(raw);
+ return Number.isFinite(amount)&&amount>0&&amount<=1000000?{selector:selected.selector,value:amount}:null;
 }
 
 export function stopInvestMapping(){
