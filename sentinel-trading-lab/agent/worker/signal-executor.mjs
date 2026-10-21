@@ -34,7 +34,7 @@ export class SignalExecutor{
  constructor({driver,context,clock=Date.now}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
-  this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;
+  this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;
  }
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
@@ -493,9 +493,14 @@ export class SignalExecutor{
   if(Number(event.exitAt)>p.at){
    const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;
    p.exitAt=Number(event.exitAt);
-   if(mismatch&&!batch.detached){
-    this.hardHoldReason='expiração divergente · confira a corretora';this.suspensionReason=this.hardHoldReason;
-    this.message='Ligado · suspenso por segurança: '+this.suspensionReason;
+   if(mismatch){
+    // Broker expiry mismatch is diagnostic, never an extra CALL/PUT gate.
+    // Keep the broker's actual settlement timestamp and never touch its UI.
+    const clickedAt=Number(p.clickedAt??p.at);
+    p.brokerExpiryMismatchMs=Number(event.exitAt)-(clickedAt+p.durationMs);
+    this.lastBrokerExpiryMismatch={expectedDurationMs:p.durationMs,
+      reportedExitAt:Number(event.exitAt),reportedDurationFromClickMs:Number(event.exitAt)-clickedAt,
+      deltaMs:p.brokerExpiryMismatchMs,at:this.clock()};
    }
   }
   if(num(event.entryPrice)&&Number(event.entryPrice)>0)p.entryPrice=Number(event.entryPrice);
@@ -588,6 +593,6 @@ export class SignalExecutor{
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
  nextAmount(){return money(this.config.amount*this.nextClicks());}
  riskNet(balance=this.balanceRisk.view(this.clock())){return Math.min(this.net,this.initialBalance!=null&&balance.source==='broker'?balance.net:this.net)-this.unresolvedExposure();}
- status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
+ status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,lastBrokerExpiryMismatch:this.lastBrokerExpiryMismatch,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
   unresolvedDetail:this.unresolvedDetail(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
 }

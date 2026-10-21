@@ -707,7 +707,9 @@ export class LocalPlaywrightDriver{
       const startupUrl=String(s.page.url()||'');
       await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
       if(!startupUrl.includes(cfg.domain)||!/traderoom|platform|trade/i.test(startupUrl))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
-      else await s.page.reload({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+      // A restored traderoom already has the user's native expiry selection.
+      // Reloading it merely to attach Sentinel can reset broker duration to 30s.
+      // Preserve the broker page and use the existing passive network observer.
       await this.installBridge(s.page,provider).catch(()=>{});
       await sleep(180);
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:'background-session',background:true,updatedAt:nowIso()});

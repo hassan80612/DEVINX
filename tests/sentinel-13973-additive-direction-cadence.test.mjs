@@ -200,3 +200,24 @@ test('30s forecast reference cannot reset selected duration through update or re
  const overlay=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(overlay,/planner\['30'\]\|\|null/);
 });
+
+test('broker reports 30s on selected 60s: no expiry hard stop or auto-change of analyst duration',async()=>{
+ const x=fixture();x.c.durationMs=60000;x.bot.configure({directionMode:'call'});await x.bot.start();
+ const oldExecute=x.bot.driver.execute;
+ x.bot.driver.execute=async(p,order)=>({...await oldExecute(p,order),exitAt:START+30000});
+ x.bot.pulse();await x.bot.inflight;
+ assert.equal(x.calls.length,1);
+ assert.equal(x.bot.enabled,true);
+ assert.equal(x.bot.hardHoldReason,null);
+ assert.equal(x.bot.suspensionReason,null);
+ assert.equal(x.c.durationMs,60000,'broker expiry must not modify user-selected duration');
+ assert.equal(x.bot.status().lastBrokerExpiryMismatch.deltaMs,-30000);
+ assert.equal(x.bot.pending.orders[0].exitAt,START+30000,'actual broker exit remains tracked');
+});
+test('restored background traderoom never reloads and resets broker expiry',()=>{
+ const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const branch=source.slice(source.indexOf('async launchBackground(provider'),source.indexOf('async attachAutomation(provider'));
+ assert.ok(branch.length>500);
+ assert.ok(!branch.includes('.reload('),'already-open broker page must never be reloaded by attach');
+ assert.ok(branch.includes('if(!startupUrl.includes(cfg.domain)'));
+});
