@@ -566,7 +566,7 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
  const {t,language}=useSentinelLocale();
  const p=account?.profile||{};
  const access=p.role==='master'||p.access_active===true;
- const expiry=p.access_expires_at?new Date(p.access_expires_at).toLocaleDateString(language==='en'?'en-US':'pt-BR'):'—';
+ const expiry=p.access_expires_at?new Date(p.access_expires_at).toLocaleDateString(language==='en'?'en-US':'pt-BR'):(language==='en'?'Permanent':'Permanente');
  return <div className="grid">
    <section className="card span12">
      <div className="split"><h3>{t('Minha conta Sentinel')}</h3><Pill tone={access?'good':'bad'}>{access?t('Ativa'):t('Acesso inativo')}</Pill></div>
