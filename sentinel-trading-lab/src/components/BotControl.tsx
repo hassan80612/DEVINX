@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['amount','Valor por clique (igual à corretora)','0.01'],['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleMultiplier','Multiplicador de cliques (2 ou 3)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
+const fields=[['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleMultiplier','Multiplicador de cliques (2 ou 3)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
@@ -87,7 +87,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    </div>
    <p role="status">{message||t(bot.message||'Desligado')}{bot.pending?' · '+bot.pending.side+' · '+t('Entrada em andamento'):''}</p>
    <p className="muted">{t(bot.brokerBalance?'Saldo recebido':'Saldo indisponível')}: {bot.brokerBalance?Number(bot.brokerBalance.amount).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
-   <small className="muted">{t('Ajuste manualmente valor e duração na corretora. O bot só clica CALL/PUT. Cada clique abre uma operação com o mesmo valor. Parar zera a sessão do bot e impede novos cliques, mas não cancela ordens que a corretora já abriu.')}</small>
+   <small className="muted">{t('O valor por clique é lido diretamente da corretora ao iniciar e a cada entrada. Ajuste a duração na corretora conforme o analista. Parar impede novas entradas, mas não cancela ordens já abertas.')}</small>
    {!online&&<p role="status">{t('Agent do PC offline. Abra o Agent para enviar comandos.')}</p>}
   </>}
  </section>;
