@@ -20,12 +20,9 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   setDraft(old=>Object.fromEntries(fields.map(([key])=>[key,dirty.current.has(key)?old[key]??'':String(key==='martingaleEnabled'?config[key]?1:0:config[key]??0)])));
  },[configKey]);
  const mode=String(bot?.config?.directionMode||'automatic');
- const interval=Number(bot?.config?.intervalMs||30000);
- const configureSchedule=async(key:'directionMode'|'intervalMs',value:string)=>{
-  if(bot?.enabled||bot?.arming){setMessage(t('Pare o bot antes de alterar o modo.'));return;}
-  if(!online)return;
-  const patch=key==='directionMode'?{directionMode:value}:{intervalMs:Number(value)};
-  try{await act('executor/config',{patch});setMessage(t('Configuração do bot aplicada'));}
+ const changeDirection=async(value:string)=>{
+  if(!online||bot?.arming)return;
+  try{await act('executor/config',{patch:{directionMode:value}});setMessage(t('Modo alterado'));}
   catch(error){setMessage(error instanceof Error?error.message:String(error));}
  };
  const run=async(action:string)=>{
@@ -60,19 +57,13 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    {!tripleReady&&current&&<p role="status">{t('Atualize o Agent para configurar martingale triplo; esta versão aceita apenas o multiplicador anterior.')}</p>}
    <div className="botControlFields">
      <label>{t('Modo do bot')}<select aria-label={t('Modo do bot')} value={mode}
-       disabled={!!pending||bot.arming||bot.enabled||!current}
-       onChange={e=>void configureSchedule('directionMode',e.target.value)}>
+       disabled={!!pending||bot.arming||!current}
+       onChange={e=>void changeDirection(e.target.value)}>
        <option value="automatic">{t('Automático')}</option>
        <option value="call">{t('Somente CALL')}</option>
        <option value="put">{t('Somente PUT')}</option>
      </select></label>
-     {mode!=='automatic'&&<label>{t('Intervalo entre entradas')}
-       <select aria-label={t('Intervalo entre entradas')} value={interval}
-        disabled={!!pending||bot.arming||bot.enabled||!current}
-        onChange={e=>void configureSchedule('intervalMs',e.target.value)}>
-        {[5,10,15,30,60,120,300].map(x=><option key={x} value={x*1000}>{x>=60?x/60+' min':x+'s'}</option>)}
-       </select>
-     </label>}
+     {mode!=='automatic'&&<small className="muted">{t('Segue o tempo escolhido no analista.')}</small>}
    </div>
    <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} max={key==='martingaleLevels'?3:key==='martingaleMultiplier'?3:key==='maxConsecutiveLosses'?50:undefined} min={key==='martingaleMultiplier'?2:0} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current||(key==='martingaleMultiplier'&&!tripleReady)} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
    <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
