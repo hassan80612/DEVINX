@@ -821,7 +821,7 @@ export class DemoTradingRuntime{
       // Explicit 5s–1m operation expiries. The shared 30s chart reference
       // does not override the holding period selected by the user.
       if(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')&&
-        ![5000,10000,15000,30000,60000].includes(Number(patch.orderDurationMs)))
+        ![5000,10000,15000,30000,60000,120000,300000].includes(Number(patch.orderDurationMs)))
         throw new Error('invalid_short_operation_duration');
       patch={...patch,forecastMode:'continuous',
         ...(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')?{forecastHorizonSeconds:30}:{})};
