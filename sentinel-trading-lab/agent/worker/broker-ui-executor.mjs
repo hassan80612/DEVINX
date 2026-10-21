@@ -218,10 +218,8 @@ export class BrokerUiExecutor{
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
-   // Use the amount currently visible in the BROKER at the moment of entry;
-   // this one lightweight DOM read runs only at physical click, never per tick.
-   const currentStake=await c.frame.evaluate(readBrokerTradeStake).catch(()=>null);
-   if(Number(currentStake)>0){try{order.useBrokerStake?.(Number(currentStake));}catch(e){throw errorBefore(String(e?.message||e));}}
+   // No stake DOM roundtrip on the critical click path. Actual stake changes
+   // arrive in the same existing native order packet and update the ledger.
    this.attempt=attempt;
    timer=setTimeout(()=>{
     timeoutResolve({pending:true,accepted:false,requestId:attempt.requestId,localId:order.id,
