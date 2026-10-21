@@ -157,7 +157,7 @@ const livePublishTimer=setInterval(()=>{void publishLiveFrame()},220);
 livePublishTimer.unref?.();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastOverlayProbeKey='',lastPersistAt=0,lastMarketSyncAt=0;
+let lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastOverlayActionKey='',lastOverlayProbeKey='',lastPersistAt=0,lastMarketSyncAt=0;
 const realtimeQuotes=new LatestQuoteScheduler({isBusy:()=>busy,isRunning:()=>runtime.stateName==='running',evaluate:async()=>{
   syncRuntimeMarket();lastMarketSyncAt=Date.now();runtime.requestImmediateEvaluation?.();await loop();
 }});
@@ -467,7 +467,18 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
         a.vnext?.opportunityWindow?.windowStartedAt,
         a.vnext?.opportunityWindow?.windowEndsAt,
         a.vnext?.futureEntryAnchor?.entryTriggeredAt].join('|');
-    const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;
+    // Only an actual CALL/PUT, entry phase or deadline transition may preempt
+    // the page's render cooldown. Preliminary card details are coalesced,
+    // never repeatedly force a full DOM rebuild on the broker's chart.
+    const actionAnchor=a.vnext?.futureEntryAnchor||{};
+    const actionWindow=a.vnext?.opportunityWindow||{};
+    const overlayActionKey=[
+      actionAnchor.side,actionAnchor.phase,actionAnchor.entryTriggeredAt,
+      actionAnchor.entryAt,actionAnchor.exitAt,
+      actionWindow.phase,actionWindow.windowStartedAt,actionWindow.windowEndsAt
+    ].join('|');
+    const urgentOverlay=overlayActionKey!==lastOverlayActionKey;
+    lastOverlayActionKey=overlayActionKey;
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
       lastOverlayAt=Date.now();
