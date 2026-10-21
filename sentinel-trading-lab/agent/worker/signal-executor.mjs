@@ -469,9 +469,10 @@ export class SignalExecutor{
   if(Number(event.exitAt)>p.at){
    const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;
    p.exitAt=Number(event.exitAt);
-   if(mismatch&&!batch.detached){
-    this.hardHoldReason='expiração divergente · confira a corretora';this.suspensionReason=this.hardHoldReason;
-    this.message='Ligado · suspenso por segurança: '+this.suspensionReason;
+   if(mismatch&&!batch.detached&&this.enabled){
+    // Confirmed broker expiration is observed AFTER the click. Reconcile this
+    // specific order using the broker timestamp; keep the bot flowing.
+    this.message='Ligado · vencimento confirmado pela corretora · bot segue ativo';
    }
   }
   if(num(event.entryPrice)&&Number(event.entryPrice)>0)p.entryPrice=Number(event.entryPrice);
