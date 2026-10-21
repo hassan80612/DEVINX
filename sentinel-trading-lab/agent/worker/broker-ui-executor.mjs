@@ -201,7 +201,7 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);const c=await this.controls(provider);const amount=await c.frame.evaluate(readBrokerTradeStake).catch(()=>null);return{ready:true,amount};}
+ async prepare(provider,expected){this.checkContext(provider,expected);const c=await this.controls(provider);const amount=typeof c?.frame?.evaluate==='function'?await c.frame.evaluate(readBrokerTradeStake).catch(()=>null):null;return{ready:true,amount};}
  async execute(provider,order){
   let yes,no,sentYes,sentNo,timer,timeoutResolve;
   const confirmation=new Promise((resolve,reject)=>{yes=resolve;no=reject;});confirmation.catch(()=>{});
@@ -270,9 +270,9 @@ export class BrokerUiExecutor{
    const active=body?.active_id??body?.active;
    // Broker's actual outgoing order is authoritative for accounting, including
    // changes to the trade-size input made after the bot was activated.
-   if(finite(value)&&Number(value)>0)a.order.useBrokerStake?.(Number(value),{confirmed:true});
-   if(!rid||!finite(value)||Math.abs(Number(value)-a.order.amount)>0.000001||
+   if(!rid||!finite(value)||!(Number(value)>0)||
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
+   a.order.useBrokerStake?.(Number(value),{confirmed:true});
    if(account!=null)a.order.accountId=String(account);
    a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;
    this.retiredAttempts=this.retiredAttempts.filter(p=>p.attempt!==a);
