@@ -35,6 +35,31 @@ export function readBrokerTradeStake(){
   const amount=parse(el.textContent);
   if(amount!=null)values.push(amount);
  }
+ // IQ Option / Exnova can render Invest as a custom display with their
+ // own calculator instead of an HTML input. Only inspect small, explicitly
+ // labelled Invest widgets; never mistake coefficient, balance or quick picks.
+ if(!values.length){
+  const scopes=document.querySelectorAll('[data-test*="invest" i],[data-testid*="invest" i],[aria-label*="invest" i],[class*="invest" i]');
+  for(const root of [...scopes].slice(0,35)){
+   if(!visible(root))continue;
+   const rect=root.getBoundingClientRect();
+   if(rect.width>290||rect.height>135)continue;
+   const label=[root.getAttribute('aria-label'),root.getAttribute('data-test'),
+     root.getAttribute('data-testid'),root.className,root.textContent]
+     .filter(x=>typeof x==='string').join(' ').toLowerCase();
+   if(!/\\binvest(?:ment|imento)?\\b/.test(label)||wrong.test(label))continue;
+   const leaves=[root,...root.querySelectorAll('input,[role="spinbutton"],[contenteditable],span,strong,b')];
+   const detected=[];
+   for(const leaf of [...leaves].slice(0,30)){
+    if(!visible(leaf))continue;
+    const raw=String(leaf.value??leaf.textContent??'').trim();
+    if(raw.length>30)continue;
+    const value=parse(raw);
+    if(value!=null)detected.push(value);
+   }
+   if([...new Set(detected)].length===1)values.push(detected[0]);
+  }
+ }
  const distinct=[...new Set(values)];
  return distinct.length===1?distinct[0]:null;
 }

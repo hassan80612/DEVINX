@@ -25,6 +25,8 @@ export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,di
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const symbol=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const money=x=>Math.round(Number(x)*1000000)/1000000;
+// A previously received account balance is NOT proof of today's spendable funds.
+const freshBalance=(b,now)=>b&&Number.isFinite(Number(b.receivedAt))&&Number(b.receivedAt)<=now+2000&&now-Number(b.receivedAt)<=30000;
 export function executorSignal(analysis){
  const a=analysis?.vnext?.futureEntryAnchor;
  if(a?.phase!=='fired'||!['CALL','PUT'].includes(a.side)||!(Number(a.entryTriggeredAt)>0))return null;
@@ -70,6 +72,7 @@ export class SignalExecutor{
   // A stopped bot can be rearmed while older broker orders are still
   // reconciling. Keep that exact batch and its Martingale ledger intact.
   const suspendedBatch=this.pending;
+  let brokerStakeConfirmed=false;
   const c=this.context(),cfg={...this.config};
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
   const broker=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
@@ -92,12 +95,17 @@ export class SignalExecutor{
     const prepared=await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
     const selectedAmount=Number(prepared?.amount);
     if(Number.isFinite(selectedAmount)&&selectedAmount>0){
+      brokerStakeConfirmed=true;
       cfg.amount=money(selectedAmount);this.config.amount=cfg.amount;
     }
    }
    const current=this.context();
    if(!(cfg.amount>0))throw Error('Valor da entrada ainda não identificado na corretora.');
-   if(broker&&cfg.amount>openingBalance)throw Error('Saldo recebido insuficiente para o valor da corretora.');
+   if(broker&&freshBalance(broker,this.clock())&&cfg.amount>openingBalance){
+    if(!brokerStakeConfirmed)
+      throw Error('Invest atual não identificado. Valor salvo no bot pode estar desatualizado; confira o Invest na corretora.');
+    throw Error('Invest confirmado maior que saldo disponível da corretora.');
+   }
    if(generation!==this.generation||!this.sameContext(c,current)||c.durationMs!==current.durationMs||(broker&&current.brokerBalance&&String(broker.accountId)!==String(current.brokerBalance.accountId))||current.state!=='running'||!current.licensed)throw Error('Analista mudou durante a ativação.');
    if(suspendedBatch&&this.pending===suspendedBatch){
     // Do not reset seen signals, pending orders, balance reservations,
@@ -125,7 +133,7 @@ export class SignalExecutor{
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
-   const opening=this.balanceRisk.begin(c.provider);if(opening&&cfg.amount>opening.amount)throw Error('Saldo recebido insuficiente para o valor por entrada.');
+   const opening=this.balanceRisk.begin(c.provider);if(opening&&freshBalance(opening,this.clock())&&cfg.amount>opening.amount)throw Error('Invest confirmado maior que o saldo disponível da corretora.');
    this.initialBalance=opening?.amount??null;
    this.sessionId++;this.net=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
@@ -242,7 +250,7 @@ export class SignalExecutor{
    if(this.config.stopLoss>0&&this.riskNet(balance)<=-this.config.stopLoss)
     this.stop('Bot parado · stop-loss atingido');
    else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
-    !balance.reconciling&&balance.current.amount<this.config.amount)
+    !balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<this.config.amount)
     this.stop('Bot parado · saldo da corretora insuficiente para 1 clique');
    else if(blocker)this.message='Ligado · suspenso por segurança: '+blocker;
    else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
@@ -346,7 +354,7 @@ export class SignalExecutor{
    return;
   }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
-  if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&balance.current.amount<amount){
+  if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<amount){
    this.stop('Bot parado · saldo insuficiente para '+clickCount+' clique(s)');
    return;
   }

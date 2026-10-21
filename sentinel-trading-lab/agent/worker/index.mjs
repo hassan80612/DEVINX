@@ -196,11 +196,12 @@ async function ensureLocalCockpitBroker(provider){
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
   if(action.startsWith('executor-')){if(action!=='executor-stop'&&provider!==activeProvider)throw Error('Selecione a corretora ativa.');return executorAction(action,payload);}
-  if(action==='invest-keypad'){
+  if(action==='native-invest-map'){
     assertLicensedAccess();
     if(provider!==activeProvider)throw Error('Selecione a corretora ativa.');
-    if(executor.enabled||executor.arming||executor.executing||executor.pending)throw Error('Desligue o bot antes de editar o Invest.');
-    return driver.investKeypad(provider,{action:payload.mode,amount:payload.amount,expectedPrevious:payload.expectedPrevious});
+    if(executor.enabled||executor.arming||executor.executing||executor.pending)
+      throw Error('Desligue o bot para mapear os botões × e ÷.');
+    return driver.nativeInvestMap(provider,{kind:payload.kind,action:payload.mode});
   }
   if(!['pause','stop'].includes(action))assertLicensedAccess();
   if(action==='start'){
