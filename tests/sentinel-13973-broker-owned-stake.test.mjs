@@ -68,3 +68,14 @@ test('no new broker network queries, repeated UI scan, or duration-change blocki
  assert.match(broker,/a\.order\.useBrokerStake/);
  assert.doesNotMatch(broker,/setBrokerExpiration|selectExpiration|setBrokerDuration/);
 });
+
+test('cosmetic market-card changes do not force urgent broker UI renders',()=>{
+ const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+ const section=worker.slice(worker.indexOf('const overlayTimingKey='),worker.indexOf('overlayUpdates.publish('));
+ assert.match(section,/const overlayActionKey=/);
+ assert.match(section,/const urgentOverlay=overlayActionKey!==lastOverlayActionKey/);
+ assert.doesNotMatch(section,/const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey/);
+ const scheduler=readFileSync(new URL('../sentinel-trading-lab/agent/worker/latest-overlay-scheduler.mjs',import.meta.url),'utf8');
+ assert.match(scheduler,/minIntervalMs=6000/);
+ assert.match(scheduler,/this.running||!this.pending/);
+});
