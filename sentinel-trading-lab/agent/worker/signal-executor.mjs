@@ -45,6 +45,7 @@ export class SignalExecutor{
   if(this.enabled){
    if(!(next.amount>0))throw Error('Valor por entrada deve ser positivo.');
   }
+  if(this.enabled&&next.directionMode!==this.config.directionMode)throw Error('Pare o bot antes de trocar Automático, CALL e PUT.');
   // Automatic follows qualified signals. CALL/PUT cadence ignores their direction.
   if(next.directionMode!==this.config.directionMode||next.intervalMs!==this.config.intervalMs)this.nextScheduledAt=null;
   this.config=next;
