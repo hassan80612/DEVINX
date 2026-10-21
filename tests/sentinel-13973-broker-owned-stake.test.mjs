@@ -88,9 +88,9 @@ test('removed virtual keyboard and added safe native broker controls with verifi
  assert.doesNotMatch(worker,/action==='invest-keypad'/);
  assert.doesNotMatch(driver,/data-sentinel-invest-keypad-toggle|async investKeypad\(/);
  assert.match(worker,/action==='native-invest-map'/);
- assert.match(driver,/data-sentinel-native-map="arm"/);
- assert.match(driver,/data-sentinel-native-map="save"/);
- assert.match(driver,/data-sentinel-native-map="test"/);
+ assert.doesNotMatch(driver,/data-sentinel-native-map="arm"/);
+ assert.doesNotMatch(driver,/data-sentinel-native-map="save"/);
+ assert.doesNotMatch(driver,/data-sentinel-native-map="test"/);
  assert.match(driver,/broker-native-invest-controls\.json/);
  assert.match(driver,/await frame\.locator\(steps\[0\]\.selector\)\.click/);
  assert.match(driver,/await frame\.locator\(steps\[1\]\.selector\)\.click/);
@@ -124,8 +124,8 @@ test('native Invest route maps opener, multiply and divide with no broker reques
 test('native Invest mapping reports each captured control persistently and never discards partial mapping',()=>{
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const route=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-invest-route.mjs',import.meta.url),'utf8');
- assert.match(driver,/data-sentinel-native-map-status/);
- assert.match(driver,/data-sentinel-native-map="status"/);
+ assert.doesNotMatch(driver,/<div data-sentinel-native-map-status/);
+ assert.doesNotMatch(driver,/data-sentinel-native-map="status"/);
  assert.match(driver,/el\.dataset\.nativeMapStatus/);
  assert.match(driver,/reconcile\(el,template\.content\);[\s\S]*?mappingStatus\.textContent=el\.dataset\.nativeMapStatus/);
  assert.match(driver,/NÃO SALVO · '[+]count[+]'\/3 capturados/);
