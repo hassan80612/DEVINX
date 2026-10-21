@@ -95,3 +95,18 @@ test('Prepaid Kiwify purchase before sign-up grants access only through verified
  assert.match(webhook,/sentinel_kiwify_paid_verified/);
  assert.match(sql,/REVOKE ALL ON FUNCTION sentinel_app\.activate_prepaid_after_registration/);
 });
+
+test('Master lists registered accounts compactly, verifies granted email and hides legacy Agent clutter',()=>{
+ const src=read('sentinel-trading-lab/src/app/console/page.tsx');
+ assert.match(src,/function Master\(/);
+ assert.match(src,/Contas cadastradas/);
+ assert.match(src,/Cadastrados/);
+ assert.match(src,/String\(x\.email\|\|''\)\.trim\(\)\.toLowerCase\(\)===verification\.email/);
+ assert.match(src,/Boolean\(account\.accessActive\)!==verification\.accessActive/);
+ assert.match(src,/LIBERADO E CONFIRMADO/);
+ assert.match(src,/Última consulta/);
+ assert.match(src,/setInterval\(\(\)=>\{if\(document\.visibilityState==='visible'\)void load\(\)\},20000\)/);
+ assert.doesNotMatch(src,/setData\(j\.data\);setMsg\(''\)/);
+ assert.match(src,/Instalações sem conta/);
+ assert.match(src,/details className="card span12"/);
+});

@@ -434,7 +434,7 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
  return <div className="grid">
    <section className="card span12">
      <h3>{t('Escolha sua corretora')}</h3>
-     <p className="muted">{t('O Agent acompanha a conta e o ativo abertos na corretora escolhida. Nenhuma operação é executada automaticamente.')}</p>
+     <p className="muted">{t('O analista acompanha a conta e o ativo da corretora. O bot só executa operações automaticamente quando você o ativa no Agent Windows.')}</p>
      <div className="actions topgap">
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('iq_option')}>{t('Abrir IQ Option')}</button>
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('exnova')}>{t('Abrir Exnova')}</button>
@@ -460,106 +460,269 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
 function Trades({s}:{s:Status}){return <section className="card span12"><div className="split"><h3>Trades / History</h3><div><Pill>{s.trades} trades</Pill> <Pill tone={s.pnl>=0?'good':'bad'}>{money(s.pnl)}</Pill></div></div><TradeTable rows={s.recentTrades}/></section>}
 function Logs({s}:{s:Status}){return <div className="grid"><section className="card span7"><h3><T>Auditoria</T></h3><div className="timeline">{(s.audit||[]).slice(0,20).map((x:any,i:number)=><div className="event" key={i}><time>{tm(x.ts)}</time><div><b>{x.action}</b><span>{x.actorRole} · {x.actorId}</span></div></div>)}</div></section><section className="card span5"><h3><T>Incidentes</T></h3>{(s.incidents||[]).length?(s.incidents||[]).map((x:any,i:number)=><div className="incident" key={i}><Pill tone="bad">{x.severity}</Pill><b>{x.code}</b><span>{x.message}</span></div>):<Empty text="Nenhum incidente registrado"/>}</section></div>}
 
+
 function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
   const[data,setData]=useState<any>(null);
   const[adminBusy,setAdminBusy]=useState(false);
   const[msg,setMsg]=useState('');
   const[email,setEmail]=useState('');
-  
   const[query,setQuery]=useState('');
-  const[onlineOnly,setOnlineOnly]=useState(false);
+  const[filter,setFilter]=useState<'all'|'online'|'released'|'blocked'>('all');
+  const[updatedAt,setUpdatedAt]=useState<number|null>(null);
 
-  const load=useCallback(async()=>{try{const r=await fetch('/api/master',{cache:'no-store'});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_failed');setData(j.data);setMsg('')}catch(e:any){setMsg(String(e?.message||e))}},[]);
-  useEffect(()=>{load();const id=setInterval(load,5000);return()=>clearInterval(id)},[load]);
+  const load=useCallback(async()=>{
+    try{
+      const response=await fetch('/api/master',{cache:'no-store'});
+      const json=await response.json();
+      if(!response.ok||!json.ok)throw new Error(json.error||'Não foi possível consultar a Master.');
+      const snapshot=json.data;
+      if(!snapshot||!Array.isArray(snapshot.accounts))throw new Error('A Master não recebeu a lista de contas do servidor.');
+      setData(snapshot);
+      setUpdatedAt(Date.now());
+      return snapshot;
+    }catch(e:any){
+      setMsg('Não foi possível atualizar a lista: '+String(e?.message||e));
+      return null;
+    }
+  },[]);
+  useEffect(()=>{
+    void load();
+    // Presence comes from the authenticated server snapshot. Never poll while hidden.
+    const id=setInterval(()=>{if(document.visibilityState==='visible')void load()},20000);
+    return()=>clearInterval(id);
+  },[load]);
 
-  const admin=async(payload:any)=>{setAdminBusy(true);setMsg('');try{const r=await fetch('/api/master',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_action_failed');await load();return true}catch(e:any){setMsg(String(e?.message||e));return false}finally{setAdminBusy(false)}};
+  const admin=async(payload:any,verification?:{email:string;accessActive:boolean})=>{
+    if(adminBusy)return false;
+    setAdminBusy(true);
+    setMsg('');
+    try{
+      const response=await fetch('/api/master',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+      const json=await response.json();
+      if(!response.ok||!json.ok)throw new Error(json.error||'A ação não foi confirmada pelo servidor.');
+      const fresh=await load();
+      if(!fresh){
+        setMsg('O comando foi recebido, mas não consegui verificar o resultado na lista. Consulte novamente antes de repetir.');
+        return false;
+      }
+      if(verification){
+        const account=fresh.accounts.find((x:any)=>String(x.email||'').trim().toLowerCase()===verification.email);
+        if(!account){
+          setMsg('Comando recebido, mas a conta '+verification.email+' não aparece na lista. Liberação ainda NÃO CONFIRMADA.');
+          return false;
+        }
+        if(Boolean(account.accessActive)!==verification.accessActive){
+          setMsg('Comando recebido, mas '+verification.email+' continua '+(account.accessActive?'LIBERADO':'SEM ACESSO')+' na consulta. Não considero a ação confirmada.');
+          return false;
+        }
+        setMsg((verification.accessActive?'LIBERADO E CONFIRMADO: ':'BLOQUEADO E CONFIRMADO: ')+verification.email+'. A informação foi conferida no cadastro.');
+      }else{
+        setMsg('Comando recebido. Lista de contas atualizada.');
+      }
+      return true;
+    }catch(e:any){setMsg('Erro ao executar: '+String(e?.message||e));return false}
+    finally{setAdminBusy(false)}
+  };
+  const grantByEmail=async()=>{
+    const clean=email.trim().toLowerCase();
+    if(!clean){setMsg('Informe o e-mail cadastrado.');return}
+    setQuery(clean);setFilter('all');
+    await admin({action:'grant_agent_by_email',value:{email:clean,days:null}},{email:clean,accessActive:true});
+  };
+  const revokeByEmail=async()=>{
+    const clean=email.trim().toLowerCase();
+    if(!clean){setMsg('Informe o e-mail cadastrado.');return}
+    if(!window.confirm('Bloquear o acesso de '+clean+'?'))return;
+    setQuery(clean);setFilter('all');
+    await admin({action:'revoke_agent_by_email',value:{email:clean}},{email:clean,accessActive:false});
+  };
 
-  const grantByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}const ok=await admin({action:'grant_agent_by_email',value:{email:clean,days:null}});if(ok)setMsg('Agent liberado sem vencimento para '+clean+'.')};
-  const revokeByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}if(!window.confirm('Bloquear o Agent desta conta agora?'))return;const ok=await admin({action:'revoke_agent_by_email',value:{email:clean}});if(ok)setMsg('Agent bloqueado para '+clean+'.')};
-  const revokeSessionsByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}if(!window.confirm('Encerrar as sessões web desta conta?'))return;const ok=await admin({action:'revoke_sessions_by_email',value:{email:clean}});if(ok)setMsg('Sessões encerradas para '+clean+'.')};
-
-  const accounts=data?.accounts||[];
-  const devices=accounts.flatMap((x:any)=>x.devices||[]);
-  const onlineNow=data?.onlineNow||[];
-  const summary=data?.summary||{};
+  const accounts:any[]=Array.isArray(data?.accounts)?data.accounts:[];
+  const devices=accounts.flatMap((x:any)=>Array.isArray(x.devices)?x.devices:[]);
   const q=query.trim().toLowerCase();
-  const filteredAccounts=accounts.filter((x:any)=>(!q||String(x.email||'').toLowerCase().includes(q)||String(x.plan||'').toLowerCase().includes(q))&&(!onlineOnly||x.webOnline||x.agentOnline));
+  const onlineCount=accounts.filter((x:any)=>x.webOnline||x.agentOnline).length;
+  const releasedCount=accounts.filter((x:any)=>x.role==='master'||x.accessActive===true).length;
+  const summary=data?.summary||{};
+  const filteredAccounts=accounts.filter((x:any)=>{
+    const match=!q||String(x.email||'').toLowerCase().includes(q)||String(x.plan||'').toLowerCase().includes(q);
+    if(!match)return false;
+    if(filter==='online')return Boolean(x.webOnline||x.agentOnline);
+    if(filter==='released')return x.role==='master'||x.accessActive===true;
+    if(filter==='blocked')return x.role!=='master'&&x.accessActive!==true;
+    return true;
+  }).sort((a:any,b:any)=>{
+    const aOnline=Number(Boolean(a.webOnline||a.agentOnline)),bOnline=Number(Boolean(b.webOnline||b.agentOnline));
+    if(aOnline!==bOnline)return bOnline-aOnline;
+    const aRecent=Date.parse(a.lastWebSeenAt||a.createdAt||'')||0;
+    const bRecent=Date.parse(b.lastWebSeenAt||b.createdAt||'')||0;
+    return bRecent-aRecent;
+  });
+  const pending:any[]=Array.isArray(data?.unpairedDevices)?data.unpairedDevices:[];
+  const recentPending=pending.filter((d:any)=>{
+    const timestamp=Date.parse(d.lastSeenAt||d.heartbeatAt||'');
+    return d.online===true||(Number.isFinite(timestamp)&&Date.now()-timestamp<30*86400000&&timestamp<=Date.now());
+  });
+  const oldPending=pending.length-recentPending.length;
+  const audit:any[]=Array.isArray(data?.audit)?data.audit:[];
+  const onlineNow:any[]=Array.isArray(data?.onlineNow)?data.onlineNow:[];
+
   return <div className="grid">
     <section className="card span12">
-      <div className="split"><div><div className="eyebrow"><T>MASTER PRIVADA</T></div><h3><T>Central administrativa Sentinel</T></h3><p className="muted"><T>Acesso exclusivo da sua conta Master. Controle clientes, licenças do Agent, PCs, sessões e operação remota.</T></p></div><div className="actions"><Pill tone="good"><T>MASTER ACTIVE</T></Pill><button className="secondary" disabled={adminBusy} onClick={load}><T>Atualizar</T></button></div></div>
+      <div className="split">
+        <div><div className="eyebrow">MASTER · SENTINEL</div><h3>Contas e acessos</h3><p className="muted">Clientes cadastrados, liberação do bot e presença em uma única lista.</p></div>
+        <div className="actions"><Pill tone="good">MASTER</Pill><button className="secondary" disabled={adminBusy} onClick={()=>void load()}>Atualizar</button></div>
+      </div>
       <div className="metrics">
-        <Metric label="Contas" value={String(summary.accounts??accounts.length)}/>
-        <Metric label="Acessos Agent" value={String(summary.licensedAccounts??0)}/>
-        <Metric label="Online no site" value={String(summary.webOnline??0)}/>
-        <Metric label="PCs online" value={String(summary.onlineDevices??devices.filter((d:any)=>d.online).length)}/>
+        <Metric label="Cadastrados" value={String(summary.accounts??accounts.length)}/>
+        <Metric label="Com acesso" value={String(releasedCount)}/>
+        <Metric label="Online (WEB/PC)" value={String(onlineCount)}/>
+        <Metric label="PCs online" value={String(devices.filter((d:any)=>d.online).length)}/>
       </div>
-      <div className="masterFilters"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar cliente por e-mail ou plano"/><button className={onlineOnly?'primary':'secondary'} onClick={()=>setOnlineOnly(v=>!v)}>{onlineOnly?'Mostrando online':'Somente online'}</button></div>
-      {msg&&<div className="alert"><b><T>Master:</T></b> {msg}</div>}
-    </section>
-
-    <section className="card span7">
-      <div className="split"><div><div className="eyebrow"><T>LIBERAÇÃO RÁPIDA</T></div><h3><T>Liberar Agent por e-mail</T></h3><p className="muted"><T>A conta precisa existir. Compras confirmadas liberam acesso permanente sem renovação.</T></p></div><Pill tone="good"><T>POR CONTA</T></Pill></div>
-      <div className="formgrid three topgap">
-        <label className="field"><span><T>E-mail da conta</T></span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="cliente@email.com"/></label>
-        <div className="field"><span><T>Licença</T></span><strong><T>Sem vencimento</T></strong></div>
-        <div className="field"><span><T>Ações</T></span><div className="actions"><button className="primary" disabled={adminBusy||!email.trim()} onClick={grantByEmail}><T>Liberar</T></button><button className="secondary" disabled={adminBusy||!email.trim()} onClick={revokeSessionsByEmail}><T>Encerrar sessões</T></button><button className="kill" disabled={adminBusy||!email.trim()} onClick={revokeByEmail}><T>Bloquear</T></button></div></div>
+      <div className="masterFilters">
+        <input aria-label="Buscar e-mail cadastrado" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar qualquer conta por e-mail"/>
+        <div className="actions">
+          {([['all','Todas'],['online','Online'],['released','Liberadas'],['blocked','Sem acesso']] as const).map(([id,label])=>
+            <button key={id} className={filter===id?'primary':'secondary'} onClick={()=>setFilter(id)}>{label}</button>)}
+        </div>
       </div>
+      <p className="muted" style={{margin:'8px 0 0',fontSize:12}}>
+        {data?String(filteredAccounts.length)+' de '+String(accounts.length)+' contas na lista':'Consultando contas...'}
+        {updatedAt?' · Última consulta '+new Date(updatedAt).toLocaleTimeString('pt-BR'):''}
+        {' · Online conforme última presença recebida do servidor'}
+      </p>
+      {msg&&<div className="alert" role="status"><b>Master:</b> {msg}</div>}
     </section>
-
-    <section className="card span5">
-      <div className="split"><div><div className="eyebrow"><T>PRESENÇA</T></div><h3><T>Pessoas online</T></h3></div><Pill tone={onlineNow.length?'good':'neutral'}>{onlineNow.length} agora</Pill></div>
-      <div className="timeline topgap">{onlineNow.slice(0,12).map((x:any)=><div className="event" key={x.id}><time>{x.agentOnline?'PC':x.webOnline?'WEB':'—'}</time><div><b>{x.email}</b><span>{x.agentOnline?'Agent online':x.webOnline?'Painel ativo':'Offline'}{x.lastAgentSeenAt?' · PC '+tm(x.lastAgentSeenAt):''}</span></div></div>)}{!onlineNow.length&&<Empty text="Nenhuma conta ativa agora"/>}</div>
-    </section>
-
-    {filteredAccounts.map((x:any)=><MasterAccount key={x.id} a={x} admin={admin} busy={adminBusy}/>)}
-    {!filteredAccounts.length&&<section className="card span12"><Empty text={accounts.length?'Nenhuma conta corresponde ao filtro.':'Carregando contas da Master...'}/></section>}
-    {(data?.unpairedDevices||[]).length>0&&<section className="card span12"><div className="split"><div><div className="eyebrow"><T>INSTALAÇÕES SEM CONTA</T></div><h3><T>Instalações aguardando conta</T></h3></div><Pill tone="warn">{String(data.unpairedDevices.length)}</Pill></div><div className="timeline topgap">{data.unpairedDevices.map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'PC Sentinel'}</b><span>Agent {d.agentVersion==='13.9.74'?'13.9.73':d.agentVersion||'—'} · aguardando autorização no painel do PC</span></div></div>)}</div></section>}
 
     <section className="card span12">
-      <div className="split"><div><h3><T>Auditoria Master</T></h3><p className="muted"><T>Liberações, bloqueios, alterações e comandos ficam registrados. Senhas e credenciais da corretora não aparecem aqui.</T></p></div><Pill>{String(data?.audit?.length||0)} eventos</Pill></div>
-      <div className="timeline">{(data?.audit||[]).map((x:any)=><div className="event" key={x.id}><time>{tm(x.createdAt)}</time><div><b>{String(x.action).replaceAll('_',' ')}</b><span>{x.targetDeviceId?'PC '+String(x.targetDeviceId).slice(0,8):x.targetAccountId?'Conta '+String(x.targetAccountId).slice(0,8):'Sistema'}</span></div></div>)}</div>
+      <div className="split"><div><div className="eyebrow">LIBERAÇÃO POR E-MAIL</div><h3>Autorizar ou bloquear acesso</h3></div><Pill>Sem vencimento</Pill></div>
+      <div className="masterFilters">
+        <input type="email" aria-label="E-mail do cliente para liberação" value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-mail já cadastrado no Sentinel"/>
+        <div className="actions">
+          <button className="primary" disabled={adminBusy||!email.trim()} onClick={grantByEmail}>Liberar</button>
+          <button className="kill" disabled={adminBusy||!email.trim()} onClick={revokeByEmail}>Bloquear</button>
+        </div>
+      </div>
+      <p className="muted" style={{margin:'7px 0 0',fontSize:12}}>Após a ação, o e-mail será localizado na lista e o estado atualizado será conferido. A confirmação não depende apenas da resposta do botão.</p>
     </section>
-  </div>
+
+    <section className="span12" aria-label="Contas cadastradas">
+      <div className="split" style={{margin:'0 0 8px'}}>
+        <h3 style={{margin:0}}>Contas cadastradas</h3>
+        <Pill>{String(filteredAccounts.length)} exibidas</Pill>
+      </div>
+      <div className="grid" style={{gap:8}}>
+        {filteredAccounts.map((a:any)=><MasterAccount key={a.id} a={a} admin={admin} busy={adminBusy}/>)}
+        {!filteredAccounts.length&&<section className="card span12"><Empty text={accounts.length?'Nenhuma conta corresponde à busca ou ao filtro.':data?'Nenhuma conta foi devolvida pela Master.':'Carregando contas cadastradas...'}/></section>}
+      </div>
+    </section>
+
+    <section className="card span12">
+      <details>
+        <summary style={{cursor:'pointer',fontWeight:700}}>Presença recente · {onlineNow.length} conta(s) informadas online</summary>
+        <div className="timeline topgap">
+          {onlineNow.slice(0,15).map((x:any)=><div className="event" key={x.id}>
+            <time>{x.agentOnline?'PC + WEB':x.webOnline?'WEB':'—'}</time>
+            <div><b>{x.email}</b><span>{x.agentOnline?'Agent conectado':x.webOnline?'Painel ativo':'Sem sinal de presença'}{x.lastAgentSeenAt?' · Último PC '+tm(x.lastAgentSeenAt):''}</span></div>
+          </div>)}
+          {!onlineNow.length&&<Empty text="Nenhuma presença recente informada pelo servidor"/>}
+        </div>
+      </details>
+    </section>
+
+    {pending.length>0&&<section className="card span12">
+      <details>
+        <summary style={{cursor:'pointer',fontWeight:700}}>Instalações sem conta · {recentPending.length} recente(s), {oldPending} antiga(s) ocultas</summary>
+        <p className="muted" style={{fontSize:12}}>Esses registros não são necessariamente clientes cadastrados. Instalações antigas permanecem no banco, mas não ocupam a tela principal.</p>
+        <div className="timeline">
+          {recentPending.slice(0,15).map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'Agent sem conta'}</b><span>Versão {d.agentVersion||'—'} · visto em {d.lastSeenAt?tm(d.lastSeenAt):'data não informada'}</span></div></div>)}
+          {recentPending.length===0&&<Empty text="Nenhuma instalação recente pendente"/>}
+        </div>
+        {oldPending>0&&<details className="topgap"><summary style={{cursor:'pointer'}}>Ver {oldPending} instalação(ões) antigas</summary>
+          <div className="timeline">{pending.filter(d=>!recentPending.includes(d)).slice(0,25).map((d:any)=><div className="event" key={d.id}><time>ANTIGO</time><div><b>{d.displayName||'Agent antigo'}</b><span>{d.agentVersion||'Versão desconhecida'} · {d.lastSeenAt?tm(d.lastSeenAt):'sem atividade recente'}</span></div></div>)}</div>
+        </details>}
+      </details>
+    </section>}
+
+    <section className="card span12">
+      <details>
+        <summary style={{cursor:'pointer',fontWeight:700}}>Auditoria · {audit.length} evento(s) (recolhida)</summary>
+        <div className="timeline topgap">{audit.slice(0,25).map((x:any)=><div className="event" key={x.id}><time>{tm(x.createdAt)}</time><div><b>{String(x.action||'').replaceAll('_',' ')}</b><span>{x.targetDeviceId?'PC '+String(x.targetDeviceId).slice(0,8):x.targetAccountId?'Conta '+String(x.targetAccountId).slice(0,8):'Sistema'}</span></div></div>)}{!audit.length&&<Empty text="Nenhum evento disponível"/>}</div>
+      </details>
+    </section>
+  </div>;
 }
 
 function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
   const[plan,setPlan]=useState(String(a.plan||'free'));
   useEffect(()=>{setPlan(String(a.plan||'free'))},[a.plan]);
   const cmd=(d:any,command:string)=>admin({action:'device_command',accountId:a.id,deviceId:d.id,value:{command}});
-  
-  const grantForever=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:null}});
-  const blockAgent=()=>window.confirm('Bloquear o Agent desta conta?')&&admin({action:'set_agent_access',accountId:a.id,value:{enabled:false,expiresAt:null}});
-  const expiry=a.accessExpiresAt?new Date(a.accessExpiresAt).toLocaleString('pt-BR'):'Sem vencimento';
+  const grantForever=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:null}},
+    {email:String(a.email||'').toLowerCase(),accessActive:true});
+  const blockAgent=()=>window.confirm('Bloquear o acesso desta conta?')&&admin(
+    {action:'set_agent_access',accountId:a.id,value:{enabled:false,expiresAt:null}},
+    {email:String(a.email||'').toLowerCase(),accessActive:false});
+  const expiry=a.accessExpiresAt?new Date(a.accessExpiresAt).toLocaleString('pt-BR'):'Permanente';
+  const online=Boolean(a.webOnline||a.agentOnline);
+  const active=a.role==='master'||a.accessActive===true;
+  const clientDevices:any[]=Array.isArray(a.devices)?a.devices:[];
 
-  return <section className="card span12">
-    <div className="split"><div><div className="eyebrow">{a.role==='master'?'SUA CONTA MASTER':'CONTA CLIENTE'}</div><h3>{a.email}</h3><p className="muted">Criada em {new Date(a.createdAt).toLocaleString('pt-BR')} · {a.sessionCount||0} sessão(ões) ativa(s) · último painel {a.lastWebSeenAt?new Date(a.lastWebSeenAt).toLocaleString('pt-BR'):'—'}</p></div><div className="actions"><Pill tone={a.agentOnline?'good':'neutral'}>{a.agentOnline?'PC ONLINE':'PC OFFLINE'}</Pill><Pill tone={a.webOnline?'good':'neutral'}>{a.webOnline?'WEB ONLINE':'WEB OFFLINE'}</Pill><Pill tone={a.accessActive?'good':'bad'}>{a.role==='master'?'MASTER LIVRE':a.accessActive?'AGENT LIBERADO':'AGENT BLOQUEADO'}</Pill><Pill tone={a.status==='active'?'good':'bad'}>{String(a.status).toUpperCase()}</Pill></div></div>
-
-    <div className="formgrid three">
-      <label className="field"><span><T>Plano</T></span><input value={plan} disabled={a.role==='master'} onChange={e=>setPlan(e.target.value)}/></label>
-      <div className="field"><span><T>Validade do Agent</T></span><div className="row"><span>{a.agentEnabled?'Habilitado':'Desabilitado'}</span><b>{a.role==='master'?'Permanente':expiry}</b></div></div>
-    </div>
-
-    <div className="actions topgap">
-      {a.role!=='master'&&<><button className="secondary" disabled={busy} onClick={grantForever}><T>Liberar sem vencimento</T></button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}><T>Bloquear Agent</T></button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}><T>Salvar plano</T></button></>}
-      <button className="secondary" disabled={busy} onClick={()=>window.confirm('Encerrar as outras sessões desta conta?')&&admin({action:'revoke_sessions',accountId:a.id,value:{}})}><T>Encerrar sessões</T></button>
-    </div>
-
-    <div className="topgap">{(a.devices||[]).map((d:any)=><div className="card" key={d.id}>
-      <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">Agent {d.agentVersion==='13.9.74'?'13.9.73':d.agentVersion||'—'} · {d.lastSeenAt?new Date(d.lastSeenAt).toLocaleString('pt-BR'):'nunca visto'}</div></div><div><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill> <Pill tone={d.status==='active'?'good':'bad'}>{String(d.status).toUpperCase()}</Pill></div></div>
-      <div className="stack topgap"><Row k="Bot" v={String(d.state?.state||'—').toUpperCase()}/><Row k="Conta" v={String(d.state?.liveBroker?.mode||d.state?.mode||'—').toUpperCase()}/><Row k="Ativo" v={String(d.state?.liveBroker?.symbol||d.state?.settings?.asset||'—')}/><Row k="Mercado" v={String(d.state?.liveBroker?.marketStatus||'—').toUpperCase()}/><Row k="Heartbeat" v={d.heartbeatAt?new Date(d.heartbeatAt).toLocaleTimeString('pt-BR'):'—'}/></div>
-      <div className="actions topgap">
-        <button className="primary" disabled={busy||!d.online||d.status!=='active'||!a.accessActive} onClick={()=>window.confirm('Iniciar/retomar somente a análise neste PC? A execução de ordens é manual.')&&cmd(d,'control/start')}><T>Iniciar análise</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/pause')}><T>Pausar</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/stop')}><T>Parar</T></button>
-        <button className="kill" disabled={busy||!d.online||d.status!=='active'} onClick={()=>window.confirm('Ativar KILL SWITCH neste PC?')&&cmd(d,'control/kill')}><T>Kill Switch</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/freeze')}><T>Freeze</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/unfreeze')}><T>Unfreeze</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/reset-kill')}><T>Liberar Kill</T></button>
-        <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/clear-error')}><T>Limpar erro</T></button>
-        <button className={d.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>window.confirm(d.status==='active'?'Revogar este PC?':'Reativar este PC?')&&admin({action:d.status==='active'?'revoke_device':'restore_device',accountId:a.id,deviceId:d.id,value:{}})}>{d.status==='active'?'Revogar PC':'Reativar PC'}</button>
+  return <details className="card span12" style={{padding:'12px 14px'}}>
+    <summary style={{cursor:'pointer',listStyle:'none'}}>
+      <div className="split" style={{alignItems:'center',gap:10}}>
+        <div style={{minWidth:0,flex:'1 1 220px'}}>
+          <div style={{fontSize:14,fontWeight:750,overflowWrap:'anywhere'}}>{a.email||'E-mail não informado'} {a.role==='master'?'· MASTER':''}</div>
+          <div className="muted" style={{fontSize:11}}>
+            Cadastro: {a.createdAt?new Date(a.createdAt).toLocaleDateString('pt-BR'):'—'}
+            {' · Último acesso: '}{a.lastWebSeenAt?tm(a.lastWebSeenAt):'não informado'}
+            {' · '+clientDevices.length+' PC(s)'}
+          </div>
+        </div>
+        <div className="actions" style={{gap:5,flexWrap:'wrap'}}>
+          <Pill tone={active?'good':'bad'}>{active?'ACESSO LIBERADO':'SEM ACESSO'}</Pill>
+          {a.webOnline&&<Pill tone="good">WEB ONLINE</Pill>}
+          {a.agentOnline&&<Pill tone="good">PC ONLINE</Pill>}
+          {!online&&<Pill tone="neutral">OFFLINE</Pill>}
+          {a.status!=='active'&&<Pill tone="bad">{String(a.status||'suspenso').toUpperCase()}</Pill>}
+          <span style={{fontSize:12,opacity:.75}}>Detalhes ▾</span>
+        </div>
       </div>
-    </div>)}{!(a.devices||[]).length&&<Empty text="Nenhum PC vinculado a esta conta"/>}</div>
-  </section>
+    </summary>
+    <div style={{paddingTop:12,marginTop:12,borderTop:'1px solid rgba(137,154,160,.24)'}}>
+      <div className="formgrid three">
+        <label className="field"><span>Plano</span><input value={plan} disabled={a.role==='master'} onChange={e=>setPlan(e.target.value)}/></label>
+        <div className="field"><span>Licença do Agent</span><strong>{active?'Liberada':'Bloqueada'} · {a.role==='master'?'Master':expiry}</strong></div>
+        <div className="field"><span>Sessões web</span><strong>{a.sessionCount||0} registrada(s)</strong></div>
+      </div>
+      <div className="actions topgap">
+        {a.role!=='master'&&<>
+          <button className="primary" disabled={busy||active} onClick={grantForever}>Liberar acesso</button>
+          <button className="kill" disabled={busy||!active} onClick={blockAgent}>Bloquear acesso</button>
+          <button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button>
+          <button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}>Salvar plano</button>
+        </>}
+        <button className="secondary" disabled={busy} onClick={()=>window.confirm('Encerrar as sessões web desta conta?')&&admin({action:'revoke_sessions',accountId:a.id,value:{}})}>Encerrar sessões</button>
+      </div>
+
+      <details className="topgap" style={{padding:'10px 0'}}>
+        <summary style={{cursor:'pointer',fontWeight:700}}>PCs e comandos avançados · {clientDevices.length}</summary>
+        <div className="topgap">{clientDevices.map((d:any)=><div className="card" key={d.id} style={{marginBottom:9,padding:12}}>
+          <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">Agent {d.agentVersion||'—'} · {d.lastSeenAt?tm(d.lastSeenAt):'nunca visto'}</div></div><div className="actions"><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill><Pill tone={d.status==='active'?'good':'bad'}>{String(d.status||'—').toUpperCase()}</Pill></div></div>
+          <div className="stack topgap"><Row k="Estado" v={String(d.state?.state||'—').toUpperCase()}/><Row k="Conta na corretora" v={String(d.state?.liveBroker?.mode||d.state?.mode||'—').toUpperCase()}/><Row k="Ativo" v={String(d.state?.liveBroker?.symbol||d.state?.settings?.asset||'—')}/><Row k="Heartbeat" v={d.heartbeatAt?tm(d.heartbeatAt):'—'}/></div>
+          <div className="actions topgap">
+            <button className="primary" disabled={busy||!d.online||d.status!=='active'||!active} onClick={()=>window.confirm('Iniciar ou retomar a análise neste PC?')&&cmd(d,'control/start')}>Iniciar análise</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/pause')}>Pausar</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/stop')}>Parar</button>
+            <button className="kill" disabled={busy||!d.online||d.status!=='active'} onClick={()=>window.confirm('Acionar Kill Switch neste PC?')&&cmd(d,'control/kill')}>Kill Switch</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/freeze')}>Freeze</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/unfreeze')}>Unfreeze</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/reset-kill')}>Liberar Kill</button>
+            <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/clear-error')}>Limpar erro</button>
+            <button className={d.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>window.confirm(d.status==='active'?'Revogar este PC?':'Reativar este PC?')&&admin({action:d.status==='active'?'revoke_device':'restore_device',accountId:a.id,deviceId:d.id,value:{}})}>{d.status==='active'?'Revogar PC':'Reativar PC'}</button>
+          </div>
+        </div>)}{!clientDevices.length&&<Empty text="Nenhum PC vinculado a esta conta"/>}</div>
+      </details>
+    </div>
+  </details>;
 }
 
 function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentCommand:any,busy:boolean,account:any}){
