@@ -101,3 +101,43 @@ test('both REAL and DEMO use the same evidence without extra broker/page queries
  assert.ok(rt.includes('quoteTs-cached.quoteTs<650'));
  assert.ok(rt.includes('(original66.ready!==true||locked)'));
 });
+
+test('a recent market regime change revokes opposite-side authority without delaying original 66',()=>{
+ const audit=new CausalProbabilityReview();
+ const initial=feed(audit,{n:16});
+ assert.equal(initial.approved,true);
+ const duration=30000,step=duration+2000;
+ let updated=initial;
+ for(let j=0;j<3;j++){
+  const at=anchor+(16+j)*step,due=at+duration;
+  audit.observe({context,now:at,quoteAt:at,price,
+   quoteHistory:[{ts:at,price}],expiryMs:duration,original:candidate,
+   estimate:prob,marketValid:true,payout:.8});
+  updated=audit.observe({context,now:due+100,quoteAt:due,price:price+.00015,
+   quoteHistory:[{ts:at,price},{ts:due,price:price+.00015}],
+   expiryMs:duration,original:null,estimate:null,marketValid:false,payout:.8});
+ }
+ assert.equal(updated.n,19);
+ assert.ok(updated.observedOppositeRate>=.78,'lifetime accuracy alone is still deceptively high');
+ assert.equal(updated.approved,false,'recent 3 contrary results must remove inversion authority');
+ const final=combine66WithProbability(candidate,prob,{durationMs:duration,proof:updated});
+ assert.equal(final.ready,true);
+ assert.equal(final.side,'CALL','previously qualified original decision must still flow');
+ assert.equal(final.probabilityOverride,false);
+});
+test('PC and mobile explain existing market waits; the third-turn protection remains unchanged',()=>{
+ const current=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
+ const pc=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const mobile=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
+ const review=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-probability-review.mjs',import.meta.url),'utf8');
+ assert.match(current,/if\(pivots.length===2\)return \{ready:false,reason:'range-awaiting-third-confirmed-turn'\}/);
+ for(const display of [pc,mobile]){
+  assert.match(display,/AGUARDANDO 3ª VIRADA/);
+  assert.match(display,/AGUARDANDO REVERSÃO/);
+  assert.match(display,/MERCADO LATERAL/);
+  assert.match(display,/AGUARDANDO COTAÇÃO/);
+ }
+ for(const code of [review,pc,mobile]){
+  assert.doesNotMatch(code,/setTimeout\s*\(\s*.*regime|new WebSocket|new XMLHttpRequest/);
+ }
+});

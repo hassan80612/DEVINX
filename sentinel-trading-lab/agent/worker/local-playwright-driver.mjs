@@ -2084,7 +2084,14 @@ export class LocalPlaywrightDriver{
         const observation=d.vnext?.nowObservation;
         const observationFresh=liveNow&&Date.now()-Number(observation?.observedAt||0)>=0&&Date.now()-Number(observation?.observedAt||0)<=2500;
         const provisional=observationFresh?(observation?.side||observation?.provisionalSide):null;
-        const scanningLabel='ANALISANDO';
+        const scanReason=String(observation?.reason||'');
+        const scanningLabel=scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
+          /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
+          /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
+          /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
+          /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
+          scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
+          'ANALISANDO';
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
@@ -2422,7 +2429,14 @@ export class LocalPlaywrightDriver{
             const observationAge=nowClock-Number(observation?.observedAt||0);
             const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
               (observation?.side||observation?.provisionalSide):null;
-            const scanningLabel='ANALISANDO';
+            const scanReason=String(observation?.reason||'');
+            const scanningLabel=scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
+              /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
+              /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
+              /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
+              /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
+              scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
+              'ANALISANDO';
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
               decision.textContent=tr(nowAnalysisMode?scanningLabel:

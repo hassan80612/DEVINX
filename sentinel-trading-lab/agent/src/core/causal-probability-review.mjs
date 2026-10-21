@@ -32,7 +32,15 @@ export class CausalProbabilityReview{
   // can measure *directional* evidence, never profitability. Require the
   // stricter directional confidence threshold, regardless of account mode.
   const requiredLower=payoutOk?Math.max(.60,required+.02):.65;
-  const approved=n>=this.minSamples&&wins/n>=.78&&lower>requiredLower;
+  // A past advantage cannot remain authoritative after the market changes.
+  // Require the LAST eight independent, already-settled expiries to support
+  // the same direction. This only affects permission to INVERT a weak 66
+  // signal; the original qualified CALL/PUT continues without extra waiting.
+  const recent=rows.slice(-8);
+  const recentOppositeWins=recent.filter(x=>x.oppositeCorrect).length;
+  const recentValidated=recent.length===8&&recentOppositeWins>=6;
+  const approved=n>=this.minSamples&&wins/n>=.78&&
+    lower>requiredLower&&recentValidated;
   return {n,oppositeWins:wins,originalWins:n-wins,
    observedOppositeRate:n?wins/n:null,lowerBound:lower,
    approved:!!approved,payoutVerified:!!payoutOk,
