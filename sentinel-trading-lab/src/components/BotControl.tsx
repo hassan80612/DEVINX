@@ -44,7 +44,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
   }finally{if(request===generation.current){setPending('');lock.current=false;}}
  };
  return <section className="card botControl" aria-label={t('Bot automático')}>
-  <div className="split"><h3>{t('Bot automático')}</h3><b aria-live="polite">{!bot?'—':bot.arming?t('Ativando…'):bot.enabled?'ON':'OFF'}</b></div>
+  <div className="split"><h3>{t('Bot automático')} · <a href="/como-usar-bot" style={{fontSize:13,textDecoration:"underline"}}>{t('Como usar')}</a></h3><b aria-live="polite">{!bot?'—':bot.arming?t('Ativando…'):bot.enabled?'ON':'OFF'}</b></div>
   {!bot?<p className="muted">{t('Atualize o Agent no PC para controlar o bot pelo celular.')}</p>:<>
    <p className="muted">{bot.provider==='iq_option'?'IQ Option':bot.provider==='exnova'?'Exnova':'—'} · {s.liveBroker?.symbol||s.settings?.asset} · {Number(s.settings?.orderDurationMs||0)/1000}s</p>
    {!current&&<p role="status">{t('Atualize o Agent no PC para usar martingale por cliques.')}</p>}
