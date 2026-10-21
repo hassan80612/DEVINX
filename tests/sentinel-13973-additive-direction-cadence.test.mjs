@@ -212,7 +212,8 @@ test('broker reports 30s on selected 60s: no expiry hard stop or auto-change of 
  assert.equal(x.bot.suspensionReason,null);
  assert.equal(x.c.durationMs,60000,'broker expiry must not modify user-selected duration');
  assert.equal(x.bot.status().lastBrokerExpiryMismatch.deltaMs,-30000);
- assert.equal(x.bot.pending.orders[0].exitAt,START+30000,'actual broker exit remains tracked');
+ const tracked=[x.bot.pending,...x.bot.unresolvedBatches.values()].filter(Boolean).find(b=>b.orders.some(o=>o.exitAt===START+30000));
+ assert.ok(tracked,'accepted broker order must stay recorded after detached cadence');
 });
 test('restored background traderoom never reloads and resets broker expiry',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
