@@ -17,6 +17,7 @@ trap {
   exit 1
 }
 $release = Get-Content (Join-Path $root 'release.json') -Raw | ConvertFrom-Json
+$displayVersion = if ($release.publicVersion) { [string]$release.publicVersion } else { [string]$release.version }
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'A bandeja requer PowerShell -STA.' }
@@ -58,7 +59,7 @@ if ($agentEnabled -and -not (Get-Health)) { Start-Manager }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
 try { $notify.Icon = New-Object System.Drawing.Icon($iconPath) } catch { $notify.Icon = [System.Drawing.SystemIcons]::Application }
-$notify.Text = 'Sentinel Agent V' + $release.version
+$notify.Text = 'Sentinel Agent V' + $displayVersion
 $notify.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -195,8 +196,8 @@ $timer.Add_Tick({
     $failCount = 0
     $script:agentEnabled = $true
     if ($h.workerHealthy) {
-      $statusItem.Text = 'Status: Agent ' + $release.version + ' + Worker ONLINE'
-      $notify.Text = 'Sentinel Agent ' + $release.version + ' - ONLINE'
+      $statusItem.Text = 'Status: Agent ' + $displayVersion + ' + Worker ONLINE'
+      $notify.Text = 'Sentinel Agent ' + $displayVersion + ' - ONLINE'
     } elseif ($h.workerEnabled -eq $false) {
       $statusItem.Text = 'Status: Agent ligado / Worker pausado'
       $notify.Text = 'Sentinel Agent - Worker pausado'
