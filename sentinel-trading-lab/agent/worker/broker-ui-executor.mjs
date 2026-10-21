@@ -226,9 +226,12 @@ export class BrokerUiExecutor{
       message:'Clique aguardando confirmação da corretora · sem repetir'});
    },this.ackTimeoutMs);
    const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clicked=true;};
+   // Restrict Playwright's own click wait to remaining valid signal time.
+   const clickTimeout=()=>Number.isFinite(Number(order.entryDeadlineAt))?
+     Math.max(1,Math.min(500,Math.floor(Number(order.entryDeadlineAt)-Date.now()))):500;
    try{
-    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:500,noWaitAfter:true});}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
-    else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:500,noWaitAfter:true});}
+    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:clickTimeout(),noWaitAfter:true});}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
+    else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:clickTimeout(),noWaitAfter:true});}
     // Do not await a broker socket frame forever. Late page-out and
     // page-in frames still reconcile this very order asynchronously.
     const seenRequest=await Promise.race([sent,timedOut]);

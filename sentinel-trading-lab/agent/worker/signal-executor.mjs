@@ -310,14 +310,14 @@ export class SignalExecutor{
   }
   const balance=this.balanceRisk.view(now);
   this.queuedSignal=null;
-  const generation=this.generation,requestedClicks=queued.independent?1:this.nextClicks(),unitAmount=this.config.amount;
+  const generation=this.generation,requestedClicks=this.nextClicks(),unitAmount=this.config.amount;
   // A Martingale batch must be complete at its own user-selected level.
   // Never turn a skipped 3/9/27-click recovery signal into a new baseline
   // trade: only a fully executed broker-confirmed batch changes progression.
   const canSend=this.driver.batchFeasibility?.(c.provider,{
    count:requestedClicks,activeId:c.activeId,entryAt:queued.at,now,
    maxEntryAgeMs:maxSignalAgeMs(queued.durationMs),
-   maxBatchAgeMs:maxBatchDispatchMs(queued.durationMs)});
+   maxBatchAgeMs:maxSignalAgeMs(queued.durationMs)});
   if(canSend?.safe===false&&requestedClicks===1){
    this.message='Ligado · sinal atrasado, aguardando próximo';
    return;
@@ -351,17 +351,15 @@ export class SignalExecutor{
    }
   }
   this.pending=batch;
-  // Signal freshness was checked BEFORE entering the broker click queue.
-  // Resolving already-existing broker controls takes bounded time; never
-  // reapply the shorter analyst admission timeout after preparation.
-  // The probability filter is untouched. Real clicks remain expiry-bounded.
-  const physicalClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+Math.max(2500,maxBatchDispatchMs(queued.durationMs)));
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=physicalClickDeadline&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  // The strict original signal freshness is also the last-click deadline.
+  // Never trade a signal seconds after it was confirmed.
+  const physicalClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=physicalClickDeadline&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
   for(let i=0;i<clickCount;i++){
-   const order={...queued,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
+   const order={...queued,entryDeadlineAt:physicalClickDeadline,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
    batch.orders.push(order);order.isValid=()=>valid(i);
    order.useBrokerStake=(source,{confirmed=false}={})=>{
     const stake=money(Number(source));
@@ -444,7 +442,7 @@ export class SignalExecutor{
    }
     // Fixed-direction timing may overlap identified broker operations.
     // Keep still-open stake reserved and correlate later settlements by ID.
-    if(batch.independent&&this.pending===batch&&!batch.orders.every(p=>p.settled)){
+    if(batch.independent&&!this.config.martingaleEnabled&&this.pending===batch&&!batch.orders.every(p=>p.settled)){
       batch.continuationReleased=true;batch.progressionApplied=true;
       this.unresolvedBatches.set(batch.id,batch);this.pending=null;
     }
@@ -508,7 +506,7 @@ export class SignalExecutor{
   // It is ineligible only after a newer physical batch has begun.
   if(!batch.progressionApplied){
    batch.progressionApplied=true;
-   if(full)this.martingaleLevel=batch.independent?0:!this.config.martingaleEnabled?0:
+   if(full)this.martingaleLevel=!this.config.martingaleEnabled?0:
     batch.netPnl>0?0:batch.netPnl<0?
     (batch.martingaleLevel<this.config.martingaleLevels?batch.martingaleLevel+1:0):
     (batch.martingaleLevel<=this.config.martingaleLevels?batch.martingaleLevel:0);
@@ -575,7 +573,7 @@ export class SignalExecutor{
   if(this.enabled&&this.config.stopLoss>0&&this.riskNet()<=-this.config.stopLoss)this.stop('Bot parado · limite de perda da sessão atingido');
   return true;
  }
- nextClicks(){return this.config.directionMode!=='automatic'?1:this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
+ nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
  nextAmount(){return money(this.config.amount*this.nextClicks());}
  riskNet(balance=this.balanceRisk.view(this.clock())){return Math.min(this.net,this.initialBalance!=null&&balance.source==='broker'?balance.net:this.net)-this.unresolvedExposure();}
  status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),

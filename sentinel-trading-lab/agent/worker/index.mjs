@@ -39,7 +39,9 @@ let journalAnalysisAt=0;
 if(recordMarketJournal)setInterval(()=>marketJournal.flush(),2000).unref();
 const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,enableVNext:true,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
-const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data));
+const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data),{
+  isCriticalBusy:()=>executor.executing
+});
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;

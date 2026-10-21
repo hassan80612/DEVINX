@@ -2,8 +2,9 @@
 // superseded frames, and give the page breathing room after a slow render.
 // There must never be a catch-up loop when Playwright/page.evaluate stalls.
 export class LatestOverlayScheduler{
-  constructor(update,{minIntervalMs=6000,slowThresholdMs=800,slowCooldownMs=8000}={}){
-    this.update=update;this.pending=null;this.running=false;this.errors=0;
+  constructor(update,{minIntervalMs=6000,slowThresholdMs=800,slowCooldownMs=8000,isCriticalBusy=null}={}){
+    this.update=update;this.isCriticalBusy=typeof isCriticalBusy==='function'?isCriticalBusy:null;
+    this.pending=null;this.running=false;this.errors=0;
     this.minIntervalMs=minIntervalMs;this.slowThresholdMs=slowThresholdMs;
     this.slowCooldownMs=slowCooldownMs;this.nextAllowedAt=0;this.timer=null;
     this.renderCount=0;this.slowCount=0;this.lastRenderMs=0;this.averageRenderMs=0;this.coalescedFrames=0;
@@ -35,6 +36,12 @@ export class LatestOverlayScheduler{
   }
   async flush(){
     if(this.running||!this.pending)return;
+    // Don't rebuild the broker's heavy overlay DOM during a physical click.
+    // Retain only the latest coalesced frame, not another data poll.
+    if(this.isCriticalBusy?.()){
+      this.timer=setTimeout(()=>{this.timer=null;void this.flush()},250);
+      this.timer.unref?.();return;
+    }
     this.running=true;
     const frame=this.pending;this.pending=null;
     const began=Date.now();
