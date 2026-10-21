@@ -41,12 +41,14 @@ test('three unavailable or sideways closed bars cannot issue a new entry',()=>{
  assert.equal(e.side,null);
 });
 
-test('verified 5s broker expiry cannot validate a 30s holding forecast',()=>{
+test('5s broker duration mismatch stays informational while analyst horizon remains 30s',()=>{
  const now=T+120000;
  const snap={brokerExpirationKind:'selected-duration',
   brokerExpirationConfidence:.9,brokerExpirationDurationMs:5000,
   brokerExpirationUpdatedAt:now-1000};
- assert.equal(brokerDurationGuard({snap,settings,now}).allowed,false);
+ assert.equal(brokerDurationGuard({snap,settings,now}).allowed,true);
+ assert.equal(brokerDurationGuard({snap,settings,now}).verified,true);
+ assert.equal(brokerDurationGuard({snap,settings,now}).reason,'broker-duration-mismatch-observed-only');
  assert.equal(brokerDurationGuard({snap:{...snap,brokerExpirationUpdatedAt:now-10000},
   settings,now}).allowed,true,'old screen timing is not verified');
  assert.equal(brokerDurationGuard({snap:{...snap,brokerExpirationKind:'fixed-clock'},
