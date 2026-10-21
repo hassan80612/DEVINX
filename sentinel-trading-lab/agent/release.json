@@ -1,6 +1,6 @@
 {
-  "version": "13.9.73",
-  "build": "13.9.73-causal-counterfactual-fast-broker-safe",
+  "version": "13.9.74",
+  "build": "13.9.73-surgical-modes-2m5m-broker-stake-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -27,5 +27,6 @@
       "levelEvidence": "confirmed-pivot-priority-over-unconfirmed-nearby-level",
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
-  }
+  },
+  "publicVersion": "13.9.73"
 }
