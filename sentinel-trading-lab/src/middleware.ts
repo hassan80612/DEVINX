@@ -41,7 +41,7 @@ export async function middleware(req:NextRequest){
   const fileName=p.startsWith('/downloads/')?p.slice('/downloads/'.length):'';
   const alternativeInstaller=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-Alternativo[.]zip$/i.test(fileName);
   if(alternativeInstaller)return NextResponse.next();
-  if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
+  if(p==='/'||p==='/planos'||p==='/como-usar-bot'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
   // update themselves without a browser session. Non-paying users cannot.
   if(p==='/downloads/agent_payload_v88.zip'&&req.headers.has('x-sentinel-agent-install')){
@@ -70,7 +70,7 @@ export async function middleware(req:NextRequest){
 
   // Having an account is not a license. Clients must have a verified
   // Kiwify payment before entering the console, pairing, streaming or even
-  // downloading static EXE/ZIP assets. The database owns the expiry clock.
+  // downloading static EXE/ZIP assets. The database owns paid entitlement and revocation.
   if(auth.ok&&(auth.role==='master'||auth.accessActive===true))return NextResponse.next();
   if(auth.ok){
     if(p.startsWith('/api/'))return NextResponse.json({ok:false,error:'subscription_inactive'},{status:403,headers:{'cache-control':'no-store'}});
