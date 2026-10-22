@@ -98,5 +98,21 @@ test('actual runtime ingestion emits the same calls and holds one direction thro
   wins:selected.filter(e=>e.outcome==='wins').length,
   losses:selected.filter(e=>e.outcome==='losses').length,
   unknown:selected.filter(e=>e.outcome==='unknown').length}));
- assert.deepEqual(entries,selected.map(({at,side})=>({at,side})));
+ // Since 13.9.92 a confirmed multi-segment trend may correct the prior
+ // side BEFORE the order. The old byte-for-byte side identity is obsolete.
+ // Preserve the same entry times and immutable open window, and expose every
+ // changed decision with its quote-at-expiry result for audit.
+ assert.deepEqual(entries.map(x=>x.at),selected.map(x=>x.at));
+ const outcomes=entries.map((x,i)=>{
+  const former=selected[i],entry=fine.find(q=>q.ts===x.at),
+    exit=fine.find(q=>q.ts>=x.at+30000&&q.ts<=x.at+31000);
+  const actual=!exit||!entry||exit.price===entry.price?null:
+    exit.price>entry.price?'CALL':'PUT';
+  return {at:x.at,former:former.side,now:x.side,actual,
+    formerCorrect:actual===former.side,newCorrect:actual===x.side};
+ }).filter(x=>x.former!==x.now);
+ console.log('sentinel-13992-actual-runtime-direction-changes',JSON.stringify(outcomes));
+ for(const e of entries){assert.ok(['CALL','PUT'].includes(e.side));}
+ for(let i=1;i<entries.length;i++)assert.ok(entries[i].at-entries[i-1].at>=30000);
+
 });
