@@ -249,7 +249,7 @@ export class BrokerUiExecutor{
   const click=this.clickQueue.catch(()=>{}).then(async()=>{
    // A physically clicked but unidentified order can still appear in the
    // broker. Never overlap its unresolved request with another click.
-   if(this.unidentifiedClick?.order?.clicked&&!this.unidentifiedClick.requestId)
+   if((this.unidentifiedClick?.order?.clicked||this.unidentifiedClick?.order?.dispatchUncertain)&&!this.unidentifiedClick.requestId)
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
