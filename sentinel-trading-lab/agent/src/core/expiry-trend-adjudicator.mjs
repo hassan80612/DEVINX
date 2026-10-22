@@ -26,7 +26,7 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // Do not scan historic chart candles or request anything from the broker.
  // Quote data are bounded, causal, and deduplicated by source timestamp.
  const earliest=t-points[3]*1000-2600,byTime=new Map();
- for(const q of quoteHistory.slice(-9000)){
+ for(const q of quoteHistory.slice(-3200)){
   const ts=Number(q?.ts),received=Number(q?.receivedAt??ts),p=Number(q?.price);
   if(ts>=earliest&&ts<=t&&received<=clock&&p>0&&
     Number.isFinite(ts)&&Number.isFinite(p)&&(!byTime.has(ts)||received<byTime.get(ts).receivedAt))
