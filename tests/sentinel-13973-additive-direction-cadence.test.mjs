@@ -82,8 +82,9 @@ test('new controls preserve old status length and decode optional string directi
  assert.equal(packed.length,19);
  assert.equal(decoded.config.directionMode,'call');
  assert.equal(decoded.config.directionMode,'call');
- const oldPack=structuredClone(packed);oldPack[3].pop();
+ const oldPack=structuredClone(packed);oldPack[3].pop();oldPack[3].pop();
  assert.equal(unpackExecutor(oldPack).config.directionMode,undefined);
+ assert.equal(unpackExecutor(oldPack).config.stopWin,undefined);
  const html=executorPanel(x.bot.status(),'pt');
  assert.match(html,/Somente CALL/);assert.match(html,/Somente PUT/);
  assert.doesNotMatch(html,/data-sentinel-executor-setting="intervalMs"/);
