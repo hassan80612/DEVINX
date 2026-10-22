@@ -38,6 +38,15 @@ test('range mismatch is observational and does not insert a timed delay',()=>{
 });
 test('PC and mobile WIN/LOSS by countdown originate exclusively from broker executor session',()=>{
  assert.match(pc,/data-sentinel-executor-clock-wl/);
+ const clockStart=pc.indexOf('data-sentinel-vnext-clock data-mode=');
+ const clockEnd=pc.indexOf('data-sentinel-probability-30s',clockStart);
+ const clock=pc.slice(clockStart,clockEnd);
+ assert.ok(clockStart>=0&&clockEnd>clockStart,'PC countdown markup must exist');
+ assert.ok(clock.includes('minmax(95px,.78fr) minmax(78px,.56fr) minmax(145px,1.16fr)'),'three clock columns must fit side-by-side');
+ assert.ok(clock.indexOf('data-sentinel-vnext-clock-value')<clock.indexOf('data-sentinel-executor-clock-wl'));
+ assert.ok(clock.indexOf('data-sentinel-executor-clock-wl')<clock.indexOf("MOMENTO DE ENTRADA"));
+ assert.match(clock,/data-sentinel-executor-clock-wl style="display:flex;flex-direction:column/);
+ assert.match(clock,/height:68px;max-height:68px/);
  assert.match(pc,/Number\(d\.autoExecutor\.sessionWins\|\|0\)/);
  assert.match(pc,/Number\(d\.autoExecutor\.sessionLosses\|\|0\)/);
  assert.match(mobile,/data-testid="mobile-countdown-executor-wl"/);
