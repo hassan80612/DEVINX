@@ -46,7 +46,8 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
  const countdown=running&&seconds!=null?pad(Math.floor(seconds/60))+':'+pad(seconds%60):'—:—';
  // Provisional price direction remains internal and cannot be mistaken for a signal.
  const scanReason=String(observation?.reason||'');
- const scanningLabel=scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
+ const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+          scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
   /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
   /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
   /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
