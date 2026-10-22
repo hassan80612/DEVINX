@@ -1225,7 +1225,13 @@ export class LocalPlaywrightDriver{
     if(!String(source).startsWith('protocol-page'))st.switchRequestTimer=setTimeout(()=>{st.switchRequestTimer=null;if(st.activeId!=null&&st.candles.length<20)this.requestMarketData(provider,{force:true}).catch(()=>{})},220);
     return true
   }
-  setPredictionPeriod(provider,period){const p=Number(period);if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p}
+  setPredictionPeriod(provider,period){
+    // NOW analysis uses an existing quote/candle stream. Clear only the
+    // auxiliary forecast-history period, never native chart/option expiry.
+    if(period==null){this.state(provider).predictionPeriod=null;return}
+    const p=Number(period);
+    if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
+  }
   async refreshPredictionHistory(provider,now=Date.now()){
     const st=this.state(provider),size=Number(st.predictionPeriod);
     if(!size||size===Number(st.candleSize)||st.activeId==null||now-Number(st.lastPredictionRequestAt||0)<9000)return false;
@@ -1285,10 +1291,15 @@ export class LocalPlaywrightDriver{
     // slowing new-quote analysis or changing the currently selected asset.
     const streamingHealthy=st.candles.length>=50&&integrity.ok&&
       candleFreshForState(st)&&st.lastQuoteAt>0&&now-st.lastQuoteAt<=2500;
-    const historyRefreshMs=streamingHealthy?30000:9000;
+    // The already healthy candle-generated subscription updates history.
+    // Do not send a fresh 200-candle request every 30 seconds. Restore the
+    // existing recovery path immediately when history/feed becomes unhealthy.
+    const historyRefreshMs=9000;
     const historyDue=!st.lastCandleRequest||
       now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
-    if(st.candles.length<50||stale||historyDue)await this.requestMarketData(provider,{force:st.candles.length<50||stale||historyDue}).catch(()=>{});
+    const needHistoryRecovery=st.candles.length<50||stale||(!streamingHealthy&&historyDue);
+    if(needHistoryRecovery)
+      await this.requestMarketData(provider,{force:true}).catch(()=>{});
     await this.refreshPredictionHistory(provider,now).catch(()=>{});
     if(st.screenCandidateSymbol&&pairKey(st.screenCandidateSymbol)!==pairKey(st.symbol||'')){st.marketStatus='unvalidated';st.marketReason='Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.'}
     else if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=(st.symbol||'Ativo')+' validado e com candles atuais'}
