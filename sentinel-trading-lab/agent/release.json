@@ -1,6 +1,6 @@
 {
-  "version": "13.9.89",
-  "build": "13.9.89-expiry-probability-timing-broker-load-rev1",
+  "version": "13.9.90",
+  "build": "13.9.90-coordinated-final-entry-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.89"
+  "publicVersion": "13.9.90"
 }
