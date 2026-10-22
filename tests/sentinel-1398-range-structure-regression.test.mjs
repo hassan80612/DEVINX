@@ -54,10 +54,19 @@ test('current confirmed turn is not blanket-blocked by past swing duration',()=>
  assert.ok(out.signals.every(s=>s.origin==='closed-range-extreme-reversal-confirmed'));
  assert.equal(out.wins,out.evaluated.length);
 });
-test('holding time does not disable observed present entries',()=>{
- const out=evaluate(quotes('range',48),60000);
- assert.ok(out.signals.length>0);
+test('minute expiry does not chase brief confirmed range oscillations',()=>{
+ const source=quotes('range',48),out=evaluate(source,60000);
  assert.ok(out.signals.every(s=>s.exitAt-s.at===60000));
+ // Observed half-cycle is ~24s. A 60s trade outlasts it substantially,
+ // so a confirmed range turn must not be marketed as a 60s directional edge.
+ assert.ok(out.signals.every(s=>s.origin!=='closed-range-extreme-reversal-confirmed'),JSON.stringify(out.signals));
+ const waits=source.slice(180).filter((q,i)=>{
+  const seen=source.slice(0,180+i+1),r=analyzeNowOpportunity({
+   quoteHistory:seen,price:q.price,quoteAt:q.ts,now:q.ts,durationMs:60000
+  });
+  return r.reason==='range-expiry-exceeds-observed-swing';
+ });
+ assert.ok(waits.length>0,'observed short range must be explicitly recognized rather than chased');
 });
 test('oscillating market only releases actually confirmed turns, never a phantom trend entry',()=>{
  const out=evaluate(quotes('choppy'),30000);
