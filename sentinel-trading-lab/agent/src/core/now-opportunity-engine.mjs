@@ -51,7 +51,7 @@ function before(quotes,at,maxAgeMs=3500){
 // 5-second prices from the past, not future projections or forming candles.
 // Return null for a directional regime; return a verdict when past alternation
 // means a short-term impulse is a potentially misleading end-of-range leg.
-function completedRangeStructure(quotes,now,noise,spot){
+function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
  if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
@@ -123,24 +123,15 @@ function completedRangeStructure(quotes,now,noise,spot){
  // Uneven pivots with a directional fit belong to the trend assessment,
  // not a counter-trend reversal or a blanket "irregular" waiting state.
  if(!regular&&trendFit>=.50)return null;
- // Regularity describes the past; it cannot veto an ACTUAL present turn.
- // An irregular range is still a range: confirm its extreme and retreat
- // below, rather than wait minutes for evenly spaced historical pivots.
- // These are observations of the present, not a forecast of the next
- // half-cycle. The selected holding time must not veto every subsequent
- // entry based on a guessed future repetition of past swing duration.
+ // A confirmed oscillation retains its range identity even when a short
+ // directional leg develops inside it. The October 22 escape caused trend
+ // chasing near established extremes before the third-turn reaction.
+ // For >=60s holds, do not enter a brief repeating swing whose observed
+ // half-cycle is shorter than the intended broker outcome window.
+ // This is a market-structure check, NOT an added timer or polling delay.
+ if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
+  return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  const position=(Math.log(spot)-lower)/span;
- // A coherent current leg inside a historical range is no longer forced
- // into the range-only WAIT path. Existing trend gates still decide entry.
- const leg=closes.slice(-5);
- if(leg.length===5&&position>.20&&position<.78){
-  const steps=leg.slice(1).map((p,i)=>p.log-leg[i].log);
-  const legNet=leg.at(-1).log-leg[0].log;
-  const signed=steps.filter(x=>x*legNet>0).length;
-  const legPath=steps.reduce((sum,x)=>sum+Math.abs(x),0);
-  if(signed>=3&&legPath>0&&Math.abs(legNet)/legPath>=.65&&Math.abs(legNet)>=Math.max(span*.18,noise*.60))
-   return null;
- }
  // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
  // alone is not a PUT, and being at the lower bound alone is not a CALL.
  const recentTicks=last.filter(x=>x.ts>=now-6500);
@@ -313,7 +304,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  const net=Math.log(bars.at(-1).close/bars[0].open);
  const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
  if(!(noise>0))return waiting('insufficient-quote-variation');
- const range=completedRangeStructure(quotes,now,noise,Number(price));
+ const range=completedRangeStructure(quotes,now,noise,Number(price),durationMs);
  if(range){
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,
