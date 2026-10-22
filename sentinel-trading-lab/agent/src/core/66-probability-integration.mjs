@@ -42,19 +42,17 @@ if(!original||original.ready!==true||!SIDES.has(original.side)||
    probabilityAgreement:pOpp,originalSide:original.side,
    originalStrength:Number(strength),probabilityEvidenceSamples:proof.n,...weights};
  }
- // A verified structure still owns a strong setup. The combined vote only
- // rejects marginal *unprotected* continuation setups where both sources
- // together show a near-tie / materially contrary expiry trajectory.
- // No calibration flag, probability.ready, payout or future sample is
- // necessary to release a confirmed structural reversal.
- if(enforceFinalExpiryVote&&!protectedReversal){
-   const solidStructure=Number.isFinite(Number(strength))&&Number(strength)>=75;
-   const narrowConflict=pSame<.56&&combinedSame<.59;
-   const netOpposite=combinedOpp>=.53;
-   if(!solidStructure&&(narrowConflict||netOpposite))
-     return reject('combined-structure-expiry-conflict',{
-       ...weights,probabilityAgreement:pSame,probabilityConflict:pOpp
-     });
+ // The probability estimator is *uncalibrated*. It must NOT become a
+ // second mandatory approval step (the prior candidate eliminated most
+ // historical profitable entries). Structural votes and confirmed turns
+ // proceed as before. Only a truly severe contrary expiry vote against an
+ // already WEAK, unprotected continuation can veto this single candidate.
+ // There is never a WAIT for calibration, a fixed pause, or a repeated poll.
+ if(enforceFinalExpiryVote&&!protectedReversal&&weak&&
+    pOpp>=.68&&combinedOpp>=.53){
+   return reject('severe-structure-expiry-disagreement',{
+     ...weights,probabilityAgreement:pSame,probabilityConflict:pOpp
+   });
  }
  // Only veto a strong observed counter-trend pullback; do not guess the
  // opposite trade or weaken level/retest reversals already recognized.
