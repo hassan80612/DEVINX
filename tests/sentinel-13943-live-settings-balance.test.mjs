@@ -39,3 +39,18 @@ test('editing session loss limit ignores external balance moves but stops on ide
 test('worker uses cached received balance and serial atomic settings writes',()=>{
  const s=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');assert.match(s,/accountBalanceSnapshot/);assert.match(s,/executorSettingsWrite=executorSettingsWrite\.catch/);assert.match(s,/rename\(executorSettingsFile\+'\.tmp'/);
 });
+
+// A broker may change event spelling/ID casing without changing the meaning
+// of a confirmed and individually identified option closure.
+test('settlement variant updates WIN/LOSS and progresses martingale only after broker close',async()=>{
+ const {settlementFromFrame}=await import('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs');
+ const x=setup();x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();
+ const p=x.bot.pending.orders[0];
+ const packet={name:'option_closed',msg:{optionId:Number(p.orderId),amount:1,profit_amount:0}};
+ const result=settlementFromFrame(x.c.provider,packet,{orderId:p.orderId,amount:p.amount,accountId:'10'});
+ assert.ok(result);x.advance(30000);assert.equal(x.bot.settle(result),true);
+ assert.equal(x.bot.sessionLosses,1);assert.equal(x.bot.sessionWins,0);assert.equal(x.bot.nextClicks(),2);
+ const position={name:'position-closed',msg:{body:{orderId:7,status:'expired',invest:1,close_profit:1.85}}};
+ assert.equal(settlementFromFrame('exnova',position,{orderId:'7',amount:1,accountId:'10'}).netPnl,.85);
+ assert.equal(settlementFromFrame('exnova',position,{orderId:'8',amount:1,accountId:'10'}),null);
+});

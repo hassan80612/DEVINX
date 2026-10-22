@@ -7,11 +7,11 @@ const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
 // Recognize individually identified and grouped close events. A single frame
 // can contain more than one Martingale order; each still needs its own ID.
 const frameNames=frame=>[frame?.msg?.name,frame?.name,frame?.msg?.body?.name,frame?.body?.name]
-  .filter(x=>typeof x==='string').map(x=>x.toLowerCase());
+  .filter(x=>typeof x==='string').map(x=>x.toLowerCase().replace(/_/g,'-'));
 const closingKind=frame=>{
  const names=frameNames(frame);
  if(names.some(n=>n.endsWith('option-closed')))return'option';
- if(names.some(n=>n.endsWith('position-changed')||n.endsWith('positions-changed')))return'position';
+ if(names.some(n=>n.endsWith('position-changed')||n.endsWith('positions-changed')||n.endsWith('position-closed')||n.endsWith('positions-closed')))return'position';
  return null;
 };
 export function isExecutionFrame(frame){
@@ -30,7 +30,7 @@ export function settlementFromFrame(provider,frame,known){
    if(depth<4)for(const child of value.slice(0,40))queue.push({value:child,depth:depth+1});
    continue;
   }
-  const ids=[value.id,value.option_id,value.position_id,value.external_id,value.order_id]
+  const ids=[value.id,value.option_id,value.position_id,value.external_id,value.order_id,value.optionId,value.positionId,value.externalId,value.orderId]
     .filter(x=>x!=null).map(String);
   if(ids.includes(String(known.orderId))){
    const account=value.user_balance_id??value.balance_id??value.account_id??baseAccount;
@@ -40,7 +40,7 @@ export function settlementFromFrame(provider,frame,known){
    let gross=null;
    // Only known gross-return fields on identified closed option events.
    if(kind==='option'&&finite(value.profit_amount))gross=Number(value.profit_amount);
-   if(kind==='position'&&String(value.status||'').toLowerCase()==='closed'&&
+   if(kind==='position'&&(['closed','expired','settled'].includes(String(value.status||'').toLowerCase())||frameNames(frame).some(n=>n.endsWith('position-closed')||n.endsWith('positions-closed'))) &&
       finite(value.close_profit)&&finite(value.invest))gross=Number(value.close_profit);
    if(gross!==null&&gross>=0){
     const opening=value.open_price??value.open_quote,closing=value.close_price??value.close_quote;
