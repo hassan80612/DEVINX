@@ -1,6 +1,6 @@
 {
-  "version": "13.9.92",
-  "build": "13.9.92-expiry-reversal-and-chart-isolation-rev1",
+  "version": "13.9.93",
+  "build": "13.9.93-expiry-reversal-and-chart-isolation-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.92"
+  "publicVersion": "13.9.93"
 }
