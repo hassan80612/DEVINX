@@ -7,8 +7,9 @@ const SIDE=new Set(['CALL','PUT']);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mean=(a)=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
 const brier=(rows,probability)=>mean(rows.map(x=>(probability(x)-(x.actualCall?1:0))**2));
-const reasonClass=reason=>{
+const reasonClass=(reason,strategy='',shape='')=>{
  const s=String(reason||'').toLowerCase();
+ if(String(strategy).toLowerCase()==='mean_reversion'||/range-turn|structural-reversal/.test(String(shape).toLowerCase()))return 'reversal';
  if(s==='rejection-followthrough-clear-room'||/continuation|followthrough/.test(s))return 'continuation';
  if(/reversal|range-turn|rejection|structure-change|retest|failed-breakout|multiscale-candle/.test(s))return 'reversal';
  return 'directional';
@@ -35,6 +36,10 @@ export class ContinuousExpiryCalibration{
  }
  _report(state){
   const rows=state?.settled||[],n=rows.length;
+  // Thousands of live quotes must not re-fit calibration on every tick.
+  // Settled labels, not page refresh frequency, invalidate the cached audit.
+  if(state?.cachedReport?.samples===n)
+   return {...state.cachedReport,pending:!!state.pending};
   const enough=n>=this.minTrain+this.minHoldout;
   const train=enough?rows.slice(0,-this.minHoldout):[];
   const holdout=enough?rows.slice(-this.minHoldout):[];
@@ -57,7 +62,7 @@ export class ContinuousExpiryCalibration{
    if(rows[i].finalSide===(rows[i].actualCall?'CALL':'PUT'))break;
    consecutiveFinalLosses++;
   }
-  return {
+  const report={
    samples:n,pending:!!state?.pending,requiredMin:this.minTrain+this.minHoldout,
    calibrated:!!validated,status:n===0?'collecting':!enough?'collecting':
      validated?'validated':'evaluated-without-calibration-advantage',
@@ -71,9 +76,12 @@ export class ContinuousExpiryCalibration{
    finalSignals:{total:final.length,correct:winCount(final,'finalSide'),consecutiveLosses:consecutiveFinalLosses},
    source:'observed-broker-quotes-not-broker-settlements'
   };
+  if(state)state.cachedReport={...report};
+  return report;
  }
  observe({context,now,quoteAt,price,quoteHistory=[],expiryMs,estimate,
-   structuralSide=null,finalSide=null,structuralReason=null,marketValid=false}={}){
+   structuralSide=null,finalSide=null,structuralReason=null,
+   strategy=null,marketShape=null,marketValid=false}={}){
   if(typeof context!=='string'||!context||!durations.has(Number(expiryMs)))
    return this._report(null);
   const state=this._state(context),dueNow=Number(now),at=Number(quoteAt),p=Number(price);
@@ -99,7 +107,7 @@ export class ContinuousExpiryCalibration{
     estimateSide:a>b?'CALL':a<b?'PUT':null,
     structuralSide:SIDE.has(structuralSide)?structuralSide:null,
     finalSide:SIDE.has(finalSide)?finalSide:null,
-    reasonClass:reasonClass(structuralReason)};
+    reasonClass:reasonClass(structuralReason,strategy,marketShape)};
   }
   return this._report(state);
  }
