@@ -46,7 +46,7 @@ test('local worker disables auxiliary period only when the real-time NOW analyst
  const driver=src('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs');
  assert.match(driver,/setPredictionPeriod\(provider,period\)/);
  assert.match(driver,/if\(period==null\)\{this\.state\(provider\)\.predictionPeriod=null;return\}/);
- assert.match(driver,/const size=Number\(st\.predictionPeriod\)/);
+ assert.match(driver,/size=Number\(st\.predictionPeriod\)/);
  assert.match(driver,/if\(!size\|\|size===Number\(st\.candleSize\)/);
  assert.match(driver,/const size=Number\(st\.candleSize\|\|60\)/);
 });
