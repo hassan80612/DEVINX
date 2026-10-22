@@ -51,19 +51,22 @@ test('quote-generated frames remain ignored by the low-frequency execution obser
 });
 
 import {combine66WithProbability} from '../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs';
-test('probability participates a little more ONLY after verified expiry evidence; no additional WAIT',()=>{
+test('60/40 expiry blend changes final side only with sufficiently strong, verified evidence; no additional WAIT',()=>{
  const proof={approved:true,n:30,observedOppositeRate:.8};
  for(const durationMs of [30000,60000,120000]){
   const trend={ready:true,side:'CALL',strength:59,reason:'closed-structure-and-live-impulse'};
-  const p={pCall:.41,pPut:.59};
+  const p={pCall:.32,pPut:.68};
   const change=combine66WithProbability(trend,p,{durationMs,proof});
   assert.equal(change.ready,true);assert.equal(change.side,'PUT');
   assert.equal(change.probabilityOverride,true);
+  assert.equal(change.probabilityWeight,.60);
+  assert.equal(change.structureWeight,.40);
+  assert.ok(change.blendedDirectionalOppositeScore>.50);
   assert.equal(combine66WithProbability(trend,p,{durationMs,proof:{approved:false,n:30,observedOppositeRate:.8}}).side,'CALL');
   assert.equal(combine66WithProbability({...trend,strength:62},p,{durationMs,proof}).side,'CALL');
   assert.equal(combine66WithProbability({...trend,reason:'closed-range-extreme-reversal-confirmed'},p,{durationMs,proof}).side,'CALL');
  }
- const p={pCall:.41,pPut:.59},trend={ready:true,side:'CALL',strength:59,reason:'closed-structure-and-live-impulse'};
+ const p={pCall:.32,pPut:.68},trend={ready:true,side:'CALL',strength:59,reason:'closed-structure-and-live-impulse'};
  assert.equal(combine66WithProbability(trend,p,{durationMs:300000,proof}).side,'CALL','5m needs 50 independent expiry observations');
  assert.equal(combine66WithProbability(trend,p,{durationMs:300000,proof:{approved:true,n:50,observedOppositeRate:.8}}).side,'PUT');
 });
