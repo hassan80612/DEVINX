@@ -1225,7 +1225,16 @@ export class LocalPlaywrightDriver{
     if(!String(source).startsWith('protocol-page'))st.switchRequestTimer=setTimeout(()=>{st.switchRequestTimer=null;if(st.activeId!=null&&st.candles.length<20)this.requestMarketData(provider,{force:true}).catch(()=>{})},220);
     return true
   }
-  setPredictionPeriod(provider,period){const p=Number(period);if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p}
+  setPredictionPeriod(provider,period){
+    // Modern NOW forecasting is sourced from verified market quotes and the
+    // base candle stream. Do not continuously send a second get-candles with
+    // its own (often 30s) period against the user's active broker session.
+    // Null explicitly cancels an earlier legacy auxiliary period; it does
+    // NOT change the broker chart, candle subscription, or option expiry.
+    if(period==null){this.state(provider).predictionPeriod=null;return}
+    const p=Number(period);
+    if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
+  }
   async refreshPredictionHistory(provider,now=Date.now()){
     const st=this.state(provider),size=Number(st.predictionPeriod);
     if(!size||size===Number(st.candleSize)||st.activeId==null||now-Number(st.lastPredictionRequestAt||0)<9000)return false;
