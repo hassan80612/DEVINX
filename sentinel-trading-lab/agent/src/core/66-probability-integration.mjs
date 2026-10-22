@@ -3,17 +3,13 @@
 // This callback never waits, calls a broker or schedules an operation.
 const SIDES=new Set(['CALL','PUT']);
 export function combine66WithProbability(original,estimate,{durationMs,proof=null,enforceFinalExpiryVote=false}={}){
- // Candidate 13.9.90: the forecast-at-expiry participates in ADMISSION.
- // A near 50/50 uncalibrated score is never a reason to enter now. No
- // waiting timer, broker request or changed expiration is introduced.
- const actionable=original?.ready===true&&SIDES.has(original.side)&&
-   [30000,60000,120000,300000].includes(Number(durationMs));
- const reject=(reason,extra={})=>({...original,ready:false,side:null,reason,
+ // Candidate 13.9.90: all available evidence contributes to ADMISSION.
+ // Never require the auxiliary estimate to be calibrated or even available:
+ // proven price structure and confirmed turns can still signal immediately.
+ // No timer, broker request, or extra analysis loop is introduced.
+const reject=(reason,extra={})=>({...original,ready:false,side:null,reason,
   entryVoteRejected:true,probabilityWeight:.60,structureWeight:.40,...extra});
- if(enforceFinalExpiryVote&&actionable&&(!Number.isFinite(estimate?.pCall)||
-     !Number.isFinite(estimate?.pPut)||Math.abs(estimate.pCall+estimate.pPut-1)>.005))
-   return reject('expiry-probability-not-ready');
- if(!original||original.ready!==true||!SIDES.has(original.side)||
+if(!original||original.ready!==true||!SIDES.has(original.side)||
     ![30000,60000,120000,300000].includes(Number(durationMs))||
     !Number.isFinite(estimate?.pCall)||!Number.isFinite(estimate?.pPut)||
     Math.abs(estimate.pCall+estimate.pPut-1)>.005)return original;
@@ -46,20 +42,19 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
    probabilityAgreement:pOpp,originalSide:original.side,
    originalStrength:Number(strength),probabilityEvidenceSamples:proof.n,...weights};
  }
- // In the candidate, admission requires BOTH the 60/40 vote AND
- // a directional expiry estimate stronger than its payout-aware preliminary
- // threshold. A conflict becomes WAIT; it is never forced into an unverified
- // opposite trade. This deliberately favors fewer, more defensible entries.
- if(enforceFinalExpiryVote){
-   const minimum=Number.isFinite(Number(estimate.threshold))?
-     Math.max(.59,Math.min(.70,Number(estimate.threshold))):.61;
-   if(estimate.ready!==true||estimate.side!==original.side||pSame<minimum||
-      combinedSame<.56){
-     return reject('expiry-probability-not-convincing',{
-       ...weights,probabilityAgreement:pSame,probabilityConflict:pOpp,
-       probabilityThreshold:minimum,protectedReversal
+ // A verified structure still owns a strong setup. The combined vote only
+ // rejects marginal *unprotected* continuation setups where both sources
+ // together show a near-tie / materially contrary expiry trajectory.
+ // No calibration flag, probability.ready, payout or future sample is
+ // necessary to release a confirmed structural reversal.
+ if(enforceFinalExpiryVote&&!protectedReversal){
+   const solidStructure=Number.isFinite(Number(strength))&&Number(strength)>=75;
+   const narrowConflict=pSame<.56&&combinedSame<.59;
+   const netOpposite=combinedOpp>=.53;
+   if(!solidStructure&&(narrowConflict||netOpposite))
+     return reject('combined-structure-expiry-conflict',{
+       ...weights,probabilityAgreement:pSame,probabilityConflict:pOpp
      });
-   }
  }
  // Only veto a strong observed counter-trend pullback; do not guess the
  // opposite trade or weaken level/retest reversals already recognized.
