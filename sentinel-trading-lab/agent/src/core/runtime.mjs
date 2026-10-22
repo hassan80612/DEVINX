@@ -994,7 +994,7 @@ export class DemoTradingRuntime{
       // reuse a sub-second estimate instead of rescanning 3000 ticks.
       // Every new actionable original-66 signal is evaluated fresh.
       let preliminary=null;
-      if(this.forecastModel==='short-probability-v1'&&[30000,60000].includes(Number(settings.orderDurationMs))){
+      if(this.forecastModel==='short-probability-v1'&&[30000,60000,120000,300000].includes(Number(settings.orderDurationMs))){
         const quoteTs=Number(snap.quoteTs||0);
         const context=[snap.provider,settings.asset,settings.orderDurationMs].join('|');
         const cached=this.lastFastProbability;
