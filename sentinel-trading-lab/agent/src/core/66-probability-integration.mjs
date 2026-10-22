@@ -11,12 +11,14 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
  const pOpp=1-pSame;
  const strength=original.strength;
  const weak=strength!=null&&Number.isFinite(Number(strength))&&
-   Number(strength)>=0&&Number(strength)<55;
+   Number(strength)>=0&&Number(strength)<62;
  const protectedReversal=/rejection|reversal|retest|structure-change|level/.test(String(original.reason||''));
  // Only the CURRENT asset/provider/expiry/strategy's independent,
  // non-overlapping expiry samples may authorize inversion. A probability
- // percentage by itself never has that power.
- if(weak&&!protectedReversal&&pOpp>=.60&&proof?.approved===true&&
+ // percentage by itself never has that power. A slightly broader WEAK
+ // structural score can participate only after identical-expiry outcomes
+ // have already validated the opposite direction, with no new waiting.
+ if(weak&&!protectedReversal&&pOpp>=.58&&proof?.approved===true&&
     Number(proof.n)>=(Number(durationMs)>=300000?50:Number(durationMs)>=120000?30:16)&&
     Number(proof.observedOppositeRate)>=.78){
   return {...original,side:original.side==='CALL'?'PUT':'CALL',
