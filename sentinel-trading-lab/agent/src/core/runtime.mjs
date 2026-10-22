@@ -1134,7 +1134,7 @@ export class DemoTradingRuntime{
             reversals:expiryCalibration.reversals,
             continuations:expiryCalibration.continuations,
             directional:expiryCalibration.directional,
-            finalSignals:expiryCalibration.finalSignals,
+            candidateDirections:expiryCalibration.candidateDirections,
             source:expiryCalibration.source
           }:null
         },cards:readings.cards,
