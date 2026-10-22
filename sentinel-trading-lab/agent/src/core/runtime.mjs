@@ -1033,12 +1033,15 @@ export class DemoTradingRuntime{
         }):null;
       // Same proof requirements for DEMO and REAL. Unknown broker payout
       // means directional evidence ONLY; never advertise measured profit.
-      const observation=adjudicateExpiryTrend({
-        candidate:this.forecastModel==='short-probability-v1'?
-          combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true}):original66,
+      const expiryTrendInput={
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,price:snap.price,
         now,durationMs:settings.orderDurationMs,estimate:preliminary
-      });
+      };
+      const observation=this.forecastModel==='short-probability-v1'?
+        adjudicateExpiryTrend({candidate:combine66WithProbability(original66,preliminary,{
+          durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true
+        }),...expiryTrendInput}):
+        adjudicateExpiryTrend({candidate:original66,...expiryTrendInput});
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,
       // never changes observation/entry direction, never reads the broker UI.
