@@ -194,12 +194,13 @@ export class BrokerUiExecutor{
    const found=await page.evaluate(canvasControlBridge,{action:'resolve',binding:this.canvasBindings[provider],marker:randomUUID()});
    if(found?.error)throw errorBefore(found.error);return{frame:page,...found};
   }
-  // Reuse already identified, still-visible broker HTML controls during
-  // a batch instead of rescanning all frames for every click.
+  // Reuse uniquely identified, still-visible broker HTML controls across
+  // successive signals; validate both DOM buttons before every actual click.
+  // A stale cache triggers the normal scan, never a guessed screen position.
   const state=this.driver.state(provider);
   const token=String(state?.activeId)+'|'+clean(state?.symbol);
   const cached=this.cachedHtmlControls.get(provider);
-  if(cached&&cached.page===page&&cached.token===token&&Date.now()-cached.at<=1200){
+  if(cached&&cached.page===page&&cached.token===token&&Date.now()-cached.at<=15000){
    try{
     // Validate both cached controls in ONE browser evaluation instead of
     // six separate Playwright roundtrips on every physical click. Keep the
@@ -263,11 +264,17 @@ export class BrokerUiExecutor{
    },this.ackTimeoutMs);
    const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clickAttempted=true;};
    // Restrict Playwright's own click wait to remaining valid signal time.
-   const clickTimeout=()=>Number.isFinite(Number(order.entryDeadlineAt))?
-     Math.max(1,Math.min(500,Math.floor(Number(order.entryDeadlineAt)-Date.now()))):500;
+   const clickTimeout=()=>{
+     if(!Number.isFinite(Number(order.entryDeadlineAt)))return 350;
+     const remaining=Number(order.entryDeadlineAt)-Date.now();
+     // Insufficient time to dispatch is a skipped signal, not permission
+     // to submit an order after its original forecast timestamp.
+     if(remaining<=80)throw errorBefore('Sinal sem tempo seguro para o clique; aguarde novo sinal.');
+     return Math.max(1,Math.min(350,Math.floor(remaining-30)));
+   };
    try{
-    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:clickTimeout(),noWaitAfter:true});order.clicked=true;}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
-    else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:clickTimeout(),noWaitAfter:true});order.clicked=true;}
+    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{const timeout=clickTimeout();before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout,noWaitAfter:true});order.clicked=true;}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
+    else{const timeout=clickTimeout();before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout,noWaitAfter:true});order.clicked=true;}
     // Do not await a broker socket frame forever. Late page-out and
     // page-in frames still reconcile this very order asynchronously.
     const seenRequest=await Promise.race([sent,timedOut]);
