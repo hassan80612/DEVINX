@@ -1294,10 +1294,16 @@ export class LocalPlaywrightDriver{
     // slowing new-quote analysis or changing the currently selected asset.
     const streamingHealthy=st.candles.length>=50&&integrity.ok&&
       candleFreshForState(st)&&st.lastQuoteAt>0&&now-st.lastQuoteAt<=2500;
-    const historyRefreshMs=streamingHealthy?30000:9000;
+    // An intact candle-generated feed already advances the historical bars.
+    // Forcing get-candles every 30s in a healthy, visible trading session
+    // needlessly duplicates broker work and could disturb native chart state.
+    // Recover missing, stale, or genuinely unhealthy history exactly as before.
+    const historyRefreshMs=9000;
     const historyDue=!st.lastCandleRequest||
       now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
-    if(st.candles.length<50||stale||historyDue)await this.requestMarketData(provider,{force:st.candles.length<50||stale||historyDue}).catch(()=>{});
+    const needHistoryRecovery=st.candles.length<50||stale||(!streamingHealthy&&historyDue);
+    if(needHistoryRecovery)
+      await this.requestMarketData(provider,{force:true}).catch(()=>{});
     await this.refreshPredictionHistory(provider,now).catch(()=>{});
     if(st.screenCandidateSymbol&&pairKey(st.screenCandidateSymbol)!==pairKey(st.symbol||'')){st.marketStatus='unvalidated';st.marketReason='Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.'}
     else if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=(st.symbol||'Ativo')+' validado e com candles atuais'}
