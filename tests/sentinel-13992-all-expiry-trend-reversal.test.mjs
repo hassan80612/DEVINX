@@ -84,9 +84,9 @@ test('never uses quotes from after the decision and preserves entry expiry and c
    estimate:{pCall:.73,pPut:.27}});
  assert.deepEqual(b,a);
  const helper=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs',import.meta.url),'utf8');
- assert.doesNotMatch(helper,/\\bawait\\b|setInterval\\s*\\(|setTimeout\\s*\\(|page\\.click|playwright|fetch\\s*\\(/i);
+ assert.doesNotMatch(helper,/\bawait\b|setInterval\s*\(|setTimeout\s*\(|page\.click|playwright|fetch\s*\(/i);
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
- assert.match(runtime,/const observation=adjudicateExpiryTrend\\(\\{/);
+ assert.match(runtime,/const observation=adjudicateExpiryTrend\(\{/);
  assert.match(runtime,/expiryCalibration=this.forecastModel/);
 });
 test('same historical broker quotes: disclose retained/changed results for EVERY comparable expiry',()=>{
