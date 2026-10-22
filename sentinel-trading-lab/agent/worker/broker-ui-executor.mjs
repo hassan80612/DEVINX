@@ -15,7 +15,7 @@ const closingKind=frame=>{
  return null;
 };
 export function isExecutionFrame(frame){
- return frameNames(frame).some(n=>/option|positions?-changed|order-changed|buyv3|^error$/.test(n));
+ return frameNames(frame).some(n=>/option|positions?-(?:changed|closed)|orders?-(?:changed|closed)|buyv3|^error$/.test(n));
 }
 export function settlementFromFrame(provider,frame,known){
  const kind=closingKind(frame),root=frame?.msg?.body??frame?.msg??frame?.body;
@@ -294,7 +294,8 @@ export class BrokerUiExecutor{
   if(!isExecutionFrame(frame))return;
   const name=String(frame?.msg?.name||frame?.name||'').toLowerCase();
   const body=frame?.msg?.body??frame?.msg??frame?.body;
-  const rid=frame?.request_id==null?null:String(frame.request_id);
+  const rawRequestId=frame?.request_id??frame?.requestId??frame?.msg?.request_id??frame?.msg?.requestId;
+  const rid=rawRequestId==null?null:String(rawRequestId);
   const a=direction==='page-out'?(this.attempt||this.retiredAttempt(provider,body)):this.awaiting.get(provider+'|'+rid);
   if(direction==='page-out'){
    if(!/(?:open-option|place-digital-option|buyv3)$/.test(name))return;
