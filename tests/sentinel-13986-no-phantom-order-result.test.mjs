@@ -50,13 +50,15 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.unresolvedDetail().waitingResult,0);
   assert.equal(x.bot.unresolvedDetail().waitingId,0);
   assert.equal(x.bot.unresolvedDetail().uncertainAttempts,1);
-  assert.match(x.bot.hardHoldReason,/tentativa de clique sem confirmação/);
+  assert.equal(x.bot.hardHoldReason,null,'an unidentified attempt is not a permanent bot suspension');
+  assert.equal(x.bot.enabled,true);
   const attempted=x.bot.pending;
   x.advance(30001);x.bot.watch();
   assert.equal(x.bot.pending,null);
   assert.equal(x.bot.unresolvedDetail().uncertainAttempts,1);
   await x.fire('PUT');
-  assert.equal(x.bot.executed,0,'no additional entry while brokerage execution is unknown');
+  assert.equal(x.bot.executed,0,'unconfirmed attempts do not count as executed broker orders');
+  assert.equal(x.bot.enabled,true,'next independent opportunity is still allowed after expiry');
   assert.equal(x.bot.sessionLosses,0);
   assert.equal(x.bot.unresolvedExposure(),1,'worst-case exposure is reserved for risk, NOT booked as a loss');
   assert.notEqual(attempted.orders[0].clicked,true);
