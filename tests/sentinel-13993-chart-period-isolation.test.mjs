@@ -37,6 +37,28 @@ for(const provider of ['exnova','iq_option']){
   assert.equal(requests[0].msg.name,'get-candles');
  });
 }
+test('healthy feed never sends a periodic chart/candle refresh; a stale feed still recovers',async()=>{
+ const driver=new LocalPlaywrightDriver({dataDir:'unused-broker-period-test'});
+ const st=driver.state('exnova'),now=Date.now();
+ st.activeId=76;st.candleActiveId=76;st.symbol='EUR/GBP OTC';st.uiSymbol=st.symbol;
+ st.balance=87;st.balanceId=10;st.mode='demo';
+ st.candles=Array.from({length:80},(_,i)=>({
+  from:now-(80-i)*60000,to:now-(79-i)*60000,
+  open:1.123,close:1.123,high:1.124,low:1.122
+ }));
+ st.quote=1.123;st.lastQuoteAt=now;st.lastCandleAt=now;
+ st.lastFullDomAt=now;st.lastBaseRequestAt=now;
+ st.lastCandleRequest={at:now-40000};
+ let requests=0;
+ driver.requestMarketData=async()=>{requests++;return true};
+ driver.refreshPredictionHistory=async()=>false;
+ await driver.maintain('exnova');
+ assert.equal(requests,0,'fully healthy stream should NOT request candle history every 30s');
+ // A genuinely stale quote enables the existing recovery path.
+ st.lastMaintainAt=0;st.lastQuoteAt=now-12000;
+ await driver.maintain('exnova');
+ assert.equal(requests,1,'broken/stale quote requires fresh market data');
+});
 test('local worker disables auxiliary period only when the real-time NOW analyst is active',()=>{
  const script=src('sentinel-trading-lab/agent/worker/index.mjs');
  assert.match(script,/runtime\.settings\.engine\?null:runtime\.lastResult\?\.analysis\?\.predictionInputQuality\?\.periodSeconds/);
@@ -49,4 +71,5 @@ test('local worker disables auxiliary period only when the real-time NOW analyst
  assert.match(driver,/size=Number\(st\.predictionPeriod\)/);
  assert.match(driver,/if\(!size\|\|size===Number\(st\.candleSize\)/);
  assert.match(driver,/const size=Number\(st\.candleSize\|\|60\)/);
+ assert.match(driver,/const needHistoryRecovery=st\.candles\.length<50\|\|stale\|\|\(!streamingHealthy&&historyDue\)/);
 });
