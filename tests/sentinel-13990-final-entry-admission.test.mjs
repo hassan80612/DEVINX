@@ -26,9 +26,9 @@ test('reversal at confirmed range extreme remains independent of probability war
   assert.equal(out.side,'PUT');assert.equal(out.ready,true);
  }
 });
-test('a marginal 53/47 estimated expiry PUT only blocks a weak/unprotected structural PUT',()=>{
- const weak=call(structure('PUT',70),estimate('PUT',.53));
- assert.equal(weak.ready,false);assert.equal(weak.reason,'combined-structure-expiry-conflict');
+test('marginal 53/47 probability never freezes a qualified structural PUT',()=>{
+ const ordinary=call(structure('PUT',70),estimate('PUT',.53));
+ assert.equal(ordinary.ready,true);assert.equal(ordinary.side,'PUT');
  const strong=call(structure('PUT',88),estimate('PUT',.53));
  assert.equal(strong.ready,true);assert.equal(strong.side,'PUT');
 });
