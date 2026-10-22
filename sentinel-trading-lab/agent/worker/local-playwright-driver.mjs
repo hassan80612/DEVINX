@@ -2081,7 +2081,8 @@ export class LocalPlaywrightDriver{
         const observationFresh=liveNow&&Date.now()-Number(observation?.observedAt||0)>=0&&Date.now()-Number(observation?.observedAt||0)<=2500;
         const provisional=observationFresh?(observation?.side||observation?.provisionalSide):null;
         const scanReason=String(observation?.reason||'');
-        const scanningLabel=scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
+        const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+          scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
           /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
           /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
           /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
@@ -2427,7 +2428,8 @@ export class LocalPlaywrightDriver{
             const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
               (observation?.side||observation?.provisionalSide):null;
             const scanReason=String(observation?.reason||'');
-            const scanningLabel=scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
+            const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+          scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
               /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
               /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
               /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
