@@ -51,6 +51,6 @@ test('settlement variant updates WIN/LOSS and progresses martingale only after b
  assert.ok(result);x.advance(30000);assert.equal(x.bot.settle(result),true);
  assert.equal(x.bot.sessionLosses,1);assert.equal(x.bot.sessionWins,0);assert.equal(x.bot.nextClicks(),2);
  const position={name:'position-closed',msg:{body:{orderId:7,status:'expired',invest:1,close_profit:1.85}}};
- assert.equal(settlementFromFrame('exnova',position,{orderId:'7',amount:1,accountId:'10'}).netPnl,.85);
+ assert.ok(Math.abs(settlementFromFrame('exnova',position,{orderId:'7',amount:1,accountId:'10'}).netPnl-.85)<1e-9);
  assert.equal(settlementFromFrame('exnova',position,{orderId:'8',amount:1,accountId:'10'}),null);
 });
