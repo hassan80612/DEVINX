@@ -130,6 +130,17 @@ function completedRangeStructure(quotes,now,noise,spot){
  // half-cycle. The selected holding time must not veto every subsequent
  // entry based on a guessed future repetition of past swing duration.
  const position=(Math.log(spot)-lower)/span;
+ // A coherent current leg inside a historical range is no longer forced
+ // into the range-only WAIT path. Existing trend gates still decide entry.
+ const leg=closes.slice(-5);
+ if(leg.length===5&&position>.20&&position<.78){
+  const steps=leg.slice(1).map((p,i)=>p.log-leg[i].log);
+  const legNet=leg.at(-1).log-leg[0].log;
+  const signed=steps.filter(x=>x*legNet>0).length;
+  const legPath=steps.reduce((sum,x)=>sum+Math.abs(x),0);
+  if(signed>=3&&legPath>0&&Math.abs(legNet)/legPath>=.65&&Math.abs(legNet)>=Math.max(span*.18,noise*.60))
+   return null;
+ }
  // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
  // alone is not a PUT, and being at the lower bound alone is not a CALL.
  const recentTicks=last.filter(x=>x.ts>=now-6500);
