@@ -169,7 +169,7 @@ export class SignalExecutor{
   if(pending?.dispatchComplete&&!this.executing&&pending.orders.length&&
    pending.orders.every(o=>o.settled))this.finishBatch(pending);
   for(const [id,b] of this.unresolvedBatches){
-   if(!b.dispatchComplete||!b.orders.every(o=>o.settled||!o.clicked||o.rejected))continue;
+   if(!b.dispatchComplete||!b.orders.every(o=>o.settled||(!o.clicked&&!o.dispatchUncertain)||o.rejected))continue;
    this.unresolvedBatches.delete(id);
    if(!b.detached&&b.sessionId===this.sessionId&&
     b.orders.length===b.clickCount&&b.orders.every(o=>o.settled))
@@ -629,7 +629,7 @@ export class SignalExecutor{
    if(!num(event.netPnl)||(event.source&&event.source!=='broker')||p.settled)return false;
    if(event.accountId!=null&&p.accountId!=null&&String(event.accountId)!==String(p.accountId))return false;
    p.settled=true;p.netPnl=Number(event.netPnl);
-   if(batch.dispatchComplete&&batch.orders.every(o=>o.settled||!o.clicked||o.rejected))
+   if(batch.dispatchComplete&&batch.orders.every(o=>o.settled||(!o.clicked&&!o.dispatchUncertain)||o.rejected))
     this.unresolvedBatches.delete(batch.id);
    return true; // Old broker settlement cannot change a freshly reset session.
   }
@@ -646,7 +646,7 @@ export class SignalExecutor{
   this.history=[row,...this.history.filter(x=>!(x.provider===row.provider&&x.orderId===row.orderId))].slice(0,5);
   if(p){p.settled=true;batch.netPnl=money(batch.netPnl+Number(event.netPnl));
    if(late){
-    if(batch.orders.every(o=>o.settled||!o.clicked||o.rejected)){
+    if(batch.orders.every(o=>o.settled||(!o.clicked&&!o.dispatchUncertain)||o.rejected)){
      this.unresolvedBatches.delete(batch.id);
      if(batch.orders.every(o=>o.settled)&&batch.dispatchComplete){
       // Resolve the exact cached balance debit only if no subsequent
