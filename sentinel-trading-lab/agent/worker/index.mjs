@@ -434,7 +434,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     evaluationPerformance.lastEntryTimingDelayMs=Number.isFinite(Number(fired.plannedEntryAt))?
       Number(fired.entryTriggeredAt)-Number(fired.plannedEntryAt):null;
   }
-  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
+  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.settings.engine?null:runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
   if(activeProvider){
     // A full status() rebuild includes research summaries, broker metadata and
     // trade aggregates. Keep it OUT of the 400ms quote-analysis loop unless an
