@@ -12,14 +12,14 @@ function wilsonLower(wins,total,z=1.645){
  return clamp01((p+zz/(2*total)-z*Math.sqrt(p*(1-p)/total+zz/(4*total*total)))/(1+zz/total));
 }
 export class CausalProbabilityReview{
- constructor({minSamples=16,maxContexts=16,maxSettled=60}={}){
+ constructor({minSamples=16,maxContexts=16,maxSettled=80}={}){
   this.minSamples=minSamples;this.maxContexts=maxContexts;this.maxSettled=maxSettled;
   this.contexts=new Map();
  }
  _state(context){
   if(this.contexts.has(context))return this.contexts.get(context);
   if(this.contexts.size>=this.maxContexts)this.contexts.delete(this.contexts.keys().next().value);
-  const state={pending:null,settled:[]};this.contexts.set(context,state);return state;
+  const state={pending:null,settled:[],expiryMs:null};this.contexts.set(context,state);return state;
  }
  summary(context,payout){
   const state=this.contexts.get(context),rows=state?.settled||[];
@@ -28,6 +28,8 @@ export class CausalProbabilityReview{
   const payoutOk=Number.isFinite(fraction)&&fraction>=.5&&fraction<=1;
   const required=payoutOk?1/(1+fraction):null;
   const lower=wilsonLower(wins,n);
+  const expiryMs=Number(state?.expiryMs||0);
+  const minHorizonSamples=expiryMs>=300000?50:expiryMs>=120000?30:this.minSamples;
   // A broker may omit payout from its passive quote feed. In that case we
   // can measure *directional* evidence, never profitability. Require the
   // stricter directional confidence threshold, regardless of account mode.
@@ -39,7 +41,7 @@ export class CausalProbabilityReview{
   const recent=rows.slice(-8);
   const recentOppositeWins=recent.filter(x=>x.oppositeCorrect).length;
   const recentValidated=recent.length===8&&recentOppositeWins>=6;
-  const approved=n>=this.minSamples&&wins/n>=.78&&
+  const approved=n>=Math.max(this.minSamples,minHorizonSamples)&&wins/n>=.78&&
     lower>requiredLower&&recentValidated;
   return {n,oppositeWins:wins,originalWins:n-wins,
    observedOppositeRate:n?wins/n:null,lowerBound:lower,
@@ -49,8 +51,9 @@ export class CausalProbabilityReview{
  }
  observe({context,now,quoteAt,price,quoteHistory,expiryMs,
    original,estimate,marketValid=false,payout}={}){
-  if(typeof context!=='string'||!context||![30000,60000].includes(Number(expiryMs)))return {approved:false,n:0};
+  if(typeof context!=='string'||!context||![30000,60000,120000,300000].includes(Number(expiryMs)))return {approved:false,n:0};
   const state=this._state(context),ts=Number(quoteAt),t=Number(now),p=Number(price);
+  state.expiryMs=Number(expiryMs);
   if(state.pending&&t>=state.pending.dueAt){
    const old=state.pending;
    const exit=observedExpiryQuote({quoteHistory,currentQuote:{ts,price:p,receivedAt:t},
