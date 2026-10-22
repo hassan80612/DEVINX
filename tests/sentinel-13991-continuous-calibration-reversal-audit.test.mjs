@@ -26,7 +26,7 @@ test('ALL forecasts are observed, including strong setups and when no structural
  x=outcome(c,{entryAt:base+31000,structuralSide:null,finalSide:null,
   structuralReason:'completed-structure-not-ready',pCall:.55,exitPrice:1.099});
  assert.equal(x.samples,2,'no READY signal is required for a real expiry label');
- assert.equal(x.finalSignals.total,1);
+ assert.equal(x.candidateDirections.total,1);
  assert.equal(x.estimateCount,2);
 });
 test('no fabricated results for a missed one-second expiry and no overlapping training',()=>{
@@ -58,7 +58,7 @@ test('independent forward holdout validates only a demonstrably improved reliabi
  assert.equal(result.calibrated,true);
  assert.equal(result.status,'validated');
  assert.ok(result.adjustedHoldoutBrier<result.rawHoldoutBrier);
- assert.ok(result.finalSignals.correct<result.finalSignals.total);
+ assert.ok(result.candidateDirections.correct<result.candidateDirections.total);
  assert.equal(result.source,'observed-broker-quotes-not-broker-settlements');
 });
 test('a reliable preexisting forecast remains UNCALIBRATED when correction makes it worse',()=>{
@@ -78,8 +78,8 @@ test('classifies reversal and continuation independently and counts four contrar
  }
  assert.deepEqual(x.reversals,{total:2,correct:0});
  assert.deepEqual(x.continuations,{total:2,correct:0});
- assert.equal(x.finalSignals.consecutiveLosses,4);
- assert.equal(x.finalSignals.total,4);
+ assert.equal(x.candidateDirections.consecutiveWrong,4);
+ assert.equal(x.candidateDirections.total,4);
 });
 test('Agent restart keeps settled labels, not stale pending prices or extra UI work',()=>{
  const c=new ContinuousExpiryCalibration();outcome(c);
