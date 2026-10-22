@@ -56,11 +56,11 @@ export class ContinuousExpiryCalibration{
   const directional=classified('directional','structuralSide');
   const final=rows.filter(x=>SIDE.has(x.finalSide));
   const forecast=rows.filter(x=>SIDE.has(x.estimateSide));
-  let consecutiveFinalLosses=0;
+  let consecutiveCandidateErrors=0;
   for(let i=rows.length-1;i>=0;i--){
    if(!SIDE.has(rows[i].finalSide))continue;
    if(rows[i].finalSide===(rows[i].actualCall?'CALL':'PUT'))break;
-   consecutiveFinalLosses++;
+   consecutiveCandidateErrors++;
   }
   const report={
    samples:n,pending:!!state?.pending,requiredMin:this.minTrain+this.minHoldout,
@@ -73,7 +73,7 @@ export class ContinuousExpiryCalibration{
    reversals:{total:reversal.length,correct:winCount(reversal,'structuralSide')},
    continuations:{total:continuation.length,correct:winCount(continuation,'structuralSide')},
    directional:{total:directional.length,correct:winCount(directional,'structuralSide')},
-   finalSignals:{total:final.length,correct:winCount(final,'finalSide'),consecutiveLosses:consecutiveFinalLosses},
+   candidateDirections:{total:final.length,correct:winCount(final,'finalSide'),consecutiveWrong:consecutiveCandidateErrors},
    source:'observed-broker-quotes-not-broker-settlements'
   };
   if(state)state.cachedReport={...report};
