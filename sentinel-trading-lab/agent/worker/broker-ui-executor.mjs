@@ -115,7 +115,7 @@ export class BrokerUiExecutor{
   // Retain the old attempt for a bounded best-effort late broker request
   // correlation, without issuing a second click.
   const a=this.unidentifiedClick||this.attempt;
-  if(a&&batch?.orders?.some(p=>p.id===a.order?.id)&&a.order.clicked){
+  if(a&&batch?.orders?.some(p=>p.id===a.order?.id)&&(a.order.clicked||a.order.dispatchUncertain)){
    this.retiredAttempts.push({attempt:a,expiresAt:Date.now()+300000});
    this.retiredAttempts=this.retiredAttempts.slice(-16);
    if(this.attempt===a)this.attempt=null;
@@ -261,13 +261,13 @@ export class BrokerUiExecutor{
     timeoutResolve({pending:true,accepted:false,requestId:attempt.requestId,localId:order.id,
       message:'Clique aguardando confirmação da corretora · sem repetir'});
    },this.ackTimeoutMs);
-   const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clicked=true;};
+   const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clickAttempted=true;};
    // Restrict Playwright's own click wait to remaining valid signal time.
    const clickTimeout=()=>Number.isFinite(Number(order.entryDeadlineAt))?
      Math.max(1,Math.min(500,Math.floor(Number(order.entryDeadlineAt)-Date.now()))):500;
    try{
-    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:clickTimeout(),noWaitAfter:true});}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
-    else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:clickTimeout(),noWaitAfter:true});}
+    if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout:clickTimeout(),noWaitAfter:true});order.clicked=true;}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
+    else{before();await c.frame.locator(order.side==='CALL'?c.callSelector:c.putSelector).click({timeout:clickTimeout(),noWaitAfter:true});order.clicked=true;}
     // Do not await a broker socket frame forever. Late page-out and
     // page-in frames still reconcile this very order asynchronously.
     const seenRequest=await Promise.race([sent,timedOut]);
@@ -281,9 +281,17 @@ export class BrokerUiExecutor{
    }finally{
     // If no page-out has yet arrived, retain only this pending attempt
     // so a late page-out can still acquire its broker request ID.
-    if(this.attempt===attempt&&(!order.clicked||attempt.requestId))this.attempt=null;
+    if(this.attempt===attempt&&(!order.clickAttempted||attempt.requestId))this.attempt=null;
    }
-  }).catch(error=>{attempt.reject(error);throw error;});
+  }).catch(error=>{
+   // A failed Playwright click is not proof that an order was opened.
+   // Preserve a possible late broker ACK without inventing a trade result.
+   if(order.clickAttempted&&!order.clicked&&!attempt.requestId&&!error?.beforeClick){
+    order.dispatchUncertain=true;
+    this.unidentifiedClick=attempt;
+   }
+   attempt.reject(error);throw error;
+  });
   this.clickQueue=click.catch(()=>{});
   try{
    await click;
