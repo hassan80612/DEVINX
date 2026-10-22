@@ -180,18 +180,19 @@ export class SignalExecutor{
   const batches=[this.pending,...this.unresolvedBatches.values()]
    .filter(b=>b&&!b.detached&&b.sessionId===this.sessionId);
   const outstanding=batches.flatMap(b=>b.orders)
-   .filter(o=>o.clicked&&!o.settled&&!o.rejected);
-  const waitingId=outstanding.filter(o=>!o.orderId).length;
-  const waitingResult=outstanding.length-waitingId;
+   .filter(o=>(o.clicked||o.dispatchUncertain)&&!o.settled&&!o.rejected);
+  const waitingResult=outstanding.filter(o=>o.orderId!=null).length;
+  const waitingId=outstanding.filter(o=>o.clicked&&!o.orderId).length;
+  const uncertainAttempts=outstanding.filter(o=>o.dispatchUncertain&&!o.clicked).length;
   const earliestExit=batches.reduce((m,b)=>
    Number(b.exitAt)>0?Math.min(m,Number(b.exitAt)):m,Infinity);
   return{batches:batches.length,orders:outstanding.length,waitingId,
-   waitingResult,overdueMs:Number.isFinite(earliestExit)?Math.max(0,now-earliestExit):0};
+   waitingResult,uncertainAttempts,overdueMs:Number.isFinite(earliestExit)?Math.max(0,now-earliestExit):0};
  }
  unresolvedExposure(){
   let amount=0;
   for(const batch of this.unresolvedBatches.values())for(const p of batch.orders)
-   if(p.clicked&&!p.settled&&!p.rejected)amount+=Number(p.amount)||0;
+   if((p.clicked||p.dispatchUncertain)&&!p.settled&&!p.rejected)amount+=Number(p.amount)||0;
   return money(amount);
  }
  releaseExpiredBatch(now=this.clock()){
@@ -460,10 +461,18 @@ export class SignalExecutor{
    }).catch(e=>{
     order.error=String(e?.message||e);
     if(e?.brokerRejected===true)order.rejected=true;
-    if(order.clicked!==true||e?.beforeClick===true)order.cancelled=true;
+    if((order.clicked!==true&&!order.dispatchUncertain)||e?.beforeClick===true)order.cancelled=true;
     const context=this.context();
     const changed=order.clicked!==true&&this.enabled&&generation===this.generation&&this.sameContext(this.session,context)&&(batch.engine!==context.engine||batch.durationMs!==context.durationMs);
     if(changed&&!batch.orders.some(p=>p.clicked)){this.message='Estratégia alterada · aguardando próximo sinal';return;}
+    // Unknown click attempt: neither mark an executed trade nor guess LOSS.
+    if(order.dispatchUncertain&&!order.clicked&&e?.brokerRejected!==true){
+     order.state='attempt-unverified';
+     this.hardHoldReason='tentativa de clique sem confirmação; conferir histórico da corretora';
+     this.suspensionReason=this.hardHoldReason;
+     if(this.enabled)this.message='Bot suspenso · clique não comprovado; conferir corretora';
+     return;
+    }
     // The broker may have registered the physical click without responding.
     // Preserve it as unknown until a correlated broker order arrives.
     if(order.clicked&&e?.brokerRejected!==true){
@@ -483,7 +492,7 @@ export class SignalExecutor{
    }));
   }
   this.inflight=Promise.allSettled(jobs).then(()=>{
-   batch.dispatchComplete=true;batch.orders=batch.orders.filter(p=>p.clicked&&!p.rejected&&!p.cancelled);
+   batch.dispatchComplete=true;batch.orders=batch.orders.filter(p=>(p.clicked||p.dispatchUncertain)&&!p.rejected&&!p.cancelled);
    batch.amount=money(batch.orders.reduce((sum,p)=>sum+p.amount,0));if(!batch.detached&&this.balanceRisk.trade&&!this.balanceRisk.trade.settled)this.balanceRisk.trade.amount=batch.amount;
    if(batch.detached){
     if(batch.orders.length)this.unresolvedBatches.set(batch.id,batch);
@@ -502,7 +511,7 @@ export class SignalExecutor{
     this.martingaleLevel=0;
    }
    if(batch.orders.every(p=>p.state==='accepted'||p.settled))batch.state='accepted';
-   if(batch.orders.length!==batch.clickCount&&this.enabled){
+   if(batch.orders.length!==batch.clickCount&&this.enabled&&!this.hardHoldReason){
     // Do not recreate missing clicks. Stay armed, but any already-clicked
     // child still requires individual broker confirmation before progress.
     this.message='Ligado · sequência parcial · aguardando fechamento sem repetir cliques';
@@ -544,7 +553,11 @@ export class SignalExecutor{
    this.hardHoldReason='confirmação duplicada · conferir ordens';this.suspensionReason=this.hardHoldReason;
    this.message='Ligado · suspenso por segurança: '+this.suspensionReason;return;
   }
-  p.state='accepted';p.clicked=true;p.orderId=String(event.orderId);p.requestId=event.requestId??p.requestId;p.accountId=event.accountId??p.accountId;
+  p.state='accepted';p.clicked=true;p.dispatchUncertain=false;
+  if(this.hardHoldReason==='tentativa de clique sem confirmação; conferir histórico da corretora'){
+   this.hardHoldReason=null;this.suspensionReason=null;
+  }
+  p.orderId=String(event.orderId);p.requestId=event.requestId??p.requestId;p.accountId=event.accountId??p.accountId;
   if(Number(event.exitAt)>p.at){
    const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;
    p.exitAt=Number(event.exitAt);
