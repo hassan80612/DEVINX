@@ -36,6 +36,7 @@ import {shortProbability} from './short-probability.mjs';
 import {combine66WithProbability} from './66-probability-integration.mjs';
 import {CausalProbabilityReview} from './causal-probability-review.mjs';
 import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
+import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -1032,8 +1033,12 @@ export class DemoTradingRuntime{
         }):null;
       // Same proof requirements for DEMO and REAL. Unknown broker payout
       // means directional evidence ONLY; never advertise measured profit.
-      const observation=this.forecastModel==='short-probability-v1'?
-        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true}):original66;
+      const observation=adjudicateExpiryTrend({
+        candidate:this.forecastModel==='short-probability-v1'?
+          combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true}):original66,
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,price:snap.price,
+        now,durationMs:settings.orderDurationMs,estimate:preliminary
+      });
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,
       // never changes observation/entry direction, never reads the broker UI.
