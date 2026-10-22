@@ -178,58 +178,16 @@ export class BrokerUiExecutor{
   const resolved=await page.evaluate(canvasControlBridge,{action:'resolve',binding,marker:randomUUID()});if(resolved?.error)throw errorBefore(resolved.error);
   this.canvasBindings[provider]=binding;return this.canvasBindings;
  }
- async recoverDigitalAfterClose(provider){
-  const wanted=this.digitalRearm.get(provider);
-  if(!wanted||!this.isBotEnabled())return false;
-  if(this.digitalRearming.has(provider))return this.digitalRearming.get(provider);
-  const task=(async()=>{
-   const page=this.driver.sessions.get(provider)?.page;
-   const state=this.driver.state(provider);
-   if(!page||page.isClosed?.()||page!==wanted.page||
-      Number(state?.activeId)!==Number(wanted.activeId)||state?.screenCandidateSymbol){
-    this.digitalRearm.delete(provider);return false;
-   }
-   if(this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
-      [...this.orders.values()].some(order=>order.provider===provider))return false;
-   const hits=[];
-   for(const frame of page.frames()){
-    const result=await frame.evaluate(inspectDigitalNewOperation,{marker:randomUUID()}).catch(()=>null);
-    if(result?.found)hits.push({frame,selector:result.selector});
-   }
-   if(hits.length!==1){
-    wanted.attempts++;
-    if(wanted.attempts>=2)this.digitalRearm.delete(provider);
-    return false;
-   }
-   if(!this.isBotEnabled()||this.digitalRearm.get(provider)!==wanted||
-      this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
-      [...this.orders.values()].some(order=>order.provider===provider))return false;
-   // One native click, after confirmed broker close. No expiry/stake changes,
-   // repeat polling, silent navigation, or forced new CALL/PUT.
-   await hits[0].frame.locator(hits[0].selector).click({timeout:700,noWaitAfter:true});
-   this.digitalRearm.delete(provider);
-   this.cachedHtmlControls.delete(provider);
-   return true;
-  })().catch(()=>{
-   wanted.attempts++;
-   if(wanted.attempts>=2)this.digitalRearm.delete(provider);
-   return false;
-  }).finally(()=>this.digitalRearming.delete(provider));
-  this.digitalRearming.set(provider,task);
-  return task;
- }
+ // Expiry safety: a native Digital "New operation" click may reset the
+ // broker's manual expiration. Sentinel must NEVER click this control.
+ // The user may reopen Digital in the broker; no analyst or timer gate is added.
+ async recoverDigitalAfterClose(_provider){return false;}
  digitalOrderClosed(provider,known){
-  if(known?.digitalTrade!==true||!this.isBotEnabled())return;
-  const page=this.driver.sessions.get(provider)?.page;
-  if(!page||this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
-     [...this.orders.values()].some(order=>order.provider===provider))return;
-  this.digitalRearm.set(provider,{page,activeId:known.activeId,attempts:0});
-  // Try immediately after actual broker settlement; if broker renders the
-  // button a little later, controls() retries once at the next entry.
-  void this.recoverDigitalAfterClose(provider);
+  if(known?.digitalTrade!==true)return;
+  this.digitalRearm.delete(provider);
+  this.cachedHtmlControls.delete(provider);
  }
  async controls(provider){
-  if(this.digitalRearm.has(provider))await this.recoverDigitalAfterClose(provider);
   const page=this.driver.sessions.get(provider)?.page;
   if(!page||page.isClosed?.())throw errorBefore('Janela da corretora não está conectada.');
   if(this.canvasBindings[provider]){
