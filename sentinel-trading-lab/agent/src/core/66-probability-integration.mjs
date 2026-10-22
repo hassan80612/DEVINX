@@ -4,7 +4,7 @@
 const SIDES=new Set(['CALL','PUT']);
 export function combine66WithProbability(original,estimate,{durationMs,proof=null}={}){
  if(!original||original.ready!==true||!SIDES.has(original.side)||
-    ![30000,60000].includes(Number(durationMs))||
+    ![30000,60000,120000,300000].includes(Number(durationMs))||
     !Number.isFinite(estimate?.pCall)||!Number.isFinite(estimate?.pPut)||
     Math.abs(estimate.pCall+estimate.pPut-1)>.005)return original;
  const pSame=original.side==='CALL'?estimate.pCall:estimate.pPut;
@@ -17,7 +17,8 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
  // non-overlapping expiry samples may authorize inversion. A probability
  // percentage by itself never has that power.
  if(weak&&!protectedReversal&&pOpp>=.60&&proof?.approved===true&&
-    Number(proof.n)>=16&&Number(proof.observedOppositeRate)>=.78){
+    Number(proof.n)>=(Number(durationMs)>=300000?50:Number(durationMs)>=120000?30:16)&&
+    Number(proof.observedOppositeRate)>=.78){
   return {...original,side:original.side==='CALL'?'PUT':'CALL',
    reason:'locally-verified-opposite-direction',probabilityOverride:true,
    probabilityAgreement:pOpp,originalSide:original.side,
@@ -25,7 +26,7 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
  }
  // Only veto a strong observed counter-trend pullback; do not guess the
  // opposite trade or weaken level/retest reversals already recognized.
- if(!protectedReversal&&estimate.fastReversalAgainst30s===true&&
+ if(Number(durationMs)<=60000&&!protectedReversal&&estimate.fastReversalAgainst30s===true&&
     estimate.trendSide===original.side&&estimate.fastSide!==original.side&&
     estimate.ready===true&&pOpp>=.64){
   return {...original,ready:false,side:null,reason:'rapid-countertrend-retraction-risk',
