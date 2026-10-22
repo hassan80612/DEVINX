@@ -71,7 +71,7 @@ export class CausalProbabilityReview{
   const strength=Number(original?.strength);
   // Number(null) === 0, so require a genuinely PRESENT motor score.
   const weak=original?.strength!==null&&original?.strength!==undefined&&
-   Number.isFinite(strength)&&strength>=0&&strength<55;
+   Number.isFinite(strength)&&strength>=0&&strength<62;
   const protectedTurn=/rejection|reversal|retest|structure-change|level/.test(String(original?.reason||''));
   const pOpp=original?.side==='CALL'?estimate?.pPut:estimate?.pCall;
   const fresh=marketValid===true&&Number.isFinite(t)&&Number.isFinite(ts)&&ts>0&&
