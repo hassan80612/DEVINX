@@ -234,7 +234,10 @@ export class SignalExecutor{
   // order safely replaces the snapshot at captureEntry; unresolved stakes
   // remain separately reserved by riskNet().
   this.onBatchReleased?.(batch);
-  this.message='Ligado · operação anterior vencida; próximo sinal com 1 clique · resultado financeiro pendente';
+  const attemptedOnly=batch.orders.every(p=>p.dispatchUncertain&&!p.clicked&&!p.orderId);
+  this.message=attemptedOnly?
+   'Ligado · janela anterior encerrada; tentativa não comprovada; próximo sinal normal':
+   'Ligado · operação anterior vencida; próximo sinal com 1 clique · resultado financeiro pendente';
   return true;
  }
  confirmStakeAfterBalanceMismatch(context,now){
@@ -467,10 +470,11 @@ export class SignalExecutor{
     if(changed&&!batch.orders.some(p=>p.clicked)){this.message='Estratégia alterada · aguardando próximo sinal';return;}
     // Unknown click attempt: neither mark an executed trade nor guess LOSS.
     if(order.dispatchUncertain&&!order.clicked&&e?.brokerRejected!==true){
+     // The attempt is NOT a confirmed trade. Do not stop the bot, repeat
+     // a possibly delivered order, or count WIN/LOSS without a broker ID.
+     // The existing expiry releases the window for the next fresh signal.
      order.state='attempt-unverified';
-     this.hardHoldReason='tentativa de clique sem confirmação; conferir histórico da corretora';
-     this.suspensionReason=this.hardHoldReason;
-     if(this.enabled)this.message='Bot suspenso · clique não comprovado; conferir corretora';
+     if(this.enabled)this.message='Ligado · tentativa não comprovada; próxima janela segue normalmente';
      return;
     }
     // The broker may have registered the physical click without responding.
@@ -505,7 +509,8 @@ export class SignalExecutor{
    // No physical click means the stage remains pending for another signal.
    if(this.config.martingaleEnabled&&
     batch.martingaleLevel===this.config.martingaleLevels&&
-    batch.martingaleLevel>0&&!batch.detached&&batch.orders.length===batch.clickCount){
+    batch.martingaleLevel>0&&!batch.detached&&batch.orders.length===batch.clickCount&&
+    batch.orders.every(p=>p.clicked||p.orderId!=null)){
     batch.terminalCycleConsumed=true;
     batch.progressionApplied=true;
     this.martingaleLevel=0;
@@ -554,9 +559,9 @@ export class SignalExecutor{
    this.message='Ligado · suspenso por segurança: '+this.suspensionReason;return;
   }
   p.state='accepted';p.clicked=true;p.dispatchUncertain=false;
-  if(this.hardHoldReason==='tentativa de clique sem confirmação; conferir histórico da corretora'){
-   this.hardHoldReason=null;this.suspensionReason=null;
-  }
+  // A late broker ACK proves this was a real order despite earlier
+  // Playwright uncertainty. It can now be accounted for normally.
+  if(p.error&&p.clickAttempted)delete p.error;
   p.orderId=String(event.orderId);p.requestId=event.requestId??p.requestId;p.accountId=event.accountId??p.accountId;
   if(Number(event.exitAt)>p.at){
    const mismatch=Math.abs(Number(event.exitAt)-((p.clickedAt??p.at)+p.durationMs))>1500;
