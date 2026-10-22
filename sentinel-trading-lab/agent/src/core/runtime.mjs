@@ -35,6 +35,7 @@ import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
 import {combine66WithProbability} from './66-probability-integration.mjs';
 import {CausalProbabilityReview} from './causal-probability-review.mjs';
+import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -86,7 +87,7 @@ export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
-    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -1033,6 +1034,19 @@ export class DemoTradingRuntime{
       // means directional evidence ONLY; never advertise measured profit.
       const observation=this.forecastModel==='short-probability-v1'?
         combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true}):original66;
+      // Passive audit of EVERY available expiry forecast, including strong
+      // structural signals and confirmed reversals. Never awaits calibration,
+      // never changes observation/entry direction, never reads the broker UI.
+      const expiryCalibration=this.forecastModel==='short-probability-v1'?
+        this.continuousCalibration.observe({
+          context:[snap.provider||'',settings.asset,settings.engine,settings.orderDurationMs].join('|'),
+          now,quoteAt:snap.quoteTs,price:snap.price,quoteHistory:snap.quoteHistory,
+          expiryMs:settings.orderDurationMs,estimate:preliminary,
+          structuralSide:original66.ready?original66.side:null,
+          finalSide:observation.ready?observation.side:null,
+          structuralReason:original66.reason,
+          marketValid:duration.allowed&&entryQuoteFresh
+        }):null;
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
@@ -1101,9 +1115,27 @@ export class DemoTradingRuntime{
           observedAt:observation.observedAt,strength:observation.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
-          probabilityCalibrated:false,probabilitySource:preliminary?.source??null,
+          // Calibration flag reflects actual independent quote outcomes, not
+          // simply runtime uptime. The raw estimate is never advertised as a
+          // calibrated WIN rate or substituted into broker trade logic.
+          probabilityCalibrated:expiryCalibration?.calibrated===true,
+          probabilitySource:preliminary?.source??null,
           probabilityInfluenced:observation.probabilityOverride===true,
-          probabilitySamples:probabilityProof?.n??0
+          probabilitySamples:expiryCalibration?.samples??0,
+          probabilityInversionSamples:probabilityProof?.n??0,
+          probabilityAudit:expiryCalibration?{
+            status:expiryCalibration.status,
+            samples:expiryCalibration.samples,
+            minimum:expiryCalibration.requiredMin,
+            rawBrier:expiryCalibration.rawBrier,
+            holdoutBrier:expiryCalibration.rawHoldoutBrier,
+            adjustedHoldoutBrier:expiryCalibration.adjustedHoldoutBrier,
+            reversals:expiryCalibration.reversals,
+            continuations:expiryCalibration.continuations,
+            directional:expiryCalibration.directional,
+            finalSignals:expiryCalibration.finalSignals,
+            source:expiryCalibration.source
+          }:null
         },cards:readings.cards,
         // Observed quote-direction score only; not executed broker settlements.
         // Never convert a synthetic/demonstration result into claimed win rate.
@@ -1494,8 +1526,8 @@ export class DemoTradingRuntime{
       latency:row.latency?{feedMs:Number(row.latency.feedMs||0),decisionMs:Number(row.latency.decisionMs||0),executionMs:Number(row.latency.executionMs||0)}:null
     }
   }
-  snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
+  snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),continuousExpiryCalibration:this.continuousCalibration.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
+  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.continuousCalibration.restore(data.continuousExpiryCalibration||[]);this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
   delete this.settings.clockMode;
   delete this.settings.motorVariant;
   // Persist all user-selected 5s to 5m durations across Agent restarts.
