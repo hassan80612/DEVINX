@@ -1045,6 +1045,7 @@ export class DemoTradingRuntime{
           structuralSide:original66.ready?original66.side:null,
           finalSide:observation.ready?observation.side:null,
           structuralReason:original66.reason,
+          strategy:original66.contextStrategy,marketShape:original66.marketShape,
           marketValid:duration.allowed&&entryQuoteFresh
         }):null;
       const eligible=!duration.allowed?
