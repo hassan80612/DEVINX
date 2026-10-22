@@ -821,7 +821,14 @@ export class LocalPlaywrightDriver{
     try{protocolScan(data,st,direction)}catch{}
     const frameKind=(String(data?.name||'')+' '+String(data?.msg?.name||data?.msg?.event||'')).toLowerCase();
     const highFrequencyMarketFrame=/candle-generated|quote-generated|instrument-quotes|ticker/.test(frameKind)||String(data?.name||'').toLowerCase()==='candles';
-    const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
+    // Market ticks do not alter the known asset catalog. Copying the entire
+    // growing map and set on every quote allocates continuously and increases
+    // the cost of keeping the broker's chart responsive over long sessions.
+    // Non-market frames still receive isolated copies for recursiveScan.
+    const out={balanceCandidates:[],modeCandidates:[],
+      assets:highFrequencyMarketFrame?st.assets:new Set(st.assets),
+      activeMap:highFrequencyMarketFrame?st.activeMap:new Map(st.activeMap),
+      quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
     // r10 extraía o mapa de instrumentos também dos frames de mercado. O r11 cortou
     // isso por completo e a identificação da aba ficou mais frágil. Recuperamos essa
     // riqueza, mas limitamos o scan genérico a ~1x/s nos frames rápidos para não voltar
