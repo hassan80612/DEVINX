@@ -1,6 +1,6 @@
 {
-  "version": "13.9.84",
-  "build": "13.9.84-horizon-evidence-expiry-readonly-rev1",
+  "version": "13.9.85",
+  "build": "13.9.85-broker-ack-reconcile-verified-probability-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.84"
+  "publicVersion": "13.9.85"
 }
