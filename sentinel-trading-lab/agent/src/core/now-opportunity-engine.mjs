@@ -14,11 +14,11 @@ const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
-function causalQuotes(history,now){
+function causalQuotes(history,now,windowMs=180000){
  const byTime=new Map();
  for(const q of Array.isArray(history)?history:[]){
   const ts=Number(q?.ts),received=Number(q?.receivedAt??ts),price=Number(q?.price);
-  if(!(ts>0&&ts<=now&&received>0&&received<=now&&finitePrice(price)&&ts>=now-180000))continue;
+  if(!(ts>0&&ts<=now&&received>0&&received<=now&&finitePrice(price)&&ts>=now-windowMs))continue;
   const previous=byTime.get(ts);
   if(!previous||received<previous.receivedAt)byTime.set(ts,{ts,receivedAt:received,price});
  }
@@ -165,6 +165,21 @@ export function annotateForecastStructureConflict(structural,decision){
   structure:structural.structuralSide,projection:decision.side}};
 }
 
+// A separate observed trend for longer holdings. No prediction extrapolation,
+ // no future data, and no extra completion gate when historical quotes are scarce.
+export function longHorizonDirection({quotes=[],quoteAt,price,durationMs,noise=0}={}){
+ const holding=Number(durationMs);
+ if(holding!==120000&&holding!==300000)return{ready:false,scoped:false};
+ const historyMs=holding===120000?90000:180000;
+ const past=before(quotes,Number(quoteAt)-historyMs,3500);
+ if(!past||!(Number(price)>0)||!(Number(past.price)>0))
+   return{ready:false,scoped:true,reason:'longer-observation-not-available'};
+ const move=Math.log(Number(price)/Number(past.price));
+ const magnitude=Math.abs(move);
+ return{ready:true,scoped:true,horizonSeconds:historyMs/1000,
+   side:sideOf(move),significant:magnitude>=Math.max(Number(noise)||0,1e-9)*.65,
+   observedNetMove:move};
+}
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
@@ -265,7 +280,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(!(seconds>=5&&seconds<=3600))return waiting('invalid-expiry');
  if(!(Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500&&finitePrice(price)))
   return waiting('stale-live-quote');
- const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
+ const quotes=causalQuotes(quoteHistory,now,Number(durationMs)>=300000?300000:180000).filter(q=>q.ts<=Number(quoteAt));
  if(!quotes.length||!quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price)))
   return waiting('live-quote-unverified');
  // A changing observation is display-only. It never satisfies ready or
@@ -308,6 +323,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   return waiting('choppy-sideways-structure');
  const side=sideOf(net);
  if(!side)return waiting('neutral-closed-structure');
+ // 2m and 5m forecasts need a second, holding-time-scale observation.
+ // It uses already buffered prices only, WITHOUT extending the 15s bar
+ // prerequisite, broker requests, or a new signal delay. Short expiries
+ // follow precisely their previous rules.
+ const longer=longHorizonDirection({quotes,quoteAt:Number(quoteAt),price:Number(price),durationMs,noise});
+ if(longer.ready&&longer.side&&longer.side!==side&&longer.significant)
+   return waiting('long-horizon-structure-contradicts-short-impulse');
  const aligned=moves.filter(m=>sign(side)*m>0).length;
  if(aligned<3)return waiting('lateral-or-mixed-structure');
  // Require a real directional movement over FOUR completed bars. A

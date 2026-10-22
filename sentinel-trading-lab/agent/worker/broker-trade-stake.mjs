@@ -47,7 +47,7 @@ export function readBrokerTradeStake(){
    const label=[root.getAttribute('aria-label'),root.getAttribute('data-test'),
      root.getAttribute('data-testid'),root.className,root.textContent]
      .filter(x=>typeof x==='string').join(' ').toLowerCase();
-   if(!/\\binvest(?:ment|imento)?\\b/.test(label)||wrong.test(label))continue;
+   if(!/\binvest(?:ment|imento)?\b/.test(label)||wrong.test(label))continue;
    const leaves=[root,...root.querySelectorAll('input,[role="spinbutton"],[contenteditable],span,strong,b')];
    const detected=[];
    for(const leaf of [...leaves].slice(0,30)){

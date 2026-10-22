@@ -1,6 +1,6 @@
 {
-  "version": "13.9.82",
-  "build": "13.9.82-recent-probability-evidence-explain-wait-rev1",
+  "version": "13.9.83",
+  "build": "13.9.83-risk-horizon-expiry-guard-rev1",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.82"
+  "publicVersion": "13.9.83"
 }

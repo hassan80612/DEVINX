@@ -79,9 +79,36 @@ export function inspectTradeControls({marker}){
  return{callSelector:'[data-sentinel-execution-call="'+marker+'"]',putSelector:'[data-sentinel-execution-put="'+marker+'"]'};
 }
 
+// Recovery is deliberately specific to Digital's post-settlement "New operation"
+// control. Never use the CALL/PUT selectors or chart expiry for recovery.
+export function inspectDigitalNewOperation({marker}){
+ const seen=[...document.querySelectorAll('button,[role="button"],input[type="button"],[onclick]')];
+ const visible=e=>{
+  if(e.disabled||e.getAttribute('aria-disabled')==='true'||e.closest('[inert],[aria-hidden="true"],#sentinel-trading-overlay-host'))return false;
+  const style=getComputedStyle(e),rect=e.getBoundingClientRect();
+  return rect.width>0&&rect.height>0&&style.display!=='none'&&style.visibility!=='hidden';
+ };
+ const match=e=>{
+  const text=[e.getAttribute('aria-label'),e.getAttribute('title'),e.value,e.textContent].map(x=>String(x||'').trim().replace(/\s+/g,' '));
+  return text.some(t=>/^(nova opera[cç][aã]o|new operation|new trade|nueva operaci[oó]n|nouvelle op[eé]ration|neue operation)$/i.test(t));
+ };
+ const matches=seen.filter(e=>visible(e)&&match(e));
+ if(matches.length!==1)return{found:false};
+ matches[0].setAttribute('data-sentinel-digital-reopen',marker);
+ return{found:true,selector:'[data-sentinel-digital-reopen="'+marker+'"]'};
+}
+// Only an outgoing order packet positively identified as Digital permits this
+// recovery. A Blitz/binary packet is never sufficient, even if it uses the
+// same broker and price feed.
+export function isDigitalOrderPacket(name,body){
+ const mode=String(body?.instrument_type??body?.instrumentType??body?.option_type??body?.optionType??'').toLowerCase();
+ if(/\bblitz\b|\bbinary\b/.test(mode))return false;
+ return /place-digital-option$/i.test(String(name||''))||/^(digital|digital-option|digital_option)$/.test(mode);
+}
+
 export class BrokerUiExecutor{
- constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},ackTimeoutMs=8000}={}){
-  this.driver=driver;this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.recentCloseFrames=[];this.confirmedDispatchDurations=new Map();this.cachedHtmlControls=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
+ constructor(driver,{onSent=()=>{},onAccepted=()=>{},onRejected=()=>{},onSettlement=()=>{},onUnexpectedOrder=()=>{},isBotEnabled=()=>true,ackTimeoutMs=8000}={}){
+  this.driver=driver;this.isBotEnabled=isBotEnabled;this.digitalRearm=new Map();this.digitalRearming=new Map();this.onSent=onSent;this.onAccepted=onAccepted;this.onRejected=onRejected;this.onSettlement=onSettlement;this.onUnexpectedOrder=onUnexpectedOrder;this.attempt=null;this.orders=new Map();this.awaiting=new Map();this.canvasBindings={};this.outboundSeen=new Set();this.clickQueue=Promise.resolve();this.unidentifiedClick=null;this.retiredAttempts=[];this.recentCloseFrames=[];this.confirmedDispatchDurations=new Map();this.cachedHtmlControls=new Map();this.ackTimeoutMs=Number.isFinite(ackTimeoutMs)&&ackTimeoutMs>0?ackTimeoutMs:8000;
  }
  retireUnidentifiedBatch(batch){
   // Only after the expiry+grace timeout: release the execution mutex.
@@ -151,7 +178,58 @@ export class BrokerUiExecutor{
   const resolved=await page.evaluate(canvasControlBridge,{action:'resolve',binding,marker:randomUUID()});if(resolved?.error)throw errorBefore(resolved.error);
   this.canvasBindings[provider]=binding;return this.canvasBindings;
  }
+ async recoverDigitalAfterClose(provider){
+  const wanted=this.digitalRearm.get(provider);
+  if(!wanted||!this.isBotEnabled())return false;
+  if(this.digitalRearming.has(provider))return this.digitalRearming.get(provider);
+  const task=(async()=>{
+   const page=this.driver.sessions.get(provider)?.page;
+   const state=this.driver.state(provider);
+   if(!page||page.isClosed?.()||page!==wanted.page||
+      Number(state?.activeId)!==Number(wanted.activeId)||state?.screenCandidateSymbol){
+    this.digitalRearm.delete(provider);return false;
+   }
+   if(this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
+      [...this.orders.values()].some(order=>order.provider===provider))return false;
+   const hits=[];
+   for(const frame of page.frames()){
+    const result=await frame.evaluate(inspectDigitalNewOperation,{marker:randomUUID()}).catch(()=>null);
+    if(result?.found)hits.push({frame,selector:result.selector});
+   }
+   if(hits.length!==1){
+    wanted.attempts++;
+    if(wanted.attempts>=2)this.digitalRearm.delete(provider);
+    return false;
+   }
+   if(!this.isBotEnabled()||this.digitalRearm.get(provider)!==wanted||
+      this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
+      [...this.orders.values()].some(order=>order.provider===provider))return false;
+   // One native click, after confirmed broker close. No expiry/stake changes,
+   // repeat polling, silent navigation, or forced new CALL/PUT.
+   await hits[0].frame.locator(hits[0].selector).click({timeout:700,noWaitAfter:true});
+   this.digitalRearm.delete(provider);
+   this.cachedHtmlControls.delete(provider);
+   return true;
+  })().catch(()=>{
+   wanted.attempts++;
+   if(wanted.attempts>=2)this.digitalRearm.delete(provider);
+   return false;
+  }).finally(()=>this.digitalRearming.delete(provider));
+  this.digitalRearming.set(provider,task);
+  return task;
+ }
+ digitalOrderClosed(provider,known){
+  if(known?.digitalTrade!==true||!this.isBotEnabled())return;
+  const page=this.driver.sessions.get(provider)?.page;
+  if(!page||this.unidentifiedClick?.order?.clicked||this.attempt?.order?.clicked||
+     [...this.orders.values()].some(order=>order.provider===provider))return;
+  this.digitalRearm.set(provider,{page,activeId:known.activeId,attempts:0});
+  // Try immediately after actual broker settlement; if broker renders the
+  // button a little later, controls() retries once at the next entry.
+  void this.recoverDigitalAfterClose(provider);
+ }
  async controls(provider){
+  if(this.digitalRearm.has(provider))await this.recoverDigitalAfterClose(provider);
   const page=this.driver.sessions.get(provider)?.page;
   if(!page||page.isClosed?.())throw errorBefore('Janela da corretora não está conectada.');
   if(this.canvasBindings[provider]){
@@ -273,6 +351,7 @@ export class BrokerUiExecutor{
    // changes to the trade-size input made after the bot was activated.
    if(!rid||!finite(value)||!(Number(value)>0)||
     (directionSide&&directionSide!==a.order.side)||(active!=null&&Number(active)!==Number(a.order.activeId))||(account!=null&&a.order.accountId!=null&&String(account)!==String(a.order.accountId))){a.reject(Error('Comando da corretora divergiu da entrada programada.'));return;}
+   a.digitalTrade=isDigitalOrderPacket(name,body);
    a.order.useBrokerStake?.(Number(value),{confirmed:true});
    if(account!=null)a.order.accountId=String(account);
    a.requestId=rid;if(this.attempt===a)this.attempt=null;if(this.unidentifiedClick===a)this.unidentifiedClick=null;
@@ -306,7 +385,7 @@ export class BrokerUiExecutor{
     if(finite(opening)&&Number(opening)>0)result.entryPrice=Number(opening);
     const expires=body?.expiration_time??body?.expired;
     if(finite(expires))result.exitAt=Number(expires)<1e12?Number(expires)*1000:Number(expires);
-    const identified={...a.order,provider,orderId:String(id)};
+    const identified={...a.order,provider,orderId:String(id),digitalTrade:a.digitalTrade===true};
     this.orders.set(provider+'|'+id,identified);
     if(this.orders.size>2048)this.orders.delete(this.orders.keys().next().value);
     this.awaiting.delete(provider+'|'+rid);
@@ -316,7 +395,7 @@ export class BrokerUiExecutor{
     for(const cached of this.recentCloseFrames){
      if(cached.provider!==provider)continue;
      const settled=settlementFromFrame(provider,cached.frame,identified);
-     if(settled){this.orders.delete(provider+'|'+id);this.onSettlement(settled);break;}
+     if(settled){this.orders.delete(provider+'|'+id);this.onSettlement(settled);this.digitalOrderClosed(provider,identified);break;}
     }
    }
   }
@@ -325,7 +404,7 @@ export class BrokerUiExecutor{
   for(const [key,known] of [...this.orders]){
    if(known.provider!==provider)continue;
    const result=settlementFromFrame(provider,frame,known);
-   if(result){this.orders.delete(key);this.onSettlement(result);}
+   if(result){this.orders.delete(key);this.onSettlement(result);this.digitalOrderClosed(provider,known);}
   }
  }
 }

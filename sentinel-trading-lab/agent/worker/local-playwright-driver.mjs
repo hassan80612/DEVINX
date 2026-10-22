@@ -964,9 +964,9 @@ export class LocalPlaywrightDriver{
     // Never inject commands into the trading page's own WebSocket.
     return{ok:false,error:'direct_market_feed_unavailable'};
   }
-  async requestBaseData(provider){const st=this.state(provider),rid=reqId(provider);const requests=[
+  async requestBaseData(provider,{balancesOnly=false}={}){const st=this.state(provider),rid=reqId(provider);const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
-    {name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}
+    ...(!balancesOnly?[{name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}]:[])
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
@@ -1261,7 +1261,7 @@ export class LocalPlaywrightDriver{
     const baseRetryMs=st.balance==null?15000:
       passiveStreamHealthy?120000:30000;
     if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)
-      await this.requestBaseData(provider).catch(()=>{});
+      await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
     const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     if(st.candles.length&&(!integrity.ok||st.candleActiveId==null||st.activeId==null||Number(st.candleActiveId)!==Number(st.activeId))){
       st.lastIntegrityError={...integrity,reason:integrity.ok?'active_id_do_historico_divergente':integrity.reason,at:Date.now(),activeId:st.activeId,candleActiveId:st.candleActiveId,symbol:st.symbol};
@@ -1324,14 +1324,8 @@ export class LocalPlaywrightDriver{
     let authCookieSeen=cookies.some(x=>String(x?.name||'').toLowerCase()==='ssid'&&String(x?.value||'').length>8);
     let loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);
     let traderish=/trade|traderoom|platform|portfolio|dashboard/i.test(snap.url);
-    if(authCookieSeen&&!loginish&&!traderish&&!s.background){
-      try{
-        await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:18000});
-        snap=await this.domSnapshot(provider,{allowAttach:false});
-        loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);
-        traderish=/trade|traderoom|platform|portfolio|dashboard/i.test(snap.url);
-      }catch{}
-    }
+    // Session checks are read-only. Silent navigation can reset the user's
+    // broker expiry selection. Manual Open Broker retains its own navigation.
     const textHint=/(conta de prática|practice account|practice balance|conta real|real account|saldo|balance|portfolio|carteira|deposit|depósito|withdraw|retirar)/i.test(snap.text||'');
     const likelyAuthenticated=authCookieSeen&&!loginish&&(traderish||textHint);const sessionPresent=likelyAuthenticated;
     const phase=loginish?'login-required':sessionPresent?(s.background?'background-authenticated':'traderoom-authenticated'):(s.background?'background':'attached');
