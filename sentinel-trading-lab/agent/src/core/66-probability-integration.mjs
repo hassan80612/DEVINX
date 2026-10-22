@@ -13,18 +13,28 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
  const weak=strength!=null&&Number.isFinite(Number(strength))&&
    Number(strength)>=0&&Number(strength)<62;
  const protectedReversal=/rejection|reversal|retest|structure-change|level/.test(String(original.reason||''));
+ // 60/40 compares the probability model's selected-expiry directional
+ // estimate with a conservative bounded structural *score*. Scores are
+ // NOT calibrated WIN percentages. Only previously verified expiry
+ // outcomes can authorize a departure from the original structural side.
+ const structuralSame=.5+Math.min(100,Math.max(0,Number(strength)||0))*.0025;
+ const combinedSame=.60*pSame+.40*structuralSame;
+ const combinedOpp=1-combinedSame;
+ const weights={probabilityWeight:.60,structureWeight:.40,
+  blendedDirectionalSameScore:combinedSame,blendedDirectionalOppositeScore:combinedOpp,
+  calibratedWinProbability:false};
  // Only the CURRENT asset/provider/expiry/strategy's independent,
  // non-overlapping expiry samples may authorize inversion. A probability
  // percentage by itself never has that power. A slightly broader WEAK
  // structural score can participate only after identical-expiry outcomes
  // have already validated the opposite direction, with no new waiting.
- if(weak&&!protectedReversal&&pOpp>=.58&&proof?.approved===true&&
+ if(weak&&!protectedReversal&&pOpp>=.58&&combinedOpp>.50&&proof?.approved===true&&
     Number(proof.n)>=(Number(durationMs)>=300000?50:Number(durationMs)>=120000?30:16)&&
     Number(proof.observedOppositeRate)>=.78){
   return {...original,side:original.side==='CALL'?'PUT':'CALL',
    reason:'locally-verified-opposite-direction',probabilityOverride:true,
    probabilityAgreement:pOpp,originalSide:original.side,
-   originalStrength:Number(strength),probabilityEvidenceSamples:proof.n};
+   originalStrength:Number(strength),probabilityEvidenceSamples:proof.n,...weights};
  }
  // Only veto a strong observed counter-trend pullback; do not guess the
  // opposite trade or weaken level/retest reversals already recognized.
@@ -32,7 +42,7 @@ export function combine66WithProbability(original,estimate,{durationMs,proof=nul
     estimate.trendSide===original.side&&estimate.fastSide!==original.side&&
     estimate.ready===true&&pOpp>=.64){
   return {...original,ready:false,side:null,reason:'rapid-countertrend-retraction-risk',
-    probabilityOverride:false,probabilityAgreement:pSame,probabilityConflict:pOpp};
+    probabilityOverride:false,probabilityAgreement:pSame,probabilityConflict:pOpp,...weights};
  }
- return {...original,probabilityAgreement:pSame,probabilityOverride:false};
+ return {...original,probabilityAgreement:pSame,probabilityOverride:false,...weights};
 }
