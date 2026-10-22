@@ -1032,7 +1032,7 @@ export class DemoTradingRuntime{
       // Same proof requirements for DEMO and REAL. Unknown broker payout
       // means directional evidence ONLY; never advertise measured profit.
       const observation=this.forecastModel==='short-probability-v1'?
-        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof}):original66;
+        combine66WithProbability(original66,preliminary,{durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true}):original66;
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
