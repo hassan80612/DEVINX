@@ -75,7 +75,8 @@ test('never repairs while the Agent reports a busy trade or stale permission',()
   assert.equal(m.control.innerText,'30 s');
   globalThis.window.__sentinelNativeExpiryPermission.allowed=true;
   globalThis.window.__sentinelNativeExpiryPermission.at=m.now-5000;
-  m.step();assert.equal(m.control.innerText,'30 s');
+  m.now+=2500;m.interval(); // No Agent refresh: permission must stay stale.
+  assert.equal(m.control.innerText,'30 s');
  }finally{m.restore()}
 });
 test('all expiry keeper wiring remains outside analysis, candle timeframe and execution',()=>{
