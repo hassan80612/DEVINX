@@ -611,6 +611,17 @@ function recursiveScan(obj,out,hint=''){
   const keys=Object.keys(obj),objectMode=inferObjectMode(obj,hint);
   if(objectMode){out.modeCandidates=out.modeCandidates||[];out.modeCandidates.push({mode:objectMode,score:/balance|account|profile/.test(hint)?12:6})}
   const localHint=(hint+' '+String(obj.name??obj.type??obj.event??obj.method??obj.action??obj.account_type??obj.accountMode??'')).toLowerCase();
+  // Read numeric active_id keys only inside received broker catalog data.
+  if(/initialization-data|underlying|instrument-list|asset-list|active-list|actives/.test(localHint)){
+    for(const [key,val] of Object.entries(obj).slice(0,2000)){
+      if(!val||typeof val!=='object'||Array.isArray(val))continue;
+      const id=/^\d{1,6}$/.test(key)?Number(key):null;
+      const named=assetStrings(String(val.symbol??val.ticker??val.display_name??val.name??''));
+      if(id!=null&&id>0&&named.length===1){
+        out.activeMap.set(pairKey(named[0]),id);out.assets.add(named[0]);
+      }
+    }
+  }
   const ownPairs=uniq(keys.flatMap(k=>typeof obj[k]==='string'?assetStrings(obj[k]):[]));
   if(!ownPairs.length&&/active|instrument|asset|underlying/.test(localHint)){
     const label=String(obj.display_name??obj.displayName??obj.symbol??obj.ticker??obj.name??'').trim();
