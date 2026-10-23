@@ -329,7 +329,7 @@ export class SignalExecutor{
     }else this.stop('Bot parado · Stop Win atingido: banca calculada '+money(this.initialBalance+this.net)+' ≥ limite '+money(this.config.stopWin)+' (lucro confirmado: '+money(this.net)+')');
    }
    else if(this.stopLossReached(balance))
-    this.stop('Bot parado · Stop Loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
+    this.stop('Bot parado · Stop-loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
    else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
     !balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<this.config.amount){
     // Local cached Invest can lag behind a manual broker stake change.
@@ -705,7 +705,7 @@ export class SignalExecutor{
     this.message='Ligado · Stop Win confirmado; concluindo cliques já iniciados';
    }else this.stop('Bot parado · Stop Win atingido: banca calculada '+money(this.initialBalance+this.net)+' ≥ limite '+money(this.config.stopWin)+' (lucro confirmado: '+money(this.net)+')');
   }
-  else if(this.enabled&&this.stopLossReached())this.stop('Bot parado · Stop Loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
+  else if(this.enabled&&this.stopLossReached())this.stop('Bot parado · Stop-loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
   return true;
  }
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
