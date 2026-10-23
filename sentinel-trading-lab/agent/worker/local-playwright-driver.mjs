@@ -1017,8 +1017,12 @@ export class LocalPlaywrightDriver{
     const inner=String(payload?.msg?.name||'').toLowerCase();
     const marketWrite=inner==='get-candles'||outer==='candles'||
       (/subscribe|unsubscribe/.test(outer)&&/candle-generated|quote-generated/.test(inner));
-    if(this.nativeChartOpen(provider)&&marketWrite)
-      return{ok:false,error:'native_chart_period_owned_by_broker'};
+    // A SECOND Agent-owned socket can still share broker-side session
+    // settings with the visible traderoom. Never transmit ANY metadata,
+    // balances, initialization, subscriptions or periods over that socket
+    // while the native trading page is open. The page remains untouched.
+    if(this.nativeChartOpen(provider))
+      return{ok:false,error:'native_broker_session_passive_only'};
     const feed=await this.directFeed(provider).catch(()=>null);
     if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};
     // Never inject commands into the trading page's own WebSocket.
@@ -1030,38 +1034,22 @@ export class LocalPlaywrightDriver{
     // Re-requesting initialization through shared broker state can reset
     // native option settings; never use it as an ordinary heartbeat.
     if(this.nativeChartOpen(provider)){
-      // Cold start is different from maintenance. The previous native-page
-      // guard returned false forever with an empty active map / balance,
-      // preventing the analyst from starting until unrelated broker activity.
-      // Read account/catalog metadata ONLY. No candle period, get-candles,
-      // subscription, order, UI input or broker page navigation is sent.
-      // A visible balance number is NOT enough: DOM/account-mode hints can
-      // fill st.balance without a verified account ID or balance observation.
-      // Bootstrap must continue until we possess an identified account
-      // balance. Otherwise the PC card remains '—' forever on cold start.
-      const identifiedBalance=this.accountBalanceSnapshot(provider);
-      if(st.activeMap.size>0&&identifiedBalance)return true;
+      // NO get-initialization-data, get-balances or directFeed/WebSocket
+      // writes in an open traderoom. Even apparently read-only initialization
+      // requests changed the broker's own expiration back to 30s.
+      // Passive frames from the attached page can identify the account.
+      if(this.accountBalanceSnapshot(provider)&&st.activeMap.size>0)return true;
       const now=Date.now();
       if(st.nativeBootstrapPromise)return st.nativeBootstrapPromise;
       if(st.lastNativeBootstrapAt&&now-st.lastNativeBootstrapAt<12000)return false;
       st.lastNativeBootstrapAt=now;
       const task=(async()=>{
-        const messages=[];
-        if(st.activeMap.size===0)messages.push({
-          name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},
-          request_id:reqId('native-init')
-        });
-        if(!this.accountBalanceSnapshot(provider))messages.push({
-          name:'sendMessage',msg:{name:'get-balances',version:'1.0'},
-          request_id:reqId('native-balance')
-        });
-        let sent=false;
-        for(const message of messages){
-          const result=await this.wsSend(provider,message).catch(()=>null);
-          sent=!!result?.ok||sent;
-        }
-        st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
-        return sent||st.activeMap.size>0||!!this.accountBalanceSnapshot(provider);
+        const session=this.sessions.get(provider);
+        if(session?.page&&!session.background)await this.domSnapshot(provider).catch(()=>{});
+        st.lastBaseRequestAt=Date.now();
+        // A visible balance with no account ID is usable for display only;
+        // stop limits and financial WIN/LOSS require broker confirmation.
+        return !!this.accountBalanceSnapshot(provider)||st.activeMap.size>0;
       })();
       st.nativeBootstrapPromise=task;
       try{return await task}finally{if(st.nativeBootstrapPromise===task)st.nativeBootstrapPromise=null}
@@ -1469,6 +1457,17 @@ export class LocalPlaywrightDriver{
     const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
+  visibleAccountBalance(provider){
+    const st=this.state(provider);
+    // Display-only fallback for a freshly observed balance from the
+    // broker's visible DOM. This is never fed to Stop Win/Loss or martingale.
+    if(this.accountBalanceSnapshot(provider))return null;
+    if(!String(st.balanceSource||'').startsWith('dom:')||
+      !Number.isFinite(Number(st.balance))||Number(st.balance)<0||
+      !(Number(st.lastDomAt)>0)||Date.now()-st.lastDomAt>45000)return null;
+    return {amount:st.balance,mode:st.visibleAccountMode||st.mode||null,
+      receivedAt:st.lastDomAt,source:'unverified-visible-broker-page'};
+  }
   accountBalanceSnapshot(provider){
     const st=this.state(provider);applyKnownBalance(st);const value=st.balanceObservation;
     if(!value||st.balanceId==null||String(st.balanceId)!==value.accountId)return null;
