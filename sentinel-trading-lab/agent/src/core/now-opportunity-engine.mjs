@@ -10,6 +10,7 @@ import {historicalPriceStructure,applyHistoricalPriceStructure} from './historic
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
+import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -276,8 +277,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const pivotRisk=proposed.ready&&countertrendPivotRisk({
    quoteHistory,quoteAt,price,side:proposed.side,now
   });
+  // One final shared-market-base screen for a fading approach to a verified
+  // historical wall. No direction inversion, timing changes, waits or reads.
+  const wallRisk=!pivotRisk&&proposed.ready?verifiedWallExhaustionRisk({
+   candidate:proposed,structure,quoteHistory,quoteAt,now,price
+  }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
-   reason:'shared-base-countertrend-pivot-risk'}:proposed;
+   reason:'shared-base-countertrend-pivot-risk'}:
+   wallRisk?{...proposed,ready:false,side:null,
+    reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:proposed;
   return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
