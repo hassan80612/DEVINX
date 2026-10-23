@@ -98,6 +98,19 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   function restore(control){
    if(repairing||!permission()||!control||!preferredMs||lastUserActivityAt>Date.now()-12000)return;
    repairing=true;lastRepairAt=Date.now();
+   // Genuine HTML select widgets can be restored without opening a menu.
+   // Never assign the broker's trade order, chart period, or analyst duration.
+   const nativeSelect=control.el.matches?.('select')?control.el:control.el.querySelector?.('select');
+   if(nativeSelect){
+    const matches=[...nativeSelect.options].filter(o=>parse(o.textContent||o.label)===preferredMs);
+    if(matches.length===1){
+     nativeSelect.value=matches[0].value;
+     nativeSelect.dispatchEvent(new Event('input',{bubbles:true}));
+     nativeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+     setTimeout(()=>{const actual=discover()?.value;if(actual===preferredMs)mismatchSince=0;repairing=false;notify(actual??null)},480);
+    }else repairing=false;
+    return;
+   }
    const opener=control.el.matches?.('button,[role="button"],input')?control.el:
     control.el.querySelector?.('button,[role="button"],input')||control.el;
    try{opener.click()}catch{repairing=false;return}
@@ -107,14 +120,17 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     try{
      if(!permission()){repairing=false;return}
      const elements=[...document.querySelectorAll(
-      '[role="option"],[role="menuitem"],[class*="option" i],li,button'
-     )].filter(el=>visible(el)&&!el.closest?.('#sentinel-trading-overlay-host')&&
-       !el.querySelector?.('[role="option"],[role="menuitem"]'));
+      '[role="option"],[role="menuitem"],[class*="option" i],'+
+      '[class*="expiration" i],[class*="duration" i],[class*="item" i],li,button'
+     )].filter(el=>visible(el)&&!el.closest?.('#sentinel-trading-overlay-host'));
      const options=elements.filter(el=>{
       const raw=String(el.innerText||el.textContent||'').trim();
       if(raw.length>28||!raw)return false;
       return parse(raw)===preferredMs;
-     }).filter(el=>el!==opener&&!el.contains(opener));
+     }).filter(el=>el!==opener&&!el.contains(opener))
+      // Drop composite ancestors when the real clickable leaf is present.
+      .filter(el=>!elements.some(other=>other!==el&&el.contains?.(other)&&
+        parse(String(other.innerText||other.textContent||'').trim())===preferredMs));
      // Unique selection only; clicking a guessed item risks a wrong expiry.
      if(options.length!==1){repairing=false;try{opener.click()}catch{};return}
      const target=options[0];
