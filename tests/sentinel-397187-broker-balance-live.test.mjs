@@ -33,20 +33,23 @@ for(const provider of ['iq_option','exnova']){
  });
 }
 
-test('native startup with a visible DOM balance but NO verified account still requests get-balances',async()=>{
+test('native startup with a visual bank never sends ANY native broker requests',async()=>{
  for(const provider of ['iq_option','exnova']){
   const d=new LocalPlaywrightDriver({dataDir:'unused-test'});
   const st=d.state(provider);
-  st.balance=50;st.mode='demo';st.balanceId=null;
+  st.balance=50;st.balanceSource='dom:demo';st.lastDomAt=Date.now();st.mode='demo';st.balanceId=null;
   st.activeMap.set('EURUSDOTC',76);
   d.sessions.set(provider,{page:{isClosed:()=>false}});
   const commands=[];
   d.wsSend=async(_provider,msg)=>{commands.push(msg.msg.name);return{ok:true}};
-  assert.equal(await d.requestBaseData(provider),true);
-  assert.deepEqual(commands,['get-balances'],'a DOM balance without account ID cannot satisfy broker confirmation');
+  d.domSnapshot=async()=>({ok:true}); // no actual browser request
+  assert.equal(await d.requestBaseData(provider),true,'known market metadata is enough to proceed with analysis');
+  assert.deepEqual(commands,[],'no Agent-owned broker socket when traderoom is open');
+  assert.equal(d.accountBalanceSnapshot(provider),null);
+  assert.equal(d.visibleAccountBalance(provider)?.amount,50,'display-only balance never authorizes bankroll accounting');
   d.ingest(provider,{name:'balances',msg:[{id:10,type:4,amount:50}]},'page-in');
   assert.equal(d.accountBalanceSnapshot(provider)?.amount,50);
   await d.requestBaseData(provider);
-  assert.equal(commands.length,1,'once confirmed, native chart is left alone');
+  assert.equal(commands.length,0,'once confirmed, native chart is still read-only');
  }
 });
