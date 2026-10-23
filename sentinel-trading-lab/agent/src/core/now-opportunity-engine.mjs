@@ -51,7 +51,7 @@ function before(quotes,at,maxAgeMs=3500){
 // 5-second prices from the past, not future projections or forming candles.
 // Return null for a directional regime; return a verdict when past alternation
 // means a short-term impulse is a potentially misleading end-of-range leg.
-function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
+export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
  if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
@@ -114,6 +114,18 @@ function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const lower=Math.min(...lows.map(p=>p.level));
  const span=upper-lower;
  if(!(span>noise*1.10))return null;
+ // A rising HH/HL or falling LH/LL sequence is a trending channel,
+ // not a stationary range. A minor counter-tick at its extreme
+ // must not become a protected opposite-side reversal.
+ // This uses only previously confirmed 5s pivots; no timer, broker
+ // request, added candle requirement or change to entry execution.
+ if(highs.length===2&&lows.length===2){
+  const minStep=Math.max(span*.06,noise*.15);
+  const highStep=highs[1].level-highs[0].level;
+  const lowStep=lows[1].level-lows[0].level;
+  if((highStep>minStep&&lowStep>minStep)||
+     (highStep< -minStep&&lowStep< -minStep))return null;
+ }
  const boundaryTolerance=Math.max(noise*.10,span*.02);
  if(Math.log(spot)>upper+boundaryTolerance||Math.log(spot)<lower-boundaryTolerance)
    return null;
