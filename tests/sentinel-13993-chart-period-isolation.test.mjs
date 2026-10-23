@@ -71,5 +71,6 @@ test('local worker disables auxiliary period only when the real-time NOW analyst
  assert.match(driver,/size=Number\(st\.predictionPeriod\)/);
  assert.match(driver,/if\(!size\|\|size===Number\(st\.candleSize\)/);
  assert.match(driver,/const size=Number\(st\.candleSize\|\|60\)/);
- assert.match(driver,/const needHistoryRecovery=st\.candles\.length<50\|\|stale\|\|\(!streamingHealthy&&historyDue\)/);
+ assert.match(driver,/const needHistoryRecovery=shouldRecoverBrokerHistory\(\{/);
+ assert.match(driver,/lastRequest:st\.lastCandleRequest,now/);
 });
