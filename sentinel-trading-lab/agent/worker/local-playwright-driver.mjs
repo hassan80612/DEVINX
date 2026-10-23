@@ -13,6 +13,7 @@ import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
+import {installBrokerNativeExpiryKeeper} from './broker-native-expiry-keeper.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -733,6 +734,15 @@ export class LocalPlaywrightDriver{
     return this.launchBackground(provider);
   }
   async installBridge(page,provider=null){
+    // Native broker selection is independent of the chart candle size AND
+    // the Sentinel prediction expiry. Install once per broker page context.
+    if(provider&&['iq_option','exnova'].includes(provider)){
+      if(!page.__sentinelNativeExpiryInitScript){
+        page.__sentinelNativeExpiryInitScript=true;
+        await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
+      }
+      await page.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
+    }
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
       page.__sentinelOverlayControlExposed=true;
@@ -804,10 +814,11 @@ export class LocalPlaywrightDriver{
     for(const frame of page.frames()){
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
+      if(provider)await frame.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{})};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider)frame.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{})};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
@@ -1517,6 +1528,14 @@ export class LocalPlaywrightDriver{
       await s.page.evaluate((d)=>{
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
+        // Fail closed during pending / live broker orders. Fresh permission
+        // comes from the current Agent overlay, not from an independent timer.
+        const expBot=d.autoExecutor,expAnchor=d.vnext?.futureEntryAnchor;
+        window.__sentinelNativeExpiryPermission={
+          at:Date.now(),
+          allowed:!!expBot&&!expBot.arming&&!expBot.executing&&!expBot.pending&&
+            !(expAnchor?.phase==='fired'&&Number(expAnchor.exitAt||0)>Date.now())
+        };
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
