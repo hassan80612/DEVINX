@@ -1661,3 +1661,35 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 }
 
 .botControl{margin-top:16px;min-width:0}.botControlFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.botControlFields label{display:grid;gap:6px;min-width:0;font-size:13px}.botControlFields input{width:100%;min-width:0;box-sizing:border-box;min-height:44px;font-size:16px}.botControlActions{display:flex;gap:8px;flex-wrap:wrap}.botControlActions button{min-height:44px;flex:1;white-space:nowrap}.botControl p{overflow-wrap:anywhere}
+
+
+/* Mobile: strategy and expiry selectors share a clean aligned row.
+   Strategy explanation belongs in its details/guide, not inside the
+   selector grid where it stretches one column and misaligns the other. */
+@media (max-width: 760px){
+ .app.marketWorkspace .vnextEngineToolbar,
+ .app.compactAnalyst .vnextEngineToolbar,
+ .app.marketWorkspace .liveScenario .vnextEngineToolbar{
+   display:grid!important;
+   grid-template-columns: minmax(0,1fr) minmax(0,1fr)!important;
+   align-items:start!important;align-content:start!important;
+   gap:10px!important;padding:11px!important;
+ }
+ .app.marketWorkspace .vnextEngineToolbar > label,
+ .app.compactAnalyst .vnextEngineToolbar > label{
+   min-width:0!important;width:100%!important;
+   display:flex!important;flex-direction:column!important;
+   justify-content:flex-start!important;gap:7px!important;
+   font-size:11px!important;line-height:1.25!important;
+ }
+ .app.marketWorkspace .vnextEngineToolbar select,
+ .app.compactAnalyst .vnextEngineToolbar select{
+   width:100%!important;min-width:0!important;max-width:100%!important;
+   height:43px!important;font-size:12px!important;
+   padding-inline:8px!important;
+ }
+ .app.marketWorkspace .vnextEngineToolbar label:first-child > small,
+ .app.compactAnalyst .vnextEngineToolbar label:first-child > small{
+   display:none!important;
+ }
+}
