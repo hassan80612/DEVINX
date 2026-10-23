@@ -53,8 +53,9 @@ test('strictly causal: future or late-delivered price changes no outcome',()=>{
 });
 test('the actual shared base invokes phase model for all four expiries',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
- assert.match(src,/const expiryPhase=expiryPhaseDirection\(input\)/);
+ assert.match(src,/const expiryPhase=canReview\?expiryPhaseDirection\(input\):null/);
  assert.match(src,/Number\(durationMs\)===30000\?causalPatternDirection\(input\):null/);
+ assert.match(src,/const canReview=structural\.ready===true/);
  const prediction=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-phase-direction.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(prediction,/fetch\(|await\b|setTimeout\(|setInterval\(|page\.click\(/);
 });
