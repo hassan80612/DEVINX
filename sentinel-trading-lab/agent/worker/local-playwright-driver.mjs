@@ -940,12 +940,25 @@ export class LocalPlaywrightDriver{
         client.on('Network.webSocketFrameReceived',event=>{
           const response=event?.response,payload=response?.payloadData;
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
-            (!/balance|profile/.test(payload)&&(!this.executionObserver||!/option|position|order-changed|order-closed|buyv3|"error"/i.test(payload))))return;
+            !/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
-          // The existing broker socket needs buyV3 acknowledgements and closing events.
-          // Missing one leaves a physical trade indefinitely unidentified.
-          if(this.executionObserver&&isExecutionFrame(frame))this.observeExecution(provider,frame,'page-in');
-          else if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');
+          // Observe the already-open traderoom socket. Playwright's
+          // websocket event only sees sockets created AFTER attach.
+          // Missing these native price frames triggered unnecessary
+          // Agent history requests and native timeframe resets.
+          if(this.executionObserver&&isExecutionFrame(frame)){
+            this.observeExecution(provider,frame,'page-in');return;
+          }
+          if(isAccountFrame(frame)){this.ingest(provider,frame,'page-in');return;}
+          const kind=String(frame?.name||'').toLowerCase();
+          if(kind==='candles'){this.ingest(provider,frame,'page-in');return;}
+          if(!/candle-generated|quote-generated|instrument-quotes|ticker/.test(kind))return;
+          const st=this.state(provider),now=Date.now();
+          const aid=frame?.msg?.active_id??frame?.msg?.activeId;
+          if(aid!=null&&st.activeId!=null&&Number(aid)!==Number(st.activeId))return;
+          // One 200ms limiter shared by CDP and Playwright observers.
+          if(now-Number(st.lastPassiveFrameAt||0)<200)return;
+          st.lastPassiveFrameAt=now;this.ingest(provider,frame,'page-in');
         });
         await client.send('Network.enable');
         page.__sentinelAccountCdpReady=true;
@@ -979,6 +992,13 @@ export class LocalPlaywrightDriver{
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
+    // Chart ownership belongs to the traderoom, not the Agent. A "separate"
+    // authenticated broker socket can still share server-side chart state.
+    // Never write a market period into any active native broker page.
+    if(this.sessions.get(provider)?.page){
+      st.lastCandleResponse={name:'native-chart-passive-only',at:Date.now()};
+      return st.candles.length>=50&&candleFreshForState(st);
+    }
     const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
     const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
     // r10 renovava a assinatura em toda leitura forçada, o que ajudava a recuperar
@@ -1046,6 +1066,9 @@ export class LocalPlaywrightDriver{
     return st.candles.length>=50;
   }
   async requestQuoteHistory(provider,{symbol,activeId}={}){
+    // A 1s Agent backfill is still a get-candles request and may reset the
+    // traderoom period via shared broker state. Use its native stream instead.
+    if(this.sessions.get(provider)?.page)return false;
     const st=this.state(provider),key=String(activeId)+'|'+String(symbol);
     if(st.quoteBackfillKey===key)return false;
     st.quoteBackfillKey=key;
@@ -1242,6 +1265,8 @@ export class LocalPlaywrightDriver{
     if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
   }
   async refreshPredictionHistory(provider,now=Date.now()){
+    // Legacy auxiliary periods must not modify the native traderoom.
+    if(this.sessions.get(provider)?.page)return false;
     const st=this.state(provider),size=Number(st.predictionPeriod);
     if(!size||size===Number(st.candleSize)||st.activeId==null||now-Number(st.lastPredictionRequestAt||0)<9000)return false;
     st.lastPredictionRequestAt=now;
@@ -1308,8 +1333,10 @@ export class LocalPlaywrightDriver{
     const historyDue=!st.lastCandleRequest||
       now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
     const needHistoryRecovery=st.candles.length<50||stale||(!streamingHealthy&&historyDue);
-    if(needHistoryRecovery)
+    if(needHistoryRecovery&&!this.sessions.get(provider)?.page)
       await this.requestMarketData(provider,{force:true}).catch(()=>{});
+    // Missing native history is reported as missing, never "repaired"
+    // by repeatedly changing the chart's selected candle interval.
     await this.refreshPredictionHistory(provider,now).catch(()=>{});
     if(st.screenCandidateSymbol&&pairKey(st.screenCandidateSymbol)!==pairKey(st.symbol||'')){st.marketStatus='unvalidated';st.marketReason='Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.'}
     else if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=(st.symbol||'Ativo')+' validado e com candles atuais'}
