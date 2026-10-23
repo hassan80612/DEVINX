@@ -1004,10 +1004,10 @@ export class LocalPlaywrightDriver{
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>1200000)return;
           const catalogHint=/initialization-data|underlying-list|instrument-list|active-list|asset-list|assets-list|actives-list/.test(payload.slice(0,500).toLowerCase());
           if(payload.length>120000&&!catalogHint)return;
-          if(!catalogHint&&!/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload.slice(0,1000)))return;
+          if(!catalogHint&&!/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload))return;
           // Do not decode order-only frames when the execution observer is off.
           // Still pass native quote/candle/account messages to the passive feed.
-          if(!this.executionObserver&&!catalogHint&&!/balance|profile|candle|quote|ticker/i.test(payload.slice(0,1000)))return;
+          if(!this.executionObserver&&!catalogHint&&!/balance|profile|candle|quote|ticker/i.test(payload))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
           // Observe the already-open traderoom socket. Playwright's
           // websocket event only sees sockets created AFTER attach.
