@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {packExecutor,unpackExecutor,dispatchExecutor} from '../sentinel-trading-lab/agent/worker/executor-remote.mjs';
 import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 import {analystSnapshot,fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
