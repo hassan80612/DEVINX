@@ -29,7 +29,7 @@ function browser(initial='1 min',stored=null){
  globalThis.innerHeight=900;globalThis.innerWidth=1400;
  globalThis.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)};
  globalThis.document={visibilityState:'visible',
-  querySelectorAll(selector){return selector.includes('expiration')?[control]:mock.open?mock.options:[]},
+  querySelectorAll(selector){return selector.startsWith('[role="option"]')?(mock.open?mock.options:[]):selector.includes('expiration')?[control]:[]},
   addEventListener(name,fn){mock.listeners[name]=fn}};
  globalThis.window={__sentinelNativeExpiryPermission:{allowed:true,at:mock.now}};
  globalThis.setInterval=fn=>{mock.interval=fn;return 1};
