@@ -377,12 +377,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // completed 30s/60s/2m/5m outcomes decide, never the latest tick alone.
   // Evidence without >=4 independent settled analogues defers to the original
   // structural model, preserving its valid continuation and reversal setups.
-  const expiryPhase=expiryPhaseDirection(input);
-  // Preserve the pre-existing short-history 30s signal; independent
-  // horizon-matched evidence extends the base for 30s/60s/2m/5m only when
-  // four actually completed, non-overlapping outcomes are comparable.
-  const learning=expiryPhase.ready?expiryPhase:
-   Number(durationMs)===30000?causalPatternDirection(input):null;
+  // Existing 30s evidence remains authoritative during bootstrap.
+  // New 30s/60s/2m/5m expiry-phase evidence can REASSESS an opportunity
+  // already qualified by structural price action, never manufacture a new
+  // trade because a brief move resembles an incomplete historical wave.
+  // The extended cache is required to distinguish independent prior outcomes
+  // from overlapping recent ticks. No extra waiting or broker calls.
+  const canReview=structural.ready===true&&Array.isArray(rangeQuoteHistory)&&
+    rangeQuoteHistory.length>=80;
+  const expiryPhase=canReview?expiryPhaseDirection(input):null;
+  const learning=expiryPhase?.ready===true?expiryPhase:
+    Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=
     (learning===expiryPhase?80:.4);
   const contextStrategy=useLearning?'mean_reversion':'trend';
