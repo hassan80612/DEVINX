@@ -951,6 +951,9 @@ export class LocalPlaywrightDriver{
           const response=event?.response,payload=response?.payloadData;
           if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
             !/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload))return;
+          // Do not decode order-only frames when the execution observer is off.
+          // Still pass native quote/candle/account messages to the passive feed.
+          if(!this.executionObserver&&!/balance|profile|candle|quote|ticker/i.test(payload))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
           // Observe the already-open traderoom socket. Playwright's
           // websocket event only sees sockets created AFTER attach.
