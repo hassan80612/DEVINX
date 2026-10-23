@@ -11,6 +11,7 @@ import {historicalPriceStructure,applyHistoricalPriceStructure} from './historic
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
+import {reviewHistoricalBreakoutContinuation} from './historical-breakout-continuation.mjs';
 import {assessRangeExpiryEvidence} from './range-expiry-evidence.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
@@ -360,8 +361,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const pivotRisk=proposed.ready&&countertrendPivotRisk({
    quoteHistory,quoteAt,price,side:proposed.side,now
   });
-  const final=pivotRisk?{...proposed,ready:false,side:null,
+  const pivotReviewed=pivotRisk?{...proposed,ready:false,side:null,
    reason:'shared-base-countertrend-pivot-risk'}:proposed;
+  // Last market-base check for ALL engine responses, including the 30s
+  // specialist and expiry-projection override. A confirmed historical
+  // resistance/support must not be ignored just because the latest candle
+  // currently points toward it without a verified hold above/below.
+  const final=reviewHistoricalBreakoutContinuation({
+   candidate:pivotReviewed,structure,quoteHistory,quoteAt,now,price,durationMs
+  });
   return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
