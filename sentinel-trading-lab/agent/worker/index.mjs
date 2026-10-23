@@ -565,7 +565,8 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       state:view.state,
       demoAutopilot:view.autopilot?.enabled===true,
       executionReady:view.autopilot?.eligible===true,
-      agentVersion:VERSION,autoExecutor:{...executor.status(),provider:activeProvider,controlsMapped:!!uiExecutor.canvasBindings[activeProvider]}
+      agentVersion:VERSION,autoExecutor:{...executor.status(),provider:activeProvider,controlsMapped:!!uiExecutor.canvasBindings[activeProvider],
+        visibleBalance:driver.visibleAccountBalance?.(activeProvider)||null}
     },{urgent:urgentOverlay});
     }
     }
