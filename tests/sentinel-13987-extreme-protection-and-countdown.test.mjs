@@ -50,8 +50,9 @@ test('PC and mobile WIN/LOSS by countdown originate exclusively from broker exec
  assert.match(pc,/Number\(d\.autoExecutor\.sessionWins\|\|0\)/);
  assert.match(pc,/Number\(d\.autoExecutor\.sessionLosses\|\|0\)/);
  assert.match(mobile,/data-testid="mobile-countdown-executor-wl"/);
- assert.match(mobile,/s\.autoExecutor\.sessionWins/);
- assert.match(mobile,/s\.autoExecutor\.sessionLosses/);
+ assert.match(mobile,/receivedCount\(winLossData\?\.sessionWins\)/);
+ assert.match(mobile,/receivedCount\(winLossData\?\.sessionLosses\)/);
+ assert.equal((mobile.match(/\{executorWinLoss\}/g)||[]).length,2);
  assert.match(agent,/autoExecutor:\{\.\.\.executor\.status\(\)/);
  const payload=packExecutor({enabled:true,config:{amount:1},sessionWins:7,sessionLosses:5});
  const decoded=unpackExecutor(payload);
