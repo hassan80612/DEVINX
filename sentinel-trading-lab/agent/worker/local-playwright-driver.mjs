@@ -1018,7 +1018,11 @@ export class LocalPlaywrightDriver{
         }catch(e){
           st.lastCandleResponse={name:'timeout',error:String(e?.message||e),at:Date.now()};
         }
-      }else await this.wsSend(provider,modern).catch(()=>{});
+      }else{
+        // Page-bound get-candles can reset the broker's native chart/expiry.
+        // Do NOT send Sentinel recovery requests through the traderoom socket.
+        st.lastCandleResponse={name:'isolated-direct-feed-unavailable',at:Date.now()};
+      }
       await sleep(120);
       if(Number(st.activeId)!==Number(targetId)||pairKey(st.symbol||'')!==pairKey(targetSymbol))return false;
       if(st.candles.length<50){
@@ -1031,9 +1035,11 @@ export class LocalPlaywrightDriver{
             st.lastCandleResponse={name:String(response?.name||''),requestId:String(response?.request_id||''),hasMsg:!!response?.msg,legacy:true,at:Date.now()};
           }catch(e){
             st.lastCandleResponse={name:'legacy-timeout',error:String(e?.message||e),legacy:true,at:Date.now()};
-            await this.wsSend(provider,legacy).catch(()=>{});
+            // Failed dedicated feed is not authorization to modify the
+            // broker's currently selected chart or expiration.
+            st.lastCandleResponse={name:'isolated-legacy-feed-unavailable',at:Date.now()};
           }
-        }else await this.wsSend(provider,legacy).catch(()=>{});
+        }else st.lastCandleResponse={name:'isolated-legacy-feed-unavailable',at:Date.now()};
       }
       st.lastRequestAt=Date.now();if(st.protocol==='passive')st.protocol='active-websocket';
     }
