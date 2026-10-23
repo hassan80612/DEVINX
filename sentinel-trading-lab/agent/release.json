@@ -1,6 +1,6 @@
 {
-  "version": "3.97.187",
-  "build": "3.97.187-phase-aware-forecast-native-chart-isolation",
+  "version": "3.9.85",
+  "build": "3.9.85-structure-passive-broker-price-score",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "3.97.187"
+  "publicVersion": "3.9.85"
 }
