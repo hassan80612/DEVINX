@@ -89,7 +89,16 @@ function chooseLive(){
   for(const k of order){
     const b=brokers[k],peek=driver.peek?.(k),m=driver.liveStatus?.(k);
     if(peek?.updatedAt&&peek.open===false)continue;
-    if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){
+    // Analyst startup must not require a balance, quote or 50 candles.
+    // The visible, authenticated broker session is enough to START reading;
+    // the runtime's independent feed/quote freshness gate still prohibits
+    // any signal until the correct asset's actual prices are validated.
+    // A cold native page may have no account or quote yet since its websocket
+    // is intentionally passive (do not reset broker expiry to 30 seconds).
+    const pagePresent=driver.nativeChartOpen?.(k)===true||
+      (peek?.open===true&&peek?.sessionPresent===true);
+    const marketSeen=m.balance!=null||m.quote!=null||(m.candles?.length||0)>0;
+    if(b?.connected&&m&&(pagePresent||marketSeen)){
       if(activeProvider!==k)activeProvider=k;
       return{k,m}
     }
