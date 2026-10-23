@@ -438,7 +438,7 @@ function protocolScan(data,st,direction='in'){
       }
       const selected=st.uiSymbol||st.symbol||null;
       if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected);st.pendingPageActiveId=null}
-      const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
+      const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,120,300,600,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
 
@@ -536,7 +536,11 @@ function protocolScan(data,st,direction='in'){
         // Page and direct sockets obey the same source-event ordering. A
         // delayed closed candle is historical evidence, not a new quote now.
         applyObservedCandleQuote(st,candle,data.msg);
-        const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+        // A separate direct quote feed may stream another candle interval.
+        // Only the native page's own interval may become the chart interval.
+        const sz=n(data?.msg?.size);
+        if(sz!=null&&[5,10,15,30,60,120,300,600,900,1800,3600].includes(Number(sz))&&
+          (!st.nativeChartOwnsPeriod||direction==='page-in'))st.candleSize=Number(sz)}
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
@@ -820,7 +824,9 @@ export class LocalPlaywrightDriver{
     // Do not infer quote freshness from the separate socket's heartbeat.
     // Receive validated live prices from the broker page even when the
     // independent socket is authenticated but provides only history.
-    const st=this.state(provider);const oldBalanceRevision=Number(st.balanceRevision||0);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt,quoteHistoryLength:st.quoteHistory.length};st.lastFrameAt=Date.now();let data=payload;
+    const st=this.state(provider);
+    st.nativeChartOwnsPeriod=this.nativeChartOpen(provider);
+    const oldBalanceRevision=Number(st.balanceRevision||0);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt,quoteHistoryLength:st.quoteHistory.length};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
     const frameKind=(String(data?.name||'')+' '+String(data?.msg?.name||data?.msg?.event||'')).toLowerCase();
@@ -1003,12 +1009,13 @@ export class LocalPlaywrightDriver{
     // manual refreshes of a visible traderoom only read account balances.
     // Re-requesting initialization through shared broker state can reset
     // native option settings; never use it as an ordinary heartbeat.
-    balancesOnly=balancesOnly||(this.nativeChartOpen(provider)&&st.activeMap.size>0);
-    if(this.nativeChartOpen(provider)&&st.activeMap.size>0&&st.balance!=null){
-      // Native page/CDP already supplies balance-change events. No need to
-      // re-authenticate an auxiliary socket on each Agent refresh.
+    if(this.nativeChartOpen(provider)){
+      // Any auxiliary authentication or initialization command MAY be able to
+      // restore the broker's default option expiration in its shared session.
+      // Native browser events supply market metadata, active tab and balance;
+      // leave them untouched and report missing fields as missing.
       st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
-      return true;
+      return st.activeMap.size>0||st.balance!=null;
     }
     const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
