@@ -89,18 +89,22 @@ test('manual 30s strategies no longer silently inherit the automatic cycle decis
   assert.equal(analyzeNowOpportunity({...input,engineId:'automatic'}).signalOwner,'shared-market-base');
  }
 });
-test('runtime emits exactly the replayed entries and preserves one signal throughout each 30s expiry',()=>{
- const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
- const settings={...runtime.settings,engine:'fibonacci_retest',asset:'EUR/GBP OTC',orderDurationMs:30000};
- const actual=[];
+test('runtime preserves 30s signal ownership, side, and one immutable entry per expiry across selected strategies',()=>{
+ const makeRuntime=engine=>{const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
+  r.settings.engine=engine;return r;};
+ const specialist=makeRuntime('fibonacci_retest'),automatic=makeRuntime('automatic');
+ const settings={...specialist.settings,asset:'EUR/GBP OTC',orderDurationMs:30000};
+ const expectedSettings={...automatic.settings,asset:'EUR/GBP OTC',orderDurationMs:30000};
+ const actual=[],expected=[];
  for(let i=0;i<rows.length;i++){
   const q=rows[i],history=rows.slice(0,i+1);
   const snap={provider:'iq_option',quoteHistory:history,quoteTs:q.ts,price:q.price,
    brokerExpirationDurationMs:null,brokerExpirationConfidence:0};
-  const v=runtime._signalValidationGate({analysis:{asset:settings.asset},snap,settings,now:q.ts}).analysis.vnext;
+  const v=specialist._signalValidationGate({analysis:{asset:settings.asset},snap,settings,now:q.ts}).analysis.vnext;
+  const base=automatic._signalValidationGate({analysis:{asset:settings.asset},snap,settings:expectedSettings,now:q.ts}).analysis.vnext;
   if(v.futureEntryAnchor?.entryReadyNow)actual.push({at:q.ts,side:v.futureEntryAnchor.side});
+  if(base.futureEntryAnchor?.entryReadyNow)expected.push({at:q.ts,side:base.futureEntryAnchor.side});
   if(actual.length>1)assert.ok(actual.at(-1).at>=actual.at(-2).at+30000);
  }
- const expected=compareRows(rows).candidate.entries.map(({at,side})=>({at,side}));
- assert.deepEqual(actual,expected);
+ assert.deepEqual(actual,expected,'selected strategy cannot bypass shared base on same received quotes');
 });

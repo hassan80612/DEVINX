@@ -265,8 +265,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
-   ...(engineId!=='automatic'?{strategyResponse:specialist?.ready?
-     (specialist.side===located.side?'aligned':'divergent'):'observational'}:{})};
+   ...(engineId!=='automatic'&&Number(durationMs)===30000?{
+     strategyResponse:specialist?.ready?
+       (specialist.side===located.side?'aligned':'divergent'):'observational'
+   }:{})};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
