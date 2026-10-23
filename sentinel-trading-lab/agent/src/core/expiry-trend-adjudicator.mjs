@@ -79,7 +79,15 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // Four coherent moves and a strong majority of the observed excursion
  // can corroborate the direction even when the probability model is absent.
  const priceProof=agreeing===4&&Math.abs(net)/absolute>=.87&&Math.abs(net)>=typical*7;
- if(!forecastSupports&&!priceProof)return candidate;
+ if(!forecastSupports&&!priceProof){
+  // A robust, expiry-scale OPPOSITE observation contradicts the old side.
+  // Missing independent support does not vindicate the stale entry: do not
+  // keep the wrong-direction CALL/PUT or blindly flip it. WAIT for a new
+  // consistent causal setup on another actual quote, all selected durations.
+  return {...candidate,ready:false,side:null,reason:'expiry-scale-direction-unresolved',
+   expiryTrendDecision:'opposite-flow-without-confirmed-side',
+   originalSide:candidate.side,originalReason:candidate.reason};
+ }
  // No claim that a move will continue at expiry: this is an independently
  // observed, time-matched price reversal of the PREVIOUS direction vote.
  return {...candidate,ready:true,side:trend,reason:'observed-multi-interval-trend-correction',
