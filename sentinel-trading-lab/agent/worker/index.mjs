@@ -399,7 +399,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   executor.observeBalance(activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null);
   executor.watch();
   const licensed=await enforceAccessLease();
-  if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
+  if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();void saveState()}return}
   if(activeProvider){
     const activePeek=driver.peek?.(activeProvider);
     if(activePeek?.updatedAt&&activePeek.open===false){
@@ -407,7 +407,6 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       activeProvider=null;lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
     }
   }
-  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
   // Live broker quote events and the dedicated 220ms signed-feed timer
   // already publish the latest pre-analysis source values. Do not duplicate
@@ -417,6 +416,12 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
   executor.pulse();
+  // Do maintenance only AFTER the current quote has reached the engine and
+  // immediate click dispatcher. This preserves the existing 2.5s cadence
+  // without allowing a heavy broker DOM scan to preempt this decision.
+  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){
+    lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider);
+  }
   // Deliver a confirmed decision immediately, BEFORE timing diagnostics,
   // broker overlay rendering, journals or any other optional work.
   void publishLiveFrame();
@@ -565,7 +570,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     }
     }
   }
-  if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
+  // Persist in its existing serial queue without holding the quote scheduler
+  // open on Windows filesystem latency. Explicit start/stop still await saves.
+  if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();void saveState()}
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;

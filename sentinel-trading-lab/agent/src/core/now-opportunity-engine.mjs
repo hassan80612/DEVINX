@@ -211,23 +211,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // randomized-price A/B showed such overrides sharply increased losses.
  if(qualityPolicy==='adaptive-market-v17'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
-  // A manually chosen specialist must make its own CALL/PUT decision.
-  // The Automatic cycle predictor must not silently replace that strategy.
-  if(engineId!=='automatic'&&Number(durationMs)===30000){
-   const specialist=analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'});
-   // Explicit SUPPORT / RESISTANCE remains eligible on a freshly observed
-   // rejection using closed broker candles, even with <14s micro-history.
-   // Other selected specialists must not inherit its direction.
-   let chosen=specialist;
-   if(engineId==='support_resistance'){
-    const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
-    chosen=applyHistoricalPriceStructure({candidate:specialist,structure,...input});
-    chosen=applyCandleLevelRoute({candidate:chosen,map:structure.candleLevelMap,...input});
-    chosen=applyObservedLevelSequence({candidate:chosen,map:structure.candleLevelMap,...input});
-   }
-   return {...chosen,engineId,qualityPolicy,contextStrategy:engineId,
-    marketShape:'selected-specialist',signalOwner:'selected-specialist'};
-  }
+  // The SAME market base owns the direction and pivot/reversal checks for
+  // Automatic and every selected specialist. Strategies never open their
+  // own bypass around the base's confirmed top/bottom decisions.
+  // No additional candle wait, broker request, polling or delayed entry.
   const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
   const context=automaticChartContext({...input,base:original});
   // Preserve the existing admission and exact entry timestamp. Only the 30s
@@ -269,10 +256,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    sequenceReaction.structureChange??sequenceReaction.continuation:
    located.reason==='multiscale-candle-rejection'?
     located.priceStructure.candleRoute.event:located.priceStructure?.reaction;
+  // A specialist is read-only context: its own observations may agree or
+  // disagree, but cannot replace, authorize or block a shared decision.
+  // Keep independent strategy labels for the existing PC/mobile UI.
+  const specialist=engineId!=='automatic'&&Number(durationMs)===30000&&located.ready?
+   analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
   return {...located,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
-   signalOwner:'shared-market-base'};
+   signalOwner:'shared-market-base',
+   ...(engineId!=='automatic'?{strategyResponse:specialist?.ready?
+     (specialist.side===located.side?'aligned':'divergent'):'observational'}:{})};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
