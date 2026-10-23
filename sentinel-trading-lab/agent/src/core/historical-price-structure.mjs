@@ -68,6 +68,14 @@ export function historicalPriceStructure({candles=[],now=Date.now()}={}){
   averages:[20,50,100].map(p=>ema(rows,p)).filter(Boolean),
   zones:zones.map(({indices,...z},i)=>({...z,
    confirmedPivots:candleLevelMap.levels[i].confirmedPivots,
+   confirmedHighPivots:candleLevelMap.levels[i].confirmedHighPivots,
+   confirmedLowPivots:candleLevelMap.levels[i].confirmedLowPivots,
+   rejectedHighVisits:candleLevelMap.levels[i].rejectedHighVisits,
+   rejectedLowVisits:candleLevelMap.levels[i].rejectedLowVisits,
+   highAges:candleLevelMap.levels[i].highAges,
+   lowAges:candleLevelMap.levels[i].lowAges,
+   resistanceWick:candleLevelMap.levels[i].resistanceWick,
+   supportWick:candleLevelMap.levels[i].supportWick,
    independentRejections:candleLevelMap.levels[i].independentRejections}))};
 }
 function priceBefore(rows,at){
