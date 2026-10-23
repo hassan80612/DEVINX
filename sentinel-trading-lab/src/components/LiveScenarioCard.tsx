@@ -257,15 +257,22 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // opportunity. Keep its prices until the PC's actual window deadline.
   const entryPlanDisplayable=entryPlanValid&&Number(m.vnextOpportunityWindow?.windowStartedAt)>0&&
     Number(m.vnextOpportunityWindow?.windowEndsAt)>now;
+  // The Agent is the sole authority for completed WIN/LOSS.
+  // Keep these visible outside conditional forecast panels, on compact AND
+  // full screens, even when the broker quote/analysis is temporarily stale.
+  // Missing transport data is unknown, not zero confirmed outcomes.
+  const winLossData=s?.autoExecutor;
+  const receivedCount=(value:unknown)=>typeof value==='number'&&Number.isInteger(value)&&value>=0?String(value):'—';
+  const executorWinLoss=<div className="mobileExecutorCounters" data-testid="mobile-countdown-executor-wl" role="status" aria-live="off" style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap',fontSize:12,fontWeight:800,padding:'7px 10px',margin:'6px 0',border:'1px solid #71998b80',borderRadius:8,background:'#0b2421'}}>
+    <span>WIN: {receivedCount(winLossData?.sessionWins)}</span>
+    <span>LOSS: {receivedCount(winLossData?.sessionLosses)}</span>
+    {!winLossData&&<small style={{fontWeight:500,opacity:.8}}>Aguardando resultados do Agent</small>}
+  </div>;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>{t(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?(nowMode?'COTAÇÃO AO VIVO':'PROJEÇÃO FUTURA'):'DADOS A CONFERIR')}</small></div>
     {nowMode&&<small data-testid="now-live-reading">{t('Preço atual')}: {price(s?.feed?.price??s?.liveBroker?.quote)} · {t('Última análise')}: {clock(m.evaluationAt)}</small>}
     {nowMode&&m.nowObservation?.probabilityCall!=null&&m.nowObservation?.probabilityPut!=null&&<small data-testid="now-probability-reading" style={{fontSize:11,opacity:.86}}>CALL {Math.round(Number(m.nowObservation.probabilityCall)*100)}% · PUT {Math.round(Number(m.nowObservation.probabilityPut)*100)}% · {t('Estimativa não calibrada')}</small>}
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} nowMode={nowMode} observation={m.nowObservation}/>
-    {s?.autoExecutor&&<div data-testid="mobile-countdown-executor-wl" style={{display:'flex',gap:12,alignItems:'center',fontSize:11,fontWeight:800,marginTop:3,marginBottom:4}}>
-      <span>WIN: {Number(s.autoExecutor.sessionWins||0)}</span>
-      <span>LOSS: {Number(s.autoExecutor.sessionLosses||0)}</span>
-    </div>}
     <div className="vnextProjectionValues" style={{gridTemplateColumns:'minmax(0,1fr)'}}>
       <div><small>{t(nowMode?"PREÇO NA ENTRADA":"PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
     </div>
@@ -346,6 +353,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>{t("SENTINEL · ANALISTA PC")}</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">{t("← Início")}</button></header>
     {engineSettings}
+    {executorWinLoss}
     {!vnext&&<>
     <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
       <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
@@ -397,6 +405,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   return <section className={`liveScenario ${m.tone}`} aria-label={t('Cenário ao vivo')} data-testid="live-scenario">
     <header><div><small>{m.asset} · {t('LEITURA DO PC')}</small><h2>{t(m.scenarioLabel)}</h2><b>{t(m.state)}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>{t("Modo flutuante ↘")}</button></div></header>
     {engineSettings}
+    {executorWinLoss}
     {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?t('JANELA DE ENTRADA ')+m.entryRemaining+t('s · confirme a expiração na corretora'):t(m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida')}</span>{scenarioClock}</div>}
     {forecastReceipt}
     {forecastHorizonStrip}

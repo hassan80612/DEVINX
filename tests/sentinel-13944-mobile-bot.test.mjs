@@ -36,3 +36,14 @@ test('remote bot status is bounded, signs every value, and survives the saturate
  assert.deepEqual(dashboardTransportState({autoExecutor:remote}).autoExecutor,remote);
 });
 
+
+test('WIN/LOSS remains visible in both mobile card modes with no fabricated zero if the Agent is disconnected',()=>{
+ const src=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
+ assert.match(src,/const executorWinLoss=<div className="mobileExecutorCounters"/);
+ assert.match(src,/receivedCount\(winLossData\?\.sessionWins\)/);
+ assert.match(src,/receivedCount\(winLossData\?\.sessionLosses\)/);
+ assert.match(src,/value>=0\?String\(value\):'—'/);
+ assert.equal((src.match(/\{executorWinLoss\}/g)||[]).length,2,'full and floating card must both display counters');
+ assert.equal((src.match(/data-testid="mobile-countdown-executor-wl"/g)||[]).length,1,'only one counter widget declaration');
+ assert.doesNotMatch(src,/\{s\?\.autoExecutor&&<div data-testid="mobile-countdown-executor-wl"/);
+});
