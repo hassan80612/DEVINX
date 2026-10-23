@@ -192,9 +192,9 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,ra
  // observed past 5m outcome is not inferred from the latest 5s impulse.
  const analogue=assessRangeExpiryEvidence({quotes:[...rangeQuoteHistory,...quotes],
    now,spot,noise,lower,upper,holdingMs,regular});
- if(analogue)return {...analogue,observedSwingSeconds:half,efficiency};
  if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
-  return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
+  return analogue?{...analogue,observedSwingSeconds:half,efficiency}:
+   {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  const position=(Math.log(spot)-lower)/span;
  // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
  // alone is not a PUT, and being at the lower bound alone is not a CALL.
@@ -232,6 +232,8 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,ra
   reason:'closed-range-extreme-reversal-confirmed',
   observedSwingSeconds:half,position,efficiency};
  }
+ // An already qualified high/low reversal above keeps its original decision.
+ if(analogue)return {...analogue,observedSwingSeconds:half,efficiency};
  const leg=assessRangeRecoveryContinuation({quotes:last,closes,pivots,now,spot,
   noise,lower,upper,half,holdingMs,regular});
  if(leg)return {...leg,efficiency};
