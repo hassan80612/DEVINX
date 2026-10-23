@@ -10,6 +10,7 @@ import {historicalPriceStructure,applyHistoricalPriceStructure} from './historic
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
+import {assessRangeExpiryEvidence} from './range-expiry-evidence.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -109,7 +110,7 @@ export function assessRangeRecoveryContinuation({quotes=[],closes=[],pivots=[],
 // 5-second prices from the past, not future projections or forming candles.
 // Return null for a directional regime; return a verdict when past alternation
 // means a short-term impulse is a potentially misleading end-of-range leg.
-export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
+export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,rangeQuoteHistory=[]){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
  if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
@@ -187,6 +188,11 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // For >=60s holds, do not enter a brief repeating swing whose observed
  // half-cycle is shorter than the intended broker outcome window.
  // This is a market-structure check, NOT an added timer or polling delay.
+ // Expiry-aware evidence comes before the half-swing limitation. A valid
+ // observed past 5m outcome is not inferred from the latest 5s impulse.
+ const analogue=assessRangeExpiryEvidence({quotes:[...rangeQuoteHistory,...quotes],
+   now,spot,noise,lower,upper,holdingMs,regular});
+ if(analogue)return {...analogue,observedSwingSeconds:half,efficiency};
  if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
   return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  const position=(Math.log(spot)-lower)/span;
@@ -260,7 +266,7 @@ export function longHorizonDirection({quotes=[],quoteAt,price,durationMs,noise=0
    observedNetMove:move};
 }
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null,rangeQuoteHistory=[]}={}){
  // A SINGLE common market-base decides the direction for every strategy.
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
@@ -271,7 +277,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // override an evaluated 30s/60s direction without validated evidence:
  // randomized-price A/B showed such overrides sharply increased losses.
  if(qualityPolicy==='adaptive-market-v17'&&engineId){
-  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const input={quoteHistory,price,quoteAt,now,durationMs,rangeQuoteHistory};
   // The SAME market base owns the direction and pivot/reversal checks for
   // Automatic and every selected specialist. Strategies never open their
   // own bypass around the base's confirmed top/bottom decisions.
@@ -346,7 +352,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
      specialist?.ready?'base-reviewed-evidence':'observational'}:{})};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
-  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const input={quoteHistory,price,quoteAt,now,durationMs,rangeQuoteHistory};
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
@@ -391,7 +397,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  const net=Math.log(bars.at(-1).close/bars[0].open);
  const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
  if(!(noise>0))return waiting('insufficient-quote-variation');
- const range=completedRangeStructure(quotes,now,noise,Number(price),durationMs);
+ const range=completedRangeStructure(quotes,now,noise,Number(price),durationMs,rangeQuoteHistory);
  if(range){
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,
