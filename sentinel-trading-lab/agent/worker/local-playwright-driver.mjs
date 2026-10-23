@@ -1695,6 +1695,15 @@ export class LocalPlaywrightDriver{
         };
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
+        // Analyst signal score is measured at the PC price and fixed expiry.
+        // Bot settlements remain in their existing accounting panel, separate.
+        const chartScore=d.vnext?.outcomeQuality?.source==='observed-broker-quotes-not-trade-settlements'?
+          d.vnext.outcomeQuality:null;
+        const chartNumber=v=>chartScore&&Number.isFinite(Number(v))?Math.max(0,Number(v)):'—';
+        const graphCounterHtml=`<div data-sentinel-graph-wl style="box-sizing:border-box;min-height:43px;display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px;padding:7px 9px;margin-top:8px;border:1px solid rgba(215,182,93,.42);border-radius:9px;background:rgba(215,182,93,.07);font-size:11px;font-weight:850;color:${ink}">
+           <small style="font-size:9px;color:${goldSoft};flex:1 0 100%">SINAIS · RESULTADO NO GRÁFICO</small>
+           <span>WIN: ${chartNumber(chartScore?.correct)}</span><span>LOSS: ${chartNumber(chartScore?.failed)}</span><span>EMPATE: ${chartNumber(chartScore?.excludedTies)}</span>
+         </div>`;
         const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
         const entryGateReady=q.entryReady===true;
@@ -2317,6 +2326,7 @@ export class LocalPlaywrightDriver{
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
               <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
             </div>
+            ${graphCounterHtml}
             ${d.executorPanelHtml||''}
             <div data-sentinel-control-msg style="margin-top:5px;color:${goldSoft};min-height:13px;font-size:10px;font-weight:700"></div>
             <details style="margin-top:10px;padding:7px;border:1px solid ${panelBorder};border-radius:8px">
@@ -2359,7 +2369,8 @@ export class LocalPlaywrightDriver{
             ${validatedAsset&&validatedAsset!=='—'?'<b style="color:'+callTone+';font-weight:750">ATIVO VALIDADO · '+esc(validatedAsset)+' ✓</b><span style="color:'+(uiTheme==='light'?'#3d4650':'#ffffff')+'"> · </span>':''}<span style="color:${uiTheme==='light'?'#20252b':'#ffffff'};font-weight:700">Para trocar, feche o ativo atual e abra o novo pelo botão + da corretora.</span>
           </div>
 
-          ${d.executorPanelHtml||''}
+          ${graphCounterHtml}
+            ${d.executorPanelHtml||''}
           <div data-sentinel-pilot-status style="margin-top:7px;font-size:9.5px;font-weight:700;color:${goldSoft};line-height:1.4">${esc(pilotLabel)}</div>
           <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${entryPanelBorder};background:${entryPanelBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:24px;overflow:visible">
