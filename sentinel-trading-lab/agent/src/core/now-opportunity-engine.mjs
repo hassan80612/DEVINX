@@ -114,18 +114,6 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const lower=Math.min(...lows.map(p=>p.level));
  const span=upper-lower;
  if(!(span>noise*1.10))return null;
- // A rising HH/HL or falling LH/LL sequence is a trending channel,
- // not a stationary range. A minor counter-tick at its extreme
- // must not become a protected opposite-side reversal.
- // This uses only previously confirmed 5s pivots; no timer, broker
- // request, added candle requirement or change to entry execution.
- if(highs.length===2&&lows.length===2){
-  const minStep=Math.max(span*.06,noise*.15);
-  const highStep=highs[1].level-highs[0].level;
-  const lowStep=lows[1].level-lows[0].level;
-  if((highStep>minStep&&lowStep>minStep)||
-     (highStep< -minStep&&lowStep< -minStep))return null;
- }
  const boundaryTolerance=Math.max(noise*.10,span*.02);
  if(Math.log(spot)>upper+boundaryTolerance||Math.log(spot)<lower-boundaryTolerance)
    return null;
@@ -161,9 +149,25 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const previous=last.at(-2),lastStep=previous?Math.log(spot/previous.price):0;
  const highTurn=position>=.73&&retreat>=minTurn&&down>=2&&turnMove<0&&lastStep<=0;
  const lowTurn=position<=.27&&bounce>=minTurn&&up>=2&&turnMove>0&&lastStep>=0;
- if(highTurn||lowTurn)return {ready:true,side:highTurn?'PUT':'CALL',
+ if(highTurn||lowTurn){
+ // Only protect actual turn SIGNALS. Keep WAIT and all previous
+ // range-lifecycle classifications exactly as before.
+ // A rising HH/HL or falling LH/LL sequence is a trending channel,
+ // not a stationary range. A minor counter-tick at its extreme
+ // must not become a protected opposite-side reversal.
+ // This uses only previously confirmed 5s pivots; no timer, broker
+ // request, added candle requirement or change to entry execution.
+ if(highs.length===2&&lows.length===2){
+  const minStep=Math.max(span*.06,noise*.15);
+  const highStep=highs[1].level-highs[0].level;
+  const lowStep=lows[1].level-lows[0].level;
+  if((highStep>minStep&&lowStep>minStep)||
+     (highStep< -minStep&&lowStep< -minStep))return null;
+ }
+  return {ready:true,side:highTurn?'PUT':'CALL',
   reason:'closed-range-extreme-reversal-confirmed',
   observedSwingSeconds:half,position,efficiency};
+ }
  return {ready:false,reason:regular?'range-extreme-awaiting-confirmed-turn':
    'irregular-range-awaiting-current-turn'};
 }
