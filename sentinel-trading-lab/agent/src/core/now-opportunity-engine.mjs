@@ -386,8 +386,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const useLearning=learning?.ready===true&&Number(learning.strength)>=
     (learning===expiryPhase?80:.4);
   const contextStrategy=useLearning?'mean_reversion':'trend';
-  const qualifiedStructure={structuralReady:structural.ready===true,
-   structuralSide:structural.ready===true?structural.side:null};
+  const qualifiedStructure=Number(durationMs)===30000?{structuralReady:structural.ready===true,
+   structuralSide:structural.ready===true?structural.side:null}:{};
   if(useLearning)return {...structural,...learning,...qualifiedStructure,engineId,qualityPolicy,
    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
