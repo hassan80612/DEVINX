@@ -31,7 +31,7 @@ const tabDefs=[
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
   {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
   {key:'Settings',label:'Minha conta',icon:'⚙',group:'Conta',title:'Minha conta',subtitle:'Seu acesso, licença e Agent Windows.'},
-  {key:'Membership',label:'Licença',icon:'◈',group:'Conta',title:'Sua licença',subtitle:'Pagamento único, sem renovação.'},
+  {key:'Membership',label:'Licença',icon:'◈',group:'Conta',title:'Sua licença',subtitle:'30 dias por compra, renovação manual.'},
   {key:'Master Console',label:'Master',icon:'◆',group:'Admin',title:'Master Sentinel',subtitle:'Gerencie clientes, licenças, PCs e suporte remoto.'}
 ] as const;
 const money=(n:any)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n||0));
@@ -366,13 +366,13 @@ function Membership({account}:{account:any}){
  const localizedPrice=intl?'US$ 100':'R$ 549';
  const profile=account?.profile||{};
  const active=profile.role==='master'||profile.access_active===true;
- const expiry=profile.access_expires_at?new Date(profile.access_expires_at).toLocaleDateString('pt-BR'):'Permanente';
+ const expiry=profile.access_expires_at?new Date(profile.access_expires_at).toLocaleDateString('pt-BR'):'Aguardando pagamento';
  return <section className="sentinelMembership">
-   <span className="sentinelEyebrow"><T>LICENÇA E PAGAMENTO ÚNICO</T></span>
+   <span className="sentinelEyebrow"><T>LICENÇA DE 30 DIAS</T></span>
    <h2><T>Seu acesso ao Sentinel</T></h2>
-   <p><strong>{localizedPrice}</strong> · <T>Uma compra aprovada libera acesso permanente à conta. Sem mensalidade ou renovação obrigatória.</T></p>
+   <p><strong>{localizedPrice}</strong> · <T>Cada compra aprovada libera 30 dias. Sem renovação automática; compre novamente para ampliar a validade.</T></p>
    <div className="sentinelMembershipSummary"><div><small><T>Estado do plano</T></small><strong>{profile.role==='master'?'MASTER':active?'ATIVO':'AGUARDANDO ATIVAÇÃO'}</strong></div><div><small><T>Validade</T></small><strong>{profile.role==='master'?'Permanente':expiry}</strong></div><div><small><T>PCs permitidos</T></small><strong>{profile.max_devices||1}</strong></div></div>
-   <div className="sentinelMembershipActions"><span>{localizedPrice} · {intl?'one-time':'pagamento único'}</span>{!active&&<a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Comprar acesso</T></a>}</div>
+   <div className="sentinelMembershipActions"><span>{localizedPrice} · {intl?'30 days':'30 dias'}</span>{!active&&<a href={intl?'/api/checkout?market=INTL':'/api/checkout?market=BR'} className="secondary linkbtn"><T>Comprar acesso</T></a>}</div>
  </section>
 }
 
@@ -594,7 +594,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
     </section>
 
     <section className="card span12">
-      <div className="split"><div><div className="eyebrow">LIBERAÇÃO POR E-MAIL</div><h3>Autorizar ou bloquear acesso</h3></div><Pill>Sem vencimento</Pill></div>
+      <div className="split"><div><div className="eyebrow">LIBERAÇÃO POR E-MAIL</div><h3>Autorizar ou bloquear acesso</h3></div><Pill>Acesso por validade</Pill></div>
       <div className="masterFilters">
         <input type="email" aria-label="E-mail do cliente para liberação" value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-mail já cadastrado no Sentinel"/>
         <div className="actions">
@@ -729,12 +729,12 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
  const {t,language}=useSentinelLocale();
  const p=account?.profile||{};
  const access=p.role==='master'||p.access_active===true;
- const expiry=p.access_expires_at?new Date(p.access_expires_at).toLocaleDateString(language==='en'?'en-US':'pt-BR'):(language==='en'?'Permanent':'Permanente');
+ const expiry=p.access_expires_at?new Date(p.access_expires_at).toLocaleDateString(language==='en'?'en-US':'pt-BR'):(language==='en'?'Awaiting payment':'Aguardando pagamento');
  return <div className="grid">
    <section className="card span12">
      <div className="split"><h3>{t('Minha conta Sentinel')}</h3><Pill tone={access?'good':'bad'}>{access?t('Ativa'):t('Acesso inativo')}</Pill></div>
      <div className="stack topgap"><Row k="E-mail" v={account?.user?.email||'—'}/>
-       <Row k="Plano" v={p.role==='master'?'MASTER':'Pagamento único'}/>
+       <Row k="Plano" v={p.role==='master'?'MASTER':'Acesso de 30 dias'}/>
        <Row k="Validade" v={p.role==='master'?'Permanente':expiry}/>
        <Row k="Agent" v={agent.worker?t('Online'):t('Offline')}/>
      </div>

@@ -4,8 +4,8 @@
 export type SentinelMarket='BR'|'INTL';
 
 export const SENTINEL_PLANS={
-  BR:{name:'DevinX Trading Lab',amount:549,currency:'BRL',billing:'one_time',priceDisplay:'R$ 549',priceLabel:'R$ 549 · pagamento único'},
-  INTL:{name:'DevinX Trading Lab',amount:100,currency:'USD',billing:'one_time',priceDisplay:'US$ 100',priceLabel:'US$ 100 · one-time payment'}
+  BR:{name:'DevinX Trading Lab',amount:170,currency:'BRL',billing:'prepaid_30_days',priceDisplay:'R$ 170',priceLabel:'R$ 170 · 30 dias por compra'},
+  INTL:{name:'DevinX Trading Lab',amount:35,currency:'USD',billing:'prepaid_30_days',priceDisplay:'US$ 35',priceLabel:'US$ 35 · 30 days per purchase'}
 } as const;
 
 export function sentinelMarket(requested:string|undefined|null,country:string|undefined|null,intl:string|undefined|null=null):SentinelMarket{
@@ -55,6 +55,6 @@ export const SENTINEL_PLAN={
   name:SENTINEL_PLANS.INTL.name,
   amount:SENTINEL_PLANS.INTL.amount,
   currency:SENTINEL_PLANS.INTL.currency,
-  cadence:'pagamento único',
+  cadence:'30 dias por compra',
   priceLabel:SENTINEL_PLANS.INTL.priceLabel
 } as const;
