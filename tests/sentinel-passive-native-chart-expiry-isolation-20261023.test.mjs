@@ -20,6 +20,33 @@ function setup(provider){
  return {d,st,page,listeners,closePage:()=>{closed=true}};
 }
 for(const provider of ['iq_option','exnova']){
+// The request concerns exactly 30s, 60s, 2m and 5m expiry,
+ // NOT 10 minutes. 10 seconds remains an existing short-term setting.
+ for(const seconds of [30,60,120,300]){
+  test(provider+': selected '+seconds+'s expiry and chart interval survive Agent refresh',async()=>{
+   const {d,st}=setup(provider);
+   const savedChart=seconds, savedExpiry=seconds*1000;
+   st.candleSize=savedChart;
+   st.expirationDurationMs=savedExpiry;
+   st.expirationRaw=String(seconds)+'s';
+   let sent=0;
+   d.directFeed=async()=>{sent++;return {ready:true,
+     send:()=>true,request:async()=>({})}};
+   await d._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
+   await d.requestQuoteHistory(provider,{symbol:st.symbol,activeId:76});
+   st.predictionPeriod=30;
+   await d.refreshPredictionHistory(provider);
+   await d.requestBaseData(provider);
+   const write=await d.wsSend(provider,{name:'sendMessage',msg:{
+    name:'get-candles',body:{active_id:76,size:30}}});
+   assert.equal(write.ok,false);
+   assert.equal(st.candleSize,savedChart);
+   assert.equal(st.expirationDurationMs,savedExpiry);
+   assert.equal(st.expirationRaw,String(seconds)+'s');
+   assert.equal(sent,0);
+  });
+ }
+
  test(provider+': existing native socket emits usable live quotes without a second market subscription',async()=>{
   const {d,st,page,listeners}=setup(provider);
   await d.attachNetwork(provider,page);
