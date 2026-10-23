@@ -1035,7 +1035,12 @@ export class LocalPlaywrightDriver{
       // preventing the analyst from starting until unrelated broker activity.
       // Read account/catalog metadata ONLY. No candle period, get-candles,
       // subscription, order, UI input or broker page navigation is sent.
-      if(st.activeMap.size>0&&st.balance!=null)return true;
+      // A visible balance number is NOT enough: DOM/account-mode hints can
+      // fill st.balance without a verified account ID or balance observation.
+      // Bootstrap must continue until we possess an identified account
+      // balance. Otherwise the PC card remains '—' forever on cold start.
+      const identifiedBalance=this.accountBalanceSnapshot(provider);
+      if(st.activeMap.size>0&&identifiedBalance)return true;
       const now=Date.now();
       if(st.nativeBootstrapPromise)return st.nativeBootstrapPromise;
       if(st.lastNativeBootstrapAt&&now-st.lastNativeBootstrapAt<12000)return false;
@@ -1046,7 +1051,7 @@ export class LocalPlaywrightDriver{
           name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},
           request_id:reqId('native-init')
         });
-        if(st.balance==null)messages.push({
+        if(!this.accountBalanceSnapshot(provider))messages.push({
           name:'sendMessage',msg:{name:'get-balances',version:'1.0'},
           request_id:reqId('native-balance')
         });
@@ -1056,7 +1061,7 @@ export class LocalPlaywrightDriver{
           sent=!!result?.ok||sent;
         }
         st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
-        return sent||st.activeMap.size>0||st.balance!=null;
+        return sent||st.activeMap.size>0||!!this.accountBalanceSnapshot(provider);
       })();
       st.nativeBootstrapPromise=task;
       try{return await task}finally{if(st.nativeBootstrapPromise===task)st.nativeBootstrapPromise=null}
@@ -1382,7 +1387,7 @@ export class LocalPlaywrightDriver{
     // Full base-data requests (balances + initialization metadata) are
     // unnecessary every 30s while the actual account and quotes arrive via
     // read-only broker events. Never stop explicit refresh/recovery requests.
-    const baseRetryMs=st.balance==null?15000:
+    const baseRetryMs=!this.accountBalanceSnapshot(provider)?15000:
       passiveStreamHealthy?120000:30000;
     if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)
       await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
