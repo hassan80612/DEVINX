@@ -34,6 +34,23 @@ test('confirmed resistance created SIXTEEN closed candles ago is visible before 
  assert.equal(Math.max(...zone.ages),16);
  assert.ok(zone.confirmedPivots>=1);
 });
+test('historical highs and lows have NO fixed candle age limit: 0,1,2,3,4,5,10,16,30,60',()=>{
+ for(const age of [0,1,2,3,4,5,10,16,30,60]){
+  const n=Math.max(19,age+5);
+  const bars=Array.from({length:n},(_,i)=>{
+   const close=1.13025+i*.00025/(n-1);
+   return{from:T-(n-i)*60000,to:T-(n-i-1)*60000,
+    open:close-.00004,close,high:i===n-1-age?1.1309:close+.000075,
+    low:close-.00006};
+  });
+  const s=historicalPriceStructure({candles:bars,now:T});
+  const q=prices(1.13088),z=s.zones.find(z=>Math.abs(z.level-1.1309)<1e-8);
+  assert.ok(z?.resistanceWick>=.6||z?.confirmedHighPivots>0,'no age veto '+age);
+  assert.equal(evaluate(s,q,'CALL',30000).ready,false,'false CALL into '+age+'-bar high');
+  // A genuinely held breakout must remain a valid continuation opportunity.
+  assert.equal(evaluate(s,prices(1.13113),'CALL',30000).ready,true,'held break at age '+age);
+ }
+});
 test('up-candle approaching resistance is NOT sufficient breakout evidence for any duration',()=>{
  const s=historicalPriceStructure({candles,now:T}),q=prices(1.13088);
  for(const duration of horizons){
