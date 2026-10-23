@@ -129,6 +129,23 @@ export class DemoTradingRuntime{
     const lastReceivedQuoteAt=Number(market.quoteHistory?.at(-1)?.ts);
     const historyCutoff=this.settings.engine&&Number.isFinite(lastReceivedQuoteAt)?lastReceivedQuoteAt-300000:-Infinity;
     const observedQuotes=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number(x.ts)>=historyCutoff&&Number.isFinite(Number(x?.price))&&Number(x.price)>0):[];
+    // This separate 2-second, 35-minute local buffer serves ONLY causal,
+    // horizon-matched 30s/60s/2m/5m range comparisons in the shared base.
+    // Keep the existing 300s market feed, broker actions and UI unchanged.
+    if(Number.isFinite(lastReceivedQuoteAt)&&observedQuotes.length){
+      const rangeKey=[String(market.provider||''),String(this.settings.asset||market.asset||'')].join('|');
+      const old=this.rangeExpiryQuoteCache?.key===rangeKey?this.rangeExpiryQuoteCache.rows:[];
+      const buckets=new Map(old.map(q=>[Math.floor(q.ts/2000),q]));
+      const cutoff=lastReceivedQuoteAt-2100000;
+      for(const q of observedQuotes){
+        const ts=Number(q?.ts),receivedAt=Number(q?.receivedAt??ts),price=Number(q?.price);
+        if(!(ts>0&&ts<=lastReceivedQuoteAt&&ts>=cutoff&&receivedAt>0&&price>0&&Number.isFinite(price)))continue;
+        const key=Math.floor(ts/2000),previous=buckets.get(key);
+        if(!previous||ts>=previous.ts)buckets.set(key,{ts,receivedAt,price});
+      }
+      this.rangeExpiryQuoteCache={key:rangeKey,rows:[...buckets.values()]
+        .filter(q=>q.ts>=cutoff).sort((x,y)=>x.ts-y.ts)};
+    }
     const quoteHistory=this.settings.engine?
       (observedQuotes.length>2400?compactObservedQuoteHistory(observedQuotes):observedQuotes):observedQuotes.slice(-900);
     this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastQuoteAt||0),source:market.source||String(market.provider||'LIVE').toUpperCase()};
@@ -984,8 +1001,12 @@ export class DemoTradingRuntime{
       // Original 13.9.66 analyzes first. A strong, independently verified
       // opposite-side record may override a weak decision on the SAME quote.
       // No timers, broker requests or waiting are introduced here.
+      const rangeKey=[String(snap.provider||''),String(settings.asset||'')].join('|');
+      const rangeQuoteHistory=this.rangeExpiryQuoteCache?.key===rangeKey?
+        this.rangeExpiryQuoteCache.rows:[];
       const original66=analyzeNowOpportunity({
-        quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
+        quoteHistory:snap.quoteHistory,rangeQuoteHistory,
+        price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
