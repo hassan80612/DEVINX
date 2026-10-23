@@ -45,6 +45,12 @@ export function analystSnapshot(runtimeStatus,live){
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
     outcomesVerified:Number(vnext.outcomesVerified||0),
+    // PC-authoritative directional results: exact entry quote vs broker
+    // observed expiry quote. These are NOT financial brokerage settlements.
+    oq:vnext.outcomeQuality?.source==='observed-broker-quotes-not-trade-settlements'?
+      [Number(vnext.outcomeQuality.correct)||0,
+       Number(vnext.outcomeQuality.failed)||0,
+       Number(vnext.outcomeQuality.excludedTies)||0]:null,
     receipt,
     // Future-entry direction is a DIFFERENT prediction from quote-now -> t+H.
     ea:entryTuple(vnext.futureEntryAnchor),
@@ -116,7 +122,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     ...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
     ...(v.mode==='now'?{nowObservation:v.nowObservation}:{}),
-    receipt:v.receipt,targetAnchor:v.targetAnchor,
+    receipt:v.receipt,targetAnchor:v.targetAnchor,oq:v.oq,
     ea:v.ea,ow:v.ow,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
@@ -157,7 +163,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
         ready:op.ready===true,actionable:op.actionable===true},
       vnext:{...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
         ...(v.mode==='now'?{nowObservation:v.nowObservation}:{}),
-        receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
+        receipt:v.receipt,ea:v.ea,ow:v.ow,oq:v.oq,er:[],hf:[],hm:[],cards:[]}
     }}
   };
   return size(critical)<=maxBytes?critical:null;
