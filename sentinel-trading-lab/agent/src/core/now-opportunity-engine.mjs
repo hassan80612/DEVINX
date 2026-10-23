@@ -190,8 +190,15 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,ra
  // This is a market-structure check, NOT an added timer or polling delay.
  // Expiry-aware evidence comes before the half-swing limitation. A valid
  // observed past 5m outcome is not inferred from the latest 5s impulse.
- const analogue=assessRangeExpiryEvidence({quotes:[...rangeQuoteHistory,...quotes],
-   now,spot,noise,lower,upper,holdingMs,regular});
+ // For a 30s expiration, an observed half-swing materially shorter than
+ // 30s is a choppy/noisy cycle, not evidence that a micro leg lasts 30s.
+ // Longer expiries may only use independent historical outcomes matched to
+ // their entire expiry duration (already enforced in assessRangeExpiryEvidence).
+ const expiryFitsRecentLeg=Number(holdingMs)>30000||
+   Number(holdingMs)/1000<=half*1.35;
+ const analogue=expiryFitsRecentLeg?
+   assessRangeExpiryEvidence({quotes:[...rangeQuoteHistory,...quotes],
+     now,spot,noise,lower,upper,holdingMs,regular}):null;
  if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
   return analogue?{...analogue,observedSwingSeconds:half,efficiency}:
    {ready:false,reason:'range-expiry-exceeds-observed-swing'};
