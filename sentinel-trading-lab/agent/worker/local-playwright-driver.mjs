@@ -14,6 +14,7 @@ import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mj
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 import {installBrokerNativeExpiryKeeper} from './broker-native-expiry-keeper.mjs';
+import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -1112,7 +1113,9 @@ export class LocalPlaywrightDriver{
     }
     const age=latestCandleAgeMs(st);
     st.marketStatus='stale';st.marketReason=age==null?`Aguardando candles do ativo da tela ${screenSymbol}`:`Última candle de ${screenSymbol} há ${Math.round(age/60000)} min`;
-    if(st.mode==='demo')await this.recoverMarket(provider);
+    // _requestCandles already tried fresh history in this cycle. Do not
+    // immediately issue a second identical request just because this is DEMO.
+    // The bounded maintenance cycle remains the retry authority.
     return candleFreshForState(st)&&st.candles.length>=50;
   }
   async switchBrokerAccount(provider,requestedMode){
@@ -1309,10 +1312,13 @@ export class LocalPlaywrightDriver{
     // Forcing get-candles every 30s in a healthy, visible trading session
     // needlessly duplicates broker work and could disturb native chart state.
     // Recover missing, stale, or genuinely unhealthy history exactly as before.
-    const historyRefreshMs=9000;
-    const historyDue=!st.lastCandleRequest||
-      now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
-    const needHistoryRecovery=st.candles.length<50||stale||(!streamingHealthy&&historyDue);
+    // A missing partial candle history must not produce get-candles plus
+    // fallback requests on EVERY 2.5-second maintenance cycle. Preserve an
+    // immediate new-asset recovery and retry the same asset at most / 12s.
+    const needHistoryRecovery=shouldRecoverBrokerHistory({
+      activeId:st.activeId,symbol:st.uiSymbol||st.symbol,candleCount:st.candles.length,
+      stale,streamingHealthy,lastRequest:st.lastCandleRequest,now
+    });
     if(needHistoryRecovery)
       await this.requestMarketData(provider,{force:true}).catch(()=>{});
     await this.refreshPredictionHistory(provider,now).catch(()=>{});
@@ -1348,7 +1354,9 @@ export class LocalPlaywrightDriver{
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=assetStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
-    if(st.quote==null&&st.symbol){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
+    // Fast authentication checks and already-validated instruments should
+    // never run a full `body *` element walk for an untrusted fallback quote.
+    if(st.quote==null&&st.symbol&&!fast&&st.activeId==null){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
     return{provider,open:true,url,title,text,st};
   }
   async sessionInfo(provider){const cfg=this.config(provider),s=await this.session(provider);
