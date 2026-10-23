@@ -410,7 +410,7 @@ function applyObservedCandleQuote(st,candle,raw){
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
   const outer=String(data.name||data.event||'');
-  const inner=String(data?.msg?.name||data?.message?.name||'');
+  const inner=String(data?.msg?.name||data?.message?.name||data?.msg?.event||'');
   const body=data?.msg?.body||data?.msg?.params?.routingFilters||data?.body||data?.params?.routingFilters||{};
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
@@ -456,26 +456,40 @@ function protocolScan(data,st,direction='in'){
     if(selected?.id!=null)st.balanceId=n(selected.id);
     const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile';markObservedBalance(st)}else applyKnownBalance(st,{observed:true})
   }
-  if(outer==='balances'){
-    const arr=Array.isArray(data.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.balances)?data.msg.balances:[];
-    if(arr.length){st.lastBalances=arr.slice(0,50).map(row=>({...row,__receivedAt:Date.now()}));applyKnownBalance(st,{observed:true})}
+  // Native IQ Option / Exnova account updates arrive under several
+  // event names and envelopes. Only consume balance ID + amount + account
+  // identity already observed in this broker session, never inferred from
+  // a market quote, profit estimate or a different real/demo account.
+  const accountEvent=[outer,inner].join(' ').toLowerCase();
+  const accountEnvelope=(data.msg&&typeof data.msg==='object')?data.msg:
+    (data.message&&typeof data.message==='object'?data.message:data);
+  const accountBody=accountEnvelope.body??accountEnvelope.data??accountEnvelope;
+  const batch=Array.isArray(accountBody)?accountBody:
+    Array.isArray(accountBody?.balances)?accountBody.balances:
+    Array.isArray(accountBody?.data)?accountBody.data:
+    Array.isArray(data?.msg?.balances)?data.msg.balances:
+    Array.isArray(data?.msg?.data)?data.msg.data:[];
+  if(/(?:^|[^a-z])balances?(?:$|[^a-z])/.test(accountEvent)&&batch.length){
+    st.lastBalances=batch.slice(0,50).map(row=>({...row,__receivedAt:Date.now()}));
+    applyKnownBalance(st,{observed:true});
   }
-  if(/balance-changed/i.test(outer)||/balance-changed/i.test(inner)){
-    // The observer already accepts named event envelopes. Read the event's
-    // body too, otherwise its live settlement is ignored until get-balances.
-    const envelope=(data.msg&&typeof data.msg==='object')?data.msg:data;
-    const m=envelope.body&&typeof envelope.body==='object'?envelope.body:envelope;
-    const id=n(m.balance_id??m.balanceId??m.id),typ=Number(m.type??m.balance_type??m.balanceType);
-    const val=n(m.amount??m.balance??m.current_balance??m.value);
-    // Keep the account cache current too: ingest() reapplies it on the next
-    // packet. An old balances snapshot must not undo a live settlement.
-    rememberBalanceChange(st,id,typ,val);
-    const matchesKnown=st.balanceId!=null&&id!=null&&id===st.balanceId;
-    const matchesMode=st.mode&&((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));
-    if(matchesKnown||(st.balanceId==null&&matchesMode)){
+  if(/\bbalances?[-_ ]?(?:changed?|updated?|update|change)\b|\b(?:changed?|updated?)?[-_ ]?balances?\b/.test(accountEvent)||
+     /\bbalances?\b/.test(accountEvent)&&!batch.length){
+    const m=accountBody&&typeof accountBody==='object'&&!Array.isArray(accountBody)?accountBody:{};
+    const id=n(m.balance_id??m.balanceId??m.user_balance_id??m.userBalanceId??m.id);
+    const typ=n(m.type??m.balance_type??m.balanceType);
+    const val=n(m.amount??m.balance??m.current_balance??m.currentBalance??m.value);
+    // Do not apply a bare amount without a proven account identity.
+    const modeMatches=typ!=null&&st.mode&&
+      ((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));
+    const knownId=st.balanceId!=null&&id!=null&&id===st.balanceId;
+    const knownMatchingType=id!=null&&st.balanceId==null&&modeMatches;
+    if(id!=null&&val!=null)rememberBalanceChange(st,id,typ,val);
+    if((knownId||knownMatchingType)&&val!=null){
       if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
-      if(st.balanceId==null&&id!=null)st.balanceId=id;
-      if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed';markObservedBalance(st)}
+      if(st.balanceId==null)st.balanceId=id;
+      st.balance=val;st.balanceSource='protocol:balance-update';
+      markObservedBalance(st);
     }
   }
   if(outer==='candles'){
@@ -895,8 +909,11 @@ export class LocalPlaywrightDriver{
       if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
       this.ingest(provider,payload,'page-out');
     };
-    const isAccountFrame=frame=>['balances','profile'].includes(String(frame?.name||''))||
-      /balance-changed/i.test(String(frame?.name||'')+' '+String(frame?.msg?.name||''));
+    const isAccountFrame=frame=>{
+      const label=[frame?.name,frame?.event,frame?.msg?.name,
+        frame?.msg?.event,frame?.message?.name].join(' ').toLowerCase();
+      return /\bprofile\b|\bbalances?(?:[-_ ]?(?:changed?|updated?|update|change))?\b/.test(label);
+    };
     page.on('websocket',ws=>{
       ws.on('framesent',event=>observeSent(event?.payload));
       // Passive observation of the broker's actual market data (13.4.27).
