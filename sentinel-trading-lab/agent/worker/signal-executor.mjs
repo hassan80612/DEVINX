@@ -1,6 +1,6 @@
 // Fixed broker stake. Martingale changes only the number of CALL/PUT clicks.
 // An identified close for every order completes one progression step.
-// Balance is optional; identified broker settlements control session loss limits.
+// Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
@@ -75,7 +75,8 @@ export class SignalExecutor{
   let brokerStakeConfirmed=false;
   const c=this.context(),cfg={...this.config};
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
-  const broker=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
+  const candidate=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
+  const broker=candidate&&freshBalance(candidate,this.clock())?candidate:null;
   const openingBalance=broker?.amount;
   if(c.state!=='running')throw Error('Inicie o analista antes de ligar o bot.');
   if(!c.licensed||!c.provider||!c.asset)throw Error('Conecte a corretora e inicie o analista.');
@@ -118,9 +119,9 @@ export class SignalExecutor{
       throw Error('Há uma operação pendente da conta/ativo anterior. Aguarde a confirmação para reiniciar com a nova configuração.');
     if(this.deadlineAt&&this.clock()>=this.deadlineAt)
       throw Error('Limite de tempo da sessão atingido. Aguarde o encerramento e inicie uma nova sessão.');
-    if(this.config.stopLoss>0&&this.riskNet()<=-this.config.stopLoss)
+    if(this.config.stopLoss>0&&this.stopLossReached())
       throw Error('Limite de perda atingido. Ajuste seu limite antes de reativar.');
-    if(this.config.stopWin>0&&this.net>=this.config.stopWin)
+    if(this.stopWinReached(balance))
       throw Error('Stop Win atingido nesta sessão. Pare e inicie outra sessão para zerar o resultado.');
     this.session.engine=current.engine;
     this.queuedSignal=null;
@@ -135,6 +136,7 @@ export class SignalExecutor{
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
+   if(!freshBalance(this.balanceRisk.current,this.clock()))this.balanceRisk.current=null;
    const opening=this.balanceRisk.begin(c.provider);if(opening&&freshBalance(opening,this.clock())&&cfg.amount>opening.amount)throw Error('Invest confirmado maior que o saldo disponível da corretora.');
    this.initialBalance=opening?.amount??null;
    this.sessionId++;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
@@ -151,6 +153,7 @@ export class SignalExecutor{
    // Old orders remain quarantined for correlated settlement only.
    if(this.pending){const b=this.pending;b.detached=true;for(const p of b.orders)p.detached=true;this.unresolvedBatches.set(b.id,b);this.pending=null;}
    this.balanceRisk.trade=null;this.balanceRisk.session=null;
+   this.balanceRisk.last=null;this.balanceRisk.current=null; // Drop stale bankroll on manual Stop.
    this.session=null;this.startedAt=null;this.deadlineAt=null;this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.initialBalance=null;
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;
    this.executed=0;this.closed=0;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.history=[];
@@ -281,19 +284,32 @@ export class SignalExecutor{
   const now=this.clock(),c=this.context(),p=this.pending;
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
   this.reconcileCompletedBatches();
-  const balance=this.balanceRisk.view(now);
+  let balance=this.balanceRisk.view(now);
   if(this.enabled){
+   // If a new session began without fresh broker balance, capture it once when available.
+   if(this.initialBalance==null&&freshBalance(balance.current,now)&&balance.current.provider===this.session?.provider&&
+     (this.session.accountId==null||String(balance.current.accountId)===String(this.session.accountId))){
+    this.balanceRisk.begin(this.session.provider);
+    this.initialBalance=balance.current.amount;
+    this.session.accountId=String(balance.current.accountId);
+    balance=this.balanceRisk.view(now);
+   }
+   if((this.config.stopWin>0||this.config.stopLoss>0)&&this.initialBalance==null){
+    this.suspensionReason='aguardando saldo atual da corretora';
+    this.message='Ligado · aguardando saldo atualizado da corretora para ativar os stops';
+    return;
+   }
    const blocker=this.hardHoldReason||(!c.licensed||c.state!=='running'?'aguardando analista/acesso':
     !this.session||!this.sameContext(this.session,c)?'ativo diferente · confira o ativo':
     balance.accountChanged||!this.accountCompatible(balance.current)?'conta diferente · confira a conta':null);
    this.suspensionReason=blocker;
-   if(this.config.stopWin>0&&this.net>=this.config.stopWin){
+   if(this.stopWinReached(balance)){
     if(this.executing){
      this.suspensionReason='Stop Win atingido · aguardando fim da sequência em execução';
      this.message='Ligado · Stop Win confirmado; concluindo cliques já iniciados';
-    }else this.stop('Bot parado · Stop Win atingido (lucro confirmado: '+money(this.net)+')');
+    }else this.stop('Bot parado · Stop Win atingido (saldo-alvo: '+money(this.config.stopWin)+')');
    }
-   else if(this.config.stopLoss>0&&this.riskNet(balance)<=-this.config.stopLoss)
+   else if(this.stopLossReached(balance))
     this.stop('Bot parado · stop-loss atingido');
    else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
     !balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<this.config.amount){
@@ -361,7 +377,7 @@ export class SignalExecutor{
   // entry. Their worst-case losses still count through riskNet() and stop-loss.
   if([...this.unresolvedBatches.values()].some(b=>!b.detached&&
    b.sessionId===this.sessionId&&!b.continuationReleased)){
-   if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.config.stopLoss+this.riskNet())+0.000001){
+   if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.lossBudgetRemaining())+0.000001){
     this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
     return;
    }
@@ -400,7 +416,7 @@ export class SignalExecutor{
   const martingaleFallback=false;
   const amount=money(unitAmount*clickCount);
   if(!Number.isFinite(amount)||amount>1000000){this.message='Ligado · valor inválido · próximo sinal';return;}
-  if(this.config.stopLoss>0&&amount>Math.max(0,this.config.stopLoss+this.riskNet(balance))+0.000001){
+  if(this.config.stopLoss>0&&amount>Math.max(0,this.lossBudgetRemaining(balance))+0.000001){
    this.stop('Bot parado · próxima entrada excede o limite de perda restante (stop-loss)');
    return;
   }
@@ -425,7 +441,7 @@ export class SignalExecutor{
   // they can never continue beyond this operation's selected expiry.
   const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
   const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.config.stopLoss+this.riskNet()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   let captured=false;
   const jobs=[];
   this.executing=true;
@@ -435,7 +451,7 @@ export class SignalExecutor{
    order.useBrokerStake=(source,{confirmed=false}={})=>{
     const stake=money(Number(source));
     if(!(stake>0)||stake>1000000)return;
-    if(!confirmed&&this.config.stopLoss>0&&stake>Math.max(0,this.config.stopLoss+this.riskNet())+1e-6)
+    if(!confirmed&&this.config.stopLoss>0&&stake>Math.max(0,this.lossBudgetRemaining())+1e-6)
      throw Error('O valor escolhido na corretora excede o stop-loss restante.');
     order.amount=stake;this.config.amount=stake;batch.unitAmount=stake;
     batch.amount=money(batch.orders.reduce((sum,x)=>sum+Number(x.amount||0),0));
@@ -664,13 +680,13 @@ export class SignalExecutor{
     }
    }else this.finishBatch(batch);
   }
-  if(this.enabled&&this.config.stopWin>0&&this.net>=this.config.stopWin){
+  if(this.enabled&&this.config.stopWin>0&&this.stopWinReached()){
    if(this.executing){
     this.suspensionReason='Stop Win atingido · aguardando fim da sequência em execução';
     this.message='Ligado · Stop Win confirmado; concluindo cliques já iniciados';
-   }else this.stop('Bot parado · Stop Win atingido (lucro confirmado: '+money(this.net)+')');
+   }else this.stop('Bot parado · Stop Win atingido (saldo-alvo: '+money(this.config.stopWin)+')');
   }
-  else if(this.enabled&&this.config.stopLoss>0&&this.riskNet()<=-this.config.stopLoss)this.stop('Bot parado · limite de perda da sessão atingido');
+  else if(this.enabled&&this.config.stopLoss>0&&this.stopLossReached())this.stop('Bot parado · limite de perda da sessão atingido');
   return true;
  }
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
@@ -678,6 +694,28 @@ export class SignalExecutor{
  // Session limits count confirmed broker settlements and unresolved exposure,
  // not delayed account-balance revisions that can produce false losses.
  riskNet(_balance=this.balanceRisk.view(this.clock())){return money(this.net-this.unresolvedExposure());}
- status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,sessionWins:this.sessionWins,sessionLosses:this.sessionLosses,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?money(Math.max(0,this.config.stopLoss+risk)):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,lastBrokerExpiryMismatch:this.lastBrokerExpiryMismatch,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
+ brokerThresholdBalance(balance=this.balanceRisk.view(this.clock())){
+  const b=balance.current;
+  if(!this.session||!b||b.provider!==this.session.provider||
+     (this.session.accountId!=null&&String(b.accountId)!==String(this.session.accountId))||
+     !freshBalance(b,this.clock())||balance.reconciling||this.pending||this.executing||this.unresolvedExposure()>0)return null;
+  return b.amount;
+ }
+ // Stop targets are absolute broker balances: e.g. 50 -> win 60, loss 40.
+ stopWinReached(balance=this.balanceRisk.view(this.clock())){
+  if(!(this.config.stopWin>0)||this.initialBalance==null)return false;
+  const confirmed=money(this.initialBalance+this.net),broker=this.brokerThresholdBalance(balance);
+  return confirmed>=this.config.stopWin||(broker!=null&&broker>=this.config.stopWin);
+ }
+ stopLossReached(balance=this.balanceRisk.view(this.clock())){
+  if(!(this.config.stopLoss>0)||this.initialBalance==null)return false;
+  const confirmed=money(this.initialBalance+this.net),broker=this.brokerThresholdBalance(balance);
+  return confirmed<=this.config.stopLoss||(broker!=null&&broker<=this.config.stopLoss);
+ }
+ lossBudgetRemaining(balance=this.balanceRisk.view(this.clock())){
+  if(this.initialBalance==null)return 0;
+  return money(Math.max(0,this.initialBalance-this.config.stopLoss+this.riskNet(balance)));
+ }
+ status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,sessionWins:this.sessionWins,sessionLosses:this.sessionLosses,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0?this.lossBudgetRemaining(balance):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,lastBrokerExpiryMismatch:this.lastBrokerExpiryMismatch,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
   unresolvedDetail:this.unresolvedDetail(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
 }

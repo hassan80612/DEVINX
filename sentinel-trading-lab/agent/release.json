@@ -1,6 +1,6 @@
 {
-  "version": "13.9.100",
-  "build": "13.9.100-native-expiry-and-feed-budget",
+  "version": "13.9.101",
+  "build": "13.9.101-absolute-bankroll-stops-30d-access",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.100"
+  "publicVersion": "13.9.101"
 }

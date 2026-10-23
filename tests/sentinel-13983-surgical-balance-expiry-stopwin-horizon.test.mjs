@@ -14,7 +14,7 @@ const context=()=>({state:'running',licensed:true,provider:'exnova',asset:'EUR/U
 test('stop win is based only on settlement from the broker and tracks each settled order once',async()=>{
  const c=context();
  const bot=new SignalExecutor({clock:()=>T,context:()=>c,driver:{prepare:async()=>({ready:true,amount:1})}});
- bot.configure({stopWin:3,stopLoss:15});await bot.start();
+ bot.configure({stopWin:1003,stopLoss:985});await bot.start();
  const fake=(id)=>bot.ledger.set('exnova|'+id,{provider:'exnova',orderId:id,
    accountId:'demo',netPnl:0,source:'unresolved',sessionId:bot.sessionId,amount:1});
  fake('A');assert.equal(bot.settle({provider:'exnova',orderId:'A',accountId:'demo',
@@ -33,7 +33,7 @@ test('stop win is based only on settlement from the broker and tracks each settl
 test('stop win never cuts a physically executing batch in half',async()=>{
  const c=context();
  const bot=new SignalExecutor({clock:()=>T,context:()=>c,driver:{prepare:async()=>({ready:true,amount:1})}});
- bot.configure({stopWin:2});await bot.start();bot.executing=true;
+ bot.configure({stopWin:1002});await bot.start();bot.executing=true;
  bot.ledger.set('exnova|A',{provider:'exnova',orderId:'A',accountId:'demo',
   netPnl:0,source:'unresolved',sessionId:bot.sessionId,amount:1});
  bot.settle({provider:'exnova',orderId:'A',accountId:'demo',source:'broker',netPnl:3});
