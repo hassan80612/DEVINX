@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useSentinelLocale} from './SentinelLocale';
 
-const fields=[['stopLoss','Perda máxima na sessão (moeda da conta)','0.01'],['stopWin','Stop Win · lucro líquido da sessão','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleMultiplier','Multiplicador de cliques (2 ou 3)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
+const fields=[['stopLoss','Stop Loss · saldo mínimo da banca (valor absoluto)','0.01'],['stopWin','Stop Win · saldo-alvo da banca (valor absoluto)','0.01'],['martingaleLevels','Níveis de martingale (0 = desligado)','1'],['martingaleMultiplier','Multiplicador de cliques (2 ou 3)','1'],['martingaleEnabled','Ativar martingale','1'],['maxConsecutiveLosses','Máximo de sequências perdedoras (0 = sem limite)','1']] as const;
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
@@ -66,11 +66,11 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
      {mode!=='automatic'&&<small className="muted">{t('Segue o tempo escolhido no analista.')}</small>}
    </div>
    <div className="botControlFields">{fields.map(([key,label,step])=><label key={key}>{t(label)}<input aria-label={t(label)} type={key==='martingaleEnabled'?'checkbox':'number'} checked={key==='martingaleEnabled'?draft[key]==='1':undefined} max={key==='martingaleLevels'?3:key==='martingaleMultiplier'?3:key==='maxConsecutiveLosses'?50:undefined} min={key==='martingaleMultiplier'?2:0} step={step} inputMode="decimal" value={draft[key]??''} disabled={!!pending||bot.arming||!current||(key==='martingaleMultiplier'&&!tripleReady)} onChange={e=>{dirty.current.add(key);setDraft(v=>({...v,[key]:key==='martingaleEnabled'?(e.target.checked?'1':'0'):e.target.value}));setMessage('');}}/></label>)}</div>
-   <p className="muted">{t('0 = sem limite')} · {t('Limite de perda na moeda da conta.')}</p>
-   {bot.brokerBalance&&(!(Number(bot.config?.stopLoss)>0)||Number(bot.config.stopLoss)>=Number(bot.brokerBalance.amount))&&<p role="status">{t('Atenção: o limite de perda não protege esta banca contra perdas elevadas.')}</p>}
+   <p className="muted">{t('0 = sem limite')} · {t('Exemplo: banca inicial de 50, Stop Loss 30 = parar ao chegar em 30; Stop Win 70 = parar ao chegar em 70.')}</p>
+   {bot.initialBalance!=null&&Number(bot.config?.stopLoss)>0&&Number(bot.config.stopLoss)>=Number(bot.initialBalance)&&<p role="status">{t('Stop Loss maior ou igual à banca inicial: o bot parará imediatamente.')}</p>}
    <p className="muted" data-sentinel-executor-wl style={{fontWeight:750}}>{t('WIN')}: {Number(bot.sessionWins??0)} / {t('LOSS')}: {Number(bot.sessionLosses??0)}{Number(bot.unresolvedDetail?.waitingResult||0)>0?' · '+Number(bot.unresolvedDetail.waitingResult)+' '+t('resultado(s) pendente(s)'):''}{Number(bot.unresolvedDetail?.waitingId||0)>0?' · '+Number(bot.unresolvedDetail.waitingId)+' '+t('clique(s) sem confirmação'):''}{Number(bot.unresolvedDetail?.uncertainAttempts||0)>0?' · '+Number(bot.unresolvedDetail.uncertainAttempts)+' '+t('tentativa(s) não comprovada(s)'):''}</p>
    <p className="muted">{t('Sequências perdedoras confirmadas')}: {Number(bot.consecutiveLossBatches||0)} · {t('O limite por sequência é opcional e só conta resultados confirmados pela corretora.')}</p>
-   <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Limite de perda restante')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
+   <p className="muted">{t('Próxima entrada')}: {Number(bot.nextClicks??1)} {t('clique(s)')} × {Number(bot.config?.amount??0).toFixed(2)} · {t('Saldo disponível acima do Stop Loss')}: {bot.lossLimitRemaining==null?'—':Number(bot.lossLimitRemaining).toFixed(2)}</p>
    <small className="muted">{t('Progressão de cliques definida pelo multiplicador: 2× = 1→2→4→8 ou 3× = 1→3→9→27. Sinais ignorados não alteram o nível; somente a sequência encerrada pela corretora.')}</small>
    <div className="botControlActions">
     <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
