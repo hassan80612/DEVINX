@@ -1,6 +1,6 @@
 {
   "version": "3.9.85",
-  "build": "3.9.85-structure-passive-broker-price-score",
+  "build": "3.9.85-cold-start-pc-analyst",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
