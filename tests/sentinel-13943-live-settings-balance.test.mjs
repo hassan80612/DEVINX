@@ -28,9 +28,9 @@ test('strategy switches preserve pending trade and follow the new strategy after
 test('strategy change before asynchronous click cancels old direction without disarming',async()=>{
  const x=setup();await x.bot.start();const flight=x.fire();x.c.engine='trend';await flight;assert.equal(x.calls.length,0);assert.equal(x.bot.pending,null);assert.ok(x.bot.enabled);x.advance(30000);await x.fire('PUT');assert.equal(x.calls.length,1);
 });
-test('editing session loss limit ignores external balance moves but stops on identified broker settlement',async()=>{
+test('absolute Stop Loss floor ignores external balance moves but stops at initial bankroll target',async()=>{
  const x=setup();await x.bot.start();x.balance(85);x.bot.watch();assert.ok(x.bot.enabled);
- x.bot.configure({amount:10,stopLoss:10});
+ x.bot.configure({amount:10,stopLoss:90});
  assert.equal(x.bot.enabled,true,'an unconfirmed account balance move is not session PnL');
  await x.fire();x.close(-10);
  assert.equal(x.bot.net,-10);
