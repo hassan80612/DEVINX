@@ -194,8 +194,16 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,ra
  // 30s is a choppy/noisy cycle, not evidence that a micro leg lasts 30s.
  // Longer expiries may only use independent historical outcomes matched to
  // their entire expiry duration (already enforced in assessRangeExpiryEvidence).
- const expiryFitsRecentLeg=Number(holdingMs)>30000||
-   Number(holdingMs)/1000<=half*1.35;
+ // Mixed-frequency chop can appear regular over just 3 turns.
+ // Require a stable sequence of previously confirmed alternating pivots
+ // before NEW recovery, continuation or expiration-analogue signals.
+ // Existing confirmed boundary reversals keep their original rules.
+ const historicalGaps=pivots.slice(1).map((p,i)=>(p.at-pivots[i].at)/1000);
+ const stableRange=pivots.length>=5&&
+   Math.max(...historicalGaps)/Math.min(...historicalGaps)<=1.35&&
+   pivots.every((p,i)=>i===0||p.type!==pivots[i-1].type);
+ const expiryFitsRecentLeg=stableRange&&
+   (Number(holdingMs)>30000||Number(holdingMs)/1000<=half*1.35);
  const analogue=expiryFitsRecentLeg?
    assessRangeExpiryEvidence({quotes:[...rangeQuoteHistory,...quotes],
      now,spot,noise,lower,upper,holdingMs,regular}):null;
@@ -243,7 +251,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000,ra
  if(analogue)return {...analogue,observedSwingSeconds:half,efficiency};
  const leg=assessRangeRecoveryContinuation({quotes:last,closes,pivots,now,spot,
   noise,lower,upper,half,holdingMs,regular});
- if(leg)return {...leg,efficiency};
+ if(leg&&stableRange)return {...leg,efficiency};
  return {ready:false,reason:regular?'range-extreme-awaiting-confirmed-turn':
    'irregular-range-awaiting-current-turn'};
 }
