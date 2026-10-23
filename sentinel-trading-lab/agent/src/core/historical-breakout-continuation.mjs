@@ -1,6 +1,6 @@
 // Read-only final evidence review shared by all strategies and durations.
-// An old confirmed pivot, including 16 closed candles ago, is still a
-// relevant price barrier. A rising last candle is NOT proof of a breakout.
+// Confirmed pivots and rejected price zones can originate one or many
+// completed candles ago. Age is descriptive, never an admission threshold.
 // No broker requests, independent timers, inverted trades or future prices.
 const valid=n=>Number.isFinite(Number(n))&&Number(n)>0;
 const sideSign=side=>side==='CALL'?1:side==='PUT'?-1:0;
@@ -8,13 +8,22 @@ export function reviewHistoricalBreakoutContinuation({
  candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs
 }={}){
  if(candidate?.ready!==true||!sideSign(candidate.side)||
-   !(structure?.candles>=5)||!Array.isArray(structure.zones))return candidate;
+   !(structure?.candles>=1)||!Array.isArray(structure.zones))return candidate;
  const spot=Number(price),ts=Number(quoteAt),sign=sideSign(candidate.side);
  if(!valid(spot)||!(ts>0&&ts<=now&&now-ts<=1450))return candidate;
- // Work only with closed candle pivots/rejections. A lone wick in the
- // current candle must not manufacture a level or stop a real trend.
- const levels=structure.zones.filter(z=>
-   (Number(z.confirmedPivots)||0)>0||(Number(z.independentRejections)||0)>=2);
+ // Structure, not a fixed lookback (1, 2, 3, 10, 16, 50... bars).
+ // High pivots/wick rejection are resistance evidence; low pivots/wick
+ // rejection are support evidence. A SINGLE completed candle qualifies
+ // only when its wick shows strong rejection; a random candle high/low
+ // does not become an unbreakable wall. Age is NEVER used as a gate.
+ const levels=structure.zones.filter(z=>{
+   const ages=sign>0?z.highAges:z.lowAges;
+   if(!Array.isArray(ages)||!ages.length)return false;
+   const pivots=Number(sign>0?z.confirmedHighPivots:z.confirmedLowPivots)||0;
+   const rejections=Number(sign>0?z.rejectedHighVisits:z.rejectedLowVisits)||0;
+   const wick=Number(sign>0?z.resistanceWick:z.supportWick)||0;
+   return pivots>0||rejections>0||(wick>=.60&&Number(z.touches)>=1);
+ });
  if(!levels.length)return candidate;
  const atr=Number(structure.atr),tol=Number(structure.tolerance);
  if(!(atr>0&&tol>0))return candidate;
@@ -44,8 +53,10 @@ export function reviewHistoricalBreakoutContinuation({
   .filter(x=>x.dist>=-Math.max(tol*2,atr*.11)&&x.dist<=reach)
   .sort((a,b)=>Math.abs(a.dist)-Math.abs(b.dist));
  for(const {zone:z,dist} of ahead){
-  // A genuine breach must clear the FULL zone, then remain beyond it in
-  // several already received quotes (not the single latest candle).
+  // The zone is a *decision boundary*, not an eternal veto. Confirmed
+  // close-through + observed price holding beyond it => continuation.
+  // A separate observed retreat/rejection can authorize its own reversal.
+  // Before either is clear, neither a rising nor falling candle is proof.
   const recent=q.filter(x=>x.ts>=ts-4500);
   const coverage=recent.length>=3&&recent[0].ts<=ts-2500;
   const beyond=x=>sign>0?x.price>z.high+tol:x.price<z.low-tol;
