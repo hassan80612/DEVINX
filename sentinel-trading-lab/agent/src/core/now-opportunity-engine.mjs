@@ -48,6 +48,63 @@ function before(quotes,at,maxAgeMs=3500){
  return null;
 }
 
+
+/**
+ * Causal range-leg classification shared by ALL modes and expiries.
+ * This does not change execution, timing, broker controls or interface.
+ */
+export function assessRangeRecoveryContinuation({quotes=[],closes=[],pivots=[],
+ now,spot,noise,lower,upper,half,holdingMs=30000,regular=false}={}){
+ if(!regular||!finitePrice(spot)||!Number.isFinite(now)||
+    !Number.isFinite(lower)||!Number.isFinite(upper)||
+    !(upper>lower)||!(noise>0)||!(half>0))return null;
+ const logSpot=Math.log(spot),span=upper-lower,position=(logSpot-lower)/span;
+ if(!(position>=.20&&position<=.80))return null;
+ const pivot=pivots.at(-1);
+ if(!pivot||!['LOW','HIGH'].includes(pivot.type))return null;
+ const side=pivot.type==='LOW'?'CALL':'PUT',direction=side==='CALL'?1:-1;
+ // Time to expiry must fit the remaining observed half-swing. Never assume
+ // an upward current tick will continue until an arbitrary expiration.
+ const elapsed=(now-Number(pivot.at))/1000,holding=Number(holdingMs)/1000;
+ if(!(elapsed>=0&&elapsed<half&&holding>=5&&
+      holding<=Math.max(0,half-elapsed)*.95))return null;
+ const live=quotes.filter(q=>Number(q?.ts)<=now&&Number(q?.receivedAt??q?.ts)<=now&&
+   Number(q?.ts)>now-21000&&finitePrice(q?.price));
+ if(live.length<10)return null;
+ const at=(seconds)=>{
+  const target=now-seconds*1000;
+  for(let i=live.length-1;i>=0;i--)
+   if(live[i].ts<=target)return target-live[i].ts<=2500?live[i]:null;
+  return null;
+ };
+ const q3=at(3),q8=at(8),q16=at(16);
+ if(!q3||!q8||!q16)return null;
+ const move3=Math.log(spot/Number(q3.price))*direction;
+ const move8=Math.log(spot/Number(q8.price))*direction;
+ const move16=Math.log(spot/Number(q16.price))*direction;
+ if(!(move3>noise*.012&&move8>noise*.10))return null;
+ // Use completed, observed 5s legs as independent flow evidence.
+ const recent=closes.slice(-4);
+ if(recent.length<4)return null;
+ const aligned=recent.slice(1).filter((bar,i)=>
+  direction*(Number(bar.log)-Number(recent[i].log))>0).length;
+ if(aligned<2)return null;
+ // Room to target is required unless the previous base has already
+ // classified a breakout. No late CALL near top or late PUT near bottom.
+ const room=side==='CALL'?upper-logSpot:logSpot-lower;
+ const estimatedMove=move8*(holding/8)*.55;
+ if(room<Math.max(noise*.10,estimatedMove*.80))return null;
+ if((side==='CALL'&&position>.76)||(side==='PUT'&&position<.24))return null;
+ const recovering=move16<=noise*.09||
+   (side==='CALL'?position<=.40:position>=.60);
+ if(!recovering&&!(move16>noise*.10))return null;
+ return {ready:true,side,
+   reason:recovering?'closed-range-recovery-followthrough':'closed-range-leg-continuation',
+   phase:recovering?'recovery':'continuation',
+   observedSwingSeconds:half,position,
+   remainingSwingSeconds:Math.max(0,half-elapsed),alignedClosedLegs:aligned};
+}
+
 // Recognize genuinely observed two-sided market oscillations using CLOSED
 // 5-second prices from the past, not future projections or forming candles.
 // Return null for a directional regime; return a verdict when past alternation
@@ -169,6 +226,9 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   reason:'closed-range-extreme-reversal-confirmed',
   observedSwingSeconds:half,position,efficiency};
  }
+ const leg=assessRangeRecoveryContinuation({quotes:last,closes,pivots,now,spot,
+  noise,lower,upper,half,holdingMs,regular});
+ if(leg)return {...leg,efficiency};
  return {ready:false,reason:regular?'range-extreme-awaiting-confirmed-turn':
    'irregular-range-awaiting-current-turn'};
 }
