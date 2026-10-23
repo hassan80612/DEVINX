@@ -1,6 +1,6 @@
 {
-  "version": "3.9.85",
-  "build": "3.9.85-cold-start-pc-analyst",
+  "version": "3.9.86",
+  "build": "3.9.86-passive-native-asset-feed-recovery",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "3.9.85"
+  "publicVersion": "3.9.86"
 }
