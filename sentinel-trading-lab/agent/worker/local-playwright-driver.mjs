@@ -2158,7 +2158,16 @@ export class LocalPlaywrightDriver{
 
         
         const stableScrollTop=el.scrollTop;
-        const stableRect=el.getBoundingClientRect();
+        // Preserve the content the trader is actually reading when a result
+        // or forecast expands another card ABOVE it. This is visual only:
+        // no motor recalculation and no broker or DOM polling timer.
+        const paneRect=el.getBoundingClientRect();
+        const visibleAnchor=el.getRootNode()?.elementFromPoint?.(
+          paneRect.left+Math.min(35,paneRect.width*.25),
+          paneRect.top+Math.min(42,paneRect.height*.18)
+        )?.closest?.('[data-sentinel-card]')||null;
+        const visibleAnchorTop=visibleAnchor?.getBoundingClientRect().top;
+        const stableRect=paneRect;
         const stableLeft=el.style.left,stableTop=el.style.top,stableRight=el.style.right;
         // Shared single-source prediction is pinned by the Agent itself.
         // The PC and mobile receive the SAME issuedAt/targetAt and price.
@@ -2619,7 +2628,9 @@ export class LocalPlaywrightDriver{
           if(stableTop)el.style.top=stableTop;
           el.style.right=stableRight||el.style.right;
           const maxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
-          el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop));
+          const delta=visibleAnchor?.isConnected&&Number.isFinite(visibleAnchorTop)?
+            visibleAnchor.getBoundingClientRect().top-visibleAnchorTop:0;
+          el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop+delta));
           if(el.dataset.geometryClamped!=='1'){
             el.dataset.geometryClamped='1';
             const r=el.getBoundingClientRect();
