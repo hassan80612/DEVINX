@@ -23,7 +23,8 @@ for(const provider of ['iq_option','exnova']){
    assert.equal(state.expirationDurationMs,120000);
    assert.equal(state.expirationRaw,'2m');
    assert.equal(sent.filter(p=>/candle|subscribe|option|order/i.test(p.msg.name)).length,0);
-   state.activeMap.set('EURUSDOTC',76);state.balance=50;
+   state.activeMap.set('EURUSDOTC',76);
+   driver.ingest(provider,{name:'balances',msg:[{id:10,type:4,amount:50}]},'page-in');
    assert.equal(await driver.requestBaseData(provider),true);
    assert.equal(sent.length,2,'healthy page does not generate new requests');
  });
