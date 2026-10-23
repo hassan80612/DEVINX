@@ -16,7 +16,9 @@ function setup(provider){
  const st=d.state(provider);
  st.activeId=76;st.uiSymbol='EUR/USD OTC';st.symbol=st.uiSymbol;
  st.activeMap.set('EURUSDOTC',76);
- st.balance=50;st.balanceId=10;
+ // Native chart is healthy only with an actual account-ID-bound balance
+ // observed from the broker, not a bare figure typed into state.
+ d.ingest(provider,{name:'balances',msg:[{id:10,type:4,amount:50}]},'page-in');
  return {d,st,page,listeners,closePage:()=>{closed=true}};
 }
 for(const provider of ['iq_option','exnova']){
