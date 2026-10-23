@@ -18,7 +18,7 @@ const fields = {
   entryAnalyst: 'independent qualification',
   qualification: 'allowed',
   scenarioProjection: 'side status confirmed actionable horizonSeconds asOf issuedAt targetAt projectedPrice expectedLow expectedHigh engineId',
-  vnext: 'engineId expirySeconds computedStatus forecastFoundation historicalComparisons outcomesVerified receipt ea ow fq er targetAnchor projection hf hm targetProjection lastSettled cards',
+  vnext: 'mode engineId expirySeconds nowObservation computedStatus forecastFoundation historicalComparisons outcomesVerified oq receipt ea ow fq er targetAnchor projection hf hm targetProjection lastSettled cards',
   receipt: 'engineId asset side referencePrice quoteReceivedAt issuedAt expirySeconds targetAt projectedPrice expectedLow expectedHigh',
   targetAnchor: 'engineId asset side issuedAt expirySeconds targetAt referencePrice projectedPrice',
   projection: 'side callPct putPct',
@@ -31,7 +31,8 @@ const fields = {
   entryPlanner: 'horizons',
   'horizons.*': 'asset horizonSeconds rawBias bias displayBias outlookReady directionReady confidence modelConfidence callProbability putProbability',
 };
-const compactFields='engineId expirySeconds receipt targetAnchor ea ow er fq projection hf hm cards targetProjection';
+const compactFields='mode engineId expirySeconds nowObservation receipt targetAnchor oq ea ow er fq projection hf hm cards targetProjection';
+const criticalFields='mode engineId expirySeconds nowObservation receipt ea ow oq er hf hm cards';
 
 export function analystWireV1(frame){
   const analysis=frame?.lastResult?.analysis;
@@ -41,7 +42,8 @@ export function analystWireV1(frame){
     if(Array.isArray(value))return value.map(item=>order(item,path+'.*'));
     const key=path.split('.').at(-1);
     const rule=/\.horizons\.\d+$/.test(path)?fields['horizons.*']:
-      (path==='lastResult.analysis.vnext'&&compact)?compactFields:
+      (path==='lastResult.analysis.vnext'&&compact)?
+        (Object.hasOwn(value,'targetAnchor')?compactFields:criticalFields):
       fields[path]||fields[path.split('.').slice(-2).join('.')]||fields[key]||'';
     const names=rule.split(' ').filter(Boolean);
     // Keep unknown fields in the signed material. They cannot be added by a
