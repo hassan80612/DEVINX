@@ -32,3 +32,21 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(executor.status().availableBalance,48);
  });
 }
+
+test('native startup with a visible DOM balance but NO verified account still requests get-balances',async()=>{
+ for(const provider of ['iq_option','exnova']){
+  const d=new LocalPlaywrightDriver({dataDir:'unused-test'});
+  const st=d.state(provider);
+  st.balance=50;st.mode='demo';st.balanceId=null;
+  st.activeMap.set('EURUSDOTC',76);
+  d.sessions.set(provider,{page:{isClosed:()=>false}});
+  const commands=[];
+  d.wsSend=async(_provider,msg)=>{commands.push(msg.msg.name);return{ok:true}};
+  assert.equal(await d.requestBaseData(provider),true);
+  assert.deepEqual(commands,['get-balances'],'a DOM balance without account ID cannot satisfy broker confirmation');
+  d.ingest(provider,{name:'balances',msg:[{id:10,type:4,amount:50}]},'page-in');
+  assert.equal(d.accountBalanceSnapshot(provider)?.amount,50);
+  await d.requestBaseData(provider);
+  assert.equal(commands.length,1,'once confirmed, native chart is left alone');
+ }
+});
