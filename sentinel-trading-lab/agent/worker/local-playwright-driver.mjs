@@ -985,12 +985,26 @@ export class LocalPlaywrightDriver{
     try{if(!feed.connecting)feed.connecting=feed.connect(cookie.value).finally(()=>{feed.connecting=null});const status=await feed.connecting;const st=this.state(provider);st.directStatus=status;st.lastDirectError=null;if(status.ready)st.protocol='direct-websocket';return feed}catch(e){const st=this.state(provider);st.lastDirectError=String(e?.message||e);st.directStatus=feed.status();return null}
   }
   async wsSend(provider,payload){
+    // Defense in depth: no caller may rewrite the traderoom's candle
+    // interval by issuing Agent-owned market messages on a shared session.
+    const outer=String(payload?.name||'').toLowerCase();
+    const inner=String(payload?.msg?.name||'').toLowerCase();
+    const marketWrite=inner==='get-candles'||outer==='candles'||
+      (/subscribe|unsubscribe/.test(outer)&&/candle-generated|quote-generated/.test(inner));
+    if(this.nativeChartOpen(provider)&&marketWrite)
+      return{ok:false,error:'native_chart_period_owned_by_broker'};
     const feed=await this.directFeed(provider).catch(()=>null);
     if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};
     // Never inject commands into the trading page's own WebSocket.
     return{ok:false,error:'direct_market_feed_unavailable'};
   }
-  async requestBaseData(provider,{balancesOnly=false}={}){const st=this.state(provider),rid=reqId(provider);const requests=[
+  async requestBaseData(provider,{balancesOnly=false}={}){const st=this.state(provider),rid=reqId(provider);
+    // Once the active instrument catalog has been read, maintenance and
+    // manual refreshes of a visible traderoom only read account balances.
+    // Re-requesting initialization through shared broker state can reset
+    // native option settings; never use it as an ordinary heartbeat.
+    balancesOnly=balancesOnly||(this.nativeChartOpen(provider)&&st.activeMap.size>0);
+    const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
     ...(!balancesOnly?[{name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}]:[])
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
