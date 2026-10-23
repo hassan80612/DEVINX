@@ -68,13 +68,14 @@ test('future prices and observations received after the decision cannot alter it
   assert.deepEqual(after(input),after(polluted));
  }
 });
-test('selected 30s specialists have their own evidence; do not force the automatic side',()=>{
+test('selected 30s specialists contribute evidence but the shared base owns the final side',()=>{
  for(const i of [200,400,650,950]){
-  const input=inputFor(fine,i);
+  const input=inputFor(fine,i),automatic=after(input);
   for(const engineId of ['trend','fibonacci_retest','support_resistance','smart_confluence']){
    const chosen=after({...input,engineId});
    assert.equal(chosen.contextStrategy,engineId);
-   assert.equal(chosen.signalOwner,'selected-specialist');
+   assert.equal(chosen.signalOwner,'shared-market-base');
+   if(automatic.ready){assert.equal(chosen.ready,true);assert.equal(chosen.side,automatic.side);}
    if(chosen.ready)assert.ok(['CALL','PUT'].includes(chosen.side));
   }
  }
