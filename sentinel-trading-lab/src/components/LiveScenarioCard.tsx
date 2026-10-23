@@ -227,14 +227,17 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizeUserStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {VISIBLE_STRATEGIES.map(e=><option key={e.id} value={e.id}>{t(e.name)} · {t(e.short)}</option>)}
       </select>
-      <small style={{display:'block',fontSize:11,opacity:.88,marginTop:5}} data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
-      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
-       <small data-testid="automatic-chart-context" style={{display:'block',fontSize:11,opacity:.85,marginTop:4}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
     </label>
     <label>{t(nowMode?"Duração da operação":"Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
+    <details className="vnextStrategyWhen" style={{gridColumn:'1/-1',fontSize:11}}>
+      <summary>{t('Quando usar esta estratégia?')}</summary>
+      <small data-testid="current-strategy-when" style={{display:'block',marginTop:6,lineHeight:1.45}}>{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
+      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
+       <small data-testid="automatic-chart-context" style={{display:'block',marginTop:5}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
+    </details>
   </div>:null;
 
 
