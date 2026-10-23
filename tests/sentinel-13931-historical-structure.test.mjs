@@ -68,11 +68,13 @@ test('historical rejection releases on the current quote without four newly clos
  const a=analyzeNowOpportunity(args);assert.equal(a.ready,true);assert.equal(a.side,'CALL');assert.equal(a.observedAt,T);
  const support=analyzeNowOpportunity({...args,engineId:'support_resistance'});
  assert.equal(support.side,'CALL','the selected S/R specialist uses the observed rejection');
- assert.equal(support.signalOwner,'selected-specialist');
+ assert.equal(support.signalOwner,'shared-market-base');
  for(const engineId of ['trend','fibonacci_retest','smart_confluence']){
   const other=analyzeNowOpportunity({...args,engineId});
-  assert.equal(other.ready,false,'unqualified specialist must not inherit S/R entry');
-  assert.equal(other.side,null);
+  assert.equal(other.ready,true,'shared base keeps its independently confirmed S/R entry');
+  assert.equal(other.side,'CALL');
+  assert.equal(other.observedAt,T,'the base never waits for extra bars');
+  assert.equal(other.signalOwner,'shared-market-base');
  }
  const fired=advanceNowOpportunity({candidate:a,now:T,quoteAt:T,asset:'EUR',engineId:'automatic',durationMs:30000});
  assert.equal(fired.entryTriggeredAt,T);assert.equal(fired.exitAt,T+30000);
