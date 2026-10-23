@@ -27,7 +27,9 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
    const rejectedLow=contiguous&&low&&approachedLow&&next.close>zone.high+tolerance&&
     (lower>=.5||next.low>=c.low-tolerance);
    tests.push({age:rows.length-1-i,independent:armed,visit,pivot,
+    high,low,highPivot:pivot&&high,lowPivot:pivot&&low,
     rejected:rejectedHigh||rejectedLow,
+    rejectedHigh,rejectedLow,
     resistanceWick:high?upper:0,supportWick:low?lower:0,
     bodyFraction:range>0?Math.abs(c.close-c.open)/range:0});
    armed=false;
@@ -36,6 +38,12 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
    independentTests:tests.filter(t=>t.independent).length,
    independentRejections:new Set(tests.filter(t=>t.rejected).map(t=>t.visit)).size,
    confirmedPivots:tests.filter(t=>t.pivot).length,
+   confirmedHighPivots:tests.filter(t=>t.highPivot).length,
+   confirmedLowPivots:tests.filter(t=>t.lowPivot).length,
+   rejectedHighVisits:new Set(tests.filter(t=>t.rejectedHigh).map(t=>t.visit)).size,
+   rejectedLowVisits:new Set(tests.filter(t=>t.rejectedLow).map(t=>t.visit)).size,
+   highAges:tests.filter(t=>t.high).map(t=>t.age),
+   lowAges:tests.filter(t=>t.low).map(t=>t.age),
    resistanceWick:Math.max(0,...tests.map(t=>t.resistanceWick)),
    supportWick:Math.max(0,...tests.map(t=>t.supportWick)),
    windows:WINDOWS.filter(n=>rows.length>=n&&tests.some(t=>t.age<n))};
