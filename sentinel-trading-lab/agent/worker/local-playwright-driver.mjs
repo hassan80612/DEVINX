@@ -1004,6 +1004,12 @@ export class LocalPlaywrightDriver{
     // Re-requesting initialization through shared broker state can reset
     // native option settings; never use it as an ordinary heartbeat.
     balancesOnly=balancesOnly||(this.nativeChartOpen(provider)&&st.activeMap.size>0);
+    if(this.nativeChartOpen(provider)&&st.activeMap.size>0&&st.balance!=null){
+      // Native page/CDP already supplies balance-change events. No need to
+      // re-authenticate an auxiliary socket on each Agent refresh.
+      st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
+      return true;
+    }
     const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
     ...(!balancesOnly?[{name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}]:[])
