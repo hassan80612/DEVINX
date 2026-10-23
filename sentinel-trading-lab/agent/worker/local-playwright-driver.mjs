@@ -610,6 +610,10 @@ export class LocalPlaywrightDriver{
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
+  nativeChartOpen(provider){
+    const page=this.sessions.get(provider)?.page;
+    return !!page&&!(typeof page.isClosed==='function'&&page.isClosed());
+  }
   async launchNormal(provider,{manual=false}={}){
     const cfg=this.config(provider),s=await this.session(provider);await mkdir(s.profileDir,{recursive:true});
     if(!manual)throw new Error('broker_open_requires_manual_action');
@@ -995,7 +999,7 @@ export class LocalPlaywrightDriver{
     // Chart ownership belongs to the traderoom, not the Agent. A "separate"
     // authenticated broker socket can still share server-side chart state.
     // Never write a market period into any active native broker page.
-    if(this.sessions.get(provider)?.page){
+    if(this.nativeChartOpen(provider)){
       st.lastCandleResponse={name:'native-chart-passive-only',at:Date.now()};
       return st.candles.length>=50&&candleFreshForState(st);
     }
@@ -1068,7 +1072,7 @@ export class LocalPlaywrightDriver{
   async requestQuoteHistory(provider,{symbol,activeId}={}){
     // A 1s Agent backfill is still a get-candles request and may reset the
     // traderoom period via shared broker state. Use its native stream instead.
-    if(this.sessions.get(provider)?.page)return false;
+    if(this.nativeChartOpen(provider))return false;
     const st=this.state(provider),key=String(activeId)+'|'+String(symbol);
     if(st.quoteBackfillKey===key)return false;
     st.quoteBackfillKey=key;
@@ -1266,7 +1270,7 @@ export class LocalPlaywrightDriver{
   }
   async refreshPredictionHistory(provider,now=Date.now()){
     // Legacy auxiliary periods must not modify the native traderoom.
-    if(this.sessions.get(provider)?.page)return false;
+    if(this.nativeChartOpen(provider))return false;
     const st=this.state(provider),size=Number(st.predictionPeriod);
     if(!size||size===Number(st.candleSize)||st.activeId==null||now-Number(st.lastPredictionRequestAt||0)<9000)return false;
     st.lastPredictionRequestAt=now;
@@ -1333,7 +1337,7 @@ export class LocalPlaywrightDriver{
     const historyDue=!st.lastCandleRequest||
       now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
     const needHistoryRecovery=st.candles.length<50||stale||(!streamingHealthy&&historyDue);
-    if(needHistoryRecovery&&!this.sessions.get(provider)?.page)
+    if(needHistoryRecovery&&!this.nativeChartOpen(provider))
       await this.requestMarketData(provider,{force:true}).catch(()=>{});
     // Missing native history is reported as missing, never "repaired"
     // by repeatedly changing the chart's selected candle interval.
