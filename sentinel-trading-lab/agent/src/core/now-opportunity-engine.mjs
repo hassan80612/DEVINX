@@ -5,6 +5,7 @@ import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 import {automaticChartContext} from './automatic-chart-context.mjs';
 import {causalPatternDirection} from './causal-pattern-direction.mjs';
+import {expiryPhaseDirection} from './expiry-phase-direction.mjs';
 import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 import {historicalPriceStructure,applyHistoricalPriceStructure} from './historical-price-structure.mjs';
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
@@ -376,8 +377,14 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // completed 30s/60s/2m/5m outcomes decide, never the latest tick alone.
   // Evidence without >=4 independent settled analogues defers to the original
   // structural model, preserving its valid continuation and reversal setups.
-  const learning=causalPatternDirection(input);
-  const useLearning=learning?.ready===true&&Number(learning.strength)>=80;
+  const expiryPhase=expiryPhaseDirection(input);
+  // Preserve the pre-existing short-history 30s signal; independent
+  // horizon-matched evidence extends the base for 30s/60s/2m/5m only when
+  // four actually completed, non-overlapping outcomes are comparable.
+  const learning=expiryPhase.ready?expiryPhase:
+   Number(durationMs)===30000?causalPatternDirection(input):null;
+  const useLearning=learning?.ready===true&&Number(learning.strength)>=
+    (learning===expiryPhase?80:.4);
   const contextStrategy=useLearning?'mean_reversion':'trend';
   const qualifiedStructure={structuralReady:structural.ready===true,
    structuralSide:structural.ready===true?structural.side:null};
