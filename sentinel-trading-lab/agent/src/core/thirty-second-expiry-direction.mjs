@@ -58,28 +58,12 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
   if(score<best){best=score;selected=model;}
  }
  const expectedLogMove=selected.predict(horizonMs/1000)-selected.predict(0);
- if(!Number.isFinite(expectedLogMove))return none('invalid-30s-cycle-expectation');
- // A projected movement of nearly zero is not a prediction. Compare its
- // magnitude with BOTH out-of-model fit uncertainty and observed tick scale.
- // The latter distinguishes a tiny new candle from a meaningful continuation;
- // small candles alone are NOT evidence of reversal or loss of strength.
- const residual=Math.sqrt(selected.sse/n);
- const increments=[];
- for(let i=1;i<points.length;i++){
-  if(points[i].t-points[i-1].t>2.5)continue;
-  const step=Math.abs(points[i].y-points[i-1].y);
-  if(step>0)increments.push(step);
- }
- increments.sort((a,b)=>a-b);
- const typicalTick=increments.length?increments[Math.floor(increments.length/2)]:0;
- const uncertaintyFloor=Math.max(residual*.65,typicalTick*Math.sqrt(horizonMs/1000)*.80,1e-10);
- if(Math.abs(expectedLogMove)<uncertaintyFloor)return none('projected-move-below-observed-uncertainty');
+ if(!Number.isFinite(expectedLogMove)||Math.abs(expectedLogMove)<1e-12)return none('neutral-30s-cycle-expectation');
  const predictedPrice=price*Math.exp(expectedLogMove);
  if(!(Number.isFinite(predictedPrice)&&predictedPrice>0))return none('invalid-30s-cycle-expectation');
  return {ready:true,side:expectedLogMove>0?'CALL':'PUT',reason:'observed-trend-and-30s-cycle-projection',
   observedAt:quoteAt,entryPrice:price,predictedPrice,expectedLogMove,horizonMs,
   ...(projectionTargetAt==null?{}:{projectionTargetAt:Number(projectionTargetAt)}),
-  fittedPeriodSeconds:selected.period,observedPoints:n,fitResidual:residual,
-  forecastUncertaintyFloor:uncertaintyFloor,typicalTickMove:typicalTick,
+  fittedPeriodSeconds:selected.period,observedPoints:n,fitResidual:Math.sqrt(selected.sse/n),
   fitSelectionCriterion:best};
 }
