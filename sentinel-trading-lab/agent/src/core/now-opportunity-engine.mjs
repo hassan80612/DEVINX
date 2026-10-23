@@ -9,6 +9,7 @@ import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 import {historicalPriceStructure,applyHistoricalPriceStructure} from './historical-price-structure.mjs';
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
+import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -256,19 +257,31 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    sequenceReaction.structureChange??sequenceReaction.continuation:
    located.reason==='multiscale-candle-rejection'?
     located.priceStructure.candleRoute.event:located.priceStructure?.reaction;
-  // A specialist is read-only context: its own observations may agree or
-  // disagree, but cannot replace, authorize or block a shared decision.
-  // Keep independent strategy labels for the existing PC/mobile UI.
-  const specialist=engineId!=='automatic'&&Number(durationMs)===30000&&located.ready?
+  // Strategies supply evidence to the common market base, never a direct
+  // order. A valid specialist setup can still be assessed on an early quote
+  // when the longer automatic structure is not yet complete: no extra
+  // collection wait is introduced by unified signal ownership.
+  const selectedEngine=engineId!=='automatic'&&Number(durationMs)===30000;
+  const specialist=selectedEngine&&!located.ready?
    analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
-  return {...located,engineId,qualityPolicy,
+  const proposed=located.ready?located:(specialist?.ready===true?{
+   ...specialist,priceStructure:located.priceStructure??specialist.priceStructure
+  }:located);
+  // The final shared base checks confirmed historical swing direction for
+  // EVERY proposal (automatic or specialist), before it can reach the
+  // probability, expiry adjudicator or bot. Only already-received quotes.
+  const confirmedStructure=/multiscale-candle-rejection|failed-breakout-structure-change|historical-level-rejection|break-retest-continuation/.test(String(proposed.reason||''));
+  const pivotRisk=proposed.ready&&!confirmedStructure&&countertrendPivotRisk({
+   quoteHistory,quoteAt,price,side:proposed.side,now
+  });
+  const final=pivotRisk?{...proposed,ready:false,side:null,
+   reason:'shared-base-countertrend-pivot-risk'}:proposed;
+  return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
-   ...(engineId!=='automatic'&&Number(durationMs)===30000?{
-     strategyResponse:specialist?.ready?
-       (specialist.side===located.side?'aligned':'divergent'):'observational'
-   }:{})};
+   ...(selectedEngine?{strategyResponse:located.ready?'base-priority':
+     specialist?.ready?'base-reviewed-evidence':'observational'}:{})};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};

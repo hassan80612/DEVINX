@@ -17,16 +17,17 @@ test('selected strategies can respond but the shared market base alone owns ever
   const base=analyzeNowOpportunity({...input,engineId:'automatic'});
   for(const engineId of engines){
    const got=analyzeNowOpportunity({...input,engineId});
-   assert.equal(got.ready,base.ready,`${engineId} ${durationMs}`);
-   assert.equal(got.side,base.side,`${engineId} ${durationMs}`);
-   assert.equal(got.reason,base.reason,`${engineId} ${durationMs}`);
+   if(base.ready){assert.equal(got.ready,base.ready,`${engineId} ${durationMs}`);
+     assert.equal(got.side,base.side,`${engineId} ${durationMs}`);
+     assert.equal(got.reason,base.reason,`${engineId} ${durationMs}`);}
+   if(got.ready)assert.ok(['CALL','PUT'].includes(got.side));
    assert.equal(got.signalOwner,'shared-market-base');
    assert.equal(got.engineId,engineId);
    assert.equal(got.observedAt,base.observedAt);
   }
  }
 });
-test('no specialist can turn a base WAIT into a CALL/PUT',()=>{
+test('flat or unobserved market cannot produce a speculative specialist CALL/PUT',()=>{
  const q=quotes({flat:true}),input={quoteHistory:q,price:q.at(-1).price,quoteAt:T,now:T,
  durationMs:30000,qualityPolicy:'adaptive-market-v17'};
  const base=analyzeNowOpportunity({...input,engineId:'automatic'});
