@@ -438,7 +438,7 @@ function protocolScan(data,st,direction='in'){
       }
       const selected=st.uiSymbol||st.symbol||null;
       if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected);st.pendingPageActiveId=null}
-      const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,120,300,600,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
+      const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,120,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
 
@@ -539,7 +539,7 @@ function protocolScan(data,st,direction='in'){
         // A separate direct quote feed may stream another candle interval.
         // Only the native page's own interval may become the chart interval.
         const sz=n(data?.msg?.size);
-        if(sz!=null&&[5,10,15,30,60,120,300,600,900,1800,3600].includes(Number(sz))&&
+        if(sz!=null&&[5,10,15,30,60,120,300,900,1800,3600].includes(Number(sz))&&
           (!st.nativeChartOwnsPeriod||direction==='page-in'))st.candleSize=Number(sz)}
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
