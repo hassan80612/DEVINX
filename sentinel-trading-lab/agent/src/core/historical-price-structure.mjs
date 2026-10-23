@@ -92,10 +92,10 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  const earlier=priceBefore(q,ts-2000),origin=priceBefore(q,ts-6000),previous=q.at(-2)?.price;
  const evidence={candles:structure.candles,periodMs:structure.periodMs,
   averages:structure.averages,nearestSupport:null,nearestResistance:null,reaction:null};
- // A handful of candles does not establish the requested wider context.
- // Keep the existing analyst running while the received history is sparse;
- // never impose a new collection timer or fabricate a 20-period average.
- if(!structure.averages.length)return {...candidate,priceStructure:evidence};
+ // Structure can exist after only one or a few CLOSED candles:
+ // average/EMA confluence is optional. Do NOT discard a valid top/bottom
+ // rejection just because 20 completed bars are not yet available.
+ // Forecast-following admission still requires its original EMA guards.
  if(!(positive(spot)&&earlier&&origin&&previous))return {...candidate,priceStructure:evidence};
  const prices=q.map(x=>x.price),hi=Math.max(...prices),lo=Math.min(...prices);
  const move=spot-earlier,step=spot-previous;
