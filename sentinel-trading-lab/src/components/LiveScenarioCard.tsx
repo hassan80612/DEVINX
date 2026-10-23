@@ -142,7 +142,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const vnext=!!s?.settings?.engine;
   // Duration selection is the lead time to a FUTURE entry.
   // Only the recorded entry schedule owns the hero countdown and direction.
-  const expiryChoices=vnext?[5,10,15,30,60]:[5,10,15,30,45,60,120,180,300,600,900,3600];
+  const expiryChoices=vnext?[5,10,15,30,60,120,300]:[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   const pausedReadings=s?.settings?.pausedReadings;
   const strategyCards=s?.lastResult?.analysis?.strategyCards;
@@ -227,14 +227,17 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizeUserStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {VISIBLE_STRATEGIES.map(e=><option key={e.id} value={e.id}>{t(e.name)} · {t(e.short)}</option>)}
       </select>
-      <small style={{display:'block',fontSize:11,opacity:.88,marginTop:5}} data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
-      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
-       <small data-testid="automatic-chart-context" style={{display:'block',fontSize:11,opacity:.85,marginTop:4}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
     </label>
     <label>{t(nowMode?"Duração da operação":"Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
+    <details className="vnextStrategyGuidance">
+      <summary>{t('Quando usar a estratégia')}</summary>
+      <small data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
+      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
+        <small data-testid="automatic-chart-context">{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
+    </details>
   </div>:null;
 
 
@@ -332,7 +335,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     });
     if(ok)settingsEditing.current=false;
   };
-  const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
+  // The last validated quote remains displayable while analysis warms up;
+  // the strict m.fresh permission for a live CALL/PUT is unchanged.
+  const quoteShown=m.online&&s?.liveBroker?.assetValidated===true&&
+    m.quoteAge!==null&&m.quoteAge<=30?(s?.liveBroker?.quote??s?.feed?.price):null;
   const pushed=m.fresh&&s?.liveTransport==='push'&&localNow-Number(s?.liveStreamAt||0)<4000;
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>{t("● AO VIVO · PUSH")}</small>:null;
   const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
