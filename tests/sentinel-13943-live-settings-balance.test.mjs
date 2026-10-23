@@ -28,14 +28,13 @@ test('strategy switches preserve pending trade and follow the new strategy after
 test('strategy change before asynchronous click cancels old direction without disarming',async()=>{
  const x=setup();await x.bot.start();const flight=x.fire();x.c.engine='trend';await flight;assert.equal(x.calls.length,0);assert.equal(x.bot.pending,null);assert.ok(x.bot.enabled);x.advance(30000);await x.fire('PUT');assert.equal(x.calls.length,1);
 });
-test('editing session loss limit ignores external balance moves but stops on identified broker settlement',async()=>{
+test('changing an absolute Stop Loss stops at broker balance target',async()=>{
  const x=setup();await x.bot.start();x.balance(85);x.bot.watch();assert.ok(x.bot.enabled);
- x.bot.configure({amount:10,stopLoss:10});
- assert.equal(x.bot.enabled,true,'an unconfirmed account balance move is not session PnL');
- await x.fire();x.close(-10);
- assert.equal(x.bot.net,-10);
- assert.equal(x.bot.enabled,false,'a confirmed session loss must enforce Stop Loss');
+ x.bot.configure({amount:10,stopLoss:90});
+ assert.equal(x.bot.enabled,false,'bankroll 85 is below the absolute Stop Loss floor 90');
+ assert.match(x.bot.message,/stop-loss/i);
 });
+
 test('worker uses cached received balance and serial atomic settings writes',()=>{
  const s=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');assert.match(s,/accountBalanceSnapshot/);assert.match(s,/executorSettingsWrite=executorSettingsWrite\.catch/);assert.match(s,/rename\(executorSettingsFile\+'\.tmp'/);
 });

@@ -121,7 +121,7 @@ export class SignalExecutor{
       throw Error('Limite de tempo da sessão atingido. Aguarde o encerramento e inicie uma nova sessão.');
     if(this.config.stopLoss>0&&this.stopLossReached())
       throw Error('Limite de perda atingido. Ajuste seu limite antes de reativar.');
-    if(this.stopWinReached(balance))
+    if(this.stopWinReached())
       throw Error('Stop Win atingido nesta sessão. Pare e inicie outra sessão para zerar o resultado.');
     this.session.engine=current.engine;
     this.queuedSignal=null;
