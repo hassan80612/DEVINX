@@ -1013,12 +1013,36 @@ export class LocalPlaywrightDriver{
     // Re-requesting initialization through shared broker state can reset
     // native option settings; never use it as an ordinary heartbeat.
     if(this.nativeChartOpen(provider)){
-      // Any auxiliary authentication or initialization command MAY be able to
-      // restore the broker's default option expiration in its shared session.
-      // Native browser events supply market metadata, active tab and balance;
-      // leave them untouched and report missing fields as missing.
-      st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
-      return st.activeMap.size>0||st.balance!=null;
+      // Cold start is different from maintenance. The previous native-page
+      // guard returned false forever with an empty active map / balance,
+      // preventing the analyst from starting until unrelated broker activity.
+      // Read account/catalog metadata ONLY. No candle period, get-candles,
+      // subscription, order, UI input or broker page navigation is sent.
+      if(st.activeMap.size>0&&st.balance!=null)return true;
+      const now=Date.now();
+      if(st.nativeBootstrapPromise)return st.nativeBootstrapPromise;
+      if(st.lastNativeBootstrapAt&&now-st.lastNativeBootstrapAt<12000)return false;
+      st.lastNativeBootstrapAt=now;
+      const task=(async()=>{
+        const messages=[];
+        if(st.activeMap.size===0)messages.push({
+          name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},
+          request_id:reqId('native-init')
+        });
+        if(st.balance==null)messages.push({
+          name:'sendMessage',msg:{name:'get-balances',version:'1.0'},
+          request_id:reqId('native-balance')
+        });
+        let sent=false;
+        for(const message of messages){
+          const result=await this.wsSend(provider,message).catch(()=>null);
+          sent=!!result?.ok||sent;
+        }
+        st.lastBaseRequestAt=Date.now();st.lastRequestAt=st.lastBaseRequestAt;
+        return sent||st.activeMap.size>0||st.balance!=null;
+      })();
+      st.nativeBootstrapPromise=task;
+      try{return await task}finally{if(st.nativeBootstrapPromise===task)st.nativeBootstrapPromise=null}
     }
     const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
