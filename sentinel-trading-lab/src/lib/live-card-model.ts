@@ -104,6 +104,22 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
       {horizonSeconds:Number(x[0]),correct:Number(x[1]),verified:Number(x[2])}:
       {horizonSeconds:Number(x.horizonSeconds),correct:Number(x.correct),verified:Number(x.verified)})
       .filter((x:any)=>Number.isFinite(x.verified)&&x.verified>=0):[];
+  // WIN/LOSS here belongs to the analyst's price-at-expiry forecast,
+  // not to actual bot orders. Incoming live frames carry a compact tuple,
+  // while full PC/polling status contains the same authoritative object.
+  const graphOutcome=vnext?.outcomeQuality;
+  const graphTuple=Array.isArray(vnext?.oq)?vnext.oq:null;
+  const graphWins=graphTuple?Math.max(0,Number(graphTuple[0])||0):
+    graphOutcome?.source==='observed-broker-quotes-not-trade-settlements'?
+    Math.max(0,Number(graphOutcome.correct)||0):null;
+  const graphLosses=graphTuple?Math.max(0,Number(graphTuple[1])||0):
+    graphOutcome?.source==='observed-broker-quotes-not-trade-settlements'?
+    Math.max(0,Number(graphOutcome.failed)||0):null;
+  const graphTies=graphTuple?Math.max(0,Number(graphTuple[2])||0):
+    graphOutcome?.source==='observed-broker-quotes-not-trade-settlements'?
+    Math.max(0,Number(graphOutcome.excludedTies)||0):null;
+  const graphScore=graphWins!==null&&graphLosses!==null?
+    {wins:graphWins,losses:graphLosses,ties:graphTies}:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -176,6 +192,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
+    graphScore,
     nowObservation:matchingMarket&&vnext?.engineId===s?.settings?.engine?vnext?.nowObservation||null:null,
     selectedEngine:s?.settings?.engine||null,vnextMode:vnext?.mode||'forecast',vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextFutureEntryAnchor,vnextFutureEntryRows,vnextOpportunityWindow,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
