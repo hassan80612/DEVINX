@@ -1,12 +1,12 @@
 {
-  "version": "13.9.94",
-  "build": "13.9.94-range-pivot-trend-guard",
+  "version": "13.9.95",
+  "build": "13.9.95-unified-market-base-latency",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
-    "engineArchitecture": "automatic-market-base-selected-specialists-30s",
+    "engineArchitecture": "shared-market-base-strategies-as-evidence",
     "modelValidation": "unverified-in-live-trading-override-only-after-16-independent-expiries-with-6-of-last-8-recent-confirmation-no-guaranteed-win-rate",
     "forecastModel": "short-probability-v1",
     "historicalStructure": {
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.94"
+  "publicVersion": "13.9.95"
 }
