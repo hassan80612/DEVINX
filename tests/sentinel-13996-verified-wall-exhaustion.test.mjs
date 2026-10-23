@@ -7,8 +7,8 @@ const up=[1.10070,1.10074,1.10080,1.10087,1.10092,1.10094,1.100944,1.100945];
 function args(prices,side='CALL',reason='observed-trend-and-30s-cycle-projection'){
  const quoteHistory=prices.map((price,i)=>({ts:T-7000+i*1000,receivedAt:T-7000+i*1000,price}));
  const z=side==='CALL'?
-  {low:1.10098,high:1.10102,level:1.101,confirmedPivots:2,independentRejections:2}:
-  {low:1.09898,high:1.09902,level:1.099,confirmedPivots:2,independentRejections:2};
+  {low:1.10098,high:1.10102,level:1.101,confirmedPivots:2,independentRejections:2,resistanceWick:.8,supportWick:0}:
+  {low:1.09898,high:1.09902,level:1.099,confirmedPivots:2,independentRejections:2,resistanceWick:0,supportWick:.8};
  const price=prices.at(-1);
  return {candidate:{ready:true,side,reason,observedAt:T,entryPrice:price},
   structure:{tolerance:.00005,candleLevelMap:{observedCandles:60,asOf:T-1000,levels:[z]}},
@@ -41,6 +41,13 @@ test('unconfirmed historical wall cannot veto any candidate',()=>{
  }
  const a=args(up);a.structure.candleLevelMap.observedCandles=7;
  assert.equal(check(a),null);
+});
+test('directionally wrong wick history never masquerades as the blocking side',()=>{
+ const a=args(up);a.structure.candleLevelMap.levels[0].resistanceWick=0;
+ assert.equal(check(a),null);
+ const b=args(up.map(p=>2.2-p),'PUT');
+ b.structure.candleLevelMap.levels[0].supportWick=0;
+ assert.equal(check(b),null);
 });
 test('a stale or unverified market frame never creates a veto',()=>{
  const a=args(up);
