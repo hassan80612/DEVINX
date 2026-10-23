@@ -58,6 +58,15 @@ export class SignalExecutor{
     if(current)this.seen.add(current.id);
    }
   }
+  // An absolute bankroll floor must be BELOW the session opening balance;
+  // an absolute win target must be ABOVE it. Otherwise they would trigger
+  // immediately without a single WIN or LOSS. Reject invalid edits in place.
+  if(this.enabled&&Number.isFinite(this.initialBalance)){
+   if(next.stopLoss>0&&next.stopLoss>=this.initialBalance)
+    throw Error('Stop Loss deve ser menor que a banca inicial de '+money(this.initialBalance)+'.');
+   if(next.stopWin>0&&next.stopWin<=this.initialBalance)
+    throw Error('Stop Win deve ser maior que a banca inicial de '+money(this.initialBalance)+'.');
+  }
   this.config=next;
   if(!next.martingaleEnabled||this.martingaleLevel>next.martingaleLevels)this.martingaleLevel=0;
   if(this.enabled){
@@ -132,11 +141,20 @@ export class SignalExecutor{
       confirmed+'/'+suspendedBatch.orders.length+') · sem duplicar entradas';
     return this.status();
    }
+   // If a target already contains the opening bank, report a configuration
+   // error — never falsely announce "stop reached" at startup.
+   const verifiedOpening=this.balanceRisk.current?.provider===c.provider&&
+     freshBalance(this.balanceRisk.current,this.clock())?
+     this.balanceRisk.current.amount:null;
+   if(verifiedOpening!=null&&cfg.stopLoss>0&&cfg.stopLoss>=verifiedOpening)
+     throw Error('Stop Loss ('+money(cfg.stopLoss)+') deve ser menor que a banca inicial ('+money(verifiedOpening)+').');
+   if(verifiedOpening!=null&&cfg.stopWin>0&&cfg.stopWin<=verifiedOpening)
+     throw Error('Stop Win ('+money(cfg.stopWin)+') deve ser maior que a banca inicial ('+money(verifiedOpening)+').');
    this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    const opening=this.balanceRisk.begin(c.provider);if(opening&&freshBalance(opening,this.clock())&&cfg.amount>opening.amount)throw Error('Invest confirmado maior que o saldo disponível da corretora.');
-   this.initialBalance=opening?.amount??null;
+   this.initialBalance=opening&&freshBalance(opening,this.clock())?opening.amount:null;
    // If the broker cannot provide the opening balance, preserve the old
    // settlement-only risk cap until an authoritative balance is available.
    this.sessionId++;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
@@ -281,15 +299,16 @@ export class SignalExecutor{
    if(!Number.isFinite(this.initialBalance))return money(Math.max(0,this.config.stopLoss+this.riskNet(balance)));
    return money(Math.max(0,this.initialBalance+this.riskNet(balance)-this.config.stopLoss));
  }
- stopLossReached(balance=this.balanceRisk.view(this.clock())){
-   return this.config.stopLoss>0&&(Number.isFinite(this.initialBalance)?
-     this.initialBalance+this.riskNet(balance)<=this.config.stopLoss+0.000001:
-     this.riskNet(balance)<=-this.config.stopLoss+0.000001);
+ stopLossReached(_balance=this.balanceRisk.view(this.clock())){
+   // "Reached" means the ACTUAL settled session bankroll reached the
+   // configured absolute balance floor. Unconfirmed broker clicks are
+   // reserved for the NEXT-entry risk cap but never fabricated as losses.
+   return this.config.stopLoss>0&&Number.isFinite(this.initialBalance)&&
+     this.initialBalance+this.net<=this.config.stopLoss+0.000001;
  }
  stopWinReached(){return this.config.stopWin>0&&
-   (Number.isFinite(this.initialBalance)?
-     this.initialBalance+this.net>=this.config.stopWin-0.000001:
-     this.net>=this.config.stopWin-0.000001);}
+   Number.isFinite(this.initialBalance)&&
+   this.initialBalance+this.net>=this.config.stopWin-0.000001;}
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
  sameContext(a,b){return a.provider===b.provider&&symbol(a.asset)===symbol(b.asset);}
  watch(){
@@ -307,10 +326,10 @@ export class SignalExecutor{
     if(this.executing){
      this.suspensionReason='Stop Win atingido · aguardando fim da sequência em execução';
      this.message='Ligado · Stop Win confirmado; concluindo cliques já iniciados';
-    }else this.stop('Bot parado · Stop Win atingido (lucro confirmado: '+money(this.net)+')');
+    }else this.stop('Bot parado · Stop Win atingido: banca calculada '+money(this.initialBalance+this.net)+' ≥ limite '+money(this.config.stopWin)+' (lucro confirmado: '+money(this.net)+')');
    }
    else if(this.stopLossReached(balance))
-    this.stop('Bot parado · stop-loss atingido');
+    this.stop('Bot parado · Stop Loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
    else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
     !balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<this.config.amount){
     // Local cached Invest can lag behind a manual broker stake change.
@@ -684,9 +703,9 @@ export class SignalExecutor{
    if(this.executing){
     this.suspensionReason='Stop Win atingido · aguardando fim da sequência em execução';
     this.message='Ligado · Stop Win confirmado; concluindo cliques já iniciados';
-   }else this.stop('Bot parado · Stop Win atingido (lucro confirmado: '+money(this.net)+')');
+   }else this.stop('Bot parado · Stop Win atingido: banca calculada '+money(this.initialBalance+this.net)+' ≥ limite '+money(this.config.stopWin)+' (lucro confirmado: '+money(this.net)+')');
   }
-  else if(this.enabled&&this.stopLossReached())this.stop('Bot parado · saldo mínimo do Stop Loss atingido');
+  else if(this.enabled&&this.stopLossReached())this.stop('Bot parado · Stop Loss atingido: banca calculada '+money(this.initialBalance+this.net)+' ≤ limite '+money(this.config.stopLoss)+' (resultado confirmado)');
   return true;
  }
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
