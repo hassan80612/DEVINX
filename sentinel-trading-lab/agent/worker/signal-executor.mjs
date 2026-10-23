@@ -137,7 +137,8 @@ export class SignalExecutor{
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    const opening=this.balanceRisk.begin(c.provider);if(opening&&freshBalance(opening,this.clock())&&cfg.amount>opening.amount)throw Error('Invest confirmado maior que o saldo disponível da corretora.');
    this.initialBalance=opening?.amount??null;
-   if((this.config.stopLoss>0||this.config.stopWin>0)&&!Number.isFinite(this.initialBalance))throw Error('Confirme a banca inicial da corretora antes de usar Stop Loss/Stop Win.');
+   // If the broker cannot provide the opening balance, preserve the old
+   // settlement-only risk cap until an authoritative balance is available.
    this.sessionId++;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
    const existing=executorSignal(c.analysis);if(existing)this.seen.add(existing.id);
@@ -276,15 +277,19 @@ export class SignalExecutor{
    .finally(()=>{this.stakeRefreshPending=null});
  }
  stopLossRemaining(balance=this.balanceRisk.view(this.clock())){
-   if(!(this.config.stopLoss>0)||!Number.isFinite(this.initialBalance))return 0;
+   if(!(this.config.stopLoss>0))return 0;
+   if(!Number.isFinite(this.initialBalance))return money(Math.max(0,this.config.stopLoss+this.riskNet(balance)));
    return money(Math.max(0,this.initialBalance+this.riskNet(balance)-this.config.stopLoss));
  }
  stopLossReached(balance=this.balanceRisk.view(this.clock())){
-   return this.config.stopLoss>0&&Number.isFinite(this.initialBalance)&&
-     this.initialBalance+this.riskNet(balance)<=this.config.stopLoss+0.000001;
+   return this.config.stopLoss>0&&(Number.isFinite(this.initialBalance)?
+     this.initialBalance+this.riskNet(balance)<=this.config.stopLoss+0.000001:
+     this.riskNet(balance)<=-this.config.stopLoss+0.000001);
  }
- stopWinReached(){return this.config.stopWin>0&&Number.isFinite(this.initialBalance)&&
-   this.initialBalance+this.net>=this.config.stopWin-0.000001;}
+ stopWinReached(){return this.config.stopWin>0&&
+   (Number.isFinite(this.initialBalance)?
+     this.initialBalance+this.net>=this.config.stopWin-0.000001:
+     this.net>=this.config.stopWin-0.000001);}
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
  sameContext(a,b){return a.provider===b.provider&&symbol(a.asset)===symbol(b.asset);}
  watch(){
