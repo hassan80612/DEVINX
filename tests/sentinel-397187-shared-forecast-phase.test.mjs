@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {causalPatternDirection} from '../sentinel-trading-lab/agent/src/core/causal-pattern-direction.mjs';
+import {expiryPhaseDirection} from '../sentinel-trading-lab/agent/src/core/expiry-phase-direction.mjs';
 import {thirtySecondCycleForecast} from '../sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs';
 import {readFileSync} from 'node:fs';
 const T=1800000000000;
@@ -14,7 +14,7 @@ const quotes=(kind='up')=>Array.from({length:2101},(_,i)=>{
 });
 const predict=(history,ms)=>{
  const current=history.at(-1);
- return causalPatternDirection({quoteHistory:history.slice(-300),
+ return expiryPhaseDirection({quoteHistory:history.slice(-300),
   rangeQuoteHistory:history.filter((q,i)=>i%2===0),quoteAt:current.ts,
   now:current.ts,price:current.price,durationMs:ms});
 };
@@ -48,14 +48,14 @@ test('strictly causal: future or late-delivered price changes no outcome',()=>{
   {ts:last.ts-9000,receivedAt:last.ts+1000,price:.5}];
  const args={quoteHistory:q.slice(-300),rangeQuoteHistory:q.filter((x,i)=>i%2===0),
   quoteAt:last.ts,price:last.price,now:last.ts,durationMs:30000};
- assert.deepEqual(causalPatternDirection({...args,quoteHistory:[...args.quoteHistory,...injected]}),
-  causalPatternDirection(args));
+ assert.deepEqual(expiryPhaseDirection({...args,quoteHistory:[...args.quoteHistory,...injected]}),
+  expiryPhaseDirection(args));
 });
 test('the actual shared base invokes phase model for all four expiries',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
  assert.match(src,/const learning=causalPatternDirection\(input\)/);
  assert.doesNotMatch(src,/Number\(durationMs\)===30000\?causalPatternDirection/);
- const prediction=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-pattern-direction.mjs',import.meta.url),'utf8');
+ const prediction=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-phase-direction.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(prediction,/fetch\(|await\b|setTimeout\(|setInterval\(|page\.click\(/);
 });
 test('tiny 30s forecast displacement below observed uncertainty is not certainty',()=>{
