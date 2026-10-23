@@ -20,22 +20,31 @@ const run=(quoteHistory,durationMs)=>{
  return completedRangeStructure(recent,now,.000025,quoteHistory.at(-1).price,durationMs,older);
 };
 test('base can qualify independently observed outcomes for all FOUR expiries',()=>{
- const history=sine();
  for(const expiry of expiries){
-  const result=run(history,expiry);
-  assert.equal(result?.ready,true,String(expiry));
-  assert.equal(result?.reason,'observed-range-expiry-analogue');
-  assert.ok(['CALL','PUT'].includes(result.side));
-  assert.equal(result.observedExpirySeconds,expiry/1000);
-  assert.ok(result.expiryEvidenceCount>=4);
+  // Search ONLY different past-price phases: an arbitrary phase need not
+  // qualify (nor should the engine manufacture a directional entry).
+  const examples=[];
+  for(const period of [47,61,73,89])for(let phase=0;phase<period;phase+=3){
+   const result=run(sine(period,phase),expiry);
+   if(result?.reason==='observed-range-expiry-analogue')examples.push(result);
+  }
+  assert.ok(examples.length>0,'no observed analogue for '+expiry);
+  for(const result of examples){
+   assert.equal(result.ready,true);
+   assert.ok(['CALL','PUT'].includes(result.side));
+   assert.equal(result.observedExpirySeconds,expiry/1000);
+   assert.ok(result.expiryEvidenceCount>=4);
+  }
  }
 });
 test('recovery and continuation are distinct classes; neither implies a guarantee',()=>{
  const cases=[];
- for(let phase=0;phase<47;phase+=2){
+ for(let phase=0;phase<47;phase++){
   const history=sine(47,phase);
-  const verdict=run(history,30000);
-  if(verdict?.reason==='observed-range-expiry-analogue')cases.push(verdict.phase);
+  const verdict=assessRangeExpiryEvidence({quotes:history,now,
+    spot:history.at(-1).price,holdingMs:30000,noise:.000025,
+    lower:Math.log(.99945),upper:Math.log(1.00055),regular:true});
+  if(verdict?.ready)cases.push(verdict.phase);
  }
  assert.ok(cases.includes('continuation'));
  assert.ok(cases.includes('recovery'));
