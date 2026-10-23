@@ -371,11 +371,16 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs,rangeQuoteHistory};
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
-  const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
-  const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
+  // ALL requested expiries share the same phase-aware causal outcome model.
+  // A small up candle is NOT a loss-of-strength vote. Phase and already
+  // completed 30s/60s/2m/5m outcomes decide, never the latest tick alone.
+  // Evidence without >=4 independent settled analogues defers to the original
+  // structural model, preserving its valid continuation and reversal setups.
+  const learning=causalPatternDirection(input);
+  const useLearning=learning?.ready===true&&Number(learning.strength)>=80;
   const contextStrategy=useLearning?'mean_reversion':'trend';
-  const qualifiedStructure=Number(durationMs)===30000?{structuralReady:structural.ready===true,
-   structuralSide:structural.ready===true?structural.side:null}:{};
+  const qualifiedStructure={structuralReady:structural.ready===true,
+   structuralSide:structural.ready===true?structural.side:null};
   if(useLearning)return {...structural,...learning,...qualifiedStructure,engineId,qualityPolicy,
    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
