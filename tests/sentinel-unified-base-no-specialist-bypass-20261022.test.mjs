@@ -40,3 +40,17 @@ test('flat or unobserved market cannot produce a speculative specialist CALL/PUT
 test('no extra asynchronous wait or browser access is introduced in shared decision',()=>{
  assert.ok(engines.length===5);
 });
+
+test('valid early trend evidence stays eligible while full automatic bars are still collecting',()=>{
+ const q=Array.from({length:27},(_,i)=>({ts:T-26000+i*1000,
+  receivedAt:T-26000+i*1000,price:1.1+i*.000012}));
+ const input={quoteHistory:q,price:q.at(-1).price,quoteAt:T,now:T,durationMs:30000,
+  qualityPolicy:'adaptive-market-v17'};
+ const auto=analyzeNowOpportunity({...input,engineId:'automatic'});
+ const selected=analyzeNowOpportunity({...input,engineId:'trend'});
+ assert.equal(auto.ready,false,'30s shared base can still be collecting wider bars');
+ assert.equal(selected.ready,true,'existing 14s specialist setup is reviewed without imposing a new wait');
+ assert.equal(selected.side,'CALL');
+ assert.equal(selected.signalOwner,'shared-market-base');
+ assert.equal(selected.strategyResponse,'base-reviewed-evidence');
+});

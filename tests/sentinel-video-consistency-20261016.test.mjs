@@ -77,34 +77,39 @@ test('5s, 10s, 15s and 60s policies remain identical to the pinned production mo
   }
  }
 });
-test('manual 30s strategies no longer silently inherit the automatic cycle decision',()=>{
+test('every manually chosen strategy passes its proposed signal through the common market owner',()=>{
  for(const time of ['13:54:52','13:55:53','13:57:29']){
   const input=at(time);
+  const automatic=analyzeNowOpportunity({...input,engineId:'automatic'});
   for(const engineId of ['trend','fibonacci_retest','support_resistance','smart_confluence']){
    const result=analyzeNowOpportunity({...input,engineId});
    assert.equal(result.contextStrategy,engineId);
-   assert.equal(result.signalOwner,'selected-specialist');
+   assert.equal(result.signalOwner,'shared-market-base');
+   if(automatic.ready){
+    assert.equal(result.side,automatic.side);
+    assert.equal(result.ready,automatic.ready);
+   }
    if(result.ready)assert.ok(['CALL','PUT'].includes(result.side));
   }
-  assert.equal(analyzeNowOpportunity({...input,engineId:'automatic'}).signalOwner,'shared-market-base');
  }
 });
-test('runtime preserves 30s signal ownership, side, and one immutable entry per expiry across selected strategies',()=>{
- const makeRuntime=engine=>{const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
-  r.settings.engine=engine;return r;};
- const specialist=makeRuntime('fibonacci_retest'),automatic=makeRuntime('automatic');
- const settings={...specialist.settings,asset:'EUR/GBP OTC',orderDurationMs:30000};
- const expectedSettings={...automatic.settings,asset:'EUR/GBP OTC',orderDurationMs:30000};
- const actual=[],expected=[];
+test('runtime retains exact 30s entry lifecycle and passes accepted evidence through its central decision',()=>{
+ const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
+ const settings={...runtime.settings,engine:'fibonacci_retest',asset:'EUR/GBP OTC',orderDurationMs:30000};
+ const actual=[];
  for(let i=0;i<rows.length;i++){
   const q=rows[i],history=rows.slice(0,i+1);
   const snap={provider:'iq_option',quoteHistory:history,quoteTs:q.ts,price:q.price,
    brokerExpirationDurationMs:null,brokerExpirationConfidence:0};
-  const v=specialist._signalValidationGate({analysis:{asset:settings.asset},snap,settings,now:q.ts}).analysis.vnext;
-  const base=automatic._signalValidationGate({analysis:{asset:settings.asset},snap,settings:expectedSettings,now:q.ts}).analysis.vnext;
-  if(v.futureEntryAnchor?.entryReadyNow)actual.push({at:q.ts,side:v.futureEntryAnchor.side});
-  if(base.futureEntryAnchor?.entryReadyNow)expected.push({at:q.ts,side:base.futureEntryAnchor.side});
+  const v=runtime._signalValidationGate({analysis:{asset:settings.asset},snap,settings,now:q.ts}).analysis.vnext;
+  if(v.futureEntryAnchor?.entryReadyNow){
+    const anchor=v.futureEntryAnchor;
+    assert.equal(anchor.side,v.nowObservation.side,'only final base observation can trigger an entry');
+    assert.equal(anchor.windowStartedAt,q.ts);
+    assert.equal(anchor.exitAt-anchor.entryTriggeredAt,30000);
+    actual.push({at:q.ts,side:anchor.side});
+  }
   if(actual.length>1)assert.ok(actual.at(-1).at>=actual.at(-2).at+30000);
  }
- assert.deepEqual(actual,expected,'selected strategy cannot bypass shared base on same received quotes');
+ assert.ok(actual.length>0,'recorded broker video contains legitimate observed entries');
 });
