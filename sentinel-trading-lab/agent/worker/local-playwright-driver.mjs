@@ -417,6 +417,20 @@ function protocolScan(data,st,direction='in'){
   const command=`${outer} ${inner}`.toLowerCase();
   const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote|^candles$/.test(command);
   const pageSelectionCommand=/get-candles/.test(command);
+  // The page's OWN quote can identify its active_id when the quote payload
+  // explicitly contains the asset symbol. No inference from a random last
+  // candle or unrelated tab is allowed.
+  if(direction==='page-in'){
+    const item=(data.msg&&typeof data.msg==='object'&&!Array.isArray(data.msg))?data.msg:{};
+    const named=assetStrings(String(item.symbol??item.ticker??item.asset??item.instrument??''));
+    const id=n(item.active_id??item.activeId??item.instrument_active_id??item.asset_id);
+    if(id!=null&&named.length===1){
+      st.activeMap.set(pairKey(named[0]),Number(id));
+      st.assets.add(named[0]);
+      if(pairKey(st.uiSymbol||st.symbol||'')===pairKey(named[0])&&
+          !st.screenCandidateSymbol)st.activeId=Number(id);
+    }
+  }
   const outboundMarket=/(?:page|direct)-out/.test(direction)&&activeRaw!=null&&marketCommand;
   if(outboundMarket){
     const aid=n(activeRaw),rid=marketRequestId(data);
@@ -921,12 +935,22 @@ export class LocalPlaywrightDriver{
       ws.on('framereceived',event=>{
         const st=this.state(provider),now=Date.now(),raw=event?.payload;
         const payload=typeof raw==='string'?raw:(Buffer.isBuffer(raw)&&raw.length<=120000?raw.toString('utf8'):null);
-        if(!payload||payload.length>120000)return;
+        if(!payload||payload.length>1200000)return;
+        // Asset catalogs can be >120KB: allow them ONCE as native page
+        // metadata, but retain the small cap for ordinary market ticks.
+        const catalogHint=/initialization-data|underlying-list|instrument-list|active-list|asset-list|assets-list|actives-list/.test(payload.slice(0,500).toLowerCase());
+        if(payload.length>120000&&!catalogHint)return;
         let frame;try{frame=JSON.parse(payload)}catch{return}
         if(this.executionObserver&&isExecutionFrame(frame)){if(!page.__sentinelAccountCdpReady)this.observeExecution(provider,frame,'page-in');return;}
         // Settlement/account events are low frequency and must not wait for
         // the next get-balances poll or share the sampled market-data slot.
         if(isAccountFrame(frame)){
+          if(!page.__sentinelAccountCdpReady)this.ingest(provider,frame,'page-in');
+          return;
+        }
+        // Feed the already-received asset catalog into active_id mapping.
+        // This is passive page traffic; no requests or subscriptions.
+        if(catalogHint){
           if(!page.__sentinelAccountCdpReady)this.ingest(provider,frame,'page-in');
           return;
         }
@@ -966,11 +990,13 @@ export class LocalPlaywrightDriver{
         });
         client.on('Network.webSocketFrameReceived',event=>{
           const response=event?.response,payload=response?.payloadData;
-          if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
-            !/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload))return;
+          if(response?.opcode!==1||typeof payload!=='string'||payload.length>1200000)return;
+          const catalogHint=/initialization-data|underlying-list|instrument-list|active-list|asset-list|assets-list|actives-list/.test(payload.slice(0,500).toLowerCase());
+          if(payload.length>120000&&!catalogHint)return;
+          if(!catalogHint&&!/balance|profile|candle|quote|ticker|option|position|order-changed|order-closed|buyv3|"error"/i.test(payload.slice(0,1000)))return;
           // Do not decode order-only frames when the execution observer is off.
           // Still pass native quote/candle/account messages to the passive feed.
-          if(!this.executionObserver&&!/balance|profile|candle|quote|ticker/i.test(payload))return;
+          if(!this.executionObserver&&!catalogHint&&!/balance|profile|candle|quote|ticker/i.test(payload.slice(0,1000)))return;
           let frame;try{frame=JSON.parse(payload)}catch{return}
           // Observe the already-open traderoom socket. Playwright's
           // websocket event only sees sockets created AFTER attach.
@@ -980,6 +1006,7 @@ export class LocalPlaywrightDriver{
             this.observeExecution(provider,frame,'page-in');return;
           }
           if(isAccountFrame(frame)){this.ingest(provider,frame,'page-in');return;}
+          if(catalogHint){this.ingest(provider,frame,'page-in');return;}
           const kind=String(frame?.name||'').toLowerCase();
           if(kind==='candles'){this.ingest(provider,frame,'page-in');return;}
           if(!/candle-generated|quote-generated|instrument-quotes|ticker/.test(kind))return;
