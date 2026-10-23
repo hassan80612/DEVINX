@@ -26,6 +26,8 @@ export function verifiedWallExhaustionRisk({
  // independent historical rejections must support the obstructing level.
  const barriers=map.levels.filter(z=>
    Number(z.confirmedPivots)>=1&&Number(z.independentRejections)>=2&&
+   // A former support is not automatically a resistance, or vice versa.
+   Number(side==='CALL'?z.resistanceWick:z.supportWick)>=.5&&
    finitePositive(z.low)&&finitePositive(z.high)&&
    (side==='CALL'?
     (spot<=z.high+tolerance*.25&&z.low>=spot-tolerance*.25&&z.low-spot<=tolerance*2):
