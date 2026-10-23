@@ -225,7 +225,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    thirtySecondCycleForecast({...input,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):null;
   // Preserve existing qualified entries. Historical price reactions below
   // can admit directly from current quotes without four newly closed bars.
-  const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
+  // A 30s fitted direction within its own residual cannot overrule a
+  // qualified structural reading. Uses existing quotes, no waiting or timer.
+  const forecastUsable=forecast?.ready===true&&
+   Number.isFinite(forecast.expectedLogMove)&&Number.isFinite(forecast.fitResidual)&&
+   Math.abs(forecast.expectedLogMove)>=Math.max(1e-9,forecast.fitResidual*1.15);
+  const baseline=forecastUsable&&original.ready?{...original,...forecast}:original;
   const selected=Number(durationMs)===30000&&expiryDirectionSelector?
    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):baseline;
   // Stage 4: compare ACTUAL completed 30s results on the rare occasions
@@ -247,7 +252,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // its OWN side; otherwise return WAIT rather than guess CALL/PUT.
   const annotated=annotateForecastStructureConflict(original,decision);
   const selectedForecast=decision.reason==='validated-structure-over-cycle'?null:
-   forecast?.ready&&decision.ready?decision:forecast;
+   forecastUsable&&decision.ready?decision:null;
   const historical=applyHistoricalPriceStructure({candidate:{...annotated,pendingForecast:selectedForecast},structure,...input});
   const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
   const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});

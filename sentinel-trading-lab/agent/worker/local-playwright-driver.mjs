@@ -519,6 +519,11 @@ function protocolScan(data,st,direction='in'){
     const matches=st.activeId!=null&&aid!=null&&Number(aid)===Number(st.activeId);
     const candle=candleOf(data.msg);
     if(matches&&candle){
+      // Auxiliary subscriptions cannot change the selected primary period
+      // or contaminate its history. Broker PAGE outbound get-candles may
+      // still explicitly change the interval selected by the user.
+      const observedSize=n(data?.msg?.size);
+      if(observedSize!=null&&observedSize!==1&&observedSize!==Number(st.candleSize||60))return;
       // 1-second candles are a live price stream, never part of the strategy's
       // 60-second OHLC history. Do not substitute synthetic ticks or loosen
       // the strategy's 1.5-second freshness threshold.
@@ -536,7 +541,8 @@ function protocolScan(data,st,direction='in'){
         // Page and direct sockets obey the same source-event ordering. A
         // delayed closed candle is historical evidence, not a new quote now.
         applyObservedCandleQuote(st,candle,data.msg);
-        const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+        // Incoming candle size reports the frame, not the chosen visible period.
+      }
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){

@@ -87,7 +87,7 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  // A handful of candles does not establish the requested wider context.
  // Keep the existing analyst running while the received history is sparse;
  // never impose a new collection timer or fabricate a 20-period average.
- if(!structure.averages.length)return {...candidate,priceStructure:evidence};
+ // Verified historical levels remain relevant even before EMA warmup.
  if(!(positive(spot)&&earlier&&origin&&previous))return {...candidate,priceStructure:evidence};
  const prices=q.map(x=>x.price),hi=Math.max(...prices),lo=Math.min(...prices);
  const move=spot-earlier,step=spot-previous;
@@ -97,7 +97,9 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   z.touches>=2||z.pivots>0:z.confirmedPivots>0||z.independentRejections>=2);
  const below=relevant.filter(z=>z.level<=spot).sort((a,b)=>b.level-a.level);
  const above=relevant.filter(z=>z.level>=spot).sort((a,b)=>a.level-b.level);
- const describe=z=>z?{level:z.level,touches:z.touches,oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
+ const describe=z=>z?{level:z.level,low:z.low,high:z.high,touches:z.touches,
+   confirmedPivots:z.confirmedPivots??0,independentRejections:z.independentRejections??0,
+   oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
  evidence.nearestSupport=describe(below[0]);evidence.nearestResistance=describe(above[0]);
  const reactions=[];
  for(const z of relevant){
@@ -149,11 +151,18 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  // Deceleration INTO a tested level is different from a sustained breakout.
  // This check has no timeout and never waits for another completed candle.
  const intended=candidate.side,wall=intended==='CALL'?above[0]:below[0];
- if(candidate.ready&&wall&&Math.abs(wall.level-spot)<=tolerance&&wall.touches>=2){
+ // Confirmed breakouts and reversals remain available. An unsupported
+  // continuation must not chase an observed, independently tested wall.
+  const protectedSetup=/rejection|reversal|retest|structure-change|range-extreme|breakout|multiscale-candle/.test(String(candidate.reason||''));
+  const wallVerified=!!wall&&wall.touches>=2&&
+   (wall.confirmedPivots>0||wall.independentRejections>=2);
+  if(candidate.ready&&wallVerified&&!protectedSetup&&Math.abs(wall.level-spot)<=tolerance*1.5){
   const shortMove=spot-earlier,longMove=earlier-origin;
   const against=intended==='CALL'?shortMove<=0:shortMove>=0;
   const slowing=Math.abs(shortMove)<Math.abs(longMove)/4;
-  if(against||slowing)return {...candidate,side:null,ready:false,
+  const stillApproaching=intended==='CALL'?spot<=wall.high+tolerance*.25:
+    spot>=wall.low-tolerance*.25;
+   if(against||slowing||stillApproaching)return {...candidate,side:null,ready:false,
     reason:'historical-level-pressure-unconfirmed',priceStructure:evidence};
  }
  return {...candidate,priceStructure:evidence};
