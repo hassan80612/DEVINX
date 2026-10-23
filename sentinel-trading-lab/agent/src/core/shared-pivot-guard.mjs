@@ -27,6 +27,32 @@ export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=qu
   if(near.every(n=>b.high>n.high))highs.push({price:b.high,at:b.to});
   if(near.every(n=>b.low<n.low))lows.push({price:b.low,at:b.to});
  }
+ // A one-way trend need not produce two local highs AND two lows.
+ // Use only completed 5s bars already received. No extra wait or polling.
+ const trail=bars.slice(-13);
+ if(trail.length>=11){
+  const moves=trail.slice(1).map((b,i)=>b.close-trail[i].close);
+  const net=trail.at(-1).close-trail[0].open;
+  const sign=Math.sign(net);
+  const aligned=moves.filter(v=>sign*v>0).length;
+  const gross=moves.reduce((total,v)=>total+Math.abs(v),0);
+  const efficiency=gross>0?Math.abs(net)/gross:0;
+  const absMoves=moves.map(Math.abs).sort((a,b)=>a-b);
+  const typical=absMoves[Math.floor(absMoves.length/2)]||0;
+  if(sign!==0&&aligned>=Math.ceil(moves.length*.75)&&
+     efficiency>=.76&&Math.abs(net)>=typical*7){
+   const extreme=sign>0?
+     Math.max(spot,...trail.map(b=>b.high)):
+     Math.min(spot,...trail.map(b=>b.low));
+   const progress=sign*(extreme-trail[0].open);
+   const retreat=Math.max(0,sign*(extreme-spot));
+   // Veto only a shallow countertrend entry. A substantive price
+   // retreat remains eligible as a genuine reversal candidate.
+   if(progress>typical*5&&retreat<=progress*.18&&
+      ((sign>0&&side==='PUT')||(sign<0&&side==='CALL')))
+    return true;
+  }
+ }
  if(highs.length<2||lows.length<2)return false;
  const h0=highs.at(-2).price,h1=highs.at(-1).price;
  const l0=lows.at(-2).price,l1=lows.at(-1).price;

@@ -270,8 +270,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // The final shared base checks confirmed historical swing direction for
   // EVERY proposal (automatic or specialist), before it can reach the
   // probability, expiry adjudicator or bot. Only already-received quotes.
-  const confirmedStructure=/multiscale-candle-rejection|failed-breakout-structure-change|historical-level-rejection|break-retest-continuation/.test(String(proposed.reason||''));
-  const pivotRisk=proposed.ready&&!confirmedStructure&&countertrendPivotRisk({
+  // A 'confirmed' rejection label can still be a shallow pullback in
+  // a strong opposing trend. The shared base verifies ALL candidate sides.
+  // No new timer, quote read or additional candle requirement.
+  const pivotRisk=proposed.ready&&countertrendPivotRisk({
    quoteHistory,quoteAt,price,side:proposed.side,now
   });
   const final=pivotRisk?{...proposed,ready:false,side:null,
