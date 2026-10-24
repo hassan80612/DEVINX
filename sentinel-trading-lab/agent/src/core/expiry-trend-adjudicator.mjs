@@ -10,7 +10,15 @@ const scales=Object.freeze({
  30000:[3,6,11,18],60000:[4,9,17,28],
  120000:[7,15,30,50],300000:[10,24,46,80]
 });
-const isProtected=reason=>/rejection|reversal|retest|structure-change|level|range-extreme|failed-breakout/.test(String(reason||''));
+// Historical level rejection is only a proposal based on a short observed
+// bounce. Do not treat its label as a veto on causal expiry-matched evidence.
+// Confirmed range turns, multiscale structural events and retests remain
+// protected; the ordinary 4-segment current-quote proof still gates any flip.
+const isProtected=reason=>{
+ const r=String(reason||'');
+ return r!=='historical-level-rejection'&&
+  /rejection|reversal|retest|structure-change|level|range-extreme|failed-breakout/.test(r);
+};
 function priceAt(rows,at,age=2400){
  for(let i=rows.length-1;i>=0;i--)if(rows[i].ts<=at)
   return at-rows[i].ts<=age?rows[i].price:null;
@@ -79,6 +87,11 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // Four coherent moves and a strong majority of the observed excursion
  // can corroborate the direction even when the probability model is absent.
  const priceProof=agreeing===4&&Math.abs(net)/absolute>=.87&&Math.abs(net)>=typical*7;
+ // A historical rejection may be only a tiny bounce inside a 60s trend.
+ // In that case, demand the stronger *independent price proof*, not an
+ // uncalibrated probability estimate, before changing the proposed side.
+ const historicalRejection=String(candidate.reason)==='historical-level-rejection';
+ if(historicalRejection&&!priceProof)return candidate;
  if(!forecastSupports&&!priceProof)return candidate;
  // No claim that a move will continue at expiry: this is an independently
  // observed, time-matched price reversal of the PREVIOUS direction vote.
