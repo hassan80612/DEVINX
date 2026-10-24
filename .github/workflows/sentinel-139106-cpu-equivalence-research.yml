@@ -1,0 +1,41 @@
+name: Sentinel 13.9.106 CPU equivalence research NO DEPLOY
+on:
+  push:
+    branches:
+      - fix/sentinel-139106-causal-range-cpu-20261024
+jobs:
+  prove-equivalence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Recover original 13.9.104 golden-master source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
+          git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs > sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
+      - name: Syntax check model before and after
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+      - name: Replay real broker quotes and identical decisions across all six expiries
+        run: |
+          node --test tests/sentinel-139106-causal-cpu-equivalence.test.mjs
+      - name: Existing structural and expiration regression
+        run: |
+          node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs
+      - name: Abort if live broker, stops, martingale or API code changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
+            grep -E '^sentinel-trading-lab/(agent/|src/app/api/)' |
+            grep -v '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs$' > /tmp/unexpected || true
+          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
+          echo 'No broker execution/stop/martingale/API code changed.'
