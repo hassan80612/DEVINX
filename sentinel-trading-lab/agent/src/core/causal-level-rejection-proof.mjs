@@ -4,7 +4,7 @@
 // No timers, loops awaiting completion, browser calls, forecast probabilities,
 // future quotations, position instructions or changes to actual broker expiry.
 const WINDOWS=Object.freeze({
- 5000:[1,2,3],15000:[2,4,7],30000:[3,6,12],
+ 5000:[1,2,3],10000:[2,3,5],15000:[2,4,7],30000:[3,6,12],
  60000:[4,10,20],120000:[5,15,35],300000:[6,20,60]
 });
 const sign=s=>s==='CALL'?1:s==='PUT'?-1:0;
