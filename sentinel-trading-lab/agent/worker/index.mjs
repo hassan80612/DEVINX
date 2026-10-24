@@ -35,9 +35,11 @@ const SECRET_FILE=resolve(process.env.SENTINEL_LOCAL_SECRET_FILE||'worker/data/l
 if(HOST!=='127.0.0.1'&&HOST!=='localhost'&&!TOKEN)throw new Error('SENTINEL_WORKER_TOKEN is required when exposing worker beyond loopback');
 
 const recordMarketJournal=process.env.SENTINEL_MARKET_JOURNAL==='1';
+// Small broker-trade audit is on by default. Full quote journal stays opt-in.
+const recordTradeAudit=process.env.SENTINEL_TRADE_AUDIT!=='0';
 const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history'),release:{version:VERSION,build:BUILD,runtime:RUNTIME_OPTIONS}});
 let journalAnalysisAt=0;
-if(recordMarketJournal)setInterval(()=>marketJournal.flush(),2000).unref();
+if(recordMarketJournal||recordTradeAudit)setInterval(()=>marketJournal.flush(),2000).unref();
 const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,enableVNext:true,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
 const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data),{
@@ -49,9 +51,9 @@ let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
-const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>{executor.accepted(event);if(recordMarketJournal&&event?.orderId&&event?.localId)marketJournal.enqueue(acceptedAudit(event));},onRejected:event=>executor.rejected(event),onSettlement:event=>{const confirmed=executor.settle(event);if(confirmed&&recordMarketJournal){const row=settlementAudit(event);if(row)marketJournal.enqueue(row);}return confirmed;},onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>{executor.accepted(event);if(recordTradeAudit&&event?.orderId&&event?.localId)marketJournal.enqueue(acceptedAudit(event));},onRejected:event=>executor.rejected(event),onSettlement:event=>{const confirmed=executor.settle(event);if(confirmed&&recordTradeAudit){const row=settlementAudit(event);if(row)marketJournal.enqueue(row);}return confirmed;},onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
- onAuditEvent:recordMarketJournal?event=>marketJournal.enqueue(event):null});
+ onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
 runtime.onNowOpportunity=anchor=>{
@@ -578,7 +580,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
+  return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal||recordTradeAudit,fullMarketEnabled:recordMarketJournal,tradeAuditEnabled:recordTradeAudit},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
     timingDiagnostics:{evaluation:{...evaluationPerformance},brokerMaintenance:{...brokerMaintenancePerformance}},
     sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app','https://trading.devinx.com.br','https://sentinel.devinx.com.br'];
