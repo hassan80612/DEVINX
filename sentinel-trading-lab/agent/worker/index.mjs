@@ -4,6 +4,7 @@ import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
+import {brokerMaintenanceCadenceMs} from './broker-maintenance-cadence.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
 import {lightweightOverlayView} from './lightweight-overlay-view.mjs';
 import {shouldDiscardVnextFrame} from './vnext-frame-visibility.mjs';
@@ -422,8 +423,15 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // Do maintenance only AFTER the current quote has reached the engine and
   // immediate click dispatcher. This preserves the existing 2.5s cadence
   // without allowing a heavy broker DOM scan to preempt this decision.
-  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){
-    lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider);
+  if(activeProvider&&brokers[activeProvider]?.connected){
+    const maintenanceNow=Date.now();
+    const maintenanceCadence=brokerMaintenanceCadenceMs({
+      state:driver.state?.(activeProvider),now:maintenanceNow
+    });
+    if(maintenanceNow-lastBrokerMaintainAt>=maintenanceCadence){
+      lastBrokerMaintainAt=maintenanceNow;
+      scheduleBrokerMaintenance(activeProvider);
+    }
   }
   // Deliver a confirmed decision immediately, BEFORE timing diagnostics,
   // broker overlay rendering, journals or any other optional work.
