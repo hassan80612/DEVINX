@@ -1,4 +1,4 @@
-name: Sentinel 13.9.108 60s reversal causal guard (NO DEPLOY)
+name: Sentinel 13.9.108 seven-expiry reversal guard (NO DEPLOY)
 on:
   push:
     branches:
@@ -20,7 +20,7 @@ jobs:
         run: |
           node --check sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
           node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
-      - name: Check six durations and both reversal directions
+      - name: Check all seven durations and both reversal directions
         run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
       - name: Preservation of historical structure, all unchanged expiries and broker
         run: |
@@ -30,6 +30,12 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
-          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' > /tmp/unsafe || true
+          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Only the causal historical rejection proof and its integration changed for all seven expiries. Broker performance, UI, expiry, click, stops and martingale unchanged.'
+ -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Only 60-second historical rejection causal proof changed. Broker performance, UI, expiry, click, stops and martingale unchanged.'
+ > /tmp/unsafe || true
           test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
           echo 'Only 60-second historical rejection causal proof changed. Broker performance, UI, expiry, click, stops and martingale unchanged.'
