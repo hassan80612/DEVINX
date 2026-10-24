@@ -95,3 +95,21 @@ test('the proof never requests browser state, changes expiry, schedules waits or
    assert.equal(Object.hasOwn(result,key),false);
  }
 });
+
+test('same-tick real trade audit persists bounded reaction evidence without blocking broker',async()=>{
+ const {decisionAudit}=await import('../sentinel-trading-lab/agent/worker/trade-audit.mjs');
+ const signal={id:'test|market|automatic|60000|'+NOW,side:'CALL',at:NOW,
+   durationMs:60000,entryPrice:100.3,auditEvidence:{
+    source:'now-structural-v1',signalAt:NOW,finalSide:'CALL',
+    finalReason:'historical-level-rejection',levelReaction:'rejection',
+    levelExpiryProof:{confirmed:true,reason:'causal-multihorizon-followthrough',
+      durationMs:60000,moves:[.1,.2,.3]}
+   }};
+ const x=decisionAudit({signal,context:{provider:'iq_option',asset:'SYNTHETIC',
+   engine:'automatic',analysis:{}},mode:'automatic',martingaleLevel:0,clickCount:1,now:NOW});
+ assert.equal(x.structure.levelExpiryProof.confirmed,true);
+ assert.equal(x.structure.levelExpiryProof.durationMs,60000);
+ assert.deepEqual(x.structure.levelExpiryProof.moves,[.1,.2,.3]);
+ assert.equal(x.structure.reason,'historical-level-rejection');
+ assert.equal(JSON.stringify(x).includes('password'),false);
+});
