@@ -11,6 +11,7 @@ import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
+import {observedLevelContestRisk} from './observed-level-contest-risk.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -292,10 +293,18 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const wallRisk=!pivotRisk&&proposed.ready?verifiedWallExhaustionRisk({
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
+  // Only a directly witnessed failure to cross an independently rejected
+  // historical wall can veto a same-direction entry. Nearby levels alone
+  // NEVER block genuine breakouts. No extra waiting, tick or broker read.
+  const contestRisk=!pivotRisk&&!wallRisk&&proposed.ready?observedLevelContestRisk({
+   candidate:proposed,structure,quoteHistory,quoteAt,now,price
+  }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
    reason:'shared-base-countertrend-pivot-risk'}:
    wallRisk?{...proposed,ready:false,side:null,
-    reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:proposed;
+    reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:
+   contestRisk?{...proposed,ready:false,side:null,
+    reason:'shared-base-observed-level-rejection',entryRisk:contestRisk}:proposed;
   return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
