@@ -1,6 +1,6 @@
 {
-  "version": "13.9.109",
-  "build": "13.9.109-stable107-late-fast",
+  "version": "13.9.110",
+  "build": "13.9.110-observed-level-contest",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.109"
+  "publicVersion": "13.9.110"
 }
