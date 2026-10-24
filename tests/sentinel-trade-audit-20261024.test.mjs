@@ -23,7 +23,7 @@ test('audit freezes whitelisted evidence without credentials or balance',()=>{
 test('only broker-confirmed, deduplicated outcomes enter the diagnostic',()=>{
  const decision=decisionAudit({signal:{id:'key|automatic',side:'PUT',durationMs:30000},
   context:{provider:'exnova',asset:'EUR/USD',analysis:{entryPlanner:{regime:{label:'range'}},
-   operationalSignal:{entryKind:'reversal'}}},mode:'automatic',now:50});
+   operationalSignal:{entryKind:'reversal'}}},mode:'automatic',martingaleLevel:0,clickCount:1,now:50});
  const ack=acceptedAudit({provider:'exnova',orderId:'order-1',
   localId:'key|automatic|click-0'},51);
  const win=settlementAudit({provider:'exnova',orderId:'order-1',netPnl:0.8,source:'broker'},52);
@@ -47,4 +47,25 @@ test('unmatched outcomes and independent directions cannot inflate analyst accur
  assert.equal(report.matched,1);assert.equal(report.orphanSettlements,1);
  assert.equal(report.byMode[0].key,'call');
  assert.equal(report.byMode[0].winRate,null);
+});
+
+test('martingale clicks and fixed CALL do not inflate analyst signal accuracy',()=>{
+ const raw={provider:'iq_option',asset:'GBP/USD',analysis:{entryPlanner:{regime:{label:'trend'}},operationalSignal:{entryKind:'continuation'}}};
+ const automatic=decisionAudit({context:raw,signal:{id:'auto-1',side:'CALL',durationMs:30000},mode:'automatic',martingaleLevel:0,clickCount:1,now:10});
+ const mult=decisionAudit({context:raw,signal:{id:'mg-1',side:'CALL',durationMs:30000},mode:'automatic',martingaleLevel:1,clickCount:2,now:11});
+ const manual=decisionAudit({context:raw,signal:{id:'fixed-1',side:'CALL',durationMs:30000,independent:true},mode:'call',martingaleLevel:0,clickCount:1,now:12});
+ const accepted=[
+  acceptedAudit({provider:'iq_option',orderId:'a',localId:'auto-1|click-0'}),
+  acceptedAudit({provider:'iq_option',orderId:'b',localId:'mg-1|click-0'}),
+  acceptedAudit({provider:'iq_option',orderId:'c',localId:'fixed-1|click-0'})];
+ const results=[
+  settlementAudit({provider:'iq_option',orderId:'a',netPnl:0.8,source:'broker'}),
+  settlementAudit({provider:'iq_option',orderId:'b',netPnl:-1,source:'broker'}),
+  settlementAudit({provider:'iq_option',orderId:'c',netPnl:-1,source:'broker'})];
+ const out=summarizeTradeAudit([automatic,mult,manual,...accepted,...results],{minSamples:1});
+ assert.equal(out.matched,3);
+ assert.equal(out.analystFirstClickSettlements,1);
+ assert.equal(out.excludedFromAnalystAccuracy,2);
+ assert.equal(out.byRegime[0].winRate,100);
+ assert.equal(out.byMode.find(x=>x.key==='automatic').winRate,50);
 });
