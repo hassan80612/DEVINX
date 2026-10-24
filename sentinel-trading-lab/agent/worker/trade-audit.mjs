@@ -10,6 +10,12 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
  const families=plan.evidenceFamilies||{};
  const evidence=Object.fromEntries(keys.map(k=>[k,numberOrNull(families[k]?.signal)]));
  const research=op.entryResearch||{};
+ // In NOW the callback fires BEFORE runtime.lastResult is replaced.
+ // Use the attached snapshot from the same fired tick, never the stale card.
+ const proof=mode==='automatic'&&signal?.auditEvidence?.source==='now-structural-v1'&&
+  Number(signal.auditEvidence.signalAt)===Number(signal?.at)&&
+  signal.auditEvidence.finalSide===signal?.side?signal.auditEvidence:null;
+ const level=x=>x&&numberOrNull(x.level)!==null?{level:numberOrNull(x.level),touches:numberOrNull(x.touches)}:null;
  return {
   type:'trade_decision',ts:now,provider:short(context?.provider,30),asset:short(context?.asset,45),
   batchId:short(signal?.id,1024),engine:short(context?.engine,90),
@@ -20,11 +26,25 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
   snapshotQuoteAt:numberOrNull(context?.quoteAt),
   martingaleLevel:numberOrNull(martingaleLevel),clickCount:numberOrNull(clickCount),
   structure:{
-   regime:short(a.entryPlanner?.regime?.label,75),
-   entryKind:short(op.entryKind,75),
-   side:short(op.side,8),state:short(op.state,75),
-   reason:short(op.reason,180),
-   technicalStrength:numberOrNull(op.decisionStrength??op.strength),
+   provenance:proof?'fired-tick-now':'analysis-snapshot',
+   regime:short(proof?(proof.regime??proof.marketShape):a.entryPlanner?.regime?.label,75),
+   entryKind:short(proof?(proof.levelReaction??proof.contextStrategy):op.entryKind,75),
+   side:short(proof?proof.finalSide:op.side,8),state:short(proof?'FIRED_NOW':op.state,75),
+   reason:short(proof?proof.finalReason:op.reason,180),
+   technicalStrength:numberOrNull(proof?proof.finalStrength:(op.decisionStrength??op.strength)),
+   rawReason:short(proof?.rawReason,180),rawSide:short(proof?.rawSide,8),
+   contextStrategy:short(proof?.contextStrategy,75),marketShape:short(proof?.marketShape,90),
+   support:level(proof?.support),resistance:level(proof?.resistance),
+   levelReaction:short(proof?.levelReaction,90),
+   observedNetMove:numberOrNull(proof?.observedNetMove),
+   observedImpulse:numberOrNull(proof?.observedImpulse),
+   noise:numberOrNull(proof?.noise),alignedBars:numberOrNull(proof?.alignedBars),
+   barSeconds:numberOrNull(proof?.barSeconds),
+   rangePosition:numberOrNull(proof?.rangePosition),
+   quoteAt:numberOrNull(proof?.quoteAt),snapshotAt:numberOrNull(proof?.snapshotAt),
+   structuralConflict:proof?.structuralConflict?{
+    structure:short(proof.structuralConflict.structure,8),
+    projection:short(proof.structuralConflict.projection,8)}:null,
    agreement:numberOrNull(plan.agreement),
    dataQuality:numberOrNull(plan.dataQuality),
    callProbability:numberOrNull(plan.callProbability),
@@ -33,9 +53,9 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
   },
   probability:{
    qualified:research.qualified===true,
-   samples:numberOrNull(research.samples),
-   estimated:numberOrNull(research.probability),
-   source:short(research.probabilitySource,75)
+   samples:numberOrNull(proof?null:research.samples),
+   estimated:numberOrNull(proof?(signal?.side==='CALL'?proof.probabilityCall:proof.probabilityPut):research.probability),
+   source:short(proof?proof.probabilitySource:research.probabilitySource,75)
   }
  };
 }
