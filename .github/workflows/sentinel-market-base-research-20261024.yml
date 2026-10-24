@@ -1,0 +1,37 @@
+name: Sentinel shared market-base competing-path study (NO DEPLOY)
+on:
+  push:
+    branches:
+      - study/sentinel-multi-horizon-market-base-20261024
+  workflow_dispatch:
+jobs:
+  test-only:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check of experimental module and unchanged production modules
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+      - name: Causal market-path study and original admission regression tests
+        run: |
+          node --test tests/sentinel-market-base-competing-path-study-20261024.test.mjs \
+            tests/sentinel-13931-historical-structure.test.mjs \
+            tests/sentinel-shared-pivot-guard-20261022.test.mjs \
+            tests/sentinel-oneway-pivot-guard-20261023.test.mjs \
+            tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs
+      - name: Guarantee zero changes to production core or broker click
+        run: |
+          git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
+          if git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
+             grep -E '^sentinel-trading-lab/(agent/src/core/(?!competing-market-path-study\.mjs)|agent/worker/|src/app/api/)' ; then
+            echo 'Unauthorized live-engine change'; exit 1
+          fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
