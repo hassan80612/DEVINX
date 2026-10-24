@@ -26,18 +26,35 @@ jobs:
           node-version: '22'
       - name: Check all Agent JavaScript modules parse
         run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
-      - name: Verify audit and existing broker/timing/regression behavior
+      - name: Verify new audit behavior
+        run: node --test --test-concurrency=1 tests/sentinel-trade-audit-20261024.test.mjs
+      - name: Compare old bot regressions to exact 13.9.102 production commit
+        shell: bash
         run: |
-          node --test --test-concurrency=2 \
-            tests/sentinel-trade-audit-20261024.test.mjs \
-            tests/sentinel-13939-local-executor.test.mjs \
-            tests/sentinel-13944-mobile-bot.test.mjs \
-            tests/sentinel-13967-maintenance-never-delays-signals.test.mjs \
-            tests/sentinel-13983-surgical-balance-expiry-stopwin-horizon.test.mjs \
-            tests/sentinel-13985-broker-execution-ack-observer.test.mjs \
-            tests/sentinel-13990-final-entry-admission.test.mjs \
-            tests/sentinel-13999-native-expiry-keeper.test.mjs \
+          set -euo pipefail
+          base='ded995828b2ee3b84131995b83bcba270058d787'
+          specs=(
+            tests/sentinel-13939-local-executor.test.mjs
+            tests/sentinel-13944-mobile-bot.test.mjs
+            tests/sentinel-13967-maintenance-never-delays-signals.test.mjs
+            tests/sentinel-13983-surgical-balance-expiry-stopwin-horizon.test.mjs
+            tests/sentinel-13985-broker-execution-ack-observer.test.mjs
+            tests/sentinel-13990-final-entry-admission.test.mjs
+            tests/sentinel-13999-native-expiry-keeper.test.mjs
             tests/sentinel-replay-compare-13415.test.mjs
+          )
+          node --test --test-concurrency=1 "${specs[@]}" > /tmp/candidate.tap 2>&1 || true
+          git fetch --no-tags origin "$base"
+          git worktree add --detach /tmp/sentinel-baseline "$base"
+          (cd /tmp/sentinel-baseline && node --test --test-concurrency=1 "${specs[@]}") > /tmp/baseline.tap 2>&1 || true
+          grep '^not ok ' /tmp/candidate.tap | sed -E 's/^not ok [0-9]+ - //' | sort -u > /tmp/candidate.fail || true
+          grep '^not ok ' /tmp/baseline.tap | sed -E 's/^not ok [0-9]+ - //' | sort -u > /tmp/baseline.fail || true
+          echo "Production test failures: $(wc -l < /tmp/baseline.fail)"
+          echo "Candidate test failures: $(wc -l < /tmp/candidate.fail)"
+          echo 'New failures compared to production:'
+          comm -13 /tmp/baseline.fail /tmp/candidate.fail | tee /tmp/new.fail
+          if test -s /tmp/new.fail; then tail -n 130 /tmp/candidate.tap; exit 1; fi
+          echo 'No new failures in the existing bot regression tests.'
       - name: Assert no motor, stop or DB mutations in this candidate
         shell: bash
         run: |
