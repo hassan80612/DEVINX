@@ -80,7 +80,21 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  if(!candidate||!structure?.candles)return candidate;
  const spot=Number(price),ts=Number(quoteAt);
  if(!(positive(spot)&&ts>0&&ts<=now&&now-ts<=1450))return candidate;
- const q=quoteHistory.filter(x=>x.ts<=ts&&(x.receivedAt??x.ts)<=now&&x.ts>=ts-12000&&positive(x.price));
+ // The broker driver retains ordered quote history (up to 6,000 ticks).
+ // A fresh structural reaction only needs the last 12 seconds, so traverse
+ // backwards rather than re-filter the complete 5-minute tape every tick.
+ const q=[];let previousTs=Infinity,unordered=false;
+ for(let i=quoteHistory.length-1;i>=0;i--){
+  const x=quoteHistory[i],stamp=Number(x?.ts);
+  if(stamp<ts-12000)break;
+  if(stamp>previousTs){unordered=true;break;}
+  previousTs=stamp;
+  if(stamp<=ts&&(x.receivedAt??stamp)<=now&&positive(x.price))q.push(x);
+ }
+ if(unordered){
+  q.length=0;
+  q.push(...quoteHistory.filter(x=>x.ts<=ts&&(x.receivedAt??x.ts)<=now&&x.ts>=ts-12000&&positive(x.price)));
+ }else q.reverse();
  if(q.at(-1)?.ts!==ts||Number(q.at(-1)?.price)!==spot)return candidate;
  const earlier=priceBefore(q,ts-2000),origin=priceBefore(q,ts-6000),previous=q.at(-2)?.price;
  const evidence={candles:structure.candles,periodMs:structure.periodMs,
