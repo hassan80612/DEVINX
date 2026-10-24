@@ -2,7 +2,7 @@
 // An identified close for every order completes one progression step.
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
-import {decisionAudit} from './trade-audit.mjs';
+import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
@@ -38,6 +38,11 @@ export class SignalExecutor{
   this.driver=driver;this.context=context;this.clock=clock;this.onAuditEvent=typeof onAuditEvent==='function'?onAuditEvent:null;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.lastBrokerSettlementAt=0;this.stakeRefreshPending=null;this.stakeRefreshAt=0;this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
   this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;
+ }
+ emitAudit(record){
+  if(!this.onAuditEvent||!record)return;
+  // Never allow auditing or disk writes to delay/reject broker operations.
+  setImmediate(()=>{try{this.onAuditEvent(record)}catch{}});
  }
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
@@ -442,9 +447,8 @@ export class SignalExecutor{
   // Audit is read-only. Freeze a small snapshot before the click; append later
   // outside the critical signal-to-broker path. Never gate an order on logging.
   if(this.onAuditEvent){
-   try{const record=decisionAudit({signal:queued,context:c,mode,martingaleLevel,clickCount,now});
-    setImmediate(()=>{try{this.onAuditEvent(record)}catch{}});
-   }catch{}
+   try{this.emitAudit(decisionAudit({signal:queued,context:c,mode,martingaleLevel,clickCount,now}));}
+   catch{}
   }
   // The FIRST broker click must meet the strict signal freshness limit.
   // Subsequent martingale clicks have a separate, bounded batch deadline;
@@ -609,7 +613,9 @@ export class SignalExecutor{
    }else this.session.accountId=String(p.accountId);
   }
   batch.executionSource=p.executionSource='broker';batch.accountId=p.accountId;batch.orderId??=p.orderId;batch.exitAt=Math.max(batch.exitAt,p.exitAt);
-  p.executionSource=event.source||'broker';if(batch.detached)return;
+  p.executionSource=event.source||'broker';
+  if(this.onAuditEvent){try{this.emitAudit(acceptedAudit({...event,localId:p.id,entryPrice:p.entryPrice,exitAt:p.exitAt},this.clock()))}catch{}}
+  if(batch.detached)return;
   this.lastEntryAt=p.at;this.executed++;
   if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados'+(batch.martingaleFallback?' · martingale reduzido por lentidão':'');
  }
@@ -660,6 +666,7 @@ export class SignalExecutor{
    if(!num(event.netPnl)||(event.source&&event.source!=='broker')||p.settled)return false;
    if(event.accountId!=null&&p.accountId!=null&&String(event.accountId)!==String(p.accountId))return false;
    p.settled=true;p.netPnl=Number(event.netPnl);
+   if(this.onAuditEvent){try{this.emitAudit(settlementAudit(event,this.clock()))}catch{}}
    if(batch.dispatchComplete&&batch.orders.every(o=>o.settled||(!o.clicked&&!o.dispatchUncertain)||o.rejected))
     this.unresolvedBatches.delete(batch.id);
    return true; // Old broker settlement cannot change a freshly reset session.
@@ -675,6 +682,7 @@ export class SignalExecutor{
   const row={provider:trade.provider,accountId:trade.accountId,orderId:trade.orderId,side:trade.side,amount:trade.amount,sessionId:trade.sessionId,martingaleLevel:trade.martingaleLevel,entryPrice:event.entryPrice??trade.entryPrice,exitPrice:event.exitPrice??null,netPnl:Number(event.netPnl),source:'broker',result:Number(event.netPnl)>0?'win':Number(event.netPnl)<0?'loss':'tie',closedAt:this.clock()};
   this.ledger.set(key,row);if(this.ledger.size>2048)this.ledger.delete(this.ledger.keys().next().value);
   this.history=[row,...this.history.filter(x=>!(x.provider===row.provider&&x.orderId===row.orderId))].slice(0,5);
+  if(this.onAuditEvent){try{this.emitAudit(settlementAudit({...event,source:'broker'},this.clock()))}catch{}}
   if(p){p.settled=true;batch.netPnl=money(batch.netPnl+Number(event.netPnl));
    if(late){
     if(batch.orders.every(o=>o.settled||(!o.clicked&&!o.dispatchUncertain)||o.rejected)){
