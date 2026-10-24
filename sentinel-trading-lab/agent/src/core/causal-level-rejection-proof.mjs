@@ -14,6 +14,43 @@ const point=(rows,t,ageMs)=>{
   if(rows[i].ts<=t)return t-rows[i].ts<=ageMs?rows[i]:null;
  return null;
 };
+// A 5s-30s option can observe a legitimate completed micro-pivot well
+// before a long fixed-duration lookback exists. Preserve that proven
+// support/resistance turn rather than misclassifying it as a 60s trend.
+// Neither historical labels nor a last-tick bounce alone are sufficient.
+function provenLocalTurn({rows,at,spot,side,zone,tol,durationMs}){
+ if(!(Number(durationMs)<=30000&&Number(durationMs)>=5000))return null;
+ const dir=sign(side);
+ const recent=rows.filter(x=>x.ts>=at-10000);
+ if(recent.length<7||recent.at(-1).ts!==at||
+    recent.at(-1).ts-recent[0].ts<6000)return null;
+ if(recent.some((x,i)=>i>0&&x.ts-recent[i-1].ts>1700))return null;
+ const changes=recent.slice(1).map((q,i)=>Math.abs(q.price-recent[i].price)).filter(x=>x>0);
+ if(changes.length<5)return null;
+ const tick=Math.max(median(changes),spot*1e-8);
+ const level=Number(zone?.level);
+ const confirmedLevel=Number(zone?.confirmedPivots)>0||
+  Number(zone?.independentRejections)>=2;
+ if(!confirmedLevel||!(level>0))return null;
+ let pivot=0;
+ for(let i=1;i<recent.length;i++)
+  if(dir*recent[i].price<dir*recent[pivot].price)pivot=i;
+ if(pivot<2||pivot>recent.length-3)return null;
+ const approach=dir*(recent[pivot].price-recent[0].price);
+ const departure=dir*(spot-recent[pivot].price);
+ const step=dir*(spot-recent.at(-2).price);
+ const room=dir*(spot-level);
+ const minMove=Math.max(tick*.85,tol*.3);
+ if(!(approach<=-minMove*1.5&&departure>=minMove&&step>=0&&
+   room>=Math.max(tol*.5,tick*.75)&&
+   Math.abs(recent[pivot].price-level)<=Math.max(tol*2,tick*2)))return null;
+ return {confirmed:true,kind:'observed-local-pivot-reversal',
+  reason:'causal-approach-and-departure-confirmed',
+  durationMs:Number(durationMs),windows:[0,0,6],moves:[departure],
+  priorApproachMove:approach,approachVerified:true,
+  provenLevel:true,levelDeparture:room,observedTypicalStep:tick,
+  pivotConfirmedAt:recent[pivot+1].ts};
+}
 export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt,price,
  durationMs,side,zone,atr,tolerance}={}){
  const periods=WINDOWS[Number(durationMs)],dir=sign(side),
@@ -50,8 +87,9 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  rows.reverse();
  if(rows.at(-1)?.ts!==at||rows.at(-1)?.price!==spot)
   return unknown('unverified-last-quote');
+ const localTurn=provenLocalTurn({rows,at,spot,side,zone,tol,durationMs});
  const anchors=periods.map(s=>point(rows,at-s*1000,maxAge));
- if(anchors.some(x=>!x))return unknown('missing-past-horizon');
+ if(anchors.some(x=>!x))return localTurn||unknown('missing-past-horizon');
  const walk=rows.filter(x=>x.ts>=at-span);
  const maxGap=Number(durationMs)<=15000?1700:3500;
  if(walk.some((x,i)=>i>0&&x.ts-walk[i-1].ts>maxGap))
@@ -97,6 +135,7 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  const validLevel=zoneConfirmed&&Number.isFinite(zLevel)&&
     levelDeparture>=roomNeeded;
  const confirmed=validLevel&&lastDirection&&extended&&sustained&&approachVerified;
+ if(!confirmed&&localTurn)return localTurn;
  return {confirmed,kind:confirmed?'sustained-level-reversal':'provisional-reaction',
   reason:confirmed?'causal-multihorizon-followthrough':
    !zoneConfirmed?'level-without-independent-pivot':
