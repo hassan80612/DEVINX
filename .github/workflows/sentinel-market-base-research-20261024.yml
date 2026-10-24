@@ -32,6 +32,25 @@ jobs:
           git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
             grep -E '^sentinel-trading-lab/(agent/src/core/|agent/worker/|src/app/api/)' |
-            grep -v '^sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs$' > /tmp/unsafe || true
+            grep -v -e '^sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+ \
+                    -e '^sentinel-trading-lab/agent/src/core/runtime.mjs
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+ \
+                    -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+ \
+                    -e '^sentinel-trading-lab/agent/worker/index.mjs
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+ \
+                    -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+ > /tmp/unsafe || true
           if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
