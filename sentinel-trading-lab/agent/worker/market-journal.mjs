@@ -1,6 +1,7 @@
 import {appendFile,mkdir,readdir,stat,unlink} from 'node:fs/promises';
 import {join} from 'node:path';
-// Price-only, bounded journal. No credentials, account balances or order commands.
+// Bounded local quote/decision/outcome journal. Only whitelisted trade evidence;
+// never persist credentials, account balances, identities or order commands.
 export class MarketJournal{
   constructor({directory,maxBytes=256*1024*1024,segmentBytes=16*1024*1024,keepDays=7,release=null}={}){this.directory=directory;this.release=release;this.maxBytes=maxBytes;this.segmentBytes=segmentBytes;this.keepDays=keepDays;this.queue=[];this.pendingBytes=0;this.sequence=0;this.file=null;this.size=0;this.busy=null;this.last=new Map();this.error=null;this.dropped=0;this.lastCleanup=0;this.written=0}
   enqueue(event){const line=JSON.stringify({schema:2,release:this.release,...event})+'\n';if(this.pendingBytes+Buffer.byteLength(line)>4*1024*1024){this.dropped++;return}this.queue.push(line);this.pendingBytes+=Buffer.byteLength(line)}
