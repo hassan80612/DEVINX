@@ -38,11 +38,38 @@ test('Stop clears prior bankroll but retains thresholds; new Start reads deposit
  c.brokerBalance={...c.brokerBalance,amount:75,revision:2};
  await bot.start();assert.equal(bot.initialBalance,75);assert.equal(bot.lossBudgetRemaining(),35);
 });
-test('stale balance waits for fresh event before opening stop-limited session',async()=>{
+test('stale balance does not suspend CALL/PUT while stop targets await a fresh event',async()=>{
  const {bot,c}=make();bot.configure({stopWin:60,stopLoss:40});
  c.brokerBalance={...c.brokerBalance,receivedAt:T-90000};
  await bot.start();assert.equal(bot.initialBalance,null);
- bot.watch();assert.match(bot.message,/aguardando saldo atualizado/);
+ bot.watch();assert.equal(bot.enabled,true);assert.equal(bot.suspensionReason,null);assert.equal(bot.lossBudgetRemaining(),Infinity);
  c.brokerBalance={...c.brokerBalance,amount:52,revision:3,receivedAt:T};
  bot.watch();assert.equal(bot.initialBalance,52);
+});
+
+test('first CALL executes without broker balance; later balance reconstructs opening bankroll safely',async()=>{
+ let now=T,clicks=0;
+ const c={state:'running',licensed:true,provider:'exnova',asset:'EUR/USD',activeId:1,engine:'automatic',
+  durationMs:30000,analysis:{},quote:1.1,quoteAt:T,brokerBalance:null};
+ const driver={prepare:async()=>({amount:1}),execute:async(_,order)=>{
+  order.captureEntry();order.clicked=true;clicks++;
+  return{accepted:true,orderId:'first'};}};
+ const bot=new SignalExecutor({clock:()=>now,context:()=>c,driver});
+ bot.configure({stopWin:60,stopLoss:40});await bot.start();
+ bot.watch();assert.equal(bot.initialBalance,null);assert.equal(bot.suspensionReason,null);
+ assert.equal(bot.lossBudgetRemaining(),Infinity);
+ now+=100;c.quoteAt=now;
+ c.analysis={vnext:{futureEntryAnchor:{
+  context:'exnova|EURUSD|automatic|30000',phase:'fired',side:'CALL',
+  entryTriggeredAt:now,holdingSeconds:30,exitAt:now+30000}}};
+ bot.pulse();await bot.inflight;
+ assert.equal(clicks,1,'first physical CALL must not be blocked by unknown bankroll');
+ assert.equal(bot.executed,1);
+ c.brokerBalance={provider:'exnova',accountId:'demo',amount:49,receivedAt:now,revision:1};
+ bot.watch();assert.equal(bot.initialBalance,null,'do not confuse in-flight debit with opening bankroll');
+ now+=30000;bot.settle({provider:'exnova',accountId:'demo',orderId:'first',source:'broker',netPnl:-1});
+ bot.watch();assert.equal(bot.initialBalance,null,'pre-settlement observation is not a post-settlement balance');
+ c.brokerBalance={...c.brokerBalance,amount:49,receivedAt:now,revision:2};
+ bot.watch();assert.equal(bot.initialBalance,50);
+ assert.equal(bot.lossBudgetRemaining(),9);
 });

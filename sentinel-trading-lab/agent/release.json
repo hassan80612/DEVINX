@@ -1,6 +1,6 @@
 {
-  "version": "13.9.101",
-  "build": "13.9.101-absolute-bankroll-stops-30d-access",
+  "version": "13.9.102",
+  "build": "13.9.102-bot-clicks-before-balance-read",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.101"
+  "publicVersion": "13.9.102"
 }
