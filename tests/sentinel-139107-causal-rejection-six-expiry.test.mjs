@@ -48,7 +48,7 @@ test('old strong market reaction is not accepted on a single last-second noise t
 test('a missing horizon, gap or future-only packet cannot fabricate evidence',()=>{
  for(const d of D){
   const seconds=Math.max(90,d/1000),q=path(seconds,(i)=>100+i*.012);
-  const pastWindow=({5000:2,15000:4,30000:6,60000:10,120000:15,300000:20})[d];
+  const pastWindow=({5000:2,10000:3,15000:4,30000:6,60000:10,120000:15,300000:20})[d];
   const removed=q.filter(x=>x.ts<NOW-pastWindow*1000-4000||x.ts>NOW-pastWindow*1000+4000);
   const a=proveLevelRejectionAtExpiry(args(removed,d));
   if(d>=30000)assert.equal(a.confirmed,false,JSON.stringify({d,a}));
