@@ -33,6 +33,6 @@ test('broker keeps a 250ms local clock and market update feed despite fewer cosm
  const worker=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
  assert.match(driver,/window\.setInterval\(\(\)=>\{[\s\S]{0,180}tickTargetClock\(\);[\s\S]{0,60}\},250\)/);
  assert.match(worker,/driver\.setMarketUpdateHandler\?/);
- assert.match(worker,/const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;/);
+ assert.match(worker,/const urgentOverlay=overlayActionKey!==lastOverlayActionKey;/);
  assert.match(worker,/overlayUpdates\.publish\(activeProvider,/);
 });
