@@ -30,8 +30,8 @@ jobs:
       - name: Guarantee zero changes to production core or broker click
         run: |
           git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
-          if git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
-             grep -E '^sentinel-trading-lab/(agent/src/core/(?!competing-market-path-study\.mjs)|agent/worker/|src/app/api/)' ; then
-            echo 'Unauthorized live-engine change'; exit 1
-          fi
+          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
+            grep -E '^sentinel-trading-lab/(agent/src/core/|agent/worker/|src/app/api/)' |
+            grep -v '^sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
