@@ -59,6 +59,28 @@ runtime.onNowOpportunity=(anchor,evidence)=>{
  try{executor.pulse(anchor,evidence);}
  catch(e){executor.message='Falha ao entregar sinal imediato: '+String(e?.message||e);}
 };
+// Evidence-only shadow. Fired after executor.pulse, never gates admission,
+ // risk controls, expiry or click. Stored locally alongside broker outcomes.
+runtime.onMarketPathAudit=recordTradeAudit?(anchor,verdict)=>{
+ try{
+  marketJournal.enqueue({
+   type:'market_path_hypothesis',ts:Date.now(),provider:activeProvider,
+   asset:String(anchor?.asset||''),engine:String(anchor?.engineId||''),
+   batchId:[anchor?.context,anchor?.entryTriggeredAt].join('|'),
+   signalAt:Number(anchor?.entryTriggeredAt||0),
+   durationMs:Number(anchor?.holdingSeconds||0)*1000,
+   hypothesisSide:verdict?.hypothesisSide??null,
+   scenario:verdict?.scenario??'UNRESOLVED',
+   reason:verdict?.reason??null,
+   impulseState:verdict?.impulseState??null,
+   velocityRatio:verdict?.velocityRatio??null,
+   efficiency:verdict?.efficiency??null,
+   roomCall:verdict?.measuredRoomCall??null,
+   roomPut:verdict?.measuredRoomPut??null,
+   windows:verdict?.windows??null
+  });
+ }catch{}
+}:null;
 // Balance-changed is already observed passively from the live broker.
  // Hand it to the risk engine immediately instead of waiting for next 400ms tick.
  // Do not request balances or rescan the browser; forecast is untouched.
