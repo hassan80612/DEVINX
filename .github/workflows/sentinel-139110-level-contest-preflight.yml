@@ -1,0 +1,34 @@
+name: Sentinel 13.9.110 preflight observed breakout vs rejection NO DEPLOY
+on:
+  push:
+    branches:
+      - fix/sentinel-139110-level-contest-20261024
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify all seven durations, actual failure and real breakout
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/observed-level-contest-risk.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --test tests/sentinel-139110-level-contest-surgical.test.mjs
+      - name: Protect support, resistance, expiry, direction, late entry, CPU, stops and broker
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-139109-late-chase-cpu-golden.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13931-selected-forecast-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs tests/sentinel-13996-verified-wall-exhaustion.test.mjs
+      - name: Verify narrow source scope compared to live 13.9.109
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 4f23bd3fc69493b57bdd5af380eda4e83170495f
+          git diff --name-only 4f23bd3fc69493b57bdd5af380eda4e83170495f HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs$' -e '^sentinel-trading-lab/agent/src/core/observed-level-contest-risk.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo 'Only final market-base decision and new causal risk helper changed.'
