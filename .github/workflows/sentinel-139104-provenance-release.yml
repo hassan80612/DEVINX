@@ -1,0 +1,83 @@
+name: Sentinel 13.9.104 NOW provenance Windows candidate - NO PRODUCTION
+on:
+  push:
+    branches:
+      - fix/sentinel-139104-evidence-provenance-20261024
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/package.json'
+      - 'sentinel-trading-lab/next.config.mjs'
+      - 'sentinel-trading-lab/scripts/**'
+      - 'tests/sentinel-trade-audit-20261024.test.mjs'
+      - '.github/workflows/sentinel-139104-provenance-release.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-139104-provenance-candidate
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Syntax check the entire Agent before packaging
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Validate current-tick provenance and real executor path
+        run: node --test --test-concurrency=1 tests/sentinel-trade-audit-20261024.test.mjs
+      - name: Check release and native-expiry version contracts
+        run: node --test tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Ensure no market decision gates, API or Supabase sources changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 78da5290cdc606fdf9d5c3b561efcd002c8b0230
+          git diff --name-only 78da5290cdc606fdf9d5c3b561efcd002c8b0230 HEAD |
+            grep -E '(^supabase/|^sentinel-trading-lab/(db|migrations|agent/src/core|src/app/api)/)' |
+            grep -v '^sentinel-trading-lab/agent/src/core/runtime.mjs$' > /tmp/unsafe.txt || true
+          if test -s /tmp/unsafe.txt; then cat /tmp/unsafe.txt; exit 1; fi
+          echo 'Only the callback provenance in runtime.mjs may differ; strategy implementations unchanged.'
+      - name: Install web dependencies for isolated build
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build site and exact Windows Agent payload without publishing
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Verify installer files and update manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          downloads=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((downloads/'agent-update.json').read_text())
+          assert release['version']=='13.9.104'
+          assert release['build']=='13.9.104-now-decision-provenance'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(downloads/'agent_payload_v88.zip').read_bytes()
+          assert manifest['zipSha256']==hashlib.sha256(payload).hexdigest()
+          exe=downloads/'Sentinel-Agent-13.9.104.exe'
+          content=exe.read_bytes()
+          assert content[:2]==b'MZ' and len(content)>1_000_000
+          assert payload in content
+          assert (downloads/'Sentinel-Agent-Windows.exe').read_bytes()==content
+          with zipfile.ZipFile(downloads/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'):continue
+              assert z.read(name)==(agent/name).read_bytes(),name
+          print('CANDIDATE VERIFIED',release['version'],len(content),
+                hashlib.sha256(content).hexdigest(),len(payload))
+          PY
