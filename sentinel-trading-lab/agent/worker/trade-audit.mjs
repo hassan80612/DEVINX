@@ -12,7 +12,7 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
  const research=op.entryResearch||{};
  return {
   type:'trade_decision',ts:now,provider:short(context?.provider,30),asset:short(context?.asset,45),
-  batchId:short(signal?.id,230),engine:short(context?.engine,90),
+  batchId:short(signal?.id,1024),engine:short(context?.engine,90),
   directionMode:short(mode,24),independent:signal?.independent===true,
   side:signal?.side==='CALL'?'CALL':signal?.side==='PUT'?'PUT':null,
   durationMs:numberOrNull(signal?.durationMs),signalAt:numberOrNull(signal?.at),
@@ -41,7 +41,7 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
 }
 export function acceptedAudit(event,now=Date.now()){
  return {type:'broker_accepted',ts:now,provider:short(event?.provider,30),
-  localId:short(event?.localId,280),orderId:short(event?.orderId,180),
+  localId:short(event?.localId,1100),orderId:short(event?.orderId,180),
   entryPrice:numberOrNull(event?.entryPrice),exitAt:numberOrNull(event?.exitAt)};
 }
 export function settlementAudit(event,now=Date.now()){
@@ -69,11 +69,15 @@ export function summarizeTradeAudit(events,{minSamples=20}={}){
   if(result.result==='tie')continue;
   rows.push({
    provider:result.provider,asset:d.asset,mode:d.directionMode,side:d.side,durationMs:d.durationMs,
+   martingaleLevel:d.martingaleLevel,clickCount:d.clickCount,independent:d.independent,
    regime:d.structure?.regime||'unknown',kind:d.structure?.entryKind||'unknown',
    outcome:result.result,netPnl:result.netPnl,at:d.ts
   });
  }
- const group=(field)=>Object.values(rows.reduce((acc,row)=>{
+ // Judge analyst accuracy only on first, unmultiplied automatic entries.
+ // Manual fixed CALL/PUT and Martingale extra clicks must not skew it.
+ const analyst=rows.filter(r=>r.mode==='automatic'&&!r.independent&&r.martingaleLevel===0&&r.clickCount===1);
+ const group=(field,subset=rows)=>Object.values(subset.reduce((acc,row)=>{
   const key=String(row[field]??'unknown');
   const a=acc[key]??={key,count:0,wins:0,losses:0,netPnl:0};
   a.count++;a.wins+=row.outcome==='win'?1:0;a.losses+=row.outcome==='loss'?1:0;a.netPnl+=row.netPnl;return acc;
@@ -81,8 +85,9 @@ export function summarizeTradeAudit(events,{minSamples=20}={}){
  .sort((a,b)=>b.count-a.count||a.key.localeCompare(b.key));
  return {kind:'broker-confirmed-trade-audit',matched:rows.length,
   decisions:decisions.size,accepted:accepted.size,settled:settled.size,
-  orphanSettlements,minSamples,
-  byMode:group('mode'),byRegime:group('regime'),byEntryKind:group('kind'),
-  byDuration:group('durationMs'),bySide:group('side'),byAsset:group('asset'),
-  note:'Broker settlement only; repeated martingale clicks are separate orders. No claim of predictive improvement.'};
+  orphanSettlements,unresolvedAccepted:[...accepted.keys()].filter(id=>!settled.has(id)).length,minSamples,
+  analystFirstClickSettlements:analyst.length,excludedFromAnalystAccuracy:rows.length-analyst.length,
+  byMode:group('mode'),byRegime:group('regime',analyst),byEntryKind:group('kind',analyst),
+  byDuration:group('durationMs',analyst),bySide:group('side',analyst),byAsset:group('asset',analyst),
+  note:'Market-condition win rates refer only to single-click automatic entries without martingale. Broker-confirmed outcomes only; unresolved orders excluded, not counted as losses or wins. No claim of predictive improvement.'};
 }
