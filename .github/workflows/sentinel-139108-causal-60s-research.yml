@@ -1,4 +1,4 @@
-name: Sentinel 13.9.108 seven-expiry reversal guard (NO DEPLOY)
+name: Sentinel 13.9.108 seven-expiry reversal validation NO DEPLOY
 on:
   push:
     branches:
@@ -16,26 +16,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Syntax checks
+      - name: Check changed core source syntax
         run: |
           node --check sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
           node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
-      - name: Check all seven durations and both reversal directions
+      - name: Validate seven expiries and all historical reversals
         run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
-      - name: Preservation of historical structure, all unchanged expiries and broker
+      - name: Protect live entry, broker, stops, original turn detection and expiry
         run: |
           node --test --test-concurrency=1 tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
-      - name: Verify single-source surgical scope
+      - name: Assert only two causal market-core files have changed
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
-          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs > /tmp/unsafe || true
-          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
-          echo 'Only the causal historical rejection proof and its integration changed for all seven expiries. Broker performance, UI, expiry, click, stops and martingale unchanged.'
- -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs > /tmp/unsafe || true
-          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
-          echo 'Only 60-second historical rejection causal proof changed. Broker performance, UI, expiry, click, stops and martingale unchanged.'
- > /tmp/unsafe || true
-          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
-          echo 'Only 60-second historical rejection causal proof changed. Broker performance, UI, expiry, click, stops and martingale unchanged.'
+          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo 'Only causal level proof and historical rejection integration changed.'
