@@ -18,12 +18,12 @@ test('all six expiration windows can validate an actually sustained level depart
  for(const d of D){
   const hold=d/1000,seconds=Math.max(hold,90),ticks=path(seconds,(i,n)=>99.8+i*.012);
   const a=proveLevelRejectionAtExpiry(args(ticks,d));
-  assert.equal(a.confirmed,true,JSON.stringify({d,a}));
+  assert.equal(a.confirmed,d!==60000,JSON.stringify({d,a}));
   const puts=ticks.map(x=>({...x,price:200-x.price}));
   const b=proveLevelRejectionAtExpiry(args(puts,d,'PUT',{
    zone:{level:100.2,confirmedPivots:2,independentRejections:0}
   }));
-  assert.equal(b.confirmed,true,JSON.stringify({d,b}));
+  assert.equal(b.confirmed,d!==60000,JSON.stringify({d,b}));
  }
 });
 test('short 2-6s bounce in longer descending market is never sold as a sustained reversal',()=>{
@@ -112,4 +112,44 @@ test('same-tick real trade audit persists bounded reaction evidence without bloc
  assert.deepEqual(x.structure.levelExpiryProof.moves,[.1,.2,.3]);
  assert.equal(x.structure.reason,'historical-level-rejection');
  assert.equal(JSON.stringify(x).includes('password'),false);
+});
+
+test('a 60s level reversal requires an actual observed opposite approach followed by 20s departure',()=>{
+ const q=path(90,(i)=>{
+  if(i<=70)return 100.65-(i/70)*.65;
+  return 100+(i-70)*.015;
+ });
+ const proof=proveLevelRejectionAtExpiry(args(q,60000,'CALL',{
+  zone:{level:100,confirmedPivots:2,independentRejections:1}
+ }));
+ assert.equal(proof.confirmed,true,JSON.stringify(proof));
+ assert.ok(proof.priorApproachMove<0);
+ assert.equal(proof.approachVerified,true);
+ const down=q.map(x=>({...x,price:200-x.price}));
+ const inverse=proveLevelRejectionAtExpiry(args(down,60000,'PUT',{
+  zone:{level:100,confirmedPivots:2,independentRejections:1}
+ }));
+ assert.equal(inverse.confirmed,true,JSON.stringify(inverse));
+});
+test('if the observed opposite approach is missing, 60s never upgrades trend following into historical reversal',()=>{
+ const q=path(90,i=>99.5+i*.01);
+ const p=proveLevelRejectionAtExpiry(args(q,60000,'CALL',{zone:{
+  level:100,confirmedPivots:2,independentRejections:1
+ }}));
+ assert.equal(p.confirmed,false);
+ assert.equal(p.reason,'prior-opposing-approach-not-confirmed');
+ assert.ok(p.priorApproachMove>0);
+});
+test('reversal data is causal: future arrival and gaps in the prior approach reject entry immediately',()=>{
+ const q=path(90,i=>i<=70?100.65-(i/70)*.65:100+(i-70)*.015);
+ const absent=q.filter(x=>x.ts<NOW-33000||x.ts>NOW-26000);
+ const gap=proveLevelRejectionAtExpiry(args(absent,60000,'CALL',{zone:{
+  level:100,confirmedPivots:2,independentRejections:1
+ }}));
+ assert.equal(gap.confirmed,false);
+ const late=q.map(x=>x.ts>NOW-39000&&x.ts<NOW-20000?{...x,receivedAt:NOW+5000}:x);
+ const future=proveLevelRejectionAtExpiry(args(late,60000,'CALL',{zone:{
+  level:100,confirmedPivots:2,independentRejections:1
+ }}));
+ assert.equal(future.confirmed,false);
 });
