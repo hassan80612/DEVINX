@@ -75,8 +75,22 @@ export function compareMarketPaths({
   // No claimed confirmation without a measured next historical wall.
   return room!==null&&room>Math.abs(b.move)*1.15+typical*4;
  };
+ // Second independent diagnostic: the direction may still be up while the
+ // immediate impulse has already faded. Report this measured divergence,
+ // NEVER replace it with a fabricated win probability or broker settlement.
+ const shortRate=Math.abs(a.move)/horizons[0];
+ const longRate=Math.abs(c.move)/horizons[2];
+ const velocityRatio=longRate>0?shortRate/longRate:null;
+ let travelled=0;
+ for(let i=1;i<window.length;i++)travelled+=Math.abs(window[i].price-window[i-1].price);
+ const efficiency=travelled>0?Math.min(1,Math.abs(d.move)/travelled):null;
+ const impulseState=a.side&&a.side===b.side&&a.side===c.side?
+  velocityRatio!==null&&velocityRatio<=.4?'FADING':
+  velocityRatio!==null&&velocityRatio>=1.35?'ACCELERATING':'STEADY':
+  a.side&&c.side&&a.side!==c.side?'COUNTERTREND_REACTION':'MIXED';
  const observation={windows,horizons,expiryMs:expiry,typicalStep:typical,
-  measuredRoomCall:ahead('CALL'),measuredRoomPut:ahead('PUT')};
+  measuredRoomCall:ahead('CALL'),measuredRoomPut:ahead('PUT'),
+  impulseState,velocityRatio,efficiency};
  const aligned=shortAgree&&longAgree&&a.side===d.side&&clearRoom(a.side);
  // Breakouts require an already-observed retest and strength on both
  // short and holding-time horizons; merely crossing a level is insufficient.
