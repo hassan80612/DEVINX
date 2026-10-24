@@ -60,12 +60,34 @@ test('a genuine confirmed rejection/reversal remains authoritative for ALL durat
  const q=candles('CALL');
  for(const ms of horizons){
   for(const reason of ['closed-range-extreme-reversal-confirmed',
-    'multiscale-candle-rejection','failed-breakout-structure-change',
-    'historical-level-rejection']){
+    'multiscale-candle-rejection','failed-breakout-structure-change']){
     const z=choose(base('PUT',reason),q,ms,{pCall:.95,pPut:.05});
     assert.equal(z.side,'PUT',reason+' '+ms);
     assert.equal(z.ready,true);
   }
+ }
+});
+test('short-lived historical rejection does not automatically outrank four time-matched current trend segments',()=>{
+ const q=candles('CALL'),spot=q.at(-1).price;
+ for(const ms of horizons){
+  const candidate={...base('PUT','historical-level-rejection'),
+   priceStructure:{reaction:{kind:'rejection',side:'PUT',zone:{level:spot-.00002,touches:2}}}};
+  const out=choose(candidate,q,ms,{pCall:.2,pPut:.8});
+  assert.equal(out.side,'CALL',ms+'ms');
+  assert.equal(out.reason,'observed-multi-interval-trend-correction');
+ }
+});
+test('a two-tick bounce or uncertain expiry trend cannot overwrite a real level reversal',()=>{
+ const q=candles('PUT');
+ const ts=q.at(-1).ts;
+ q[q.length-2]={...q.at(-2),price:q.at(-3).price+.000002};
+ q[q.length-1]={...q.at(-1),price:q.at(-2).price+.000001};
+ for(const ms of horizons){
+  const p={...base('CALL','historical-level-rejection'),
+   priceStructure:{reaction:{kind:'rejection',side:'CALL',zone:{level:1.13,touches:4}}}};
+  const result=choose(p,q,ms,{pCall:.96,pPut:.04});
+  assert.equal(result.side,'CALL',ms+'ms');
+  assert.equal(result.reason,'historical-level-rejection');
  }
 });
 test('confirmed opposite wall refuses both trend chase and the old contrary entry',()=>{
