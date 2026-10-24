@@ -1,0 +1,35 @@
+name: Sentinel 13.9.108 60s reversal causal guard (NO DEPLOY)
+on:
+  push:
+    branches:
+      - fix/sentinel-139108-real-reversal-approach-20261024
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax checks
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
+          node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
+      - name: Check six durations and both reversal directions
+        run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
+      - name: Preservation: historical structure, 5s 15s 30s, breakout, 2m 5m and broker
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
+      - name: Verify single-source surgical scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
+          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Only 60-second historical rejection causal proof changed. Broker performance, UI, expiry, click, stops and martingale unchanged.'
