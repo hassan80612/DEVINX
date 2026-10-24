@@ -1100,8 +1100,39 @@ export class DemoTradingRuntime{
       // Deliver the confirmed signal directly to the local broker executor,
       // BEFORE optional dashboards, research and the remaining engineCycle
       // processing. The ordinary post-tick pulse remains a deduplicated backup.
-      if(anchor?.entryReadyNow&&typeof this.onNowOpportunity==='function')
-        this.onNowOpportunity(anchor);
+      if(anchor?.entryReadyNow&&typeof this.onNowOpportunity==='function'){
+        // Only the confirmed NOW tick has the true structural evidence.
+        // The ordinary dashboard analysis is still from the preceding tick
+        // here; send this primitive-only audit snapshot out-of-band, without
+        // modifying the anchor, signal admission or broker click deadline.
+        const levels=original66.priceStructure||{};
+        this.onNowOpportunity(anchor,{
+          source:'now-structural-v1',signalAt:Number(anchor.entryTriggeredAt),
+          snapshotAt:now,quoteAt:Number(snap.quoteTs),
+          rawSide:original66.side??null,rawReason:original66.reason??null,
+          rawReady:original66.ready===true,rawStrength:original66.strength??null,
+          finalSide:observation.side??null,finalReason:observation.reason??null,
+          finalStrength:observation.strength??null,
+          marketShape:original66.marketShape??null,
+          contextStrategy:original66.contextStrategy??null,
+          regime:original66.regime??null,
+          support:levels.nearestSupport?{level:levels.nearestSupport.level,
+            touches:levels.nearestSupport.touches}:null,
+          resistance:levels.nearestResistance?{level:levels.nearestResistance.level,
+            touches:levels.nearestResistance.touches}:null,
+          levelReaction:levels.reaction?.kind??null,
+          observedNetMove:original66.observedNetMove??null,
+          observedImpulse:original66.observedImpulse??null,
+          noise:original66.noise??null,alignedBars:original66.alignedBars??null,
+          barSeconds:original66.barSeconds??null,
+          rangePosition:original66.position??null,
+          structuralConflict:original66.structuralDisagreement===undefined?null:
+            original66.structuralDisagreement,
+          probabilityCall:preliminary?.pCall??null,
+          probabilityPut:preliminary?.pPut??null,
+          probabilitySource:preliminary?.source??null
+        });
+      }
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
       const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
         String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
