@@ -2,6 +2,7 @@
 // An identified close for every order completes one progression step.
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
+import {decisionAudit} from './trade-audit.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
@@ -33,8 +34,8 @@ export function executorSignal(analysis){
  return{id:[a.context,a.entryTriggeredAt].join('|'),engineId:a.engineId??String(a.context||'').split('|').at(-2)??null,side:a.side,at:Number(a.entryTriggeredAt),exitAt:Number(a.exitAt),entryPrice:Number(a.confirmedEntryPrice??a.entryPrice??a.projectedEntryPrice),durationMs:Number(a.holdingSeconds??a.actualHoldingSeconds)*1000};
 }
 export class SignalExecutor{
- constructor({driver,context,clock=Date.now}={}){
-  this.driver=driver;this.context=context;this.clock=clock;this.config={...DEFAULT_EXECUTOR_CONFIG};
+ constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
+  this.driver=driver;this.context=context;this.clock=clock;this.onAuditEvent=typeof onAuditEvent==='function'?onAuditEvent:null;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.lastBrokerSettlementAt=0;this.stakeRefreshPending=null;this.stakeRefreshAt=0;this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
   this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;
  }
@@ -438,6 +439,13 @@ export class SignalExecutor{
    }
   }
   this.pending=batch;
+  // Audit is read-only. Freeze a small snapshot before the click; append later
+  // outside the critical signal-to-broker path. Never gate an order on logging.
+  if(this.onAuditEvent){
+   try{const record=decisionAudit({signal:queued,context:c,mode,martingaleLevel,clickCount,now});
+    setImmediate(()=>{try{this.onAuditEvent(record)}catch{}});
+   }catch{}
+  }
   // The FIRST broker click must meet the strict signal freshness limit.
   // Subsequent martingale clicks have a separate, bounded batch deadline;
   // they can never continue beyond this operation's selected expiry.
