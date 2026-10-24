@@ -77,17 +77,31 @@ test('short-lived historical rejection does not automatically outrank four time-
   assert.equal(out.reason,'observed-multi-interval-trend-correction');
  }
 });
-test('a two-tick bounce or uncertain expiry trend cannot overwrite a real level reversal',()=>{
+test('a shallow two-tick bounce in a sustained downtrend must not be blindly protected as a reversal for longer expiry',()=>{
  const q=candles('PUT');
- const ts=q.at(-1).ts;
  q[q.length-2]={...q.at(-2),price:q.at(-3).price+.000002};
  q[q.length-1]={...q.at(-1),price:q.at(-2).price+.000001};
- for(const ms of horizons){
-  const p={...base('CALL','historical-level-rejection'),
-   priceStructure:{reaction:{kind:'rejection',side:'CALL',zone:{level:1.13,touches:4}}}};
-  const result=choose(p,q,ms,{pCall:.96,pPut:.04});
-  assert.equal(result.side,'CALL',ms+'ms');
-  assert.equal(result.reason,'historical-level-rejection');
+ const candidate={...base('CALL','historical-level-rejection'),
+   priceStructure:{reaction:{kind:'rejection',side:'CALL',
+     zone:{level:q.at(-1).price-.000002,touches:4}}}};
+ for(const ms of [30000,60000,120000,300000]){
+  const z=choose(candidate,q,ms,{pCall:.96,pPut:.04});
+  assert.equal(z.side,'PUT',ms+'ms — coherent contrary path');
+  assert.equal(z.reason,'observed-multi-interval-trend-correction');
+ }
+});
+test('an actual sustained recent rise preserves an observed CALL reversal in an older downtrend',()=>{
+ const q=candles('PUT');
+ const start=q.length-22;
+ const startPrice=q[start-1].price;
+ for(let i=start;i<q.length;i++)q[i]={...q[i],price:startPrice+(i-start+1)*.000035};
+ const candidate={...base('CALL','historical-level-rejection'),
+   priceStructure:{reaction:{kind:'rejection',side:'CALL',
+     zone:{level:startPrice,touches:4}}}};
+ for(const ms of [30000,60000,120000,300000]){
+  const z=choose(candidate,q,ms,{pCall:.2,pPut:.8});
+  assert.equal(z.side,'CALL',ms+'ms — authentic recent turn');
+  assert.equal(z.ready,true);
  }
 });
 test('confirmed opposite wall refuses both trend chase and the old contrary entry',()=>{
