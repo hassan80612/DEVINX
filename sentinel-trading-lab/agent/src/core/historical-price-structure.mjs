@@ -151,8 +151,18 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
      durationMs,side:reaction.side,zone:reaction.zone,
      tolerance:structure.tolerance,atr:structure.atr});
    evidence.reactionProof=proof;
-   if(!proof.confirmed)
-     return {...candidate,priceStructure:evidence};
+   if(!proof.confirmed){
+    // Keep the selected expiry forecast authoritative even when a
+    // level reaction is unverified. Contradictory evidence means WAIT,
+    // never the discarded forecast's side. An independently qualified
+    // agreeing entry retains its established direction and audit reason.
+    if(candidate.pendingForecast?.ready&&candidate.pendingForecast.side!==reaction.side)
+     return {...candidate,ready:false,side:null,
+      reason:'historical-level-versus-expiry-conflict',priceStructure:evidence};
+    if(candidate.ready===true&&candidate.side===reaction.side)
+     return {...candidate,reason:'historical-level-rejection',priceStructure:evidence};
+    return {...candidate,priceStructure:evidence};
+   }
   }
   // Equally strong opposing levels are unresolved, not two simultaneous calls.
   const opposed=reactions.find(x=>x.side!==reaction.side&&x.weight>=reaction.weight*.8);
