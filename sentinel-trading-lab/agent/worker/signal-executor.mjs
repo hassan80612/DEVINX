@@ -341,7 +341,7 @@ export class SignalExecutor{
      ' fechadas'+(unidentified?', '+unidentified+' clique(s) sem ID':'')+') · sem repetir entradas';
   }
  }
- pulse(freshAnchor=null){
+ pulse(freshAnchor=null,freshAudit=null){
   this.watch();if(!this.enabled||this.suspensionReason)return;
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
@@ -365,6 +365,8 @@ export class SignalExecutor{
     }
   }
   if(s?.engineId&&s.engineId!==c.engine)return;
+  // Diagnostic metadata is never part of order acceptance/validation.
+  if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){
    this.seen.add(s.id);if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
    // Every NEW analyst signal is eligible. No independent bot cooldown.
