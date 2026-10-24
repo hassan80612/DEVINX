@@ -67,7 +67,7 @@ test('One-page professional storefront has a single purchase action, prominently
  const css=read('sentinel-trading-lab/src/app/launch-home.module.css');
  const hub=read('src/components/HomeHub.tsx');
  assert.match(home,/ANALISTA DE MERCADO \+ BOT AUTOMÁTICO OPCIONAL/);
- assert.match(home,/Comprar acesso sem vencimento/);
+ assert.match(home,/Comprar acesso por 30 dias/);
  assert.match(home,/\/api\/checkout\?market=/);
  assert.match(home,/IQ <span>OPTION<\/span>/);
  assert.match(home,/>EXNOVA</);
