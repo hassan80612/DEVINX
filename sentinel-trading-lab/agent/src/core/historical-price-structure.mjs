@@ -83,7 +83,8 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  if(q.at(-1)?.ts!==ts||Number(q.at(-1)?.price)!==spot)return candidate;
  const earlier=priceBefore(q,ts-2000),origin=priceBefore(q,ts-6000),previous=q.at(-2)?.price;
  const evidence={candles:structure.candles,periodMs:structure.periodMs,
-  averages:structure.averages,nearestSupport:null,nearestResistance:null,reaction:null};
+  averages:structure.averages,tolerance:structure.tolerance,
+  nearestSupport:null,nearestResistance:null,reaction:null};
  // A handful of candles does not establish the requested wider context.
  // Keep the existing analyst running while the received history is sparse;
  // never impose a new collection timer or fabricate a 20-period average.
