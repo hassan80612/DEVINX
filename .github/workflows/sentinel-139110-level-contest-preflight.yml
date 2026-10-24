@@ -16,6 +16,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Obtain original 13.9.107 performance golden baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
+          git show 36a7dcca579ff5da33b307c34c9467cfd2d16e44:sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs > sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.baseline.mjs
       - name: Verify all seven durations, actual failure and real breakout
         run: |
           node --check sentinel-trading-lab/agent/src/core/observed-level-contest-risk.mjs
