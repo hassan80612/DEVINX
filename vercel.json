@@ -61,5 +61,10 @@
         "action": "deny"
       }
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "audit/sentinel-entry-outcomes-20261024": false
+    }
+  }
 }
