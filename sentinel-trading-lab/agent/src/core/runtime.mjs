@@ -1121,6 +1121,13 @@ export class DemoTradingRuntime{
           resistance:levels.nearestResistance?{level:levels.nearestResistance.level,
             touches:levels.nearestResistance.touches}:null,
           levelReaction:levels.reaction?.kind??null,
+          levelExpiryProof:levels.reactionProof?{
+            confirmed:levels.reactionProof.confirmed===true,
+            reason:levels.reactionProof.reason??null,
+            durationMs:Number(levels.reactionProof.durationMs)||null,
+            moves:Array.isArray(levels.reactionProof.moves)?
+              levels.reactionProof.moves.slice(0,3).map(Number):null
+          }:null,
           observedNetMove:original66.observedNetMove??null,
           observedImpulse:original66.observedImpulse??null,
           noise:original66.noise??null,alignedBars:original66.alignedBars??null,
