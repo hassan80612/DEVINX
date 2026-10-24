@@ -16,22 +16,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Syntax
+      - name: Recover exact existing 13.9.106 market-base code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27
+          git show 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27:sentinel-trading-lab/agent/src/core/historical-price-structure.mjs > sentinel-trading-lab/agent/src/core/historical-price-structure.baseline.mjs
+      - name: Syntax check
         run: |
           node --check sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
           node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
           node --check sentinel-trading-lab/agent/src/core/runtime.mjs
           node --check sentinel-trading-lab/agent/worker/trade-audit.mjs
-      - name: Test expiry proof on all six durations
-        run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
-      - name: Test regressions of broker-verified structure and base
+      - name: Six-duration reaction tests and baseline CPU equivalence
+        run: |
+          node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs tests/sentinel-139107-price-history-cpu-equivalence.test.mjs
+      - name: Regression test actual one-shot expiry, 30s historical turns and martingale
         run: |
           node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-trade-audit-20261024.test.mjs
-      - name: Audit changed file whitelist
+      - name: Verify broker executor, balance, expiry, stops, UI and database remain intact
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags origin 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27
           git diff --name-only 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' | grep -v -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' -e '^sentinel-trading-lab/agent/src/core/runtime.mjs$' -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs$' > /tmp/unsafe || true
           if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          echo 'No changes to broker, stops, martingale, UI or database.'
+          echo 'No broker execution, martingale, stop, UI or database change.'
