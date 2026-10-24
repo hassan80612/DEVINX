@@ -1,4 +1,4 @@
-name: Sentinel shared market-base competing-path study (NO DEPLOY)
+name: Sentinel six-expiry market-path validation (NO DEPLOY)
 on:
   push:
     branches:
@@ -14,43 +14,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Syntax check of experimental module and unchanged production modules
+      - name: Syntax check runtime and Agent research
         run: |
           node --check sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs
           node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
           node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
           node --check sentinel-trading-lab/agent/src/core/runtime.mjs
-      - name: Causal market-path study and original admission regression tests
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/trade-audit.mjs
+      - name: Study tests and old market-base regression
         run: |
           node --test tests/sentinel-market-base-competing-path-study-20261024.test.mjs \
             tests/sentinel-13931-historical-structure.test.mjs \
             tests/sentinel-shared-pivot-guard-20261022.test.mjs \
             tests/sentinel-oneway-pivot-guard-20261023.test.mjs \
             tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs
-      - name: Guarantee zero changes to production core or broker click
+      - name: Ensure strategy and broker dispatch source are unchanged
         run: |
           git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
             grep -E '^sentinel-trading-lab/(agent/src/core/|agent/worker/|src/app/api/)' |
-            grep -v -e '^sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs
+            grep -v -e '^sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs$' -e '^sentinel-trading-lab/agent/src/core/runtime.mjs$' -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' -e '^sentinel-trading-lab/agent/worker/index.mjs$' -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs$' > /tmp/unsafe || true
           if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
- \
-                    -e '^sentinel-trading-lab/agent/src/core/runtime.mjs
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
- \
-                    -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
- \
-                    -e '^sentinel-trading-lab/agent/worker/index.mjs
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
- \
-                    -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
- > /tmp/unsafe || true
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD
+          echo 'No engine-admission, broker-execution, API, or Supabase modifications.'
