@@ -24,14 +24,14 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  if(!periods||!dir||!Number.isFinite(spot)||spot<=0||
     !(at>0&&clock>=at&&clock-at<=2500&&tol>0&&vol>0))
   return unknown('incomplete-causal-input');
- const isOneMinute=Number(durationMs)===60000;
- // A 60-second reversal must have a witnessed approach toward the level
- // BEFORE the 20-second directional departure. Without the approach,
- // a sustained continuation can be mislabeled a 'rejection'.
- // This only affects the 60s level-rejection proof: 5/15/30s, 2m and 5m
- // retain their prior decisions, and no broker/browser polling is introduced.
+ // The same CAUSAL structure applies to EVERY supported expiry: an observed
+ // approach toward a proven level in the opposing direction, followed by
+ // departure from that level. The windows scale to each selected duration,
+ // rather than importing 60-second thresholds into short trades.
+ // This must never query the broker, wait for extra data or change an
+ // independently qualified entry already produced by another market module.
  const span=periods[2]*1000,maxAge=Number(durationMs)<=15000?1500:2500;
- const scanSpan=isOneMinute?40000:span;
+ const scanSpan=span*2;
  // Quote history is already chronological in the local broker driver.
  // Inspect only the recent window backwards, without sorting/copying the
  // whole 6,000-tick tape on every candidate (would slow the chart).
@@ -60,21 +60,23 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  if(diffs.length<3)return unknown('too-few-changes');
  const tick=Math.max(median(diffs),spot*1e-8);
  const moves=anchors.map(x=>dir*(spot-x.price));
- // A valid turn must first approach support/resistance in the opposite
- // direction and then depart. Check two independent, chronological 20s
- // segments ending at the decision; never use future candles.
- let approachMove=null,approachVerified=true;
- if(isOneMinute){
-  const past=point(rows,at-40000,maxAge),turnStart=anchors[2];
-  const approach=rows.filter(x=>x.ts>=at-40000&&x.ts<=at-20000);
-  approachVerified=!!past&&!!turnStart&&approach.length>=5&&
-   approach.every((q,i)=>i===0||q.ts-approach[i-1].ts<=3500);
-  if(approachVerified){
-   approachMove=dir*(turnStart.price-past.price);
-   // Two normal observed ticks or 35% of a confirmed level's
-   // width is required to evidence the PREVIOUS opposing movement.
-   approachVerified=approachMove<=-Math.max(tick*2,tol*.35);
-  }
+ // Price movement in the last holding-aware segment means very little
+ // without a witnessed opposing approach before the turn. The candidate
+ // must show BOTH legs using already received chronological quotes.
+ const startAt=at-scanSpan,middleAt=at-span;
+ const past=point(rows,startAt,maxAge),turnStart=anchors[2];
+ const approach=rows.filter(x=>x.ts>=startAt&&x.ts<=middleAt);
+ let approachMove=null;
+ const minimumApproachSamples=Number(durationMs)<=5000?2:
+   Number(durationMs)<=15000?3:5;
+ const maximumGap=Number(durationMs)<=15000?1700:3500;
+ let approachVerified=!!past&&!!turnStart&&
+  approach.length>=minimumApproachSamples&&
+  approach.every((q,i)=>i===0||q.ts-approach[i-1].ts<=maximumGap);
+ if(approachVerified){
+  approachMove=dir*(turnStart.price-past.price);
+  const required=Math.max(tick*Math.min(2,span/1000),tol*.35*Math.min(1,span/10000));
+  approachVerified=approachMove<=-required;
  }
  const zLevel=Number(zone?.level);
  const zoneConfirmed=Number(zone?.confirmedPivots)>0||
@@ -103,7 +105,7 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
    !extended?'medium-path-not-supporting':
    !sustained?'holding-path-not-supporting':'prior-opposing-approach-not-confirmed',
   durationMs:Number(durationMs),windows:periods,moves,
-  // Only a scalar, no extra broker quote collection or stored history.
+  // Only scalar evidence; no extra browser work, credentials or quote logging.
   priorApproachMove:approachMove,approachVerified,
   provenLevel:zoneConfirmed,levelDeparture,
   // Absolute units and age retained for per-entry research, not win probability.
