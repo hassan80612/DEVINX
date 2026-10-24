@@ -18,12 +18,12 @@ test('all six expiration windows can validate an actually sustained level depart
  for(const d of D){
   const hold=d/1000,seconds=Math.max(hold,90),ticks=path(seconds,(i,n)=>99.8+i*.012);
   const a=proveLevelRejectionAtExpiry(args(ticks,d));
-  assert.equal(a.confirmed,d!==60000,JSON.stringify({d,a}));
+  assert.equal(a.confirmed,false,JSON.stringify({d,a}));
   const puts=ticks.map(x=>({...x,price:200-x.price}));
   const b=proveLevelRejectionAtExpiry(args(puts,d,'PUT',{
    zone:{level:100.2,confirmedPivots:2,independentRejections:0}
   }));
-  assert.equal(b.confirmed,d!==60000,JSON.stringify({d,b}));
+  assert.equal(b.confirmed,false,JSON.stringify({d,b}));
  }
 });
 test('short 2-6s bounce in longer descending market is never sold as a sustained reversal',()=>{
@@ -152,4 +152,55 @@ test('reversal data is causal: future arrival and gaps in the prior approach rej
   level:100,confirmedPivots:2,independentRejections:1
  }}));
  assert.equal(future.confirmed,false);
+});
+
+test('all six supported expiries recognize a complete prior counter-move and a sustained historical reversal',()=>{
+ const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ for(const d of D){
+  const w=MAX_WINDOW[d],n=Math.max(90,w*2+12),turn=n-w;
+  const slope=w<=7?.045:w<=20?.02:.012;
+  const q=path(n,i=>99.8+Math.abs(i-turn)*slope);
+  const call=proveLevelRejectionAtExpiry(args(q,d,'CALL',{zone:{
+   level:99.8,confirmedPivots:2,independentRejections:2
+  }}));
+  assert.equal(call.confirmed,true,JSON.stringify({d,call}));
+  assert.ok(call.priorApproachMove<0,JSON.stringify({d,call}));
+  const reversed=q.map(x=>({...x,price:200-x.price}));
+  const put=proveLevelRejectionAtExpiry(args(reversed,d,'PUT',{zone:{
+   level:100.2,confirmedPivots:2,independentRejections:2
+  }}));
+  assert.equal(put.confirmed,true,JSON.stringify({d,put}));
+ }
+});
+test('all six expiries distinguish a one-direction trend from an actual reversal',()=>{
+ const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ for(const d of D){
+  const w=MAX_WINDOW[d],n=Math.max(90,w*2+12);
+  const rate=w<=7?.045:w<=20?.02:.012;
+  const q=path(n,i=>99.8+i*rate);
+  const proof=proveLevelRejectionAtExpiry(args(q,d,'CALL',{
+   zone:{level:99.8,confirmedPivots:2,independentRejections:2}
+  }));
+  assert.equal(proof.confirmed,false,JSON.stringify({d,proof}));
+  assert.equal(proof.reason,'prior-opposing-approach-not-confirmed');
+ }
+});
+test('all six expiries reject late or missing observed prices in the pre-reversal leg',()=>{
+ const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ for(const d of D){
+  const w=MAX_WINDOW[d],n=Math.max(90,w*2+12),turn=n-w;
+  const rate=w<=7?.045:w<=20?.02:.012;
+  const q=path(n,i=>99.8+Math.abs(i-turn)*rate);
+  const missed=q.filter(x=>!(x.ts>=NOW-w*1800&&x.ts<NOW-w*1400));
+  const proof=proveLevelRejectionAtExpiry(args(missed,d,'CALL',{
+   zone:{level:99.8,confirmedPivots:2,independentRejections:2}
+  }));
+  if(d>=15000)assert.equal(proof.confirmed,false,JSON.stringify({d,proof}));
+  const late=q.map(x=>x.ts>=NOW-2*w*1000&&x.ts<=NOW-w*1000?
+   {...x,receivedAt:NOW+5000}:x);
+  const p2=proveLevelRejectionAtExpiry(args(late,d,'CALL',{
+   zone:{level:99.8,confirmedPivots:2,independentRejections:2}
+  }));
+  assert.equal(p2.confirmed,false,JSON.stringify({d,p2}));
+ }
 });
