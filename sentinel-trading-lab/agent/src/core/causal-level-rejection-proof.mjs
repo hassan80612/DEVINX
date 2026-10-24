@@ -25,11 +25,22 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
     !(at>0&&clock>=at&&clock-at<=2500&&tol>0&&vol>0))
   return unknown('incomplete-causal-input');
  const span=periods[2]*1000,maxAge=Number(durationMs)<=15000?1500:2500;
- const rows=(Array.isArray(quoteHistory)?quoteHistory:[]).filter(x=>
-   Number(x?.ts)>=at-span-maxAge&&Number(x?.ts)<=at&&
-   Number(x?.receivedAt??x.ts)<=clock&&Number(x?.price)>0
- ).map(x=>({ts:Number(x.ts),price:Number(x.price)}))
-  .sort((a,b)=>a.ts-b.ts);
+ // Quote history is already chronological in the local broker driver.
+ // Inspect only the recent window backwards, without sorting/copying the
+ // whole 6,000-tick tape on every candidate (would slow the chart).
+ const source=Array.isArray(quoteHistory)?quoteHistory:[];
+ const rows=[];let lastTimestamp=Infinity;
+ for(let i=source.length-1;i>=0;i--){
+  const x=source[i],ts=Number(x?.ts);
+  if(ts<at-span-maxAge)break;
+  if(!Number.isFinite(ts)||ts>lastTimestamp)
+    return unknown('unordered-quote-history');
+  lastTimestamp=ts;
+  const received=Number(x?.receivedAt??ts),p=Number(x?.price);
+  if(ts<=at&&received<=clock&&p>0&&Number.isFinite(p))
+   rows.push({ts,price:p});
+ }
+ rows.reverse();
  if(rows.at(-1)?.ts!==at||rows.at(-1)?.price!==spot)
   return unknown('unverified-last-quote');
  const anchors=periods.map(s=>point(rows,at-s*1000,maxAge));
