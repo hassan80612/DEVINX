@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {compareMarketPaths} from '../sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs';
+import {compareMarketPaths,EXPIRY_PATH_WINDOWS} from '../sentinel-trading-lab/agent/src/core/competing-market-path-study.mjs';
 const T=1800000000000;
 const stream=(fn,n=61)=>Array.from({length:n},(_,i)=>({
  ts:T-(n-1-i)*1000,receivedAt:T-(n-1-i)*1000,price:fn(i)}));
@@ -59,5 +59,57 @@ test('study remains entirely outside the live signal executor and original share
  for(const file of ['agent/src/core/now-opportunity-engine.mjs','agent/src/core/runtime.mjs','agent/worker/signal-executor.mjs']){
   const content=readFileSync(new URL('../sentinel-trading-lab/'+file,import.meta.url),'utf8');
   assert.doesNotMatch(content,/competing-market-path-study|compareMarketPaths/);
+ }
+});
+
+const EXPIRIES=[5000,15000,30000,60000,120000,300000];
+test('all six expiries use their own causal windows; 5s never demands 60s and 5m requires 300s',()=>{
+ assert.deepEqual(Object.keys(EXPIRY_PATH_WINDOWS).map(Number),EXPIRIES);
+ for(const expiry of EXPIRIES){
+  const holding=expiry/1000,q=stream(i=>100+i*.01,holding+1);
+  const verdict=compareMarketPaths(args(q,{durationMs:expiry,
+    support:{level:98},resistance:{level:q.at(-1).price+2}}));
+  assert.equal(verdict.ready,true,JSON.stringify({expiry,verdict}));
+  assert.equal(verdict.hypothesisSide,'CALL');
+  assert.equal(verdict.horizons.at(-1),holding);
+  assert.equal(verdict.scenario,'CONFIRMED_CONTINUATION');
+ }
+});
+test('no expiry can use future, absent or stale quotes to validate a 5m trend',()=>{
+ for(const expiry of EXPIRIES){
+  const seconds=expiry/1000,q=stream(i=>100+i*.01,seconds+1);
+  const opts={durationMs:expiry,resistance:{level:200},support:{level:50}};
+  const missing=q.filter(x=>x.ts>=T-1000*(seconds-1));
+  assert.equal(compareMarketPaths(args(missing,opts)).ready,false);
+  const tampered=q.map(x=>({...x,receivedAt:x.ts>=T-1000*seconds/2?T+1000:x.receivedAt}));
+  assert.equal(compareMarketPaths(args(tampered,opts)).ready,false);
+ }
+});
+test('confirm breakout instead of mistaking a strong level departure for reversal, all six durations',()=>{
+ for(const expiry of EXPIRIES){
+  const seconds=expiry/1000,q=stream(i=>100+i*.01,seconds+1),spot=q.at(-1).price;
+  const x=compareMarketPaths(args(q,{durationMs:expiry,
+   resistance:{level:spot+2},support:{level:spot-2},
+   reaction:{kind:'breakout',side:'CALL',zone:{level:spot-.02,touches:3},
+    zoneTolerance:.02}}));
+  assert.equal(x.scenario,'CONFIRMED_BREAKOUT',JSON.stringify({expiry,x}));
+  assert.equal(x.hypothesisSide,'CALL');
+ }
+});
+test('unverified level touch cannot be treated as confirmed breakout',()=>{
+ const q=stream(i=>100+i*.02,121);
+ const x=compareMarketPaths(args(q,{durationMs:120000,
+  resistance:{level:105},support:{level:95},
+  reaction:{kind:'breakout',side:'PUT',zone:{level:102,touches:1},zoneTolerance:.04}}));
+ assert.equal(x.scenario,'CONFIRMED_CONTINUATION');
+ assert.equal(x.hypothesisSide,'CALL');
+});
+test('no expiry invents an outcome or predicts a win rate',()=>{
+ for(const expiry of EXPIRIES){
+  const sec=expiry/1000,q=stream(i=>100+i*.01,sec+1);
+  const x=compareMarketPaths(args(q,{durationMs:expiry,
+   support:{level:90},resistance:{level:120}}));
+  for(const key of ['winRate','correct','settlement','payout','brokerOutcome'])
+   assert.equal(Object.hasOwn(x,key),false);
  }
 });
