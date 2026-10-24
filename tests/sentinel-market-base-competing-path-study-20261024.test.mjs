@@ -55,11 +55,16 @@ test('sparse, gapped or stale source data never gets conflated with flat markets
  assert.equal(compareMarketPaths(args(callTrend.filter(p=>p.ts<T-18000||p.ts>T-10000))).ready,false);
  assert.equal(compareMarketPaths(args(callTrend,{now:T+3000})).reason,'stale-or-invalid-market');
 });
-test('study remains entirely outside the live signal executor and original shared market base',()=>{
- for(const file of ['agent/src/core/now-opportunity-engine.mjs','agent/src/core/runtime.mjs','agent/worker/signal-executor.mjs']){
+test('no changes to entry eligibility; shadow runs only after broker pulse',()=>{
+ for(const file of ['agent/src/core/now-opportunity-engine.mjs','agent/worker/signal-executor.mjs']){
   const content=readFileSync(new URL('../sentinel-trading-lab/'+file,import.meta.url),'utf8');
   assert.doesNotMatch(content,/competing-market-path-study|compareMarketPaths/);
  }
+ const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
+ const click=runtime.indexOf('this.onNowOpportunity(anchor,');
+ const shadow=runtime.indexOf('const verdict=compareMarketPaths(hypothesisInput);');
+ assert.ok(click>0&&shadow>click);
+ assert.match(runtime.slice(click,shadow),/setImmediate\(\(\)=>/);
 });
 
 const EXPIRIES=[5000,15000,30000,60000,120000,300000];
@@ -112,4 +117,25 @@ test('no expiry invents an outcome or predicts a win rate',()=>{
   for(const key of ['winRate','correct','settlement','payout','brokerOutcome'])
    assert.equal(Object.hasOwn(x,key),false);
  }
+});
+
+test('the audit compares six horizons without altering confirmed broker outcomes',async()=>{
+ const {summarizeTradeAudit}=await import('../sentinel-trading-lab/agent/worker/trade-audit.mjs');
+ const batch='iq_option|ASSET|automatic|5000|1800000000000',provider='iq_option';
+ const events=[
+  {type:'trade_decision',batchId:batch,provider,asset:'ASSET',engine:'automatic',directionMode:'automatic',
+   side:'CALL',durationMs:5000,independent:false,martingaleLevel:0,clickCount:1,ts:T,
+   structure:{regime:'trend',entryKind:'continuation'}},
+  {type:'market_path_hypothesis',batchId:batch,provider,scenario:'CONFIRMED_CONTINUATION',
+   hypothesisSide:'CALL',impulseState:'ACCELERATING'},
+  {type:'broker_accepted',localId:batch+'|click-1',orderId:'broker-1',provider},
+  {type:'broker_settlement',orderId:'broker-1',provider,netPnl:0.88,result:'win'}
+ ];
+ const r=summarizeTradeAudit(events,{minSamples:1});
+ assert.equal(r.matched,1);assert.equal(r.analystFirstClickSettlements,1);
+ assert.equal(r.byPathScenario[0].key,'CONFIRMED_CONTINUATION');
+ assert.equal(r.byPathScenario[0].wins,1);
+ assert.equal(r.byPathImpulse[0].key,'ACCELERATING');
+ assert.equal(r.byPathAgreement[0].key,'agrees');
+ assert.equal(r.pathDiagnostics,1);
 });
