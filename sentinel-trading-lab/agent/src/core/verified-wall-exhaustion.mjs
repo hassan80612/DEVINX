@@ -12,8 +12,14 @@ const CONFIRMED_SETUPS=new Set([
 export function verifiedWallExhaustionRisk({
  candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price
 }={}){
+ const reason=String(candidate?.reason||'');
+ // The prior exception allowed every verified historical breakout/rejection
+ // to BYPASS the stall-at-confirmed-wall guard, even after the move ran out
+ // of room. Check ONLY those two provisional market-entry labels here;
+ // retain all other protected, confirmed structure-change/retest setups.
+ const lateChaseSetup=reason==='historical-level-rejection'||reason==='historical-level-breakout';
  if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side)||
-   CONFIRMED_SETUPS.has(String(candidate.reason||'')))return null;
+   (CONFIRMED_SETUPS.has(reason)&&!lateChaseSetup))return null;
  const ts=validated(quoteAt),clock=validated(now),spot=validated(price);
  if(!(finitePositive(spot)&&ts>0&&clock>=ts&&clock-ts<=1450&&
    Number(candidate.observedAt)===ts&&Number(candidate.entryPrice)===spot))return null;
@@ -36,26 +42,39 @@ export function verifiedWallExhaustionRisk({
  const barrier=barriers[0];if(!barrier)return null;
  // No future observations and no waiting for missing prices. The current
  // quote must match the authenticated observation of the market base.
- const observed=(target,slack=1600)=>{
-  let last=-Infinity,out=null;
-  for(const q of quoteHistory){
-   const at=validated(q?.ts),received=validated(q?.receivedAt??q?.ts);
-   const p=validated(q?.price);
-   if(at<=target&&target-at<=slack&&at>last&&at<=ts&&received<=clock&&finitePositive(p)){
-    last=at;out=p;
-   }
-  }
-  return out;
- };
- if(observed(ts,0)!==spot)return null;
- const start=observed(ts-7000),middle=observed(ts-3000);
- if(start===null||middle===null)return null;
+ // One bounded reverse pass, not three complete 6,000-tick scans per
+ // candidate. Broker history is chronological: stop after the last ~9 s.
+ // An out-of-order or unreceived feed NEVER authorizes a veto.
+ const targets=[ts,ts-7000,ts-3000],slacks=[0,1600,1600],values=[null,null,null];
+ let previousTime=Infinity;
+ for(let i=quoteHistory.length-1;i>=0;i--){
+  const q=quoteHistory[i],at=validated(q?.ts);
+  if(!Number.isFinite(at)||at>previousTime)return null;
+  if(at<ts-8600)break;
+  previousTime=at;
+  const received=validated(q?.receivedAt??q?.ts),p=validated(q?.price);
+  if(at>ts||received>clock||!finitePositive(p))continue;
+  for(let j=0;j<3;j++)if(values[j]===null&&at<=targets[j]&&targets[j]-at<=slacks[j])
+   values[j]=p;
+ }
+ if(values[0]!==spot||values[1]===null||values[2]===null)return null;
+ const start=values[1],middle=values[2];
  const initial=sign*(middle-start),final=sign*(spot-middle);
  // The trend must have actually approached the wall but visibly slowed
  // BEFORE the order. Fast, strong continuation remains permitted.
- if(!(initial>=tolerance*.8&&sign*(spot-start)>tolerance*.4&&
+ const travelled=sign*(spot-start);
+ if(!(initial>=tolerance*.8&&travelled>tolerance*.4&&
    final<=initial*.2))return null;
- return {kind:'verified-level-fading-approach',
+ if(lateChaseSetup){
+  // Price ALREADY travelled substantially more than the remaining
+  // confirmed room and lost impulse near a directional, independently
+  // tested barrier. Distance alone NEVER cancels a qualified entry.
+  // Keep real strong continuations: an accelerating final leg passes.
+  const room=Math.max(0,side==='CALL'?barrier.low-spot:spot-barrier.high);
+  if(!(travelled>=Math.max(tolerance*1.25,room*2.25)))return null;
+ }
+ return {kind:lateChaseSetup?'verified-historical-late-entry-exhaustion':
+     'verified-level-fading-approach',
    level:barrier.level,confirmedPivots:barrier.confirmedPivots,
    independentRejections:barrier.independentRejections};
 }
