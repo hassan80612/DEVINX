@@ -67,7 +67,8 @@
       "audit/sentinel-entry-outcomes-20261024": false,
       "release/sentinel-139103-trade-audit-candidate-20261024": false,
       "fix/sentinel-139104-evidence-provenance-20261024": false,
-      "fix/sentinel-139106-causal-range-cpu-20261024": false
+      "fix/sentinel-139106-causal-range-cpu-20261024": false,
+      "release/sentinel-139106-causal-chart-20261024": false
     }
   }
 }
