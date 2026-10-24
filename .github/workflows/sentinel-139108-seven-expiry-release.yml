@@ -1,0 +1,77 @@
+name: Sentinel 13.9.108 seven-expiry Windows candidate NO DEPLOY
+on:
+  push:
+    branches:
+      - release/sentinel-139108-all-expiry-approach-20261024
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-139108-windows-candidate
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Syntax check every Agent source module
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Test real structural short turns versus seven-expiry trend traps
+        run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
+      - name: Verify historical pivots, trend, cross-expiry, broker, stops and martingale
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-13983-surgical-balance-expiry-stopwin-horizon.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
+      - name: Verify release identity and native broker expiry
+        run: |
+          node --test tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Verify broker driver, click, balance, card, stops and database untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
+          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/core/|agent/worker/|src/app/api/|src/components/))' | grep -v -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo 'Only two market decision modules changed since live 13.9.107.'
+      - name: Install dependencies for full site build
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build production site and exact Windows Agent installer
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Verify Agent version, payload hash, ZIP and EXE consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          downloads=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((downloads/'agent-update.json').read_text())
+          assert release['version']=='13.9.108'
+          assert release['build']=='13.9.108-seven-expiry-causal-reversal'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version']
+          assert manifest['build']==release['build']
+          payload=(downloads/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(downloads/'Sentinel-Agent-13.9.108.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1000000
+          assert payload in exe
+          assert exe==(downloads/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(downloads/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'):continue
+              assert z.read(name)==(agent/name).read_bytes(),name
+          print('CANDIDATE VERIFIED',release['version'],len(exe),len(payload))
+          PY
