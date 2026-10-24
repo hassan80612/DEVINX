@@ -1,0 +1,38 @@
+name: Sentinel 13.9.109 late entry evidence NO DEPLOY
+on:
+  push:
+    branches:
+      - fix/sentinel-139109-no-late-chase-20261024
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Recover exact currently published 13.9.108 wall guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c
+          git show 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c:sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs > sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.baseline.mjs
+      - name: Syntax and causal market regression
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs
+          node --test tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-139109-late-chase-cpu-golden.test.mjs
+      - name: Test all expiries pivots and saved one-click broker protections
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-139107-causal-rejection-six-expiry.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
+      - name: Verify narrow source-code scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v '^sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo 'No browser, executor, expiry, stop, martingale, mobile or database changes.'
