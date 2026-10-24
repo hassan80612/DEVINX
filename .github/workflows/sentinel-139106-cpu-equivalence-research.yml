@@ -14,41 +14,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Fetch original 13.9.104 decision engine as golden master
+      - name: Fetch 13.9.104 baseline
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
           git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs > sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
           git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs > sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.baseline.mjs
-      - name: Syntax check candidate
+      - name: Syntax and CPU replay comparison
         run: |
           node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
           node --check sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
-      - name: CPU equivalence and real replay comparison
-        run: |
+          node --check sentinel-trading-lab/agent/worker/index.mjs
           node --test tests/sentinel-139106-causal-cpu-equivalence.test.mjs
-      - name: Six-expiry trend-review and legacy regression
+      - name: Direction regression and broker chart recovery
         run: |
           node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-139106-broker-maintenance-cadence.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-short-expiry-and-broker-performance-13919.test.mjs
-      - name: Guard broker executor, martingale, UI, risk, database and API
+      - name: Verify no broker click, stop, MG, API, database or card modification
         shell: bash
         run: |
           set -euo pipefail
-          git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
-            grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' |
-            grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU, strict rejection review and low-impact broker maintenance changed.'
- -e '^sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- -e '^sentinel-trading-lab/agent/worker/index.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- -e '^sentinel-trading-lab/agent/worker/broker-maintenance-cadence.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- > /tmp/unexpected || true
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs|sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs|sentinel-trading-lab/agent/worker/index.mjs|sentinel-trading-lab/agent/worker/broker-maintenance-cadence.mjs) ;;
+              sentinel-trading-lab/agent/*|sentinel-trading-lab/src/app/api/*|sentinel-trading-lab/src/components/*) echo "UNEXPECTED $path"; bad=1 ;;
+            esac
+          done < <(git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD)
+          test "$bad" -eq 0
+          echo 'Only shared market base and healthy-feed chart maintenance have changed.'
