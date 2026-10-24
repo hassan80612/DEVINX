@@ -56,10 +56,15 @@ export function compareMarketPaths({
  const typical=Math.max(median(moves)||0,spot*1e-8);
  if(!(typical>0))return neutral('flat-feed',{windows});
  const [a,b,c,d]=horizons.map(x=>windows[x]);
+ // Scale the evidence to the actual number of observed seconds.
+ // A 1-second path on a 5s expiry cannot contain 1.5 seconds of travel.
+ const strength=[1.5,3,5,8].map((v,i)=>Math.min(v,horizons[i]));
  const shortAgree=a.side&&a.side===b.side&&
-  Math.abs(a.move)>=typical*1.5&&Math.abs(b.move)>=typical*3;
+  Math.abs(a.move)>=typical*strength[0]-.000000000001&&
+  Math.abs(b.move)>=typical*strength[1]-.000000000001;
  const longAgree=c.side&&c.side===d.side&&
-  Math.abs(c.move)>=typical*5&&Math.abs(d.move)>=typical*8;
+  Math.abs(c.move)>=typical*strength[2]-.000000000001&&
+  Math.abs(d.move)>=typical*strength[3]-.000000000001;
  const ahead=side=>{
   const level=side==='CALL'?Number(resistance?.level):Number(support?.level);
   if(!positive(level))return null;
