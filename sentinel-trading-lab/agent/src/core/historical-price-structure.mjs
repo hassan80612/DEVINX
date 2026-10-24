@@ -2,6 +2,7 @@
 // Older levels remain spatial evidence; they are neither guaranteed barriers
 // nor a reason to wait for 100 new candles. No broker calls or clock lookup.
 import {buildCandleLevelMap} from './candle-level-map.mjs';
+import {proveLevelRejectionAtExpiry} from './causal-level-rejection-proof.mjs';
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
 const epoch=x=>{const n=Number(x);return n>0?(n<1e12?n*1000:n):0;};
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
@@ -75,7 +76,7 @@ function priceBefore(rows,at){
   return at-rows[i].ts<=2500?rows[i].price:null;
  return null;
 }
-export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
+export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
  if(!candidate||!structure?.candles)return candidate;
  const spot=Number(price),ts=Number(quoteAt);
  if(!(positive(spot)&&ts>0&&ts<=now&&now-ts<=1450))return candidate;
@@ -97,7 +98,10 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   z.touches>=2||z.pivots>0:z.confirmedPivots>0||z.independentRejections>=2);
  const below=relevant.filter(z=>z.level<=spot).sort((a,b)=>b.level-a.level);
  const above=relevant.filter(z=>z.level>=spot).sort((a,b)=>a.level-b.level);
- const describe=z=>z?{level:z.level,touches:z.touches,oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
+ const describe=z=>z?{level:z.level,touches:z.touches,
+  confirmedPivots:z.confirmedPivots??z.pivots??0,
+  independentRejections:z.independentRejections??0,
+  oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
  evidence.nearestSupport=describe(below[0]);evidence.nearestResistance=describe(above[0]);
  const reactions=[];
  for(const z of relevant){
@@ -124,6 +128,18 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  const reaction=reactions[0];
  if(reaction){
   evidence.reaction=reaction;
+  // A brief observed level bounce is a CANDIDATE, not evidence that the
+  // holding-period outcome follows it. The selected 5s–5m expiry must
+  // have already-observed sustained follow-through from a verified level.
+  // Independently accepted continuation/reversal setups are preserved.
+  if(reaction.kind==='rejection'){
+   const proof=proveLevelRejectionAtExpiry({quoteHistory,quoteAt:ts,now,price:spot,
+     durationMs,side:reaction.side,zone:reaction.zone,
+     tolerance:structure.tolerance,atr:structure.atr});
+   evidence.reactionProof=proof;
+   if(!proof.confirmed)
+     return {...candidate,priceStructure:evidence};
+  }
   // Equally strong opposing levels are unresolved, not two simultaneous calls.
   const opposed=reactions.find(x=>x.side!==reaction.side&&x.weight>=reaction.weight*.8);
   if(opposed)return {...candidate,ready:false,side:null,reason:'historical-level-reactions-conflict',priceStructure:evidence};
