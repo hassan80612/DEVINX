@@ -1,0 +1,51 @@
+name: Sentinel trade audit isolated candidate - no deployment
+on:
+  push:
+    branches:
+      - audit/sentinel-entry-outcomes-20261024
+    paths:
+      - 'sentinel-trading-lab/agent/worker/**'
+      - 'tests/sentinel-trade-audit-20261024.test.mjs'
+      - '.github/workflows/sentinel-trade-audit-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-trade-audit-isolated
+  cancel-in-progress: true
+jobs:
+  verify-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73c9e9a1a3d94e5a # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Check all Agent JavaScript modules parse
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Verify audit and existing broker/timing/regression behavior
+        run: |
+          node --test --test-concurrency=2 \
+            tests/sentinel-trade-audit-20261024.test.mjs \
+            tests/sentinel-13939-local-executor.test.mjs \
+            tests/sentinel-13944-mobile-bot.test.mjs \
+            tests/sentinel-13967-maintenance-never-delays-signals.test.mjs \
+            tests/sentinel-13983-surgical-balance-expiry-stopwin-horizon.test.mjs \
+            tests/sentinel-13985-broker-execution-ack-observer.test.mjs \
+            tests/sentinel-13990-final-entry-admission.test.mjs \
+            tests/sentinel-13999-native-expiry-keeper.test.mjs \
+            tests/sentinel-replay-compare-13415.test.mjs
+      - name: Assert no motor, stop or DB mutations in this candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='ded995828b2ee3b84131995b83bcba270058d787'
+          git fetch --no-tags --depth=1 origin "$base"
+          git diff --name-only "$base" HEAD > /tmp/changed-paths.txt
+          if grep -E '(^supabase/|^sentinel-trading-lab/(db|migrations|agent/src/core|src/app/api)/)' /tmp/changed-paths.txt; then
+            echo 'Unexpected DB, strategy, or API modification'; exit 1
+          fi
+          echo 'Strategy, Supabase and API sources unchanged.'
