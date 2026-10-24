@@ -57,9 +57,19 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
  if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
+ // Bucket real observed ticks once. Scanning the entire 135-second
+ // tape again for every 5-second bar was a quadratic hot path on each tick.
+ // Preserve the exact candle boundaries, ordering and evidence requirements.
+ const observedByBar=new Map();
+ for(const q of last){
+  if(q.ts<end-130000||q.ts>=end)continue;
+  const bin=Math.floor(q.ts/period)*period;
+  if(!observedByBar.has(bin))observedByBar.set(bin,[]);
+  observedByBar.get(bin).push(q);
+ }
  const closes=[];
  for(let t=end-130000;t<end;t+=period){
-  const part=last.filter(q=>q.ts>=t&&q.ts<t+period);
+  const part=observedByBar.get(t)||[];
   if(part.length<2||part[0].ts-t>3000||
     t+period-part.at(-1).ts>3500||
     part.some((q,i)=>i>0&&q.ts-part[i-1].ts>3500))continue;
