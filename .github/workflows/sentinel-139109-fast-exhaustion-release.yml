@@ -45,47 +45,9 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c
-          git diff --name-only 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/core/|agent/worker/|src/app/api/|src/components/))' | grep -v '^sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs > /tmp/unsafe || true
+          git diff --name-only 2b19a7c918fc51c3f72dabe1820bf1c91bc4d03c HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/core/|agent/worker/|src/app/api/|src/components/))' | grep -v -e '^sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs$' > /tmp/unsafe || true
           if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
           echo 'Only the bounded wall risk guard changed since live 13.9.108. Broker and renderer unchanged.'
-      - name: Install dependencies for full site build
-        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
-      - name: Build production site and exact Windows Agent installer
-        run: npm run build --prefix sentinel-trading-lab
-      - name: Verify Agent version, payload hash, ZIP and EXE consistency
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import hashlib,json,zipfile
-          from pathlib import Path
-          root=Path('sentinel-trading-lab')
-          agent=root/'agent'
-          downloads=root/'public/downloads'
-          release=json.loads((agent/'release.json').read_text())
-          manifest=json.loads((downloads/'agent-update.json').read_text())
-          assert release['version']=='13.9.109'
-          assert release['build']=='13.9.109-late-entry-check'
-          assert manifest['format']=='sentinel-agent-update-v1'
-          assert manifest['version']==release['version']
-          assert manifest['build']==release['build']
-          payload=(downloads/'agent_payload_v88.zip').read_bytes()
-          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
-          exe=(downloads/'Sentinel-Agent-13.9.109.exe').read_bytes()
-          assert exe[:2]==b'MZ' and len(exe)>1000000
-          assert payload in exe
-          assert exe==(downloads/'Sentinel-Agent-Windows.exe').read_bytes()
-          with zipfile.ZipFile(downloads/'agent_payload_v88.zip') as z:
-            assert z.testzip() is None
-            assert json.loads(z.read('release.json'))==release
-            for name in z.namelist():
-              if name.endswith('/'):continue
-              assert z.read(name)==(agent/name).read_bytes(),name
-          print('CANDIDATE VERIFIED',release['version'],len(exe),len(payload))
-          PY
- > /tmp/unsafe || true
-          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
-          echo 'Only two market decision modules changed since live 13.9.107.'
       - name: Install dependencies for full site build
         run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
       - name: Build production site and exact Windows Agent installer
