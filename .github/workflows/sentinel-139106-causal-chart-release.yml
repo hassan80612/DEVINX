@@ -1,0 +1,91 @@
+name: Sentinel 13.9.106 causal market/chart Windows candidate NO PRODUCTION
+on:
+  push:
+    branches:
+      - release/sentinel-139106-causal-chart-20261024
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/package.json'
+      - 'tests/sentinel-139106-*.test.mjs'
+      - 'tests/sentinel-13992-all-expiry-trend-reversal.test.mjs'
+      - '.github/workflows/sentinel-139106-causal-chart-release.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-139106-windows-candidate
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Agent syntax and 13.9.104 control branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
+          git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs > sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
+      - name: Compare real recorded quotes and regressions with 13.9.104
+        run: |
+          node --test tests/sentinel-139106-causal-cpu-equivalence.test.mjs tests/sentinel-139106-broker-maintenance-cadence.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs
+      - name: Broker outcome audit and order safety
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Confirm broker click, risk, expiry keeper, API, database untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs|sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs|sentinel-trading-lab/agent/worker/index.mjs|sentinel-trading-lab/agent/worker/broker-maintenance-cadence.mjs|sentinel-trading-lab/agent/release.json|sentinel-trading-lab/agent/package.json|sentinel-trading-lab/agent/package-lock.json) ;;
+              sentinel-trading-lab/agent/*|sentinel-trading-lab/src/app/api/*|sentinel-trading-lab/src/components/*|sentinel-trading-lab/db/*|supabase/*) echo "UNEXPECTED $path"; bad=1 ;;
+            esac
+          done < <(git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD)
+          test "$bad" -eq 0
+      - name: Install isolated web dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build Next and Windows Agent without publishing
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Verify exact downloadable 13.9.106 installer and sha256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          downloads=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((downloads/'agent-update.json').read_text())
+          assert release['version']=='13.9.106'
+          assert release['build']=='13.9.106-causal-level-direction-chart-relief'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(downloads/'agent_payload_v88.zip').read_bytes()
+          assert manifest['zipSha256']==hashlib.sha256(payload).hexdigest()
+          exe=downloads/'Sentinel-Agent-13.9.106.exe'
+          content=exe.read_bytes()
+          assert content[:2]==b'MZ' and len(content)>1_000_000
+          assert payload in content
+          assert (downloads/'Sentinel-Agent-Windows.exe').read_bytes()==content
+          with zipfile.ZipFile(downloads/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'):continue
+              assert z.read(name)==(agent/name).read_bytes(),name
+          print('CANDIDATE VERIFIED',release['version'],len(content),
+                hashlib.sha256(content).hexdigest(),len(payload))
+          PY
