@@ -36,6 +36,15 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
    contextStrategy:short(proof?.contextStrategy,75),marketShape:short(proof?.marketShape,90),
    support:level(proof?.support),resistance:level(proof?.resistance),
    levelReaction:short(proof?.levelReaction,90),
+   // Exactly three non-sensitive market movements, present only if an actual
+   // fired trade inherited a verified same-tick horizon-reaction proof.
+   levelExpiryProof:proof?.levelExpiryProof?{
+    confirmed:proof.levelExpiryProof.confirmed===true,
+    reason:short(proof.levelExpiryProof.reason,90),
+    durationMs:numberOrNull(proof.levelExpiryProof.durationMs),
+    moves:Array.isArray(proof.levelExpiryProof.moves)?
+      proof.levelExpiryProof.moves.slice(0,3).map(numberOrNull):null
+   }:null,
    observedNetMove:numberOrNull(proof?.observedNetMove),
    observedImpulse:numberOrNull(proof?.observedImpulse),
    noise:numberOrNull(proof?.noise),alignedBars:numberOrNull(proof?.alignedBars),
