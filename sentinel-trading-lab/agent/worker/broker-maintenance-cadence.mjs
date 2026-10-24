@@ -6,6 +6,6 @@ export function brokerMaintenanceCadenceMs({state,now=Date.now()}={}){
  const live=state?.activeId!=null&&Number(state.lastQuoteAt)>0&&
    age>=0&&age<=2500&&state?.candles?.length>=50&&
    Number.isFinite(Number(state?.quote))&&Number(state.quote)>0&&
-   state?.balance!=null;
+   state?.balance!=null&&state?.candleIntegrity?.ok===true;
  return live?8000:2500;
 }
