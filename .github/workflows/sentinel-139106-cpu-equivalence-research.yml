@@ -36,6 +36,12 @@ jobs:
           set -euo pipefail
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
             grep -E '^sentinel-trading-lab/(agent/|src/app/api/)' |
-            grep -v '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs$' > /tmp/unexpected || true
+            grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
+          echo 'Only 5s range CPU path and expiry-trend review updated; broker execution/stops/MG/API untouched.'
+ -e '^sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
+          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
+          echo 'No broker execution/stop/martingale/API code changed.'
+ > /tmp/unexpected || true
           test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
           echo 'No broker execution/stop/martingale/API code changed.'
