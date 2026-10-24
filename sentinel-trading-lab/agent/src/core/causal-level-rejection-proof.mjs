@@ -47,9 +47,14 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
   Number(zone?.independentRejections)>=2;
  const levelDeparture=dir*(spot-zLevel);
  const roomNeeded=Math.max(tol*1.25,tick*3);
- const lastDirection=moves[0]>=Math.max(tick*2,tol*.25);
- const extended=moves[1]>=Math.max(tick*3,tol*.75);
- const sustained=moves[2]>=Math.max(tick*5,tol*1.2);
+ // Normalize required movement by AVAILABLE real seconds; a one-second
+ // window cannot travel two median one-second steps in a steady market.
+ const latest=walk.at(-2);
+ const lastStep=latest?dir*(spot-latest.price):0;
+ const lastDirection=lastStep>0&&
+  moves[0]>=Math.max(tick*Math.min(2,periods[0])-.000000001,tol*.18);
+ const extended=moves[1]>=Math.max(tick*Math.min(3,periods[1])-.000000001,tol*.65);
+ const sustained=moves[2]>=Math.max(tick*Math.min(5,periods[2])-.000000001,tol*.95);
  // Reject an incidental wick even at a historically strong level. Price has
  // to have MOVED away from it, not merely touched it at this instant.
  const validLevel=zoneConfirmed&&Number.isFinite(zLevel)&&
