@@ -1,0 +1,80 @@
+name: Sentinel 13.9.110 confirmed level contest Windows candidate
+on:
+  push:
+    branches:
+      - release/sentinel-139110-confirmed-levels-20261024
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-139110-release-check
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Load exact published 13.9.107 CPU golden source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
+          git show 36a7dcca579ff5da33b307c34c9467cfd2d16e44:sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.mjs > sentinel-trading-lab/agent/src/core/verified-wall-exhaustion.baseline.mjs
+      - name: Run new seven-duration breakout-versus-rejection and CPU checks
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/observed-level-contest-risk.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --test tests/sentinel-139110-level-contest-surgical.test.mjs
+      - name: Regression of directional market engine, stops, broker and performance
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-139109-late-chase-cpu-golden.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13931-selected-forecast-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Verify only two shared base core modules modified since live 13.9.109
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 4f23bd3fc69493b57bdd5af380eda4e83170495f
+          git diff --name-only 4f23bd3fc69493b57bdd5af380eda4e83170495f HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/|agent/worker/|src/app/api/|src/components/))' | grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs$' -e '^sentinel-trading-lab/agent/src/core/observed-level-contest-risk.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo 'Only final shared market admission guard changed: unchanged browser, bot, expiry, stops and martingale'
+      - name: Full site and Windows Agent build
+        run: |
+          npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+          npm run build --prefix sentinel-trading-lab
+      - name: Verify Windows installer, update manifest and exact payload bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          public=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((public/'agent-update.json').read_text())
+          assert release['version']=='13.9.110'
+          assert release['build']=='13.9.110-observed-level-contest'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version']
+          assert manifest['build']==release['build']
+          payload=(public/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(public/'Sentinel-Agent-13.9.110.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1000000 and payload in exe
+          assert exe==(public/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(public/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for path in z.namelist():
+              if path.endswith('/'):continue
+              assert z.read(path)==(agent/path).read_bytes(),path
+          print('WINDOWS RELEASE VERIFIED',release['version'],len(exe),len(payload))
+          PY
