@@ -43,7 +43,7 @@ const COPY={
     sentinelPrimary:"Conhecer o analista",
     sentinelLogin:"Já tenho acesso · Entrar",
     sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE",
-    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pagamento único · acesso permanente",sentinelPreview:"PRÉVIA ILUSTRATIVA",sentinelPreviewTitle:"PAINEL DE ANÁLISE",sentinelPreviewDetail:"Estrutura · tendência · cenários"
+    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pagamento único · 30 dias de acesso",sentinelPreview:"PRÉVIA ILUSTRATIVA",sentinelPreviewTitle:"PAINEL DE ANÁLISE",sentinelPreviewDetail:"Estrutura · tendência · cenários"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -79,7 +79,7 @@ const COPY={
     sentinelPrimary:"Explore Sentinel",
     sentinelLogin:"I have access · Sign in",
     sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS",
-    sentinelAccess:"ANALYST + BOT",sentinelCycle:"One-time purchase · permanent access",sentinelPreview:"ILLUSTRATIVE PREVIEW",sentinelPreviewTitle:"MARKET ANALYSIS",sentinelPreviewDetail:"Structure · trend · scenarios"
+    sentinelAccess:"ANALYST + BOT",sentinelCycle:"One-time payment · 30 days of access",sentinelPreview:"ILLUSTRATIVE PREVIEW",sentinelPreviewTitle:"MARKET ANALYSIS",sentinelPreviewDetail:"Structure · trend · scenarios"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -115,7 +115,7 @@ const COPY={
     sentinelPrimary:"Conocer Sentinel",
     sentinelLogin:"Ya tengo acceso · Entrar",
     sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS",
-    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pago único · acceso permanente",sentinelPreview:"VISTA ILUSTRATIVA",sentinelPreviewTitle:"ANÁLISIS DE MERCADO",sentinelPreviewDetail:"Estructura · tendencia · escenarios"
+    sentinelAccess:"ANALISTA + BOT",sentinelCycle:"Pago único · 30 días de acceso",sentinelPreview:"VISTA ILUSTRATIVA",sentinelPreviewTitle:"ANÁLISIS DE MERCADO",sentinelPreviewDetail:"Estructura · tendencia · escenarios"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -151,7 +151,7 @@ const COPY={
     sentinelPrimary:"Découvrir Sentinel",
     sentinelLogin:"J'ai un accès · Connexion",
     sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS",
-    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Paiement unique · accès permanent",sentinelPreview:"APERÇU ILLUSTRATIF",sentinelPreviewTitle:"ANALYSE DU MARCHÉ",sentinelPreviewDetail:"Structure · tendance · scénarios"
+    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Paiement unique · 30 jours d’accès",sentinelPreview:"APERÇU ILLUSTRATIF",sentinelPreviewTitle:"ANALYSE DU MARCHÉ",sentinelPreviewDetail:"Structure · tendance · scénarios"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -187,7 +187,7 @@ const COPY={
     sentinelPrimary:"Sentinel entdecken",
     sentinelLogin:"Zugang vorhanden · Anmelden",
     sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN",
-    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Einmalzahlung · dauerhafter Zugang",sentinelPreview:"BEISPIELANSICHT",sentinelPreviewTitle:"MARKTANALYSE",sentinelPreviewDetail:"Struktur · Trend · Szenarien"
+    sentinelAccess:"ANALYSE + BOT",sentinelCycle:"Einmalzahlung · 30 Tage Zugang",sentinelPreview:"BEISPIELANSICHT",sentinelPreviewTitle:"MARKTANALYSE",sentinelPreviewDetail:"Struktur · Trend · Szenarien"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -223,7 +223,7 @@ const COPY={
     sentinelPrimary:"تعرف على Sentinel",
     sentinelLogin:"لدي حساب · دخول",
     sentinelFeaturesTitle:"SENTINEL · المزايا",
-    sentinelAccess:"المحلل + البوت",sentinelCycle:"دفع مرة واحدة · وصول دائم",sentinelPreview:"عرض توضيحي",sentinelPreviewTitle:"تحليل السوق",sentinelPreviewDetail:"الهيكل · الاتجاه · السيناريوهات"
+    sentinelAccess:"المحلل + البوت",sentinelCycle:"دفعة واحدة · وصول لمدة 30 يوماً",sentinelPreview:"عرض توضيحي",sentinelPreviewTitle:"تحليل السوق",sentinelPreviewDetail:"الهيكل · الاتجاه · السيناريوهات"
   }
 } as const;
 
@@ -413,7 +413,7 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
           <div className={styles.sentinelOffer}>
             <div>
               <small>{c.sentinelAccess}</small>
-              <strong>{intl?'US$ 100':'R$ 549'}</strong>
+              <strong>{intl?'US$ 35':'R$ 170'}</strong>
             </div>
             <span>{c.sentinelCycle}</span>
           </div>
