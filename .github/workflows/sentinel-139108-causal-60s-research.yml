@@ -22,7 +22,7 @@ jobs:
           node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
       - name: Check six durations and both reversal directions
         run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
-      - name: Preservation: historical structure, 5s 15s 30s, breakout, 2m 5m and broker
+      - name: Preservation of historical structure, all unchanged expiries and broker
         run: |
           node --test --test-concurrency=1 tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
       - name: Verify single-source surgical scope
