@@ -87,7 +87,12 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  rows.reverse();
  if(rows.at(-1)?.ts!==at||rows.at(-1)?.price!==spot)
   return unknown('unverified-last-quote');
- const localTurn=provenLocalTurn({rows,at,spot,side,zone,tol,durationMs});
+ // The short local-pivot exception exists ONLY when the longer sampling
+ // history genuinely has not accumulated yet (e.g. immediately after an
+ // asset switch). If the frame exists but has gaps/late quotes, do not
+ // bypass its failed continuity checks through the short-window rule.
+ const fullHistoryAvailable=!!point(rows,at-scanSpan,maxAge);
+ const localTurn=!fullHistoryAvailable?provenLocalTurn({rows,at,spot,side,zone,tol,durationMs}):null;
  const anchors=periods.map(s=>point(rows,at-s*1000,maxAge));
  if(anchors.some(x=>!x))return localTurn||unknown('missing-past-horizon');
  const walk=rows.filter(x=>x.ts>=at-span);
