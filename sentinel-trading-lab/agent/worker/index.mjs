@@ -55,8 +55,8 @@ const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
  onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
-runtime.onNowOpportunity=anchor=>{
- try{executor.pulse(anchor);}
+runtime.onNowOpportunity=(anchor,evidence)=>{
+ try{executor.pulse(anchor,evidence);}
  catch(e){executor.message='Falha ao entregar sinal imediato: '+String(e?.message||e);}
 };
 // Balance-changed is already observed passively from the live broker.
