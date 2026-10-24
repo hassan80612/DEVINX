@@ -30,6 +30,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {compareMarketPaths} from './competing-market-path-study.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1131,6 +1132,28 @@ export class DemoTradingRuntime{
           probabilityCall:preliminary?.pCall??null,
           probabilityPut:preliminary?.pPut??null,
           probabilitySource:preliminary?.source??null
+        });
+      }
+      // Six-expiry directional study runs only AFTER the normal broker pulse.
+      // It cannot veto, invert, slow or duplicate a live CALL/PUT.
+      if(anchor?.entryReadyNow&&typeof this.onMarketPathAudit==='function'){
+        const levels=original66.priceStructure||{},capturedHistory=snap.quoteHistory||[];
+        const snapshotAt=now,quoteAt=Number(snap.quoteTs),price=Number(snap.price);
+        const hypothesisInput={
+          quoteHistory:capturedHistory,quoteAt,now:snapshotAt,price,
+          durationMs:Number(settings.orderDurationMs),
+          support:levels.nearestSupport??null,
+          resistance:levels.nearestResistance??null,
+          reaction:levels.reaction?{
+            kind:levels.reaction.kind,side:levels.reaction.side,
+            zone:levels.reaction.zone,zoneTolerance:levels.tolerance??null
+          }:null
+        };
+        setImmediate(()=>{
+          try{
+            const verdict=compareMarketPaths(hypothesisInput);
+            this.onMarketPathAudit(anchor,verdict);
+          }catch{}
         });
       }
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
