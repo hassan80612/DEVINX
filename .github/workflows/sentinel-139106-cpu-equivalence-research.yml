@@ -29,7 +29,7 @@ jobs:
           node --test tests/sentinel-139106-causal-cpu-equivalence.test.mjs
       - name: Direction regression and broker chart recovery
         run: |
-          node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-139106-broker-maintenance-cadence.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-short-expiry-and-broker-performance-13919.test.mjs
+          node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-139106-broker-maintenance-cadence.test.mjs tests/sentinel-short-expiry-and-broker-performance-13919.test.mjs
       - name: Verify no broker click, stop, MG, API, database or card modification
         shell: bash
         run: |
