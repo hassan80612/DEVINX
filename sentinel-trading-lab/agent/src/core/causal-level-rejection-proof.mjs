@@ -53,8 +53,9 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  const lastStep=latest?dir*(spot-latest.price):0;
  const lastDirection=lastStep>0&&
   moves[0]>=Math.max(tick*Math.min(2,periods[0])-.000000001,tol*.18);
- const extended=moves[1]>=Math.max(tick*Math.min(3,periods[1])-.000000001,tol*.65);
- const sustained=moves[2]>=Math.max(tick*Math.min(5,periods[2])-.000000001,tol*.95);
+ const expiryScale=Math.min(1,periods[2]/10);
+ const extended=moves[1]>=Math.max(tick*Math.min(3,periods[1])-.000000001,tol*.65*expiryScale);
+ const sustained=moves[2]>=Math.max(tick*Math.min(5,periods[2])-.000000001,tol*.95*expiryScale);
  // Reject an incidental wick even at a historically strong level. Price has
  // to have MOVED away from it, not merely touched it at this instant.
  const validLevel=zoneConfirmed&&Number.isFinite(zLevel)&&
