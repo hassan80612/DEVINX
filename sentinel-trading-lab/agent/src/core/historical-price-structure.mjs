@@ -132,7 +132,7 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   // holding-period outcome follows it. The selected 5s–5m expiry must
   // have already-observed sustained follow-through from a verified level.
   // Independently accepted continuation/reversal setups are preserved.
-  if(reaction.kind==='rejection'){
+  if(reaction.kind==='rejection'&&Number(durationMs)>=60000){
    const proof=proveLevelRejectionAtExpiry({quoteHistory,quoteAt:ts,now,price:spot,
      durationMs,side:reaction.side,zone:reaction.zone,
      tolerance:structure.tolerance,atr:structure.atr});
