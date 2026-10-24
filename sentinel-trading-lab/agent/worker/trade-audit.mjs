@@ -1,0 +1,88 @@
+// Passive, local-only decision and broker-settlement audit.
+// Whitelisted primitive evidence; never include credentials, balances or browser DOM.
+const numberOrNull=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x))?Number(x):null;
+const short=(x,max=90)=>x==null?null:String(x).slice(0,max);
+const keys=['micro','momentum','history','location','setup','reversal','acceleration','mtf'];
+export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,now=Date.now()}={}){
+ const a=context?.analysis||{},op=a.operationalSignal||{};
+ const seconds=Math.round(Number(signal?.durationMs||0)/1000);
+ const plan=a.entryPlanner?.horizons?.[String(seconds)]||{};
+ const families=plan.evidenceFamilies||{};
+ const evidence=Object.fromEntries(keys.map(k=>[k,numberOrNull(families[k]?.signal)]));
+ const research=op.entryResearch||{};
+ return {
+  type:'trade_decision',ts:now,provider:short(context?.provider,30),asset:short(context?.asset,45),
+  batchId:short(signal?.id,230),engine:short(context?.engine,90),
+  directionMode:short(mode,24),independent:signal?.independent===true,
+  side:signal?.side==='CALL'?'CALL':signal?.side==='PUT'?'PUT':null,
+  durationMs:numberOrNull(signal?.durationMs),signalAt:numberOrNull(signal?.at),
+  signalPrice:numberOrNull(signal?.entryPrice),snapshotQuote:numberOrNull(context?.quote),
+  snapshotQuoteAt:numberOrNull(context?.quoteAt),
+  martingaleLevel:numberOrNull(martingaleLevel),clickCount:numberOrNull(clickCount),
+  structure:{
+   regime:short(a.entryPlanner?.regime?.label,75),
+   entryKind:short(op.entryKind,75),
+   side:short(op.side,8),state:short(op.state,75),
+   reason:short(op.reason,180),
+   technicalStrength:numberOrNull(op.decisionStrength??op.strength),
+   agreement:numberOrNull(plan.agreement),
+   dataQuality:numberOrNull(plan.dataQuality),
+   callProbability:numberOrNull(plan.callProbability),
+   putProbability:numberOrNull(plan.putProbability),
+   evidence
+  },
+  probability:{
+   qualified:research.qualified===true,
+   samples:numberOrNull(research.samples),
+   estimated:numberOrNull(research.probability),
+   source:short(research.probabilitySource,75)
+  }
+ };
+}
+export function acceptedAudit(event,now=Date.now()){
+ return {type:'broker_accepted',ts:now,provider:short(event?.provider,30),
+  localId:short(event?.localId,280),orderId:short(event?.orderId,180),
+  entryPrice:numberOrNull(event?.entryPrice),exitAt:numberOrNull(event?.exitAt)};
+}
+export function settlementAudit(event,now=Date.now()){
+ if(event?.source&&event.source!=='broker')return null;
+ if(!event?.orderId||!event?.provider||numberOrNull(event?.netPnl)===null)return null;
+ const pnl=Number(event.netPnl);
+ return {type:'broker_settlement',ts:now,provider:short(event.provider,30),orderId:short(event.orderId,180),
+  netPnl:pnl,result:pnl>0?'win':pnl<0?'loss':'tie',
+  entryPrice:numberOrNull(event.entryPrice),exitPrice:numberOrNull(event.exitPrice)};
+}
+const outcomeKey=e=>String(e.provider)+'|'+String(e.orderId);
+const batchFromLocalId=id=>{const s=String(id||'');const p=s.lastIndexOf('|click-');return p<0?null:s.slice(0,p);};
+export function summarizeTradeAudit(events,{minSamples=20}={}){
+ const decisions=new Map(),accepted=new Map(),settled=new Map();
+ for(const e of events){
+  if(e?.type==='trade_decision'&&e.batchId&&e.provider)decisions.set(e.provider+'|'+e.batchId,e);
+  if(e?.type==='broker_accepted'&&e.orderId&&e.provider&&e.localId)accepted.set(outcomeKey(e),e);
+  if(e?.type==='broker_settlement'&&e.orderId&&e.provider&&Number.isFinite(e.netPnl))settled.set(outcomeKey(e),e);
+ }
+ const rows=[];let orphanSettlements=0;
+ for(const [id,result] of settled){
+  const broker=accepted.get(id),batchId=batchFromLocalId(broker?.localId);
+  const d=decisions.get(result.provider+'|'+batchId);
+  if(!d){orphanSettlements++;continue;}
+  if(result.result==='tie')continue;
+  rows.push({
+   provider:result.provider,asset:d.asset,mode:d.directionMode,side:d.side,durationMs:d.durationMs,
+   regime:d.structure?.regime||'unknown',kind:d.structure?.entryKind||'unknown',
+   outcome:result.result,netPnl:result.netPnl,at:d.ts
+  });
+ }
+ const group=(field)=>Object.values(rows.reduce((acc,row)=>{
+  const key=String(row[field]??'unknown');
+  const a=acc[key]??={key,count:0,wins:0,losses:0,netPnl:0};
+  a.count++;a.wins+=row.outcome==='win'?1:0;a.losses+=row.outcome==='loss'?1:0;a.netPnl+=row.netPnl;return acc;
+ },{})).map(x=>({...x,winRate:x.count>=minSamples?Math.round(x.wins/x.count*10000)/100:null}))
+ .sort((a,b)=>b.count-a.count||a.key.localeCompare(b.key));
+ return {kind:'broker-confirmed-trade-audit',matched:rows.length,
+  decisions:decisions.size,accepted:accepted.size,settled:settled.size,
+  orphanSettlements,minSamples,
+  byMode:group('mode'),byRegime:group('regime'),byEntryKind:group('kind'),
+  byDuration:group('durationMs'),bySide:group('side'),byAsset:group('asset'),
+  note:'Broker settlement only; repeated martingale clicks are separate orders. No claim of predictive improvement.'};
+}
