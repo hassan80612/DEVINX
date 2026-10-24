@@ -115,3 +115,51 @@ test('broken audit callback cannot block a valid broker click or its confirmed r
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(bot.closed,1);
 });
+
+test('fired NOW audit uses exact-tick evidence, never previous AGUARDAR analysis',async()=>{
+ const now=1800000000000,history=[],calls=[];
+ const context={provider:'iq_option',asset:'FRONT.COFFEE OTC',state:'running',licensed:true,
+  accountId:'10',activeId:76,durationMs:60000,engine:'smart_confluence',
+  quote:317.312,quoteAt:now-100,
+  analysis:{operationalSignal:{side:'AGUARDAR',state:'ANALISANDO',strength:0},
+    entryPlanner:{horizons:{}}}};
+ const bot=new SignalExecutor({driver:{prepare:async()=>({ready:true}),
+  execute:async(_provider,order)=>{calls.push(order);return{accepted:true,orderId:'actual-1'}}},
+  context:()=>context,clock:()=>now,onAuditEvent:r=>history.push(r)});
+ bot.configure({amount:10});await bot.start();
+ const fired={phase:'fired',context:'iq_option|FRONT.COFFEE OTC|smart_confluence|60000',
+  engineId:'smart_confluence',side:'CALL',entryTriggeredAt:now,holdingSeconds:60,
+  exitAt:now+60000,entryPrice:317.312};
+ const proof={source:'now-structural-v1',signalAt:now,snapshotAt:now,quoteAt:now-100,
+  finalSide:'CALL',finalReason:'confirmed-level-retest',finalStrength:78,
+  rawSide:'CALL',rawReason:'closed-structure-and-live-impulse',
+  contextStrategy:'support_resistance',marketShape:'level-turn',
+  support:{level:317.2,touches:4},resistance:{level:317.4,touches:3},
+  observedImpulse:0.002,probabilityCall:0.64};
+ bot.pulse(fired,proof);
+ await bot.inflight;
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls.length,1);
+ const d=history.find(e=>e.type==='trade_decision');
+ assert.equal(d.structure.provenance,'fired-tick-now');
+ assert.equal(d.structure.reason,'confirmed-level-retest');
+ assert.equal(d.structure.technicalStrength,78);
+ assert.equal(d.structure.marketShape,'level-turn');
+ assert.equal(d.structure.support.level,317.2);
+ assert.equal(d.structure.resistance.touches,3);
+ assert.equal(d.structure.side,'CALL');
+ assert.equal(d.probability.estimated,0.64);
+ assert.equal(bot.settle({provider:'iq_option',orderId:'actual-1',netPnl:-10,source:'broker'}),true);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(summarizeTradeAudit(history,{minSamples:1}).matched,1);
+});
+
+test('audit ignores mismatched NOW tick metadata without blocking entry',()=>{
+ const record=decisionAudit({context:{provider:'iq_option',analysis:{
+  operationalSignal:{side:'AGUARDAR',state:'ANALISANDO',strength:0}}},
+  signal:{id:'s',side:'PUT',at:123,durationMs:60000,
+   auditEvidence:{source:'now-structural-v1',signalAt:122,finalSide:'PUT',
+    finalReason:'wrong-signal-reason'}},mode:'automatic',now:123});
+ assert.equal(record.structure.provenance,'analysis-snapshot');
+ assert.equal(record.structure.reason,null);
+});
