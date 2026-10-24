@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {decisionAudit,acceptedAudit,settlementAudit,summarizeTradeAudit} from '../sentinel-trading-lab/agent/worker/trade-audit.mjs';
+import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 
 test('audit freezes whitelisted evidence without credentials or balance',()=>{
  const context={provider:'iq_option',asset:'EUR/USD',engine:'automatic',quote:1.204,
@@ -68,4 +69,49 @@ test('martingale clicks and fixed CALL do not inflate analyst signal accuracy',(
  assert.equal(out.excludedFromAnalystAccuracy,2);
  assert.equal(out.byRegime[0].winRate,100);
  assert.equal(out.byMode.find(x=>x.key==='automatic').winRate,50);
+});
+
+test('real executor records each accepted order and confirmed settlement once',async()=>{
+ let now=1800000000000,clicks=0;
+ const history=[],context={state:'running',licensed:true,provider:'iq_option',
+  accountId:'10',activeId:76,asset:'EUR/USD OTC',mode:'demo',durationMs:30000,engine:'automatic',
+  analysis:{},quote:1.203,quoteAt:now};
+ const driver={prepare:async()=>({ready:true}),execute:async(provider,order)=>{clicks++;return{accepted:true,orderId:'order-42'};}};
+ const bot=new SignalExecutor({driver,context:()=>context,clock:()=>now,onAuditEvent:event=>history.push(event)});
+ bot.configure({amount:10});
+ await bot.start();
+ context.analysis={vnext:{futureEntryAnchor:Object.freeze({
+  context:'iq_option|EURUSDOTC|automatic|30000',phase:'fired',side:'CALL',
+  entryTriggeredAt:now,holdingSeconds:30,exitAt:now+30000})}};
+ bot.pulse();
+ await bot.inflight;
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(clicks,1);
+ assert.equal(history.filter(x=>x.type==='trade_decision').length,1);
+ assert.equal(history.filter(x=>x.type==='broker_accepted').length,1);
+ assert.equal(bot.settle({provider:'iq_option',orderId:'order-42',netPnl:8,source:'broker'}),true);
+ assert.equal(bot.settle({provider:'iq_option',orderId:'order-42',netPnl:8,source:'broker'}),false);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(history.filter(x=>x.type==='broker_settlement').length,1);
+ const report=summarizeTradeAudit(history,{minSamples:1});
+ assert.equal(report.matched,1);
+ assert.equal(report.analystFirstClickSettlements,1);
+ assert.equal(report.byRegime[0].wins,1);
+});
+
+test('broken audit callback cannot block a valid broker click or its confirmed result',async()=>{
+ let now=1800000000000,clicks=0;
+ const context={state:'running',licensed:true,provider:'iq_option',accountId:'10',
+  activeId:76,asset:'EUR/USD OTC',mode:'demo',durationMs:30000,engine:'automatic',
+  analysis:{},quote:1.203,quoteAt:now};
+ const driver={prepare:async()=>({ready:true}),execute:async()=>{clicks++;return{accepted:true,orderId:'order-43'};}};
+ const bot=new SignalExecutor({driver,context:()=>context,clock:()=>now,onAuditEvent:()=>{throw Error('disk full')}});
+ bot.configure({amount:10});await bot.start();
+ context.analysis={vnext:{futureEntryAnchor:{context:'iq_option|EURUSDOTC|automatic|30000',
+  phase:'fired',side:'PUT',entryTriggeredAt:now,holdingSeconds:30,exitAt:now+30000}}};
+ bot.pulse();await bot.inflight;await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(clicks,1);
+ assert.equal(bot.settle({provider:'iq_option',orderId:'order-43',netPnl:-10,source:'broker'}),true);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(bot.closed,1);
 });
