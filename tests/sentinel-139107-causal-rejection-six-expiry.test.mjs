@@ -5,7 +5,7 @@ import {proveLevelRejectionAtExpiry} from '../sentinel-trading-lab/agent/src/cor
 import {applyHistoricalPriceStructure} from '../sentinel-trading-lab/agent/src/core/historical-price-structure.mjs';
 
 const NOW=1800000000000;
-const D=[5000,15000,30000,60000,120000,300000];
+const D=[5000,10000,15000,30000,60000,120000,300000];
 const path=(seconds,priceAt)=>Array.from({length:seconds+1},(_,i)=>({
  ts:NOW-(seconds-i)*1000,receivedAt:NOW-(seconds-i)*1000,price:priceAt(i,seconds)
 }));
@@ -155,7 +155,7 @@ test('reversal data is causal: future arrival and gaps in the prior approach rej
 });
 
 test('all six supported expiries recognize a complete prior counter-move and a sustained historical reversal',()=>{
- const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ const MAX_WINDOW={5000:3,10000:5,15000:7,30000:12,60000:20,120000:35,300000:60};
  for(const d of D){
   const w=MAX_WINDOW[d],n=Math.max(90,w*2+12),turn=n-w;
   const slope=w<=7?.045:w<=20?.02:.012;
@@ -173,7 +173,7 @@ test('all six supported expiries recognize a complete prior counter-move and a s
  }
 });
 test('all six expiries distinguish a one-direction trend from an actual reversal',()=>{
- const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ const MAX_WINDOW={5000:3,10000:5,15000:7,30000:12,60000:20,120000:35,300000:60};
  for(const d of D){
   const w=MAX_WINDOW[d],n=Math.max(90,w*2+12);
   const rate=w<=7?.045:w<=20?.02:.012;
@@ -186,7 +186,7 @@ test('all six expiries distinguish a one-direction trend from an actual reversal
  }
 });
 test('all six expiries reject late or missing observed prices in the pre-reversal leg',()=>{
- const MAX_WINDOW={5000:3,15000:7,30000:12,60000:20,120000:35,300000:60};
+ const MAX_WINDOW={5000:3,10000:5,15000:7,30000:12,60000:20,120000:35,300000:60};
  for(const d of D){
   const w=MAX_WINDOW[d],n=Math.max(90,w*2+12),turn=n-w;
   const rate=w<=7?.045:w<=20?.02:.012;
