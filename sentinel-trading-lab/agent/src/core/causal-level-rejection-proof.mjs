@@ -24,7 +24,14 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  if(!periods||!dir||!Number.isFinite(spot)||spot<=0||
     !(at>0&&clock>=at&&clock-at<=2500&&tol>0&&vol>0))
   return unknown('incomplete-causal-input');
+ const isOneMinute=Number(durationMs)===60000;
+ // A 60-second reversal must have a witnessed approach toward the level
+ // BEFORE the 20-second directional departure. Without the approach,
+ // a sustained continuation can be mislabeled a 'rejection'.
+ // This only affects the 60s level-rejection proof: 5/15/30s, 2m and 5m
+ // retain their prior decisions, and no broker/browser polling is introduced.
  const span=periods[2]*1000,maxAge=Number(durationMs)<=15000?1500:2500;
+ const scanSpan=isOneMinute?40000:span;
  // Quote history is already chronological in the local broker driver.
  // Inspect only the recent window backwards, without sorting/copying the
  // whole 6,000-tick tape on every candidate (would slow the chart).
@@ -32,7 +39,7 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  const rows=[];let lastTimestamp=Infinity;
  for(let i=source.length-1;i>=0;i--){
   const x=source[i],ts=Number(x?.ts);
-  if(ts<at-span-maxAge)break;
+  if(ts<at-scanSpan-maxAge)break;
   if(!Number.isFinite(ts)||ts>lastTimestamp)
     return unknown('unordered-quote-history');
   lastTimestamp=ts;
@@ -53,6 +60,22 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  if(diffs.length<3)return unknown('too-few-changes');
  const tick=Math.max(median(diffs),spot*1e-8);
  const moves=anchors.map(x=>dir*(spot-x.price));
+ // A valid turn must first approach support/resistance in the opposite
+ // direction and then depart. Check two independent, chronological 20s
+ // segments ending at the decision; never use future candles.
+ let approachMove=null,approachVerified=true;
+ if(isOneMinute){
+  const past=point(rows,at-40000,maxAge),turnStart=anchors[2];
+  const approach=rows.filter(x=>x.ts>=at-40000&&x.ts<=at-20000);
+  approachVerified=!!past&&!!turnStart&&approach.length>=5&&
+   approach.every((q,i)=>i===0||q.ts-approach[i-1].ts<=3500);
+  if(approachVerified){
+   approachMove=dir*(turnStart.price-past.price);
+   // Two normal observed ticks or 35% of a confirmed level's
+   // width is required to evidence the PREVIOUS opposing movement.
+   approachVerified=approachMove<=-Math.max(tick*2,tol*.35);
+  }
+ }
  const zLevel=Number(zone?.level);
  const zoneConfirmed=Number(zone?.confirmedPivots)>0||
   Number(zone?.independentRejections)>=2;
@@ -71,14 +94,17 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  // to have MOVED away from it, not merely touched it at this instant.
  const validLevel=zoneConfirmed&&Number.isFinite(zLevel)&&
     levelDeparture>=roomNeeded;
- const confirmed=validLevel&&lastDirection&&extended&&sustained;
+ const confirmed=validLevel&&lastDirection&&extended&&sustained&&approachVerified;
  return {confirmed,kind:confirmed?'sustained-level-reversal':'provisional-reaction',
   reason:confirmed?'causal-multihorizon-followthrough':
    !zoneConfirmed?'level-without-independent-pivot':
    !validLevel?'not-away-from-confirmed-level':
    !lastDirection?'last-move-not-supporting':
-   !extended?'medium-path-not-supporting':'holding-path-not-supporting',
+   !extended?'medium-path-not-supporting':
+   !sustained?'holding-path-not-supporting':'prior-opposing-approach-not-confirmed',
   durationMs:Number(durationMs),windows:periods,moves,
+  // Only a scalar, no extra broker quote collection or stored history.
+  priorApproachMove:approachMove,approachVerified,
   provenLevel:zoneConfirmed,levelDeparture,
   // Absolute units and age retained for per-entry research, not win probability.
   observedTypicalStep:tick
