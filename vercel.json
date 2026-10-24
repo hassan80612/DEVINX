@@ -72,7 +72,8 @@
       "fix/sentinel-139107-causal-reaction-20261024": false,
       "release/sentinel-139107-expiry-reaction-fastpath-20261024": false,
       "fix/sentinel-139108-real-reversal-approach-20261024": false,
-      "release/sentinel-139108-all-expiry-approach-20261024": false
+      "release/sentinel-139108-all-expiry-approach-20261024": false,
+      "fix/sentinel-139109-no-late-chase-20261024": false
     }
   }
 }
