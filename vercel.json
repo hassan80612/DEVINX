@@ -67,7 +67,8 @@
       "audit/sentinel-entry-outcomes-20261024": false,
       "release/sentinel-139103-trade-audit-candidate-20261024": false,
       "fix/sentinel-139104-evidence-provenance-20261024": false,
-      "study/sentinel-multi-horizon-market-base-20261024": false
+      "study/sentinel-multi-horizon-market-base-20261024": false,
+      "release/sentinel-139105-six-expiry-evidence-20261024": false
     }
   }
 }
