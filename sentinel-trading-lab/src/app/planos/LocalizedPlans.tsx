@@ -25,7 +25,7 @@ export default function LocalizedPlans({brCheckout,intlCheckout}:{brCheckout:str
   const price=international?SENTINEL_PLANS.INTL.priceDisplay:SENTINEL_PLANS.BR.priceDisplay;
   const checkout=international?intlCheckout:brCheckout;
   return <div className={styles.plansCard} data-testid="localized-plan-price" data-currency={international?'USD':'BRL'}>
-    <div className={styles.plansTop}><div><span><T>PLANO SENTINEL</T></span><h2>DevinX Trading Lab</h2></div><span className={styles.plansCycle}>{international?'30-DAY ACCESS':'ACESSO POR 30 DIAS'}</span></div>
+    <div className={styles.plansTop}><div><span><T>ACESSO SENTINEL</T></span><h2>DevinX Trading Lab</h2></div><span className={styles.plansCycle}>{international?'30-DAY ACCESS':'ACESSO POR 30 DIAS'}</span></div>
     <div className={styles.plansPrice}><strong>{price}</strong><span>{international?'30 days per approved purchase':'30 dias por compra aprovada'}</span></div>
     <p><T>Acesso ao card, às estratégias técnicas, aos alertas de reversão e ao controle remoto do Agent instalado em seu PC.</T></p>
     <ul>
