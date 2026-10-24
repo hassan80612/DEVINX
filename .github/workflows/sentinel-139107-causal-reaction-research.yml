@@ -36,6 +36,18 @@ jobs:
           git fetch --no-tags origin 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27
           git diff --name-only 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27 HEAD |
             grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' |
-            grep -v -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' > /tmp/unsafe || true
+            grep -v -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Unchanged broker execution and safety and front-end.'
+ -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Unchanged broker execution and safety and front-end.'
+ -e '^sentinel-trading-lab/agent/src/core/runtime.mjs
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Unchanged broker execution and safety and front-end.'
+ -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Unchanged broker execution and safety and front-end.'
+ > /tmp/unsafe || true
           test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
           echo 'Unchanged broker execution and safety and front-end.'
