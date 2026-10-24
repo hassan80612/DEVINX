@@ -22,6 +22,7 @@ import {dashboardTransportState} from './remote-status.mjs';
 import {analystSnapshot} from './live-bridge.mjs';
 import {SignedLiveBridge} from './signed-live-bridge.mjs';
 import {MarketJournal} from './market-journal.mjs';
+import {acceptedAudit,settlementAudit} from './trade-audit.mjs';
 
 import {VERSION,BUILD} from './release.mjs';
 import {RUNTIME_OPTIONS} from './release.mjs';
@@ -48,8 +49,9 @@ let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
 function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
-const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
-const executor=new SignalExecutor({driver:uiExecutor,context:executionContext});
+const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>{executor.accepted(event);if(recordMarketJournal&&event?.orderId&&event?.localId)marketJournal.enqueue(acceptedAudit(event));},onRejected:event=>executor.rejected(event),onSettlement:event=>{const confirmed=executor.settle(event);if(confirmed&&recordMarketJournal){const row=settlementAudit(event);if(row)marketJournal.enqueue(row);}return confirmed;},onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
+const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
+ onAuditEvent:recordMarketJournal?event=>marketJournal.enqueue(event):null});
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
 runtime.onNowOpportunity=anchor=>{
