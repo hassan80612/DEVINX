@@ -1,10 +1,10 @@
-name: Sentinel 13.9.106 CPU equivalence research NO DEPLOY
+name: Sentinel 13.9.106 market-base validation NO DEPLOY
 on:
   push:
     branches:
       - fix/sentinel-139106-causal-range-cpu-20261024
 jobs:
-  prove-equivalence:
+  offline:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -14,34 +14,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Recover original 13.9.104 golden-master source
+      - name: Fetch original 13.9.104 decision engine as golden master
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags origin 0ab0a3fb5f48645be8c474088353981eebcf4b4a
           git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs > sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
-      - name: Syntax check model before and after
+          git show 0ab0a3fb5f48645be8c474088353981eebcf4b4a:sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs > sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.baseline.mjs
+      - name: Syntax check candidate
         run: |
-          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.baseline.mjs
           node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
-      - name: Replay real broker quotes and identical decisions across all six expiries
+          node --check sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
+      - name: CPU equivalence and real replay comparison
         run: |
           node --test tests/sentinel-139106-causal-cpu-equivalence.test.mjs
-      - name: Existing structural and expiration regression
+      - name: Six-expiry trend-review and legacy regression
         run: |
           node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs
-      - name: Abort if live broker, stops, martingale or API code changed
+      - name: Guard broker executor, martingale, UI, risk, database and API
         shell: bash
         run: |
           set -euo pipefail
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
-            grep -E '^sentinel-trading-lab/(agent/|src/app/api/)' |
-            grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
-          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
-          echo 'Only 5s range CPU path and expiry-trend review updated; broker execution/stops/MG/API untouched.'
- -e '^sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
-          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
-          echo 'No broker execution/stop/martingale/API code changed.'
- > /tmp/unexpected || true
-          test ! -s /tmp/unexpected || { cat /tmp/unexpected; exit 1; }
-          echo 'No broker execution/stop/martingale/API code changed.'
+            grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' |
+            grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs$' -e '^sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs$' > /tmp/unexpected || true
+          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
+          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
