@@ -1,0 +1,81 @@
+name: Sentinel 13.9.107 Windows and causal expiry release validation - NO DEPLOY
+on:
+  push:
+    branches:
+      - release/sentinel-139107-expiry-reaction-fastpath-20261024
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-139107-build-candidate
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Recover exact prior 13.9.106 level engine for decision comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27
+          git show 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27:sentinel-trading-lab/agent/src/core/historical-price-structure.mjs > sentinel-trading-lab/agent/src/core/historical-price-structure.baseline.mjs
+      - name: Syntax check complete local Agent
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Validate native six-expiry and proven 13.9.106 5-30s signal preservation
+        run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs tests/sentinel-139107-price-history-cpu-equivalence.test.mjs
+      - name: Regression for level reversal, broker click, 1/2/5m trend, martingale, stops and mobile
+        run: |
+          node --test --test-concurrency=1 tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-shared-pivot-guard-20261022.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-13983-surgical-balance-expiry-stopwin-horizon.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-trade-audit-20261024.test.mjs
+      - name: Check expiry keeper, installer and 13.9.107 release metadata
+        run: node --test tests/sentinel-13996-verified-wall-exhaustion.test.mjs tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Guard all broker UI, risk, expiry, martingale and Supabase code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27 HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(agent/src/core/|agent/worker/|src/app/api/|src/components/|db/|migrations/))' | grep -v -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' -e '^sentinel-trading-lab/agent/src/core/runtime.mjs$' -e '^sentinel-trading-lab/agent/worker/trade-audit.mjs$' > /tmp/unexpected || true
+          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
+          echo 'No changes to trading click, expiry controls, martingale, stops, balance, mobile, UI or database.'
+      - name: Install web dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build production site and Windows installer without deployment
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Verify signed-by-content Windows update payload and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          downloads=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((downloads/'agent-update.json').read_text())
+          assert release['version']=='13.9.107'
+          assert release['build']=='13.9.107-causal-holding-reaction-broker-fast'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version']
+          assert manifest['build']==release['build']
+          payload=(downloads/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(downloads/'Sentinel-Agent-13.9.107.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1000000
+          assert payload in exe
+          assert exe==(downloads/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(downloads/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'): continue
+              assert z.read(name)==(agent/name).read_bytes(),name
+          print('CANDIDATE VERIFIED',release['version'],len(exe),len(payload))
+          PY
