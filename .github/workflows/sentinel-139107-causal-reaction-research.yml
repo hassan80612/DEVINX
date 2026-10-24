@@ -1,0 +1,41 @@
+name: Sentinel 13.9.107 expiry reaction research NO DEPLOY
+on:
+  push:
+    branches:
+      - fix/sentinel-139107-causal-reaction-20261024
+permissions:
+  contents: read
+jobs:
+  causal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs
+          node --check sentinel-trading-lab/agent/src/core/historical-price-structure.mjs
+      - name: Run native expiry proof and preservation tests
+        run: node --test tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
+      - name: Run full related original regressions
+        run: |
+          node --test tests/sentinel-13931-historical-structure.test.mjs \
+            tests/sentinel-13992-all-expiry-trend-reversal.test.mjs \
+            tests/sentinel-shared-pivot-guard-20261022.test.mjs \
+            tests/sentinel-oneway-pivot-guard-20261023.test.mjs \
+            tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs
+      - name: Verify no broker click/stop/martingale/UI/Supabase/API changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27
+          git diff --name-only 7b001ba735cbf5c59b8ac0d6f5cc9f067c3b8a27 HEAD |
+            grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' |
+            grep -v -e '^sentinel-trading-lab/agent/src/core/historical-price-structure.mjs$' -e '^sentinel-trading-lab/agent/src/core/causal-level-rejection-proof.mjs$' > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Unchanged broker execution and safety and front-end.'
