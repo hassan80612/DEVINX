@@ -75,9 +75,11 @@ export function settlementAudit(event,now=Date.now()){
 const outcomeKey=e=>String(e.provider)+'|'+String(e.orderId);
 const batchFromLocalId=id=>{const s=String(id||'');const p=s.lastIndexOf('|click-');return p<0?null:s.slice(0,p);};
 export function summarizeTradeAudit(events,{minSamples=20}={}){
- const decisions=new Map(),accepted=new Map(),settled=new Map();
+ const decisions=new Map(),accepted=new Map(),settled=new Map(),marketPaths=new Map();
  for(const e of events){
   if(e?.type==='trade_decision'&&e.batchId&&e.provider)decisions.set(e.provider+'|'+e.batchId,e);
+  if(e?.type==='market_path_hypothesis'&&e.batchId&&e.provider)
+   marketPaths.set(e.provider+'|'+e.batchId,e);
   if(e?.type==='broker_accepted'&&e.orderId&&e.provider&&e.localId)accepted.set(outcomeKey(e),e);
   if(e?.type==='broker_settlement'&&e.orderId&&e.provider&&Number.isFinite(e.netPnl))settled.set(outcomeKey(e),e);
  }
@@ -87,8 +89,13 @@ export function summarizeTradeAudit(events,{minSamples=20}={}){
   const d=decisions.get(result.provider+'|'+batchId);
   if(!d){orphanSettlements++;continue;}
   if(result.result==='tie')continue;
+  const path=marketPaths.get(result.provider+'|'+batchId);
   rows.push({
    provider:result.provider,asset:d.asset,mode:d.directionMode,side:d.side,durationMs:d.durationMs,
+   pathScenario:path?.scenario??'not-observed',
+   pathImpulse:path?.impulseState??'not-observed',
+   pathAgreement:path?.hypothesisSide===d.side?'agrees':
+    path?.hypothesisSide?'disagrees':'unresolved',
    martingaleLevel:d.martingaleLevel,clickCount:d.clickCount,independent:d.independent,
    regime:d.structure?.regime||'unknown',kind:d.structure?.entryKind||'unknown',
    outcome:result.result,netPnl:result.netPnl,at:d.ts
@@ -109,5 +116,9 @@ export function summarizeTradeAudit(events,{minSamples=20}={}){
   analystFirstClickSettlements:analyst.length,excludedFromAnalystAccuracy:rows.length-analyst.length,
   byMode:group('mode'),byRegime:group('regime',analyst),byEntryKind:group('kind',analyst),
   byDuration:group('durationMs',analyst),bySide:group('side',analyst),byAsset:group('asset',analyst),
+  byPathScenario:group('pathScenario',analyst),
+  byPathImpulse:group('pathImpulse',analyst),
+  byPathAgreement:group('pathAgreement',analyst),
+  pathDiagnostics:marketPaths.size,
   note:'Market-condition win rates refer only to single-click automatic entries without martingale. Broker-confirmed outcomes only; unresolved orders excluded, not counted as losses or wins. No claim of predictive improvement.'};
 }
