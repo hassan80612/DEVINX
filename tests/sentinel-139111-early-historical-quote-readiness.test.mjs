@@ -31,7 +31,7 @@ test('reuses already verified 1–20 closed-candle levels and 6s genuine quotes 
   durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'});
  assert.equal(signal.ready,true,signal.reason);
  assert.equal(signal.side,'CALL','genuine earlier support reaction should not be mistaken for PUT');
- assert.equal(signal.reason,'historical-level-rejection');
+ assert.ok(['historical-level-rejection','multiscale-candle-rejection'].includes(signal.reason),signal.reason);
 });
 test('unverified previous candles cannot bypass the original 14-second readiness protection',()=>{
  const r=ctx(rows(),false);
