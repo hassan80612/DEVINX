@@ -33,7 +33,8 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
-   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0;
+   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,
+   trustedManualThirtyAt=0;
   try{
    const v=Number(localStorage.getItem(key));
    if(ACCEPT.has(v/1000))preferredMs=v;
@@ -78,7 +79,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    const target=ev.target;
    if(isManualPickerTarget(target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
+    lastUserActivityAt=manualOpenedAt;trustedManualThirtyAt=0;
    }else if(manualOpenedAt&&Date.now()-manualOpenedAt<12000)
     lastUserActivityAt=Date.now();
   },true);
@@ -86,7 +87,18 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    if(repairing||!ev.isTrusted)return;
    if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
+    lastUserActivityAt=manualOpenedAt;trustedManualThirtyAt=0;
+   }else if(manualOpenedAt&&Date.now()-manualOpenedAt<12000){
+    // A spontaneous reset to 30s during an open picker must NOT become
+    // the user's remembered choice. Only a real, trusted menu selection
+    // of 30s may override a previously saved longer expiry.
+    const option=ev.target?.closest?.('[role="option"],[role="menuitem"],li,button,[class*="expiration-option" i]');
+    if(option&&!option.closest?.('#sentinel-trading-overlay-host')){
+     const label=String(option.innerText||option.textContent||'').trim();
+     if(label.length<=28&&parse(label)===30000){
+      trustedManualThirtyAt=Date.now();lastUserActivityAt=trustedManualThirtyAt;
+     }
+    }
    }
   },true);
   const permission=()=>window.__sentinelNativeExpiryPermission?.allowed===true&&
@@ -153,7 +165,8 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
      if(openingValue!=null&&current!==openingValue&&
-       now-lastUserActivityAt<12000){
+       now-lastUserActivityAt<12000&&
+       (current!==30000||(trustedManualThirtyAt>0&&now-trustedManualThirtyAt<12000))){
       save(current);manualOpenedAt=0;openingValue=null;mismatchSince=0;
      }
      notify(current);return;
