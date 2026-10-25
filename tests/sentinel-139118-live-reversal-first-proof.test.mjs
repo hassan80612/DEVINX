@@ -7,7 +7,7 @@ const quoteTape=()=>{
  const rows=[];
  for(let k=0;k<levels.length-1;k++)
   for(let i=0;i<10;i++)rows.push({ts:T+rows.length*500,price:levels[k]+(levels[k+1]-levels[k])*i/10});
- rows.push({ts:T+rows.length*500,price:101.8});
+ rows.push({ts:T+rows.length*500+250,price:101.8});
  return rows;
 };
 const map=()=>({observedCandles:100,asOf:T-60000,tolerance:.15,levels:[
@@ -38,7 +38,7 @@ test('a completed OLD reversal cannot be restamped as fresh after prices keep tr
 });
 test('first observed turn and stale confirmation mirror for PUT',()=>{
  const base=quoteTape();const put=base.map(x=>({...x,price:202-x.price}));
- const levelsMap={...map(),levels:map().levels.map(z=>({...z,low:102-z.high,high:102-z.low,level:102-z.level,
+ const levelsMap={...map(),levels:map().levels.map(z=>({...z,low:202-z.high,high:202-z.low,level:202-z.level,
   supportPivots:0,supportRejections:0,resistancePivots:1,resistanceRejections:2}))};
  const first=get(put);first.map=levelsMap;
  assert.equal(observedLevelSequence(first)?.structureChange?.side,'PUT');
