@@ -1,0 +1,33 @@
+name: Sentinel 13.9.107 expiry restore regression (NO DEPLOY)
+on:
+  push:
+    branches:
+      - fix/sentinel-107-expiry-proof-and-entry-diagnostics-20261025
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify native expiry is retained and intentional choices still work
+        run: |
+          node --check sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+          node --test tests/sentinel-13999-native-expiry-keeper.test.mjs tests/sentinel-13993-chart-period-isolation.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Original 13.9.107 directional regression without new trading rules
+        run: |
+          node --test tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-139107-causal-rejection-six-expiry.test.mjs
+      - name: Verify ONLY native broker preference and tests differ from 13.9.107
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 36a7dcca579ff5da33b307c34c9467cfd2d16e44
+          git diff --name-only 36a7dcca579ff5da33b307c34c9467cfd2d16e44 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v '^sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs$' > /tmp/unsafe || true
+          if test -s /tmp/unsafe; then cat /tmp/unsafe; exit 1; fi
+          echo '13.9.107 signal engine, click execution, broker chart, bot and card UNCHANGED.'
