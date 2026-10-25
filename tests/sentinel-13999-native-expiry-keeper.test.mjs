@@ -16,7 +16,9 @@ function browser(initial='1 min',stored=null){
  const option=(txt)=>{
   const el={isConnected:true,_text:txt,closest(){return null},matches(){return false},
    get innerText(){return this._text},get textContent(){return this._text},getBoundingClientRect(){return {width:72,height:30,right:1280,bottom:320,x:1100,y:285,top:285}},
-   querySelector(){return null},contains(){return false},click(){control._text=this._text;mock.open=false;}};
+   querySelector(){return null},contains(){return false},
+   matches(selector){return selector.includes('role="option"')},
+   click(){control._text=this._text;mock.open=false;}};
   return el;
  };
  const mock={open:false,control,storage,listeners:{},interval:null,now:100000,
@@ -36,7 +38,12 @@ function browser(initial='1 min',stored=null){
  globalThis.setTimeout=fn=>{fn();return 1};
  Date.now=()=>mock.now;
  mock.step=(ms=2500)=>{mock.now+=ms;globalThis.window.__sentinelNativeExpiryPermission.at=mock.now;mock.interval()};
- mock.event=(name)=>mock.listeners[name]?.({target:control,isTrusted:true});
+ mock.event=(name,target=control)=>mock.listeners[name]?.({target,isTrusted:true});
+ mock.pick=txt=>{
+  const target=mock.options.find(o=>o._text===txt);
+  if(!target)throw Error('missing native option: '+txt);
+  mock.event('click',target);target.click();
+ };
  mock.restore=()=>{Object.assign(globalThis,old);Date.now=old.DateNow;};
  return mock;
 }
@@ -61,9 +68,41 @@ test('recognizes an intentional native manual change, not a future Sentinel fore
  const m=browser('1 min',60000);
  try{
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  m.event('pointerdown');
-  m.control._text='2 min';m.step();
+  m.event('pointerdown');m.pick('2 min');m.step();
   assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),120000);
+ }finally{m.restore()}
+});
+test('automatic reset to 30s after picker opened is never learned as intentional',()=>{
+ const m=browser('1 min',60000);
+ try{
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  m.event('pointerdown'); // picker opened, no duration selected
+  m.control._text='30 s'; // broker silently resets
+  m.step();m.step();m.step();m.step();m.step();
+  assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),60000);
+  assert.equal(m.control.innerText,'1 min','restore the verified preference, not the unexpected reset');
+ }finally{m.restore()}
+});
+test('a genuine trusted native option click updates even when the choice is 30s',()=>{
+ const m=browser('2 min',120000);
+ try{
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  m.event('pointerdown');m.pick('30 s');m.step();
+  assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),30000);
+  m.control._text='2 min';m.step();m.step();m.step();
+  assert.equal(m.control.innerText,'30 s');
+ }finally{m.restore()}
+});
+test('a click outside the expiry options cannot save a spontaneous 30s rollback',()=>{
+ const m=browser('1 min',60000);
+ try{
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  m.event('pointerdown');
+  const elsewhere={innerText:'COMPRAR',textContent:'COMPRAR',closest(){return null},matches(){return false}};
+  m.event('click',elsewhere);
+  m.control._text='30 s';
+  m.step();m.step();
+  assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),60000);
  }finally{m.restore()}
 });
 test('never repairs while the Agent reports a busy trade or stale permission',()=>{
