@@ -22,3 +22,32 @@ jobs:
       - name: Reversal, continuation, authorization regression tests
         run: |
           node --test             tests/sentinel-118-reversal-price-authority.test.mjs             tests/sentinel-selected-strategy-authority.test.mjs             tests/sentinel-current-reversal-20261025.test.mjs             tests/sentinel-reversal-structure.test.mjs             tests/sentinel-repeated-reaction.test.mjs             tests/sentinel-reversal-arbitration-mobile-price.test.mjs             tests/sentinel-observed-level-sequence.test.mjs
+      - name: Install web dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build actual Windows agent payload and web
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Verify matching signed-by-content Windows update payload
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,zipfile
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          dl=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          assert release['version']=='13.9.118'
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(dl/'agent_payload_v88.zip').read_bytes()
+          assert manifest['zipSha256']==hashlib.sha256(payload).hexdigest()
+          exe=(dl/'Sentinel-Agent-13.9.118.exe').read_bytes()
+          assert exe[:2]==b'MZ' and payload in exe and len(exe)>1_000_000
+          assert exe==(dl/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(dl/'agent_payload_v88.zip') as archive:
+            assert archive.testzip() is None
+            assert json.loads(archive.read('release.json'))==release
+            for name in archive.namelist():
+              if name.endswith('/'):continue
+              assert archive.read(name)==(agent/name).read_bytes(),name
+          print('WINDOWS AGENT PAYLOAD VERIFIED',release['version'],manifest['zipSha256'])
+          PY

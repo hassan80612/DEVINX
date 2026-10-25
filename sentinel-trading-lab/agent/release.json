@@ -1,6 +1,6 @@
 {
-  "version": "13.9.117",
-  "build": "13.9.117-live-market-totals",
+  "version": "13.9.118",
+  "build": "13.9.118-confirmed-reversal-equal-authority",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.117"
+  "publicVersion": "13.9.118"
 }
