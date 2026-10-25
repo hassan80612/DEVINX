@@ -78,7 +78,7 @@ test('automatic reset to 30s after picker opened is never learned as intentional
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   m.event('pointerdown'); // picker opened, no duration selected
   m.control._text='30 s'; // broker silently resets
-  m.step();m.step();m.step();m.step();m.step();
+  for(let i=0;i<9;i++)m.step(); // 12s grace, 4s mismatch proof, then repair
   assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),60000);
   assert.equal(m.control.innerText,'1 min','restore the verified preference, not the unexpected reset');
  }finally{m.restore()}
@@ -89,7 +89,7 @@ test('a genuine trusted native option click updates even when the choice is 30s'
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   m.event('pointerdown');m.pick('30 s');m.step();
   assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),30000);
-  m.control._text='2 min';m.step();m.step();m.step();
+  m.control._text='2 min';for(let i=0;i<9;i++)m.step();
   assert.equal(m.control.innerText,'30 s');
  }finally{m.restore()}
 });
