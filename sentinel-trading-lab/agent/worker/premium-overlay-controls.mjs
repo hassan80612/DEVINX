@@ -18,7 +18,7 @@ export const PREMIUM_OVERLAY_CSS=`
 .sentinel-monitor-results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:18px 15px;align-items:center;gap:3px 7px;margin-top:4px;height:36px;min-height:36px;max-height:36px;font-size:10px;line-height:14px;overflow:hidden}
 .sentinel-monitor-results>[data-sentinel-executor-wl],.sentinel-monitor-results>[data-sentinel-executor-session]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sentinel-monitor-results>[data-sentinel-executor-broker-balance]{grid-column:1/-1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-[data-sentinel-vnext-cards]>[data-sentinel-summary]{height:94px!important;min-height:94px!important;max-height:94px!important;overflow:hidden!important;contain:layout paint}
+[data-sentinel-vnext-cards]>[data-sentinel-summary]{height:116px!important;min-height:116px!important;max-height:116px!important;overflow:hidden!important;contain:layout paint}
 [data-sentinel-vnext-cards] [data-sentinel-reading-side]{height:19px;min-height:19px;max-height:19px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-sentinel-vnext-cards] [data-sentinel-reading-call],[data-sentinel-vnext-cards] [data-sentinel-reading-put]{white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
 [data-sentinel-vnext-cards]>[data-sentinel-summary]>div:last-child{flex-wrap:nowrap!important;overflow:hidden}

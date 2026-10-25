@@ -58,7 +58,7 @@ test('card repaint only changes existing text nodes and bot-state attribute, nev
 test('three market totals and three summary totals reserve stable geometry, without freezing live values',()=>{
  const css=read('premium-overlay-controls.mjs');
  assert.match(css,/\.sentinel-monitor-results\{display:grid/);
- assert.match(css,/\[data-sentinel-vnext-cards\]>\[data-sentinel-summary\]\{height:94px/);
+ assert.match(css,/\[data-sentinel-vnext-cards\]>\[data-sentinel-summary\]\{height:116px/);
  for(const id of ['market-total','strategy-total','operational-total'])
   assert.ok(css.includes('[data-sentinel-summary="'+id+'"]:not([data-collapsed="1"])'),id);
  assert.match(read('market-totals-readout.mjs'),/set\(call,'CALL '/);
