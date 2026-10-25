@@ -11,6 +11,7 @@ import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
+import {continuationRoomRisk} from './continuation-room-risk.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 
@@ -28,8 +29,10 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
   reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
+ const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
-  wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:candidate;
+  wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:
+  roomRisk?{...candidate,ready:false,side:null,reason:'final-side-continuation-wall-pressure',entryRisk:roomRisk}:candidate;
 }
 function causalQuotes(history,now,windowMs=180000){
  return observedQuoteWindow({history,at:now,now,windowMs});
@@ -309,10 +312,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const wallRisk=!pivotRisk&&proposed.ready?verifiedWallExhaustionRisk({
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
+  const roomRisk=!pivotRisk&&!wallRisk&&proposed.ready?continuationRoomRisk({
+   candidate:proposed,structure,quoteHistory,quoteAt,now,price
+  }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
    reason:'shared-base-countertrend-pivot-risk'}:
    wallRisk?{...proposed,ready:false,side:null,
-    reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:proposed;
+    reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:
+   roomRisk?{...proposed,ready:false,side:null,
+    reason:'shared-base-continuation-wall-pressure',entryRisk:roomRisk}:proposed;
   return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
