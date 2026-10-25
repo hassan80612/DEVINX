@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const T=1800000000000;
 const prices=[100,100.09,100.18,100.24,100.285,100.31,100.322,100.328,100.332,100.336];
 const quotes=prices.map((price,i)=>({ts:T-9000+i*1000,receivedAt:T-9000+i*1000,price}));
-const barrier={level:100.41,low:100.40,high:100.42,
+const barrier={level:100.39,low:100.38,high:100.40,
  resistancePivots:2,resistanceRejections:3,supportPivots:0,supportRejections:0};
 const args=()=>({candidate:{ready:true,side:'CALL',reason:'historical-level-breakout',observedAt:T,entryPrice:prices.at(-1)},
  structure:{tolerance:.035,candleLevelMap:{observedCandles:100,asOf:T-500,tolerance:.035,levels:[barrier]}},
