@@ -52,7 +52,7 @@ export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
  * When multiple ACTIVE chosen strategies disagree, neither side is allowed.
  * Ignore low-evidence directional noise until the selected strategy qualifies.
  */
-export function chosenStrategiesPermit({cards=[],side,minimumEvidence=.35}={}){
+export function chosenStrategiesPermit({cards=[],side,minimumEvidence=.35,verifiedStructuralReversal=false}={}){
   if(!Array.isArray(cards)||cards.length===0)
     return {allowed:true,status:'not-evaluated',reason:null}; // legacy/offline analysis fixtures
   const active=cards.filter(c=>c?.active===true&&c.paused!==true);
@@ -66,6 +66,13 @@ export function chosenStrategiesPermit({cards=[],side,minimumEvidence=.35}={}){
   if(!meaningful.length)return {allowed:false,status:'awaiting-strategy',reason:'Estratégia selecionada sem direção confirmada.'};
   const calls=meaningful.some(c=>validSide(c.side)==='CALL');
   const puts=meaningful.some(c=>validSide(c.side)==='PUT');
+  // Confirmed price structure has equal authority with continuation: only a
+  // separately verified touch/rejection AND price break can outrank trailing
+  // strategy votes. Ordinary reversal hypotheses keep the previous strict rule.
+  if(verifiedStructuralReversal===true)return {
+    allowed:true,status:'confirmed-structural-reversal',approvedSide:validSide(side),
+    reason:'Virada estrutural confirmada por cotações independentes; tendência anterior não veta a reação.'
+  };
   if(calls&&puts)return {allowed:false,status:'conflict',reason:'Estratégias escolhidas divergem em CALL/PUT. Aguarde ou teste separadas.'};
   const approved=calls?'CALL':'PUT';
   return {allowed:approved===String(side||'').toUpperCase(),status:approved===String(side||'').toUpperCase()?'aligned':'opposed',

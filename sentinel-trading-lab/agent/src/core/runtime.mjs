@@ -558,7 +558,24 @@ export class DemoTradingRuntime{
     // candidate. The previous historical block was bypassed during entry mode.
     // This gate does not depend on the old scenario or the reversal subanalyst.
     for(const row of candidates){
-      row.strategySelection=chosenStrategiesPermit({cards:analysis.strategyCards,side:row.side});
+      // A reversal must demonstrate independent actual-price evidence before
+      // receiving the same authority as a confirmed continuation/breakout.
+      // No setup, score, old signal, or clock by itself can grant this override.
+      const reaction=row.plan?.reaction||{};
+      const mappedProof=row.structuralReaction===true&&reaction.preMapped===true&&
+        reaction.qualified===true&&reaction.advancing===true&&reaction.roomOk===true&&
+        Number(reaction.quoteConfirmations)>=2&&Number(reaction.confirmedAt)>Number(reaction.touchAt);
+      const swingProof=row.reversalEvidence?.allowed===true&&
+        row.reversalEvidence?.breakConfirmed===true&&row.reversalEvidence?.roomConfirmed===true&&
+        Number(reaction.confirmedAt)>Number(reaction.touchAt);
+      const verifiedStructuralReversal=row.allowed===true&&row.kind==='reversal'&&
+        (mappedProof||swingProof)&&Number(reaction.confirmedAt)<=Number(snap.quoteTs)&&
+        Number(reaction.expiresAt)>now&&Number.isFinite(Number(snap.price))&&Number(snap.price)>0&&
+        Number.isFinite(Number(reaction.invalidation))&&
+        (row.side==='CALL'?Number(snap.price)>Number(reaction.invalidation):
+          Number(snap.price)<Number(reaction.invalidation));
+      row.strategySelection=chosenStrategiesPermit({cards:analysis.strategyCards,side:row.side,
+        verifiedStructuralReversal});
       if(row.allowed===true&&!row.strategySelection.allowed){
         row.allowed=false;
         row.blockedBy='selected-strategy';

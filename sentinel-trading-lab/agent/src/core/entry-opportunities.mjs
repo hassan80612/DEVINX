@@ -7,13 +7,25 @@ const finite=v=>v!=null&&Number.isFinite(Number(v));
 // current candle direction. Mapping is available before the next touch.
 // A mapped level is *not* an entry: require a fresh touch and two advancing
 // quotes after the local extreme, with room before the opposite barrier.
-function mappedReaction({side,short,micro,price,quoteTs,recent,now,durationMs}){
-  const call=side==='CALL',rawLevel=call?short.sr?.support:short.sr?.resistance,level=Number(rawLevel);
+function mappedReaction({side,short,micro,marketZones,price,quoteTs,recent,now,durationMs}){
+  const call=side==='CALL',rawLevel=call?short.sr?.support:short.sr?.resistance;
   const rawOpposite=call?short.sr?.resistance:short.sr?.support,opposite=Number(rawOpposite);
-  if(rawLevel==null||!Number.isFinite(level)||level<=0)return {mapped:false,qualified:false};
-  const tolerance=Math.max(Math.abs(level)*.000004,Math.abs(Number(micro.expected5)||0)*.2,Math.abs(Number(short.range)||0)*.12);
+  const localLevel=rawLevel==null?null:Number(rawLevel);
+  const baseTolerance=Math.max(Math.abs(price)*.000004,Math.abs(Number(micro.expected5)||0)*.2,Math.abs(Number(short.range)||0)*.12);
+  const localRelevant=localLevel!=null&&Number.isFinite(localLevel)&&localLevel>0&&Math.abs(price-localLevel)<=baseTolerance*3;
+  // Strong confirmed levels from closed earlier candles may precede the
+  // 24-bar micro range. Keep relevant micro levels untouched.
+  const zoneTolerance=Math.max(baseTolerance,Math.min(baseTolerance*2,Math.abs(Number(marketZones?.tolerance)||0)));
+  const historical=(marketZones?.zones||[]).filter(z=>z?.type===(call?'support':'resistance')&&
+    Number(z.touches)>=2&&Number(z.strength)>=60&&Number.isFinite(Number(z.price))&&Number(z.price)>0&&
+    (call?price>=Number(z.price)-zoneTolerance*.8:price<=Number(z.price)+zoneTolerance*.8)&&
+    Math.abs(price-Number(z.price))<=zoneTolerance*3)
+    .sort((a,b)=>Math.abs(price-Number(a.price))-Math.abs(price-Number(b.price))||Number(b.strength)-Number(a.strength))[0];
+  const level=localRelevant?localLevel:historical?Number(historical.price):localLevel;
+  if(level==null||!Number.isFinite(level)||level<=0)return {mapped:false,qualified:false};
+  const tolerance=historical&&!localRelevant?zoneTolerance:baseTolerance;
   const distance=Math.abs(price-level),approaching=distance<=tolerance*3;
-  const out={mapped:true,qualified:false,level,tolerance,approaching,phase:approaching?'watch-touch':'mapped'};
+  const out={mapped:true,qualified:false,level,tolerance,approaching,source:historical&&!localRelevant?'confirmed-historical-zone':'closed-micro-bars',phase:approaching?'watch-touch':'mapped'};
   if(recent.length<4||!approaching)return out;
 
   // The same level can be attacked repeatedly; no single uptick is a reversal.
@@ -69,7 +81,7 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
   const closedBucket=Math.floor(quoteTs/5000)*5000-5000,bar=unique.filter(q=>q.ts>=closedBucket&&q.ts<closedBucket+5000),recent=unique.filter(q=>q.ts>=quoteTs-5000);
   return ['CALL','PUT'].map(side=>{
     const call=side==='CALL',aligned=call?Number(micro.delta5)>0:Number(micro.delta5)<0;
-    const mapped=mappedReaction({side,short,micro,price,quoteTs,recent,now,durationMs});
+    const mapped=mappedReaction({side,short,micro,marketZones:analysis?.metrics?.srZones,price,quoteTs,recent,now,durationMs});
     const repeated=short.repeatedReaction?.qualified===true&&short.repeatedReaction.side===side&&short.repeatedReaction.expiresAt>now?short.repeatedReaction:null;
     const confirmed=call?short.reversalCallConfirmed===true:short.reversalPutConfirmed===true;
     const located=call?short.reversalCallCandidate||short.failedBreakDown||short.turnUp:short.reversalPutCandidate||short.failedBreakUp||short.turnDown;
@@ -156,7 +168,7 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     // prediction. A missing forecast is neutral/unknown, not an invented edge.
     plan.callProbability=forecastCall??50;
     plan.putProbability=100-plan.callProbability;
-    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
+    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,level:mapped.mapped?mapped.level:null,levelSource:mapped.source||null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
 
