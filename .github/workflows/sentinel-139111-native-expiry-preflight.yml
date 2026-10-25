@@ -1,0 +1,32 @@
+name: Sentinel 13.9.111 native expiry reset preflight NO DEPLOY
+on:
+  push:
+    branches:
+      - fix/sentinel-139111-native-expiry-manual-proof-20261024
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Ensure restoration script is syntactically valid
+        run: node --check sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+      - name: Test automatic 30-second reset versus deliberate manual expiry changes
+        run: |
+          node --test tests/sentinel-13999-native-expiry-keeper.test.mjs
+          node --test tests/sentinel-13993-chart-period-isolation.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs tests/sentinel-139106-broker-cadence.test.mjs
+      - name: Verify browser performance and code scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 225f7df29e822b91b90593a8f57d9380c9a9f701
+          git diff --name-only 225f7df29e822b91b90593a8f57d9380c9a9f701 HEAD | grep -E '^sentinel-trading-lab/(agent/|src/)' | grep -v '^sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs$' > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'No click, selector, strategy, browser refresh, chart timeframe or trading logic modified'
