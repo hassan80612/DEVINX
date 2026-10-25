@@ -1,0 +1,35 @@
+name: Sentinel 120 stable cards / light broker - NO DEPLOY
+on:
+  push:
+    branches: [fix/sentinel-120-card-broker-load-20261025]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check
+        run: |
+          node --check sentinel-trading-lab/agent/worker/executor-panel.mjs
+          node --check sentinel-trading-lab/agent/worker/executor-readouts.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --check sentinel-trading-lab/agent/worker/premium-overlay-controls.mjs
+      - name: Visual regression and unchanged reversal / continuation admission
+        run: |
+          node --test --test-concurrency=1 \
+            tests/sentinel-card-stability-120.test.mjs \
+            tests/sentinel-continuation-room-119.test.mjs \
+            tests/sentinel-118-reversal-price-authority.test.mjs \
+            tests/sentinel-13996-verified-wall-exhaustion.test.mjs \
+            tests/sentinel-139107-causal-rejection-six-expiry.test.mjs \
+            tests/sentinel-selected-strategy-authority.test.mjs \
+            tests/sentinel-13999-native-expiry-keeper.test.mjs \
+            tests/sentinel-139100-broker-history-recovery.test.mjs
