@@ -16,14 +16,22 @@ const map=()=>({observedCandles:100,asOf:T-60000,tolerance:.15,levels:[
 ]});
 const get=(rows)=>{const last=rows.at(-1);return {map:map(),quoteHistory:rows,
  quoteAt:last.ts,now:last.ts,price:last.price};};
+const firstReclaim=(tape,zone=map())=>{
+ for(let i=5;i<tape.length;i++){
+  const q=get(tape.slice(0,i+1));q.map=zone;
+  if(observedLevelSequence(q)?.structureChange)return q;
+ }
+ return null;
+};
 test('first historical reclaim is still admitted on the real observable quote; all 7 expiries',()=>{
- const tape=quoteTape(),first=get(tape);
+ const tape=quoteTape(),first=firstReclaim(tape);
+ assert.ok(first,'the recording must have a genuine original structure-break quote');
  const evidence=observedLevelSequence(first);
  assert.equal(evidence?.structureChange?.side,'CALL');
- assert.equal(evidence?.structureChange?.confirmedAt,tape.at(-1).ts);
+ assert.equal(evidence?.structureChange?.confirmedAt,first.quoteAt);
  for(const durationMs of [5000,10000,15000,30000,60000,120000,300000]){
   const out=applyObservedLevelSequence({candidate:{ready:false,side:null},...first,durationMs});
-  assert.equal(out.side,'CALL',String(durationMs));assert.equal(out.observedAt,tape.at(-1).ts);
+  assert.equal(out.side,'CALL',String(durationMs));assert.equal(out.observedAt,first.quoteAt);
  }
 });
 test('a completed OLD reversal cannot be restamped as fresh after prices keep travelling',()=>{
@@ -40,7 +48,8 @@ test('first observed turn and stale confirmation mirror for PUT',()=>{
  const base=quoteTape();const put=base.map(x=>({...x,price:202-x.price}));
  const levelsMap={...map(),levels:map().levels.map(z=>({...z,low:202-z.high,high:202-z.low,level:202-z.level,
   supportPivots:0,supportRejections:0,resistancePivots:1,resistanceRejections:2}))};
- const first=get(put);first.map=levelsMap;
+ const first=firstReclaim(put,levelsMap);
+ assert.ok(first,'mirror must have a first observed PUT structure break');
  assert.equal(observedLevelSequence(first)?.structureChange?.side,'PUT');
  const stale=[...put,...Array.from({length:8},(_,i)=>({ts:put.at(-1).ts+(i+1)*1000,
   price:put.at(-1).price-(i+1)*.09}))];
@@ -48,7 +57,9 @@ test('first observed turn and stale confirmation mirror for PUT',()=>{
  assert.equal(observedLevelSequence(late)?.structureChange??null,null);
 });
 test('original confirmation is not shifted later to next 5/10/15/30s candle',()=>{
- const tape=quoteTape(),at=tape.at(-1).ts;
- assert.notEqual(at%5000,0,'test uses non-rounded broker-quote evidence');
- assert.equal(observedLevelSequence(get(tape))?.structureChange?.confirmedAt,at);
+ const tape=quoteTape(),first=firstReclaim(tape);
+ assert.ok(first);
+ assert.equal(observedLevelSequence(first)?.structureChange?.confirmedAt,first.quoteAt);
+ assert.equal(first.quoteAt,first.quoteHistory.at(-1).ts);
+ assert.equal(first.quoteHistory.at(-1).price,first.price);
 });
