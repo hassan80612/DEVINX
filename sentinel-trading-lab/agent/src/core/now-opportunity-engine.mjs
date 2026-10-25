@@ -24,7 +24,7 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
  quoteAt,price,now=quoteAt,candles=[],structureCache=null,context=''}={}){
  if(candidate?.ready!==true||!isSide(candidate.side)||candidate.side===previousSide)return candidate;
  const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now,
-  reversalEvidence:candidate.priceStructure?.observedSequence?.structureChange});
+  reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
@@ -271,10 +271,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
-  const levelReaction=['failed-breakout-structure-change','break-retest-continuation','rejection-followthrough-clear-room'].includes(located.reason)?
+  const levelReaction=located.priceStructure?.confirmedReversal??(['failed-breakout-structure-change','break-retest-continuation','rejection-followthrough-clear-room'].includes(located.reason)?
    sequenceReaction.structureChange??sequenceReaction.continuation:
    located.reason==='multiscale-candle-rejection'?
-    located.priceStructure.candleRoute.event:located.priceStructure?.reaction;
+    located.priceStructure.candleRoute.event:located.priceStructure?.reaction);
   // Strategies supply evidence to the common market base, never a direct
   // order. A valid specialist setup can still be assessed on an early quote
   // when the longer automatic structure is not yet complete: no extra
@@ -301,7 +301,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // No new timer, quote read or additional candle requirement.
   const pivotRisk=proposed.ready&&countertrendPivotRisk({
    quoteHistory,quoteAt,price,side:proposed.side,now,
-   reversalEvidence:proposed.priceStructure?.observedSequence?.structureChange
+   reversalEvidence:proposed.priceStructure?.confirmedReversal??proposed.priceStructure?.observedSequence?.structureChange
   });
   // One final shared-market-base screen for a fading approach to a verified
   // historical wall. No direction inversion, timing changes, waits or reads.

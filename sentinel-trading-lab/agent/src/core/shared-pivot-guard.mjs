@@ -5,7 +5,7 @@
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt,reversalEvidence=null}={}){
  const ts=Number(quoteAt),spot=Number(price),clock=Number(now);
- const levelTurn=reversalEvidence?.kind==='failed-breakout-structure-change'&&
+ const levelTurn=['failed-breakout-structure-change','confirmed-level-structure-reversal'].includes(reversalEvidence?.kind)&&
   reversalEvidence.side===side&&Number(reversalEvidence.confirmedAt)<=ts&&
   (Number(reversalEvidence.level?.confirmedPivots)>0||Number(reversalEvidence.level?.independentRejections)>=2);
  if(!['CALL','PUT'].includes(side)||!(ts>0&&spot>0&&clock>=ts&&clock-ts<=2500))return false;
@@ -54,7 +54,7 @@ export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=qu
    // retreat remains eligible as a genuine reversal candidate.
    if(progress>typical*5&&retreat<=progress*.18&&
       ((sign>0&&side==='PUT')||(sign<0&&side==='CALL')))
-    return true;
+    return !(levelTurn&&currentQuoteStructureTurn({quoteHistory,quoteAt,price,side,now}));
   }
  }
  if(highs.length<2||lows.length<2)return false;

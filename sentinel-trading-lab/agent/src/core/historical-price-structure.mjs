@@ -121,7 +121,13 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   confirmedPivots:z.confirmedPivots??z.pivots??0,
   independentRejections:z.independentRejections??0,
   oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
- evidence.nearestSupport=describe(below[0]);evidence.nearestResistance=describe(above[0]);
+ // Relative position alone never proves a level's role. A former ceiling
+ // below price becomes support only after observed crossing/retest evidence.
+ const supports=below.filter(z=>levelRoleEvidence(z,'CALL').confirmed||
+  observedRoleRetest({quoteHistory,quoteAt,now,price,side:'CALL',zone:z,tolerance}));
+ const resistances=above.filter(z=>levelRoleEvidence(z,'PUT').confirmed||
+  observedRoleRetest({quoteHistory,quoteAt,now,price,side:'PUT',zone:z,tolerance}));
+ evidence.nearestSupport=describe(supports[0]);evidence.nearestResistance=describe(resistances[0]);
  const reactions=[];
  for(const z of relevant){
   const level=z.level,distance=Math.abs(spot-level);
@@ -187,7 +193,7 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  }
  // Deceleration INTO a tested level is different from a sustained breakout.
  // This check has no timeout and never waits for another completed candle.
- const intended=candidate.side,wall=intended==='CALL'?above[0]:below[0];
+ const intended=candidate.side,wall=intended==='CALL'?resistances[0]:supports[0];
  if(candidate.ready&&wall&&levelRoleEvidence(wall,intended==='CALL'?'PUT':'CALL').confirmed&&
    Math.abs(wall.level-spot)<=tolerance&&wall.touches>=2){
   const shortMove=spot-earlier,longMove=earlier-origin;

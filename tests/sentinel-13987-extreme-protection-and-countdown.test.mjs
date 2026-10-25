@@ -46,7 +46,7 @@ test('PC and mobile WIN/LOSS by countdown originate exclusively from broker exec
  assert.ok(clock.indexOf('data-sentinel-vnext-clock-value')<clock.indexOf('data-sentinel-executor-clock-wl'));
  assert.ok(clock.indexOf('data-sentinel-executor-clock-wl')<clock.indexOf("MOMENTO DE ENTRADA"));
  assert.match(clock,/data-sentinel-executor-clock-wl style="display:flex;flex-direction:column/);
- assert.match(clock,/height:68px;max-height:68px/);
+ assert.match(clock,/height:58px;max-height:58px/);
  assert.match(pc,/Number\(d\.autoExecutor\.sessionWins\|\|0\)/);
  assert.match(pc,/Number\(d\.autoExecutor\.sessionLosses\|\|0\)/);
  assert.match(mobile,/data-testid="mobile-countdown-executor-wl"/);

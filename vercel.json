@@ -73,7 +73,8 @@
       "release/sentinel-139107-expiry-reaction-fastpath-20261024": false,
       "release/sentinel-139112-bankroll-fluidity-20261025": false,
       "release/sentinel-139113-directional-levels-balance-20261025": false,
-      "release/sentinel-139114-account-premium-reversals-20261025": false
+      "release/sentinel-139114-account-premium-reversals-20261025": false,
+      "fix/sentinel-139115-compact-console-level-context-20261025": false
     }
   }
 }

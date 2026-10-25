@@ -49,7 +49,31 @@ export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,p
  if(!last||!pivot||!prior||last.kind!==(sign>0?'low':'high')||prior.kind!==last.kind)return null;
  if(!(sign*(last.price-prior.price)>0&&sign*(spot-pivot.price)>amplitude&&
    sign*(spot-rows.at(-2).price)>=0))return null;
- return {side,pivotPrice:pivot.price,turnPrice:last.price,confirmedAt:ts,amplitude};
+ return {side,pivotPrice:pivot.price,turnPrice:last.price,turnAt:last.at,
+  priorTurnPrice:prior.price,priorTurnAt:prior.at,confirmedAt:ts,amplitude};
+}
+export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
+ if(!map?.observedCandles||!(map.asOf<=now&&map.tolerance>0))return null;
+ for(const side of ['CALL','PUT']){
+  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});if(!proof)continue;
+  const sign=side==='CALL'?1:-1;
+  const anchor=map.levels.filter(z=>{
+   const role=levelRoleEvidence(z,side);
+   return role.known&&role.confirmed&&proof.priorTurnPrice>=z.low-map.tolerance&&
+    proof.priorTurnPrice<=z.high+map.tolerance;
+  }).sort((a,b)=>Math.abs(a.level-proof.priorTurnPrice)-Math.abs(b.level-proof.priorTurnPrice))[0];
+  if(!anchor)continue;
+  // The FIRST current price break owns this reversal. Never keep stamping
+  // a past reaction as new after the movement has already travelled away.
+  const crossed=receivedQuotes(quoteHistory,Number(quoteAt),now).find(q=>
+   q.ts>proof.turnAt&&sign*(q.price-proof.pivotPrice)>proof.amplitude);
+  if(!crossed||now-crossed.ts>1450)continue;
+  return {kind:'confirmed-level-structure-reversal',side,
+   level:{level:anchor.level,confirmedPivots:anchor.confirmedPivots,
+    independentRejections:anchor.independentRejections},
+   pivotPrice:proof.pivotPrice,turnPrice:proof.turnPrice,confirmedAt:crossed.ts};
+ }
+ return null;
 }
 export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quoteAt}={}){
  const spot=Number(price),ts=Number(quoteAt);
@@ -140,12 +164,14 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!sequence)return candidate;
  // Reclaim + break/retest geometry is independent of expiry. The distance
  // projection below remains scoped to the 30s holding time it measures.
- const event=sequence.structureChange??(Number(durationMs)===30000?sequence.continuation:null);
- const priceStructure={...candidate.priceStructure,observedSequence:sequence};
+ const reversal=sequence.structureChange?null:confirmedLevelReversal({map,...input});
+ const event=sequence.structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ const priceStructure={...candidate.priceStructure,observedSequence:sequence,
+  ...(reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
- if(!candidate.ready&&!sequence.structureChange)return {...candidate,priceStructure};
+ if(!candidate.ready&&!sequence.structureChange&&!reversal)return {...candidate,priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
   reason:event.kind,priceStructure};

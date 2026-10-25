@@ -1124,7 +1124,7 @@ export class DemoTradingRuntime{
             touches:levels.nearestSupport.touches}:null,
           resistance:levels.nearestResistance?{level:levels.nearestResistance.level,
             touches:levels.nearestResistance.touches}:null,
-          levelReaction:levels.reaction?.kind??null,
+          levelReaction:levels.reaction?.kind??levels.confirmedReversal?.kind??null,
           levelExpiryProof:levels.reactionProof?{
             confirmed:levels.reactionProof.confirmed===true,
             reason:levels.reactionProof.reason??null,
