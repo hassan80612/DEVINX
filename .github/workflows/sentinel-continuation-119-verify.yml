@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Inspect version-pinned regressions
+        run: git grep -n 13.9.118 -- tests || true
       - name: Syntax check
         run: |
           node --check sentinel-trading-lab/agent/src/core/continuation-room-risk.mjs
@@ -35,3 +37,32 @@ jobs:
             tests/sentinel-13992-all-expiry-trend-reversal.test.mjs \
             tests/sentinel-shared-pivot-guard-20261022.test.mjs \
             tests/sentinel-trade-audit-20261024.test.mjs
+      - name: Install dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build entire web and actual Windows Agent
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Check Windows binary and automatic-update contents
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          release=json.loads((root/'agent/release.json').read_text())
+          assert release['version']=='13.9.119'
+          assert release['build']=='13.9.119-causal-continuation-wall-pressure'
+          dl=root/'public/downloads'
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(dl/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(dl/'Sentinel-Agent-13.9.119.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1_000_000 and payload in exe
+          assert exe==(dl/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(dl/'agent_payload_v88.zip') as archive:
+            assert archive.testzip() is None
+            assert json.loads(archive.read('release.json'))==release
+            for name in archive.namelist():
+              if name.endswith('/'):continue
+              assert archive.read(name)==(root/'agent'/name).read_bytes(),name
+          print('SENTINEL 119 VERIFIED',len(exe),manifest['zipSha256'])
+          PY
