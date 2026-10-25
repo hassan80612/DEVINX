@@ -1,5 +1,6 @@
 import {PREMIUM_OVERLAY_CSS} from './premium-overlay-controls.mjs';
 import {patchCurrentQuote} from './current-quote-readout.mjs';
+import {patchMarketTotals} from './market-totals-readout.mjs';
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
@@ -1582,6 +1583,14 @@ export class LocalPlaywrightDriver{
     if(!page||page.isClosed?.())return;
     await page.evaluate(patchCurrentQuote,frame);
   }
+  async updateMarketTotals(provider,frame){
+    const page=this.sessions.get(provider)?.page;
+    if(!page||page.isClosed?.())return;
+    const language=frame.language==='en'?'en':'pt';
+    await page.evaluate(patchMarketTotals,{...frame,provider,language,cards:presentableMarketCards(frame.cards),
+      waitLabel:language==='en'?(PC_UI_EN.AGUARDAR||'WAIT'):'AGUARDAR',
+      neutralLabel:language==='en'?(PC_UI_EN.NEUTRO||'NEUTRAL'):'NEUTRO'});
+  }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
     try{
@@ -2266,7 +2275,7 @@ export class LocalPlaywrightDriver{
             </section>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">${tr('TOTAIS · LEITURAS AO VIVO')}</b><small style="font-size:9px;color:${muted}">${tr('Índices direcionais, não taxa de acerto')}</small></div>
-            <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
+            <div data-sentinel-vnext-cards data-provider="${esc(d.quoteProvider)}" data-asset="${esc(visibleAsset)}" data-engine="${esc(d.engine)}" data-duration="${duration}" data-language="${uiLang}" data-state="${runtime}" data-readings-at="${Number(d.marketReadingsAt||0)}" data-neutral-color="${ink}" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(d.visualMarketCards||[]).map(c=>{
                 const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
                 // These percentages are measured from OBSERVED prices; they must
@@ -2277,8 +2286,8 @@ export class LocalPlaywrightDriver{
                 const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
                 return '<div data-sentinel-summary="'+esc(c.id||'')+'" style="padding:7px 8px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+
                   '<div style="min-height:27px;font-size:10px;line-height:1.3;font-weight:800;color:'+ink+'">'+esc(c.label||'TOTAL')+'</div>'+
-                  '<b style="display:block;margin:4px 0;font-size:13px;color:'+color+'">'+side+'</b>'+
-                  '<div style="display:flex;flex-wrap:wrap;gap:5px;font-size:10px;font-weight:800"><span style="color:'+callTone+'">CALL '+(fresh?Math.round(value)+'%':'—')+'</span><span style="color:'+putTone+'">PUT '+(fresh?Math.round(other)+'%':'—')+'</span></div>'+
+                  '<b data-sentinel-reading-side style="display:block;margin:4px 0;font-size:13px;color:'+color+'">'+side+'</b>'+
+                  '<div style="display:flex;flex-wrap:wrap;gap:5px;font-size:10px;font-weight:800"><span data-sentinel-reading-call style="color:'+callTone+'">CALL '+(fresh?Math.round(value)+'%':'—')+'</span><span data-sentinel-reading-put style="color:'+putTone+'">PUT '+(fresh?Math.round(other)+'%':'—')+'</span></div>'+
                   '</div>';
               }).join('')}
             </div>
@@ -2641,6 +2650,7 @@ export class LocalPlaywrightDriver{
         })
         window.__sentinelApplyExecutorReadouts?.();
         window.__sentinelApplyCurrentQuote?.();
+        window.__sentinelApplyMarketTotals?.();
         };
         window.__sentinelRenderOverlay=render;
         // The Worker already publishes fresh frames. Never start a second

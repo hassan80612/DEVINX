@@ -55,6 +55,9 @@ const executorReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.
 const quoteReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateCurrentQuote?.(provider,data),{
  minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
 });
+const marketTotalsUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateMarketTotals?.(provider,data),{
+ minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
+});
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
@@ -511,6 +514,20 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const configuredFreshnessMs=Math.max(500,Number(view.settings?.risk?.maxFeedLatencyMs||2500));
     const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
+    const marketReadingsAt=Date.now();
+    const analysisStale=!view.liveBroker||quoteStale||(a.vnext?.mode==='now'
+        ?(view.liveBroker.quoteFeedValidated!=null?
+          view.liveBroker.quoteFeedValidated!==true:
+          !(view.liveBroker.analysisFeedValidated===true||view.liveBroker.feedValidated===true))
+        :(view.liveBroker.analysisFeedValidated===false||
+          (view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false)));
+    marketTotalsUpdates.publish(activeProvider,{
+      asset:currentAsset,engine:view.settings?.engine,durationMs:view.settings?.orderDurationMs||60000,
+      language:view.settings?.uiLanguage||'pt',state:view.state,at:marketReadingsAt,quoteAt:liveTs,
+      fresh:view.state==='running'&&!analysisStale&&a.vnext?.engineId===view.settings?.engine&&
+        view.lastEvalMs>0&&marketReadingsAt-view.lastEvalMs<3500,
+      cards:a.vnext?.cards||[]
+    });
     const op=a.operationalSignal||{},scenario=op.scenario||{},
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
@@ -538,6 +555,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       lastOverlayTimingKey=overlayTimingKey;
       lastOverlayAt=Date.now();
     overlayUpdates.publish(activeProvider,{
+      marketReadingsAt,
       asset:currentAsset,
       validatedAsset:view.liveBroker?.validatedSymbol||view.liveBroker?.symbol||currentAsset,
       assetValidated:view.liveBroker?.assetValidated===true,
@@ -580,12 +598,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       analysisTransient:held.transient,
       // The NOW engine requires authenticated live quotes, NOT historical
       // candle validation. The visual state must obey the same source gate.
-      analysisStale:!view.liveBroker||quoteStale||(a.vnext?.mode==='now'
-        ?(view.liveBroker.quoteFeedValidated!=null?
-          view.liveBroker.quoteFeedValidated!==true:
-          !(view.liveBroker.analysisFeedValidated===true||view.liveBroker.feedValidated===true))
-        :(view.liveBroker.analysisFeedValidated===false||
-          (view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false))),
+      analysisStale,
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
