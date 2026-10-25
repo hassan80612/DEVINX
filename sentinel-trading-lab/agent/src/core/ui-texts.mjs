@@ -1,6 +1,9 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Stop Loss · saldo mínimo": "Stop Loss · minimum balance",
+  "Stop Win · saldo-alvo": "Stop Win · target balance",
+  "0 desativa o stop. Informe o saldo em que o bot deve parar. Exemplo: banca 100, Stop Loss 50, Stop Win 150.": "0 disables the stop. Enter the balance at which the bot should stop. Example: balance 100, Stop Loss 50, Stop Win 150.",
   "Valor por clique (igual à corretora)": "Amount per click (match broker)",
   "Atualize o Agent no PC para usar martingale por cliques.": "Update the PC Agent to use click-count martingale.",
   "clique(s)": "click(s)",

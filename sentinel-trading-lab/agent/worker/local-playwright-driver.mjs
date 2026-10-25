@@ -1,3 +1,4 @@
+import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
 import {executorPanel} from './executor-panel.mjs';
@@ -1522,6 +1523,11 @@ export class LocalPlaywrightDriver{
     }
     throw Error('Ação inválida.');
   }
+  async updateExecutorReadouts(provider,{state,revision,language='pt'}={}){
+    const page=this.sessions.get(provider)?.page;
+    if(!page||page.isClosed?.())return;
+    await page.evaluate(patchExecutorReadouts,{revision,html:executorPanel(state,language)});
+  }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
     try{
@@ -1539,10 +1545,11 @@ export class LocalPlaywrightDriver{
         // Fail closed during pending / live broker orders. Fresh permission
         // comes from the current Agent overlay, not from an independent timer.
         const expBot=d.autoExecutor,expAnchor=d.vnext?.futureEntryAnchor;
-        window.__sentinelNativeExpiryPermission={
+        window.__sentinelNativeExpiryPermissionV2={
           at:Date.now(),
           allowed:!!expBot&&!expBot.arming&&!expBot.executing&&!expBot.pending&&
-            !(expAnchor?.phase==='fired'&&Number(expAnchor.exitAt||0)>Date.now())
+            !expBot.unresolvedBatches&&
+            !(expBot.enabled&&expAnchor?.phase==='fired'&&Number(expAnchor.exitAt||0)>Date.now())
         };
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
@@ -2563,6 +2570,7 @@ export class LocalPlaywrightDriver{
             if(rr.top<8)el.style.top='8px'
           }
         })
+        window.__sentinelApplyExecutorReadouts?.();
         };
         window.__sentinelRenderOverlay=render;
         // The Worker already publishes fresh frames. Never start a second

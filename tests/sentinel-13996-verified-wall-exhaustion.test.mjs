@@ -27,12 +27,12 @@ test('an accelerating continuation and completed breakout are retained',()=>{
  assert.equal(check(args(accelerated)),null);
  assert.equal(check(args([1.10070,1.10074,1.10080,1.10087,1.10092,1.10106,1.101085,1.10110])),null);
 });
-test('confirmed reversals, rejections, breakouts and retests still pass the shared base',()=>{
+test('every setup label respects a separately confirmed opposing wall',()=>{
  for(const reason of ['historical-level-rejection','historical-level-breakout',
   'multiscale-candle-rejection','failed-breakout-structure-change',
   'break-retest-continuation','rejection-followthrough-clear-room',
   'closed-range-extreme-reversal-confirmed'])
-  assert.equal(check(args(up,'CALL',reason)),null,reason);
+  assert.equal(check(args(up,'CALL',reason))?.kind,'verified-level-fading-approach',reason);
 });
 test('unconfirmed historical wall cannot veto any candidate',()=>{
  for(const key of ['confirmedPivots','independentRejections']){
@@ -63,9 +63,9 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.match(motor,/const wallRisk=!pivotRisk&&proposed\.ready\?verifiedWallExhaustionRisk/);
  assert.match(motor,/reason:'shared-base-verified-wall-exhaustion'/);
  assert.doesNotMatch(read('agent/src/core/verified-wall-exhaustion.mjs'),/\bawait\b|setTimeout\s*\(|setInterval\s*\(|fetch\s*\(/);
- assert.equal(JSON.parse(read('package.json')).version,'13.9.107');
+ assert.equal(JSON.parse(read('package.json')).version,'13.9.112');
  const release=JSON.parse(read('agent/release.json'));
- assert.equal(release.version,'13.9.107');
- assert.equal(release.build,'13.9.107-causal-holding-reaction-broker-fast');
+ assert.equal(release.version,'13.9.112');
+ assert.equal(release.build,'13.9.112-stable107-bankroll-fluidity');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });

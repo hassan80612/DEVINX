@@ -10,7 +10,7 @@ const docs={
  steps:[
  ['1. Conecte a corretora','Abra o Sentinel Agent 13.9.73 já instalado no PC. Entre na sua conta Sentinel, abra IQ Option ou Exnova, faça login e confira se o ativo e as cotações estão corretos.'],
  ['2. Configure a análise','No card Mercado, selecione a estratégia e a duração da operação. Mantenha a mesma duração configurada na corretora. Espere a conexão ao vivo ser confirmada.'],
- ['3. Ajuste os limites do bot','No painel Bot automático, confira o Valor por clique, igual ao valor definido na corretora. Configure a Perda máxima na sessão e, se desejar, o limite de sequências perdedoras.'],
+ ['3. Ajuste os limites do bot','No painel Bot automático, confira o valor por clique definido na corretora. Stop Loss e Stop Win são saldos de destino: com banca de 100, Stop Loss 50 para ao chegar a 50 ou menos; Stop Win 150 para ao chegar a 150 ou mais. Zero desativa o stop. Ordens já abertas continuam até encerrar.'],
  ['4. Martingale opcional','Com 0 níveis, o martingale fica desligado. Com 1 a 3 níveis, as entradas seguintes podem multiplicar os cliques após perdas. Multiplicadores 2× e 3× aumentam rapidamente o risco de esgotar a banca.'],
  ['5. Ligue e acompanhe','Clique em Salvar limites e depois em Ligar bot. Mantenha o PC ativo e a corretora conectada. O celular apenas acompanha e envia comandos ao Agent do PC.'],
  ['6. Pare quando quiser','Use Parar bot ou o Kill Switch para impedir novas entradas. Operações já abertas na corretora não são canceladas. Confira os resultados e os limites antes de voltar a operar.']],

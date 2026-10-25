@@ -1,3 +1,4 @@
+import {executorReadoutKey} from './executor-readouts.mjs';
 import {packExecutor,unpackExecutor,dispatchExecutor} from './executor-remote.mjs';
 import {SignalExecutor} from './signal-executor.mjs';
 import {BrokerUiExecutor} from './broker-ui-executor.mjs';
@@ -44,6 +45,10 @@ const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,enableVNext:true,seed:N
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
 const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data),{
   isCriticalBusy:()=>executor.executing
+});
+let lastExecutorReadoutKey='',executorReadoutRevision=Date.now();
+const executorReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateExecutorReadouts?.(provider,data),{
+ minIntervalMs:250,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
 });
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
@@ -129,7 +134,9 @@ async function publishLiveFrame(){
     pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
     scenario.side,scenario.status,scenario.closed,
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
-    alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
+    alert.side,alert.trigger,alert.testing,op.subanalyst?.status,
+    executor.sessionWins,executor.sessionLosses,executor.net,executor.enabled,
+    executor.balanceRisk.current?.revision].join('|');
   const urgent=decisionKey!==lastLiveSentDecisionKey;
   // Phase/immutable boundary/confirmed trigger are source events, not quote
   // refreshes. Deliver these without a second half-second wait. Everything
@@ -453,6 +460,12 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,
       runtime.settings.engine?null:runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
   if(activeProvider){
+    const state={...executor.status(),provider:activeProvider};
+    const readoutKey=(runtime.settings.uiLanguage||'pt')+'|'+executorReadoutKey(state);
+    if(readoutKey!==lastExecutorReadoutKey){
+      lastExecutorReadoutKey=readoutKey;
+      executorReadoutUpdates.publish(activeProvider,{state,revision:(executorReadoutRevision=Math.max(executorReadoutRevision+1,Date.now())),language:runtime.settings.uiLanguage||'pt'});
+    }
     // A full status() rebuild includes research summaries, broker metadata and
     // trade aggregates. Keep it OUT of the 400ms quote-analysis loop unless an
     // overlay actually needs painting or its operational state has changed.

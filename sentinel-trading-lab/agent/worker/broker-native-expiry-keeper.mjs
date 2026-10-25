@@ -7,8 +7,12 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeper?.revision===1)return;
-  const key='sentinel-broker-native-expiration-preference-v1:'+provider;
+  if(window.__sentinelNativeExpiryKeeper?.revision===2)return;
+  // Older documents may still have a v1 timer. Revoke its write permission;
+  // v2 uses its own lease and preference so the old listener cannot fight it.
+  window.__sentinelNativeExpiryPermission={allowed:false,at:0};
+  const oldKey='sentinel-broker-native-expiration-preference-v1:'+provider;
+  const key='sentinel-broker-native-expiration-preference-v2:'+provider;
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900]);
   const parse=text=>{
    const raw=String(text||'').replace(/\u00a0/g,' ').trim();
@@ -32,11 +36,11 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    '[aria-label*="expir" i]','[title*="expir" i]'
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
-   openingValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
+   openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
    verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0;
   try{
-   const v=Number(localStorage.getItem(key));
-   if(ACCEPT.has(v/1000))preferredMs=v;
+   const v=Number(localStorage.getItem(key)??localStorage.getItem(oldKey));
+   if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
   }catch{}
   function discover(){
    if(cached&&visible(cached)){
@@ -73,24 +77,65 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    return !!control&&(control.el===target||control.el.contains(target)||
     target.contains?.(control.el));
   };
+  const inExpiryMenu=(element,control)=>{
+   if(!element||element.closest?.('#sentinel-trading-overlay-host'))return false;
+   if(control===element||control?.contains?.(element))return true;
+   // Prefer the native control's explicit popup relationship. A generic
+   // option/button with matching text elsewhere is not an expiry control.
+   for(const attribute of ['aria-controls','aria-owns']){
+    const ids=String(control?.getAttribute?.(attribute)||'').split(/\s+/).filter(Boolean);
+    for(const id of ids){
+     const popup=document.getElementById?.(id);
+     if(popup&&(popup===element||popup.contains?.(element)))return true;
+    }
+   }
+   // Brokers also use expiry-named portal menus without ARIA ownership.
+   // If neither identity exists, leave the UI alone; never guess a chart item.
+   return !!element.closest?.(CONTROL_SELECTORS);
+  };
+  // Opening the picker proves no duration choice. Record an exact trusted
+  // option click, then require the native control to confirm that value.
+  const pickedOption=target=>{
+   const control=discover();
+   if(!control||!inExpiryMenu(target,control.el))return null;
+   for(let el=target,depth=0;el&&depth<3;el=el.parentElement,depth++){
+    const raw=String(el.innerText||el.textContent||'').trim();
+    if(raw.length>25)continue;
+    const value=parse(raw);
+    if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i]')||
+      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i]')))return value;
+   }
+   return null;
+  };
   document.addEventListener('pointerdown',ev=>{
-   if(repairing)return;
+   if(repairing||!ev.isTrusted)return;
    const target=ev.target;
    if(isManualPickerTarget(target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
-   }else if(manualOpenedAt&&Date.now()-manualOpenedAt<12000)
-    lastUserActivityAt=Date.now();
+    chosenValue=null;lastUserActivityAt=manualOpenedAt;
+   }
   },true);
   document.addEventListener('click',ev=>{
    if(repairing||!ev.isTrusted)return;
-   if(isManualPickerTarget(ev.target)){
+   // Options can be INSIDE the picker. Check the actual choice before the
+   // opener, otherwise a real selection is mistaken for opening the menu.
+   const value=manualOpenedAt&&Date.now()-manualOpenedAt<12000?pickedOption(ev.target):null;
+   if(value){chosenValue=value;lastUserActivityAt=Date.now();}
+   else if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
+    chosenValue=null;lastUserActivityAt=manualOpenedAt;
    }
   },true);
-  const permission=()=>window.__sentinelNativeExpiryPermission?.allowed===true&&
-   Date.now()-Number(window.__sentinelNativeExpiryPermission?.at||0)<3500;
+  document.addEventListener('change',ev=>{
+   if(repairing||!ev.isTrusted||!ev.target?.matches?.('select'))return;
+   const control=discover();
+   if(!control||!inExpiryMenu(ev.target,control.el))return;
+   const selected=ev.target.selectedOptions;
+   const value=selected?.length===1?parse(selected[0].textContent||selected[0].label):null;
+   if(value){manualOpenedAt=Date.now();chosenValue=value;lastUserActivityAt=manualOpenedAt;}
+  },true);
+  const permission=()=>window.__sentinelNativeExpiryPermissionV2?.allowed===true&&
+   Date.now()-Number(window.__sentinelNativeExpiryPermissionV2?.at||0)<3500;
   const save=v=>{preferredMs=v;try{localStorage.setItem(key,String(v))}catch{}};
   const notify=(value)=>{window.__sentinelNativeExpiryStatus={
    preferredMs,currentMs:value,changedAt:Date.now(),lastRepairAt,restoring:repairing
@@ -122,7 +167,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
      const elements=[...document.querySelectorAll(
       '[role="option"],[role="menuitem"],[class*="option" i],'+
       '[class*="expiration" i],[class*="duration" i],[class*="item" i],li,button'
-     )].filter(el=>visible(el)&&!el.closest?.('#sentinel-trading-overlay-host'));
+     )].filter(el=>visible(el)&&inExpiryMenu(el,control.el));
      const options=elements.filter(el=>{
       const raw=String(el.innerText||el.textContent||'').trim();
       if(raw.length>28||!raw)return false;
@@ -152,12 +197,12 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(observedMs===current)stableCount++;
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
-     if(openingValue!=null&&current!==openingValue&&
-       now-lastUserActivityAt<12000){
-      save(current);manualOpenedAt=0;openingValue=null;mismatchSince=0;
+     if(chosenValue!=null&&current===chosenValue){
+      save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;mismatchSince=0;
      }
      notify(current);return;
     }
+    if(manualOpenedAt){manualOpenedAt=0;openingValue=null;chosenValue=null;}
     if(!preferredMs){
      // Bootstrap only a stable non-default selected duration. A fresh
      // default 30s is never silently treated as the user's last preference.
@@ -166,13 +211,13 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     }
     if(current===preferredMs){mismatchSince=0;notify(current);return}
     if(!mismatchSince)mismatchSince=now;
-    if(now-mismatchSince<4000||now-lastRepairAt<45000||!permission()){
+    if(now-mismatchSince<4000||now-lastRepairAt<10000||!permission()){
      notify(current);return
     }
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeper={revision:1,poll,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeper={revision:2,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,mismatchSince,lastRepairAt,repairing
   })};
   poll();

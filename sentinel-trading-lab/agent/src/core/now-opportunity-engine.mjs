@@ -11,20 +11,25 @@ import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
+import {observedQuoteWindow} from './observed-quote-window.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
+// Later evidence can revise a proposed side. Recheck that FINAL direction
+// against the same shared market safeguards; never rerun a learning selector.
+export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
+ quoteAt,price,now=quoteAt,candles=[],structureCache=null,context=''}={}){
+ if(candidate?.ready!==true||!isSide(candidate.side)||candidate.side===previousSide)return candidate;
+ const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now});
+ const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
+ const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
+ return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
+  wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:candidate;
+}
 function causalQuotes(history,now,windowMs=180000){
- const byTime=new Map();
- for(const q of Array.isArray(history)?history:[]){
-  const ts=Number(q?.ts),received=Number(q?.receivedAt??ts),price=Number(q?.price);
-  if(!(ts>0&&ts<=now&&received>0&&received<=now&&finitePrice(price)&&ts>=now-windowMs))continue;
-  const previous=byTime.get(ts);
-  if(!previous||received<previous.receivedAt)byTime.set(ts,{ts,receivedAt:received,price});
- }
- return [...byTime.values()].sort((a,b)=>a.ts-b.ts);
+ return observedQuoteWindow({history,at:now,now,windowMs});
 }
 function closingBars(quotes,now,barMs,count=4){
  const end=Math.floor(now/barMs)*barMs,all=[];

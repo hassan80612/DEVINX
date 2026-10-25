@@ -29,7 +29,7 @@ import {evolveOpportunity,opportunityContext} from './single-opportunity-window.
 import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
-import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1037,11 +1037,15 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,price:snap.price,
         now,durationMs:settings.orderDurationMs,estimate:preliminary
       };
-      const observation=this.forecastModel==='short-probability-v1'?
+      const revisedObservation=this.forecastModel==='short-probability-v1'?
         adjudicateExpiryTrend({candidate:combine66WithProbability(original66,preliminary,{
           durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true
         }),...expiryTrendInput}):
         adjudicateExpiryTrend({candidate:original66,...expiryTrendInput});
+      const observation=reviewChangedOpportunitySide({candidate:revisedObservation,
+        previousSide:original66.side,...expiryTrendInput,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        structureCache:this.structureCache,context:expiryDirectionContext});
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,
       // never changes observation/entry direction, never reads the broker UI.

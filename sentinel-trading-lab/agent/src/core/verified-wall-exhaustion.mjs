@@ -2,18 +2,14 @@
 // candle period, selector, scheduled entry, broker, martingale or WIN/LOSS.
 const finitePositive=p=>typeof p==='number'&&Number.isFinite(p)&&p>0;
 const validated=x=>Number.isFinite(Number(x))?Number(x):NaN;
-const CONFIRMED_SETUPS=new Set([
- 'historical-level-rejection','historical-level-breakout',
- 'multiscale-candle-rejection','failed-breakout-structure-change',
- 'break-retest-continuation','rejection-followthrough-clear-room',
- 'closed-range-extreme-reversal-confirmed'
-]);
 
 export function verifiedWallExhaustionRisk({
  candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price
 }={}){
- if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side)||
-   CONFIRMED_SETUPS.has(String(candidate.reason||'')))return null;
+ // A setup name cannot exempt an approach to a DIFFERENT opposing wall.
+ // A breakout already beyond that wall and an accelerating continuation
+ // still pass the geometric and observed-deceleration checks below.
+ if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side))return null;
  const ts=validated(quoteAt),clock=validated(now),spot=validated(price);
  if(!(finitePositive(spot)&&ts>0&&clock>=ts&&clock-ts<=1450&&
    Number(candidate.observedAt)===ts&&Number(candidate.entryPrice)===spot))return null;

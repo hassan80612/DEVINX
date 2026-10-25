@@ -1,6 +1,7 @@
 // Sentinel: horizon-specific directional estimates; these are NOT calibrated win rates.
 // This is a conditional Gaussian *estimate*, NOT a statistically calibrated win rate.
 // No historical labels or broker executions are needed for the warmup.
+import {observedQuoteWindow} from './observed-quote-window.mjs';
 const clamp=(v,lo,hi)=>Math.min(hi,Math.max(lo,v));
 const sigmoid=x=>1/(1+Math.exp(-clamp(x,-20,20)));
 export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000,payout=null,now=Date.now()}={}){
@@ -11,14 +12,7 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  if(!Number.isFinite(t)||t>now||now-t>1500||!(p>0))return wait('stale-or-invalid-quote');
  const lookback=h>=300?190:h>=120?100:66;
  const minObserved=h>=300?180:h>=120?90:30;
- const cutoff=t-lookback*1000,rows=[],seen=new Map();
- // Last 3000 observed quotes are enough even with high-frequency broker feeds.
- for(const x of quoteHistory.slice(-6000)){
-  const ts=Number(x?.ts),value=Number(x?.price);
-  if(Number.isFinite(ts)&&ts<=t&&ts>=cutoff&&Number.isFinite(value)&&value>0)seen.set(ts,value);
- }
- for(const [ts,value] of seen)rows.push({ts,price:value});
- rows.sort((a,b)=>a.ts-b.ts);
+ const rows=observedQuoteWindow({history:quoteHistory,at:t,now,windowMs:lookback*1000,maxQuotes:6000});
  if(rows.length<8||rows.at(-1).ts!==t||Math.abs(rows.at(-1).price-p)>p*.0000001)return wait('insufficient-observed-quotes');
  const earliest=rows[0].ts;
  if(t-earliest<minObserved*1000)return wait('collecting-horizon-history',{historySeconds:Math.floor((t-earliest)/1000)});

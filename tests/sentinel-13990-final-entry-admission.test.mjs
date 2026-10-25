@@ -47,7 +47,7 @@ test('no extra timers or dependence on the calibrated attribute or payout',()=>{
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(code,/\bawait\b|setInterval\s*\(|setTimeout\s*\(|estimate\.calibrated\s*===\s*true/);
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
- const start=runtime.indexOf('const observation=this.forecastModel');
+ const start=runtime.indexOf('const revisedObservation=this.forecastModel');
  const end=runtime.indexOf('let next=advanceNowOpportunity',start);
  assert.ok(runtime.slice(start,end).includes('enforceFinalExpiryVote:true'));
 });
