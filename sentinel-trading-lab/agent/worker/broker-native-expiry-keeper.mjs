@@ -7,7 +7,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeper?.revision===1)return;
+  if(window.__sentinelNativeExpiryKeeper?.revision===2)return;
   const key='sentinel-broker-native-expiration-preference-v1:'+provider;
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900]);
   const parse=text=>{
@@ -32,7 +32,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    '[aria-label*="expir" i]','[title*="expir" i]'
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
-   openingValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
+   openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
    verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0;
   try{
    const v=Number(localStorage.getItem(key));
@@ -73,20 +73,36 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    return !!control&&(control.el===target||control.el.contains(target)||
     target.contains?.(control.el));
   };
+  // A broker reset to 30s is not a manual selection just because a picker
+  // was opened recently. Only a TRUSTED click on one exact duration option
+  // can replace the stored preference. This is independent of chart period.
+  const pickedOption=target=>{
+   for(let el=target,depth=0;el&&depth<3;el=el.parentElement,depth++){
+    const raw=String(el.innerText||el.textContent||'').trim();
+    if(raw.length>25)continue;
+    const v=parse(raw);
+    if(v&&(
+      el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i]')||
+      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i]')
+    ))return v;
+   }
+   return null;
+  };
   document.addEventListener('pointerdown',ev=>{
-   if(repairing)return;
-   const target=ev.target;
-   if(isManualPickerTarget(target)){
+   if(repairing||!ev.isTrusted)return;
+   if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
-   }else if(manualOpenedAt&&Date.now()-manualOpenedAt<12000)
-    lastUserActivityAt=Date.now();
+    chosenValue=null;lastUserActivityAt=manualOpenedAt;
+   }
   },true);
   document.addEventListener('click',ev=>{
    if(repairing||!ev.isTrusted)return;
    if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
-    lastUserActivityAt=manualOpenedAt;
+    chosenValue=null;lastUserActivityAt=manualOpenedAt;
+   }else if(manualOpenedAt&&Date.now()-manualOpenedAt<12000){
+    const picked=pickedOption(ev.target);
+    if(picked){chosenValue=picked;lastUserActivityAt=Date.now();}
    }
   },true);
   const permission=()=>window.__sentinelNativeExpiryPermission?.allowed===true&&
@@ -152,11 +168,15 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(observedMs===current)stableCount++;
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
-     if(openingValue!=null&&current!==openingValue&&
-       now-lastUserActivityAt<12000){
-      save(current);manualOpenedAt=0;openingValue=null;mismatchSince=0;
+     if(chosenValue!=null&&current===chosenValue&&current!==openingValue){
+      save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;
+      mismatchSince=0;
      }
+     // Do not mislabel an unexpected 30s rollback as a user's selection.
      notify(current);return;
+    }
+    if(manualOpenedAt&&now-manualOpenedAt>=12000){
+     manualOpenedAt=0;openingValue=null;chosenValue=null;
     }
     if(!preferredMs){
      // Bootstrap only a stable non-default selected duration. A fresh
@@ -172,7 +192,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeper={revision:1,poll,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeper={revision:2,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,mismatchSince,lastRepairAt,repairing
   })};
   poll();
