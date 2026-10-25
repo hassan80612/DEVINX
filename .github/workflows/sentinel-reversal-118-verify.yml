@@ -1,0 +1,24 @@
+name: Sentinel reversal regression validation
+on:
+  push:
+    branches:
+      - fix/sentinel-confirmed-reversals-20261025
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Syntax check
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/entry-opportunities.mjs
+          node --check sentinel-trading-lab/agent/src/core/strategy-selection-guidance.mjs
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+      - name: Reversal, continuation, authorization regression tests
+        run: |
+          node --test             tests/sentinel-118-reversal-price-authority.test.mjs             tests/sentinel-selected-strategy-authority.test.mjs             tests/sentinel-current-reversal-20261025.test.mjs             tests/sentinel-reversal-structure.test.mjs             tests/sentinel-repeated-reaction.test.mjs             tests/sentinel-reversal-arbitration-mobile-price.test.mjs             tests/sentinel-observed-level-sequence.test.mjs
