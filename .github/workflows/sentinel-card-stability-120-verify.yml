@@ -33,3 +33,32 @@ jobs:
             tests/sentinel-selected-strategy-authority.test.mjs \
             tests/sentinel-13999-native-expiry-keeper.test.mjs \
             tests/sentinel-139100-broker-history-recovery.test.mjs
+      - name: Install dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Build complete web and real Windows Agent
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Check packaged Windows Agent and signed-by-hash update payload
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          release=json.loads((root/'agent/release.json').read_text())
+          assert release['version']=='13.9.120'
+          assert release['build']=='13.9.120-stable-live-cards-broker-lightweight'
+          dl=root/'public/downloads'
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(dl/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(dl/'Sentinel-Agent-13.9.120.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1_000_000 and payload in exe
+          assert exe==(dl/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(dl/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'):continue
+              assert z.read(name)==(root/'agent'/name).read_bytes(),name
+          print('SENTINEL 120 VERIFIED',len(exe),manifest['zipSha256'])
+          PY

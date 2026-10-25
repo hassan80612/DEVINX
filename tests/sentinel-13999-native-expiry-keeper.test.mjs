@@ -191,5 +191,5 @@ test('all expiry keeper wiring remains outside analysis, candle timeframe and ex
  assert.match(code,/__sentinelNativeExpiryPermissionV2/);
  assert.doesNotMatch(web,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
  const release=JSON.parse(readFileSync(new URL('agent/release.json',base),'utf8'));
- assert.equal(release.version,'13.9.119');
+ assert.equal(release.version,'13.9.120');
 });
