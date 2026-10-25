@@ -108,6 +108,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
   let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null;
+  let firstReclaimProofAt=null,firstRetestProofAt=null;
   for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
@@ -122,13 +123,25 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
     const currentExtreme=initial>0?low:high;
     const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
     const pivot=extreme&&previousTurn.get(extreme);
-    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial)
-     events.push({kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
-      level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
+    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial&&
+       firstReclaimProofAt===null){
+     // A past level reclaim cannot become a NEW reversal merely because
+     // later prices remain above/below the same old pivot. Own the FIRST
+     // actually observed structure break, at its actual broker quote.
+     firstReclaimProofAt=q.ts;
+     if(q.ts===ts)events.push({kind:'failed-breakout-structure-change',
+      side:initial>0?'CALL':'PUT',level:describe(z),brokenAt,reclaimedAt,
+      pivotPrice:pivot.price,confirmedAt:q.ts});
+    }
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
-    -initial*(q.price-breakExtreme)>amplitude)
-    events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
-     level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
+    -initial*(q.price-breakExtreme)>amplitude&&firstRetestProofAt===null){
+    // Likewise a successful break/retest is admitted only when it FIRST
+    // becomes demonstrable. No extra candle close or artificial timer.
+    firstRetestProofAt=q.ts;
+    if(q.ts===ts)events.push({kind:'break-retest-continuation',
+     side:initial>0?'PUT':'CALL',level:describe(z),brokenAt,retestAt,
+     pivotPrice:breakExtreme,confirmedAt:q.ts});
+   }
   }
  }
  const valid=events.filter(e=>{
