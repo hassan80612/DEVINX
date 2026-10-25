@@ -50,6 +50,11 @@ let lastExecutorReadoutKey='',executorReadoutRevision=Date.now();
 const executorReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateExecutorReadouts?.(provider,data),{
  minIntervalMs:250,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
 });
+// A single text field, at most once per second. Reuse received quotes and
+// defer to physical execution; never regenerate the card or request prices.
+const quoteReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateCurrentQuote?.(provider,data),{
+ minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
+});
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
@@ -178,6 +183,8 @@ driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(provider!==activeProvider)return;
   if(event.assetChanged===true){syncRuntimeMarket();runtime.requestImmediateEvaluation?.();}
   if(runtime.stateName==='running'){
+    if(event.quote>0&&event.lastQuoteAt>0&&event.symbol)
+      quoteReadoutUpdates.publish(provider,{provider,asset:event.symbol,price:Number(event.quote),quoteAt:Number(event.lastQuoteAt)});
     // Send the observed quote immediately, BEFORE the potentially expensive
     // forecast evaluation. The existing receipt still keeps its real timestamp.
     // This does not create a signal, read the broker twice, or write to the DB.

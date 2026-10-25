@@ -108,7 +108,7 @@ test('specialist setups confirm an observed level turn, mean return, Fibonacci r
    side==='CALL'?'PUT':'CALL',engineId+' inverse setup');
  }
 });
-test('real runtime keeps analyzing through 30s expiry and reissues on first new quote, without warmup reset',()=>{
+test('real runtime keeps analyzing through expiry and three-second reassessment without warmup reset',()=>{
  for(const engine of ['automatic','trend','smart_confluence','price_action','breakout']){
  const r=make();r.settings.asset='EUR/USD';r.settings.orderDurationMs=30000;
  r.settings.engine=engine;
@@ -124,9 +124,13 @@ test('real runtime keeps analyzing through 30s expiry and reissues on first new 
  observed.push({ts:T+30000,price:quotes.at(-1).price+30*.000005});
  assert.equal(gate(observed,T+30100).vnext.futureEntryAnchor,null,'pre-expiry quote cannot authorize another call');
  observed.push({ts:T+30200,price:quotes.at(-1).price+31*.000005});
- const next=gate(observed,T+30300);
- assert.equal(next.vnext.futureEntryAnchor.entryTriggeredAt,T+30300);
- assert.equal(next.vnext.futureEntryAnchor.exitAt,T+60300);
+ const waiting=gate(observed,T+30300);
+ assert.equal(waiting.vnext.futureEntryAnchor,null);
+ assert.equal(waiting.vnext.nowObservation.evaluatedAt,T+30300);
+ observed.push({ts:T+33200,price:quotes.at(-1).price+34*.000005});
+ const next=gate(observed,T+33300);
+ assert.equal(next.vnext.futureEntryAnchor.entryTriggeredAt,T+33300);
+ assert.equal(next.vnext.futureEntryAnchor.exitAt,T+63300);
  assert.equal(r.vnextWindowOutcomes.length,2);
  }
 });

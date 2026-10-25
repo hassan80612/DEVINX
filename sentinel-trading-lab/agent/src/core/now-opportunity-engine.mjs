@@ -18,6 +18,7 @@ const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
+export const POST_EXPIRY_REASSESS_MS=3000;
 // Later evidence can revise a proposed side. Recheck that FINAL direction
 // against the same shared market safeguards; never rerun a learning selector.
 export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
@@ -442,7 +443,11 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
  // Do not manufacture an instant re-entry from the same tick captured
  // before the previous option actually expired.
- const canRelease=fresh&&(!priorExpiry||Number(quoteAt)>=priorExpiry);
+ // User-requested breathing room between automatic analyst windows. Keep
+ // evaluating real prices throughout; never queue a signal from this pause.
+ const reassessing=priorExpiry!=null&&
+  (now<priorExpiry+POST_EXPIRY_REASSESS_MS||Number(quoteAt)<priorExpiry+POST_EXPIRY_REASSESS_MS);
+ const canRelease=fresh&&!reassessing;
  const ready=canRelease&&candidate?.ready===true&&isSide(candidate.side)&&
    Number(candidate.observedAt)===Number(quoteAt)&&finitePrice(candidate.entryPrice);
  if(ready){
@@ -460,7 +465,7 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
    lastObservedAt:Number(quoteAt)};
  }
  return {context:key,engineId,asset:String(asset).toUpperCase(),
-   phase:'scanning',reason:!fresh?'waiting-fresh-quote':candidate?.reason||'scanning-now',
+   phase:'scanning',reason:!fresh?'waiting-fresh-quote':reassessing?'reassessing-after-expiry':candidate?.reason||'scanning-now',
    side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
    // Scanning is not an open signal window. Do not invent a cycle start
    // equal to worker time: quoteAt normally trails the worker by 50-500ms.

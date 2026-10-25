@@ -53,7 +53,7 @@ test('confirmed side remains locked while opposite observations run and next sig
  const scanning=advanceNowOpportunity({previous:locked,candidate:opposite,now:first.exitAt,quoteAt:T+30000});
  assert.equal(scanning.phase,'scanning');
  const next=advanceNowOpportunity({previous:scanning,
-  candidate:{...opposite,observedAt:first.exitAt+50},now:first.exitAt+100,quoteAt:first.exitAt+50});
+  candidate:{...opposite,observedAt:first.exitAt+3050},now:first.exitAt+3100,quoteAt:first.exitAt+3050});
  assert.equal(next.side,'PUT');assert.equal(next.entryReadyNow,true);
 });
 test('new NOW observation authenticates after actual sender and relay key reordering',()=>{

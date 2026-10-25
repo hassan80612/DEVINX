@@ -41,6 +41,14 @@ test('phone retains PC projection after estimated entry time while its real wind
  assert.match(html,/00:10/);assert.match(html,/CALL · JANELA ABERTA · AGUARDE/);
  assert.doesNotMatch(html,/ENTRADA AGORA/);
 });
+test('phone keeps frozen entry and live quote together without a duplicate quote card',()=>{
+ const html=render(state(),start+20000);
+ assert.match(html,/data-testid="mobile-entry-and-quote"/);
+ assert.match(html,/data-testid="mobile-current-quote"/);
+ assert.match(html,/1\.23456/);assert.match(html,/1\.23450/);
+ assert.equal((html.match(/COTAÇÃO DO ATIVO/g)||[]).length,1);
+ assert.doesNotMatch(html,/class="mobileCurrentQuoteOnly"/);
+});
 test('expired or different-asset window cannot keep an active price projection',()=>{
  assert.doesNotMatch(render(state(),start+31000),/1\.23456|1\.23478/);
  const changed=state();changed.lastResult.asset='GBP/USD OTC';
@@ -65,7 +73,7 @@ test('NOW card renders the enabled strategy menu and fresh quote while waiting f
  assert.match(html,/<option value="smart_confluence"/);
  assert.doesNotMatch(html,/<option value="mean_reversion"/);
  assert.match(html,/Quando usar cada estratégia/);
- assert.match(html,/Preço atual.*1\.23450/);
+ assert.match(html,/COTAÇÃO DO ATIVO.*1\.23450/);
  assert.match(html,/Última análise/);
  assert.match(html,/data-testid="future-entry-decision">.*ANALISANDO<\/strong>/);
  assert.match(html,/data-testid="analysis-spinner" data-active="1"/);

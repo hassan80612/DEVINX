@@ -256,15 +256,16 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     Number(m.vnextOpportunityWindow?.windowEndsAt)>now;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>{t(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?(nowMode?'COTAÇÃO AO VIVO':'PROJEÇÃO FUTURA'):'DADOS A CONFERIR')}</small></div>
-    {nowMode&&<small data-testid="now-live-reading">{t('Preço atual')}: {price(s?.feed?.price??s?.liveBroker?.quote)} · {t('Última análise')}: {clock(m.evaluationAt)}</small>}
+    {nowMode&&<small data-testid="now-live-reading">{t('Última análise')}: {clock(m.evaluationAt)}</small>}
     {nowMode&&m.nowObservation?.probabilityCall!=null&&m.nowObservation?.probabilityPut!=null&&<small data-testid="now-probability-reading" style={{fontSize:11,opacity:.86}}>CALL {Math.round(Number(m.nowObservation.probabilityCall)*100)}% · PUT {Math.round(Number(m.nowObservation.probabilityPut)*100)}% · {t('Estimativa não calibrada')}</small>}
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} nowMode={nowMode} observation={m.nowObservation}/>
     {s?.autoExecutor&&<div data-testid="mobile-countdown-executor-wl" style={{display:'flex',gap:12,alignItems:'center',fontSize:11,fontWeight:800,marginTop:3,marginBottom:4}}>
       <span>WIN: {Number(s.autoExecutor.sessionWins||0)}</span>
       <span>LOSS: {Number(s.autoExecutor.sessionLosses||0)}</span>
     </div>}
-    <div className="vnextProjectionValues" style={{gridTemplateColumns:'minmax(0,1fr)'}}>
+    <div className="vnextProjectionValues vnextEntryQuotePair" data-testid="mobile-entry-and-quote">
       <div><small>{t(nowMode?"PREÇO NA ENTRADA":"PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
+      <div data-testid="mobile-current-quote"><small>{t("COTAÇÃO DO ATIVO")}</small><strong>{quoteValid?price(mobileQuote):'—'}</strong><small>{m.quoteFresh?t('Ao vivo'):t('Última cotação')}</small></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
       <span>{t(nowMode?"VENCIMENTO":"JANELA")}{" "}<b>{expiryLabel(Number(expirySeconds))}</b></span><span>{t(nowMode?"SINAL":"ENTRADA")}{" "}<b>{t(opportunityPhase==='fired'?(nowMode?'EM ANDAMENTO':'SINALIZADA'):nowMode?'ANALISANDO':'EM ANÁLISE')}</b></span>
@@ -337,7 +338,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>{t("● AO VIVO · PUSH")}</small>:null;
   const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
     'PC '+m.quoteAgeAtFrame+'s · CANAL '+m.transportAge+'s':null;
-  if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
+  if(compact)return <section className={`liveScenario liveScenarioRefined liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>{t("SENTINEL · ANALISTA PC")}</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">{t("← Início")}</button></header>
     {engineSettings}
     {!vnext&&<>
@@ -351,10 +352,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {forecastReceipt}
     {forecastHorizonStrip}
     {opportunityNotice}
-    {vnext?<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
-      <div><small>{t("COTAÇÃO DO ATIVO")}</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
-      <span>{m.quoteFresh?(pushed?t('● AO VIVO · PUSH'):t('Cotação recente')):t('Cotação atrasada · ')+seconds(m.quoteAge)}{mobileFeedDelay?' · '+mobileFeedDelay:''}</span>
-    </div>:<>
+    {!vnext&&<>
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>{t('ÚLTIMO SINAL · ')}{lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
       <div><small>{t("COTAÇÃO DO ATIVO")}</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>

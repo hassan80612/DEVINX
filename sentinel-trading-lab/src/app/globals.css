@@ -1689,3 +1689,15 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 }
 
 .botControl{border-color:rgba(188,163,101,.45);border-radius:16px;background:linear-gradient(135deg,rgba(29,68,59,.22),rgba(13,28,37,.12))}.botControl h3{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.botSummary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 8px;font-variant-numeric:tabular-nums}.botSummary strong{font-size:19px}.botSettings{margin:12px 0;border-top:1px solid rgba(167,158,125,.26);padding-top:10px}.botSettings>summary{cursor:pointer;font-weight:700;margin-bottom:12px}.botOrb{position:relative;width:38px;height:38px;display:inline-grid;place-items:center;color:#91a6a6;flex:0 0 38px}.botOrb:before{content:"";position:absolute;inset:0;border:1px solid currentColor;border-top-color:transparent;border-radius:50%}.botOrb[data-active="1"]{color:#75dfb4}.botOrb[data-active="1"]:before{animation:botOrbit 3s linear infinite}@keyframes botOrbit{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.botOrb:before{animation:none!important}}
+
+/* One compact pair: frozen entry and current quote from the signed PC frame. */
+.liveScenario .vnextEntryQuotePair,.liveScenarioCompact .vnextEntryQuotePair{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;min-width:0;gap:8px}
+.vnextEntryQuotePair>div{min-width:0;display:flex;flex-direction:column;justify-content:flex-start;gap:4px}
+.liveScenario .vnextEntryQuotePair strong,.liveScenarioCompact .vnextEntryQuotePair strong{font-size:18px!important;line-height:1.3;font-variant-numeric:tabular-nums}
+.vnextEntryQuotePair>div>small:last-child{font-size:9px!important;font-weight:500;opacity:.75}
+.liveScenarioRefined .vnextFutureReceipt{box-shadow:none;border-radius:12px}
+.liveScenarioRefined .vnextProjectionBias{background:transparent;border-color:rgba(140,160,182,.25)}
+
+.liveScenarioRefined .vnextTargetCountdown{height:auto;min-height:80px;max-height:none;overflow:visible}
+.liveScenarioRefined .vnextTargetCountdown small,
+.liveScenarioRefined .vnextTargetCountdown span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.35}
