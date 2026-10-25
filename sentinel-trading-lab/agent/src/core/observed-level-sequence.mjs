@@ -123,24 +123,18 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
     const currentExtreme=initial>0?low:high;
     const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
     const pivot=extreme&&previousTurn.get(extreme);
-    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial&&
-       firstReclaimProofAt===null){
-     // A past level reclaim cannot become a NEW reversal merely because
-     // later prices remain above/below the same old pivot. Own the FIRST
-     // actually observed structure break, at its actual broker quote.
-     firstReclaimProofAt=q.ts;
-     if(q.ts===ts)events.push({kind:'failed-breakout-structure-change',
-      side:initial>0?'CALL':'PUT',level:describe(z),brokenAt,reclaimedAt,
-      pivotPrice:pivot.price,confirmedAt:q.ts});
+    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial){
+     if(firstReclaimProofAt===null)firstReclaimProofAt=q.ts;
+     events.push({kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
+      level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,
+      confirmedAt:q.ts,firstConfirmedAt:firstReclaimProofAt});
     }
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
-    -initial*(q.price-breakExtreme)>amplitude&&firstRetestProofAt===null){
-    // Likewise a successful break/retest is admitted only when it FIRST
-    // becomes demonstrable. No extra candle close or artificial timer.
-    firstRetestProofAt=q.ts;
-    if(q.ts===ts)events.push({kind:'break-retest-continuation',
-     side:initial>0?'PUT':'CALL',level:describe(z),brokenAt,retestAt,
-     pivotPrice:breakExtreme,confirmedAt:q.ts});
+    -initial*(q.price-breakExtreme)>amplitude){
+    if(firstRetestProofAt===null)firstRetestProofAt=q.ts;
+    events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+     level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,
+     confirmedAt:q.ts,firstConfirmedAt:firstRetestProofAt});
    }
   }
  }
@@ -178,7 +172,17 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // Reclaim + break/retest geometry is independent of expiry. The distance
  // projection below remains scoped to the 30s holding time it measures.
  const reversal=sequence.structureChange?null:confirmedLevelReversal({map,...input});
- const event=sequence.structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ // If a previously confirmed reclaim is still being restamped, do not
+ // use it to OVERRIDE an already-qualified opposite-side market decision.
+ // A new current-quote proof is required to change that decision. Waiting
+ // candidates retain all original 13.9.117 admissions, including early
+ // microstructure reversals; no countdown, bar delay or fresh feed request.
+ const structure=sequence.structureChange;
+ const oldOverride=structure&&candidate.ready===true&&
+  ['CALL','PUT'].includes(candidate.side)&&candidate.side!==structure.side&&
+  Number(structure.firstConfirmedAt)<Number(input.quoteAt);
+ const event=(oldOverride?null:structure)??reversal??
+  (Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
