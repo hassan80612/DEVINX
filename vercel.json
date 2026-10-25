@@ -74,7 +74,8 @@
       "release/sentinel-139109-stable107-latefast-20261024": false,
       "fix/sentinel-139110-level-contest-20261024": false,
       "release/sentinel-139110-confirmed-levels-20261024": false,
-      "fix/sentinel-139111-native-expiry-manual-proof-20261024": false
+      "fix/sentinel-139111-native-expiry-manual-proof-20261024": false,
+      "release/sentinel-139111-native-expiry-preserved-20261024": false
     }
   }
 }
