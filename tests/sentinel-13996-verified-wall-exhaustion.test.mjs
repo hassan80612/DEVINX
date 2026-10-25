@@ -66,6 +66,6 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.equal(JSON.parse(read('package.json')).version,'13.9.119');
  const release=JSON.parse(read('agent/release.json'));
  assert.equal(release.version,'13.9.119');
- assert.equal(release.build,'13.9.119-confirmed-reversal-equal-authority');
+ assert.equal(release.build,'13.9.119-causal-continuation-wall-pressure');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
