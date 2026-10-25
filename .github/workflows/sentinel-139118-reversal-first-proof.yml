@@ -23,6 +23,12 @@ jobs:
       - name: Preserve current confirmed turns and important historical levels
         run: |
           node --test --test-concurrency=1 tests/sentinel-current-reversal-20261025.test.mjs tests/sentinel-directional-level-context-20261025.test.mjs tests/sentinel-level-roles-20261025.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs
+      - name: Compare old and new decisions against identical recorded quotes, all 7 expiries
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 99303b4ddb061dc869925977369d6daee06b60d5
+          node research/sentinel-118-paired-live-reversal.mjs
       - name: Audit modifications only in the observed quote structure analyzer
         shell: bash
         run: |
