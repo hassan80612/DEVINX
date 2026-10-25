@@ -47,7 +47,8 @@ test('worker propagates compatibility guidance to the broker card and mobile set
 test('runtime respects chosen selection rather than only ranking strategy projections',async()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const source=await readFile(new URL('agent/src/core/runtime.mjs',root),'utf8');
- assert.match(source,/chosenStrategiesPermit\(\{cards:analysis\.strategyCards,side:row\.side,\s*verifiedStructuralReversal\}\)/);\n assert.match(source,/const verifiedStructuralReversal=row\.allowed===true&&row\.kind==='reversal'/);
+ assert.match(source,/chosenStrategiesPermit\(\{cards:analysis\.strategyCards,side:row\.side,\s*verifiedStructuralReversal\}\)/);
+ assert.match(source,/const verifiedStructuralReversal=row\.allowed===true&&row\.kind==='reversal'/);
  assert.match(source,/row\.blockedBy='selected-strategy'/);
  const r=new DemoTradingRuntime();
  r.settings.strategy='trend';r.settings.strategy2='none';r.settings.strategy3='none';
