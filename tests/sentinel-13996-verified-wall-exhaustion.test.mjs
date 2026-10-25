@@ -100,9 +100,9 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.match(motor,/const wallRisk=!pivotRisk&&proposed\.ready\?verifiedWallExhaustionRisk/);
  assert.match(motor,/reason:'shared-base-verified-wall-exhaustion'/);
  assert.doesNotMatch(read('agent/src/core/verified-wall-exhaustion.mjs'),/\bawait\b|setTimeout\s*\(|setInterval\s*\(|fetch\s*\(/);
- assert.equal(JSON.parse(read('package.json')).version,'13.9.110');
+ assert.equal(JSON.parse(read('package.json')).version,'13.9.111');
  const release=JSON.parse(read('agent/release.json'));
- assert.equal(release.version,'13.9.110');
- assert.equal(release.build,'13.9.110-observed-level-contest');
+ assert.equal(release.version,'13.9.111');
+ assert.equal(release.build,'13.9.111-native-expiry-choice-proof');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
