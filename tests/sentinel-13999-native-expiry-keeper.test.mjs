@@ -72,7 +72,7 @@ test('a spontaneous broker 30s default after opening picker NEVER overwrites sav
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   m.event('pointerdown');
   m.control._text='30 s'; // The platform changes its value WITHOUT an option click.
-  for(let i=0;i<6;i++)m.step();
+  for(let i=0;i<9;i++)m.step(); // 12s manual window plus 4s stable mismatch and poll
   assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v1:iq_option')),60000);
   assert.equal(m.control.innerText,'1 min','after safe manual window, repair original 1m');
  }finally{m.restore()}
