@@ -14,6 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Find other legacy release-version assertions
+        run: git grep -n 13.9.117 -- tests | grep assert || true
       - name: Syntax check
         run: |
           node --check sentinel-trading-lab/agent/src/core/entry-opportunities.mjs
