@@ -52,7 +52,7 @@ test('all confirmed reversal/rejection decisions are left untouched',()=>{
 });
 test('an isolated bad future tick, stale quote or missing current quote cannot create a veto',()=>{
  const x=args();assert.equal(risk({...x,now:T+1600}),null);
- assert.equal(risk({...x,quoteHistory:[...x.quoteHistory,{ts:T+1000,price:100.6,receivedAt:T+1000}]}),risk(x));
+ assert.deepEqual(risk({...x,quoteHistory:[...x.quoteHistory,{ts:T+1000,price:100.6,receivedAt:T+1000}]}),risk(x));
  assert.equal(risk({...x,quoteHistory:x.quoteHistory.slice(0,-1)}),null);
  assert.equal(risk({...x,quoteHistory:x.quoteHistory.map(q=>({...q,receivedAt:T+3000}))}),null);
 });
