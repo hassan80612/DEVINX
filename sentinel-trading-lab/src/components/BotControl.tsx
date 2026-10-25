@@ -6,6 +6,7 @@ const fields=[['stopLoss','Stop Loss · saldo mínimo','0.01'],['stopWin','Stop 
 export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Promise<any>,online:boolean}){
  const {t}=useSentinelLocale();
  const bot=s?.autoExecutor;
+ const available=bot?.availableBalance??bot?.brokerBalance?.amount??null;
  const current=Number(bot?.capabilities?.brokerExecution)>=4;
  const tripleReady=Number(bot?.capabilities?.brokerExecution)>=5;
  const [draft,setDraft]=useState<Record<string,string>>({});
@@ -77,7 +78,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     <button className="secondary" disabled={!online||!!pending||bot.arming||!current} onClick={()=>void run('save')}>{t('Salvar limites')}</button>
    </div>
    <p role="status">{message||t(bot.message||'Desligado')}{bot.pending?' · '+bot.pending.side+' · '+t('Entrada em andamento'):''}</p>
-   <p className="muted">{t(bot.brokerBalance?'Saldo recebido':'Saldo indisponível')}: {bot.brokerBalance?Number(bot.brokerBalance.amount).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
+   <p className="muted">{t(available!=null?'Saldo disponível':'Saldo indisponível')}: {available!=null?Number(available).toFixed(2):'—'} · {t('Resultado da sessão')}: {Number(bot.riskNetPnl||0).toFixed(2)}</p>
    <small className="muted">{t('O valor por clique é lido diretamente da corretora ao iniciar e a cada entrada. Ajuste a duração na corretora conforme o analista. Parar impede novas entradas, mas não cancela ordens já abertas.')}</small>
    {!online&&<p role="status">{t('Agent do PC offline. Abra o Agent para enviar comandos.')}</p>}
   </>}

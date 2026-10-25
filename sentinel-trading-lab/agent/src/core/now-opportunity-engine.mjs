@@ -12,6 +12,7 @@ import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
+import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -280,7 +281,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const selectedEngine=engineId!=='automatic'&&Number(durationMs)===30000;
   const specialist=selectedEngine&&!located.ready?
    analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
-  const proposed=located.ready?located:(specialist?.ready===true?{
+  const levelEvent=located.priceStructure?.candleRoute?.event;
+  // A shorter strategy can supply early evidence, but it cannot reuse the
+  // SAME unsupported level reaction already rejected by the shared base.
+  const roleConflict=!located.ready&&specialist?.ready===true&&(
+   levelEvent?.roleMismatch===true&&levelEvent.side===specialist.side||
+   specialistLevelRoleRisk({candidate:specialist,structure,...input}));
+  const proposed=located.ready?located:roleConflict?{
+   ...located,ready:false,side:null,reason:'shared-base-level-role-conflict'
+  }:(specialist?.ready===true?{
    ...specialist,priceStructure:located.priceStructure??specialist.priceStructure
   }:located);
   // The final shared base checks confirmed historical swing direction for

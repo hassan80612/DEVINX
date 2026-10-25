@@ -3,6 +3,7 @@
 // nor a reason to wait for 100 new candles. No broker calls or clock lookup.
 import {buildCandleLevelMap} from './candle-level-map.mjs';
 import {proveLevelRejectionAtExpiry} from './causal-level-rejection-proof.mjs';
+import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
 const epoch=x=>{const n=Number(x);return n>0?(n<1e12?n*1000:n):0;};
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
@@ -69,7 +70,11 @@ export function historicalPriceStructure({candles=[],now=Date.now()}={}){
   averages:[20,50,100].map(p=>ema(rows,p)).filter(Boolean),
   zones:zones.map(({indices,...z},i)=>({...z,
    confirmedPivots:candleLevelMap.levels[i].confirmedPivots,
-   independentRejections:candleLevelMap.levels[i].independentRejections}))};
+   independentRejections:candleLevelMap.levels[i].independentRejections,
+   supportPivots:candleLevelMap.levels[i].supportPivots,
+   resistancePivots:candleLevelMap.levels[i].resistancePivots,
+   supportRejections:candleLevelMap.levels[i].supportRejections,
+   resistanceRejections:candleLevelMap.levels[i].resistanceRejections}))};
 }
 function priceBefore(rows,at){
  for(let i=rows.length-1;i>=0;i--)if(rows[i].ts<=at)
@@ -132,7 +137,11 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
     spot>=z.low&&spot<=z.high+tolerance*3&&spot-lo>=minReaction&&move>minReaction&&step>=0;
   const rejectionDown=origin<level&&hi>=z.low-tolerance&&hi<=z.high+tolerance*2&&
     spot<=z.high&&spot>=z.low-tolerance*3&&hi-spot>=minReaction&&move< -minReaction&&step<=0;
-  const side=breakoutUp||rejectionUp?'CALL':breakoutDown||rejectionDown?'PUT':null;
+  const supportReaction=rejectionUp&&(levelRoleEvidence(z,'CALL').confirmed||
+   observedRoleRetest({quoteHistory,quoteAt,now,price,side:'CALL',zone:z,tolerance}));
+  const resistanceReaction=rejectionDown&&(levelRoleEvidence(z,'PUT').confirmed||
+   observedRoleRetest({quoteHistory,quoteAt,now,price,side:'PUT',zone:z,tolerance}));
+  const side=breakoutUp||supportReaction?'CALL':breakoutDown||resistanceReaction?'PUT':null;
   const averageConfluence=structure.averages.filter(a=>Math.abs(a.value-level)<=tolerance*2).length;
   if(side)reactions.push({side,kind:breakoutUp||breakoutDown?'breakout':'rejection',
     zone:describe(z),averageConfluence,
@@ -179,7 +188,8 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  // Deceleration INTO a tested level is different from a sustained breakout.
  // This check has no timeout and never waits for another completed candle.
  const intended=candidate.side,wall=intended==='CALL'?above[0]:below[0];
- if(candidate.ready&&wall&&Math.abs(wall.level-spot)<=tolerance&&wall.touches>=2){
+ if(candidate.ready&&wall&&levelRoleEvidence(wall,intended==='CALL'?'PUT':'CALL').confirmed&&
+   Math.abs(wall.level-spot)<=tolerance&&wall.touches>=2){
   const shortMove=spot-earlier,longMove=earlier-origin;
   const against=intended==='CALL'?shortMove<=0:shortMove>=0;
   const slowing=Math.abs(shortMove)<Math.abs(longMove)/4;

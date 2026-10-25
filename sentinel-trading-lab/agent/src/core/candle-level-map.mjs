@@ -1,6 +1,7 @@
 // Research candidate: candle-derived context, without a collection timer.
 // Receives only validated CLOSED rows from historical-price-structure.mjs.
 const WINDOWS=[3,10,20,50,100];
+import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
 export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
  const levels=zones.map(zone=>{
   const tests=[];let armed=true,visit=0;
@@ -14,9 +15,9 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
    const previous=rows[i-1],next=rows[i+1];
    const contiguous=!!previous&&!!next&&previous.to===c.from&&c.to===next.from;
    // A pivot is confirmed only after a received closed candle on each side.
-   const pivot=contiguous&&(
-    high&&c.high>previous.high&&c.high>next.high||
-    low&&c.low<previous.low&&c.low<next.low);
+   const resistancePivot=contiguous&&high&&c.high>previous.high&&c.high>next.high;
+   const supportPivot=contiguous&&low&&c.low<previous.low&&c.low<next.low;
+   const pivot=resistancePivot||supportPivot;
    const upper=range>0?(c.high-Math.max(c.open,c.close))/range:0;
    const lower=range>0?(Math.min(c.open,c.close)-c.low)/range:0;
    if(armed)visit++;
@@ -26,7 +27,8 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
     (upper>=.5||next.high<=c.high+tolerance);
    const rejectedLow=contiguous&&low&&approachedLow&&next.close>zone.high+tolerance&&
     (lower>=.5||next.low>=c.low-tolerance);
-   tests.push({age:rows.length-1-i,independent:armed,visit,pivot,
+   tests.push({age:rows.length-1-i,independent:armed,visit,pivot,resistancePivot,supportPivot,
+    rejectedHigh,rejectedLow,
     rejected:rejectedHigh||rejectedLow,
     resistanceWick:high?upper:0,supportWick:low?lower:0,
     bodyFraction:range>0?Math.abs(c.close-c.open)/range:0});
@@ -36,6 +38,10 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
    independentTests:tests.filter(t=>t.independent).length,
    independentRejections:new Set(tests.filter(t=>t.rejected).map(t=>t.visit)).size,
    confirmedPivots:tests.filter(t=>t.pivot).length,
+   resistancePivots:tests.filter(t=>t.resistancePivot).length,
+   supportPivots:tests.filter(t=>t.supportPivot).length,
+   resistanceRejections:new Set(tests.filter(t=>t.rejectedHigh).map(t=>t.visit)).size,
+   supportRejections:new Set(tests.filter(t=>t.rejectedLow).map(t=>t.visit)).size,
    resistanceWick:Math.max(0,...tests.map(t=>t.resistanceWick)),
    supportWick:Math.max(0,...tests.map(t=>t.supportWick)),
    windows:WINDOWS.filter(n=>rows.length>=n&&tests.some(t=>t.age<n))};
@@ -95,10 +101,13 @@ export function assessCandleLevelRoute({map,quoteHistory=[],quoteAt,now=quoteAt,
   if(!eventSide)continue;
   const rejection=up||down,wick=up?z.supportWick:z.resistanceWick;
   // This is an observed structural criterion, not an estimated win rate.
-  const candleBacked=rejection&&z.confirmedPivots>0&&
-   (z.independentTests>=2||wick>=.5);
+  const role=levelRoleEvidence(z,eventSide);
+  const retested=rejection&&!role.confirmed&&observedRoleRetest({quoteHistory,quoteAt,now,price,
+   side:eventSide,zone:z,tolerance});
+  const candleBacked=rejection&&((role.pivots>0&&(z.independentTests>=2||wick>=.5))||retested);
   events.push({side:eventSide,kind:rejection?'rejection':'breakout',
-   candleBacked,wickFraction:wick,zone:describe(z),distance:Math.abs(spot-z.level)});
+   candleBacked,wickFraction:wick,zone:describe(z),distance:Math.abs(spot-z.level),
+   roleMismatch:rejection&&role.known&&!role.confirmed&&!retested});
  }
  // A confirmed CLOSED-candle rejection is stronger evidence than a
  // nearby but unconfirmed touch. Ranking by proximity first previously

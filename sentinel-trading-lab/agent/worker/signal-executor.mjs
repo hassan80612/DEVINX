@@ -1,7 +1,7 @@
 // Fixed broker stake. Martingale changes only the number of CALL/PUT clicks.
 // An identified close for every order completes one progression step.
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
-import {ExecutorBalanceRisk} from './executor-balance-risk.mjs';
+import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
@@ -754,6 +754,12 @@ export class SignalExecutor{
   if(current==null)return Number.POSITIVE_INFINITY;
   return money(Math.max(0,current-this.config.stopLoss-this.unresolvedExposure()));
  }
- status(){const balance=this.balanceRisk.view(this.clock()),initial=this.startedAt!=null?this.initialBalance:balance.current?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,sessionWins:this.sessionWins,sessionLosses:this.sessionLosses,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:balance.source==='broker'?money(balance.available):null,balanceSource:balance.source==='broker'?'broker-received-balance':'unavailable',brokerBalance:balance.current,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0&&this.initialBalance!=null?this.lossBudgetRemaining(balance):null,durationMs:this.context()?.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,lastBrokerExpiryMismatch:this.lastBrokerExpiryMismatch,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
+ status(){const balance=this.balanceRisk.view(this.clock()),context=this.context()||{};
+  // Read the driver's already-cached snapshot for DISPLAY even while stopped.
+  // A balance event may precede active-provider selection, and manual Stop
+  // intentionally clears risk baselines. Neither should blank the account UI.
+  const received=context.brokerBalance===undefined?balance.current:validBrokerBalance(context.brokerBalance);
+  const displayed=received&&(!context.provider||received.provider===context.provider)?received:null;
+  const initial=this.startedAt!=null?this.initialBalance:displayed?.amount??null,risk=this.riskNet(balance);return{capabilities:{brokerExecution:5},enabled:this.enabled,arming:!!this.arming,executing:this.executing,config:{...this.config},message:this.message,startedAt:this.startedAt??null,deadlineAt:this.deadlineAt??null,netPnl:this.net,sessionWins:this.sessionWins,sessionLosses:this.sessionLosses,calculatedBalance:initial==null?null:money(initial+this.net),availableBalance:displayed?money(displayed.amount):null,balanceSource:displayed?'broker-received-balance':'unavailable',brokerBalance:displayed,riskNetPnl:money(risk),balanceReconciling:balance.reconciling,initialBalance:initial,lossLimitRemaining:this.config.stopLoss>0&&this.initialBalance!=null?this.lossBudgetRemaining(balance):null,durationMs:context.durationMs,martingaleLevel:this.martingaleLevel,nextClicks:this.nextClicks(),nextAmount:this.nextAmount(),suspendedReason:this.suspensionReason,lastBrokerExpiryMismatch:this.lastBrokerExpiryMismatch,unresolvedBatches:this.unresolvedBatches.size,unresolvedStake:this.unresolvedExposure(),
   unresolvedDetail:this.unresolvedDetail(),consecutiveLossBatches:this.consecutiveLossBatches,executed:this.executed,closed:this.closed,pending:this.pending?{side:this.pending.side,state:this.pending.state,amount:this.pending.amount,clickCount:this.pending.clickCount,confirmedClicks:this.pending.orders.filter(p=>p.state==='accepted').length,closedClicks:this.pending.orders.filter(p=>p.settled).length,orderId:this.pending.orderId,exitAt:this.pending.exitAt,durationMs:this.pending.durationMs,entryPrice:this.pending.entryPrice}:null,history:this.history.map(x=>({...x}))};}
 }

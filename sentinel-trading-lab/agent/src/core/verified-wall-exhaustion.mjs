@@ -2,6 +2,7 @@
 // candle period, selector, scheduled entry, broker, martingale or WIN/LOSS.
 const finitePositive=p=>typeof p==='number'&&Number.isFinite(p)&&p>0;
 const validated=x=>Number.isFinite(Number(x))?Number(x):NaN;
+import {levelRoleEvidence} from './level-role-evidence.mjs';
 
 export function verifiedWallExhaustionRisk({
  candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price
@@ -21,7 +22,8 @@ export function verifiedWallExhaustionRisk({
  // A simple touch is insufficient. BOTH a closed pivot and multiple truly
  // independent historical rejections must support the obstructing level.
  const barriers=map.levels.filter(z=>
-   Number(z.confirmedPivots)>=1&&Number(z.independentRejections)>=2&&
+   levelRoleEvidence(z,side==='CALL'?'PUT':'CALL').pivots>=1&&
+   levelRoleEvidence(z,side==='CALL'?'PUT':'CALL').rejections>=2&&
    // A former support is not automatically a resistance, or vice versa.
    Number(side==='CALL'?z.resistanceWick:z.supportWick)>=.5&&
    finitePositive(z.low)&&finitePositive(z.high)&&
