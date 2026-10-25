@@ -66,9 +66,9 @@ test('entry uses the current quote and full 30s expiry, and cannot flip a held s
  const held=advanceNowOpportunity({previous:issued,candidate:{...candidate,observedAt:T+1000},now:T+1000,quoteAt:T+1000,asset:'EUR',durationMs:30000});
  assert.equal(held.side,'CALL');assert.equal(held.entryReadyNow,false);
 });
-test('unavailable history and other durations preserve the existing decision',()=>{
+test('unavailable history and unsupported durations preserve the existing decision',()=>{
  assert.equal(applyObservedLevelSequence({candidate,...args(rebound),map:null}),candidate);
- assert.equal(applyObservedLevelSequence({candidate,...args(rebound),durationMs:5000}),candidate);
+ assert.equal(applyObservedLevelSequence({candidate,...args(rebound),durationMs:4000}),candidate);
 });
 test('confirmed rejection followed by directional movement can favor continuation when the next historical level is beyond the 30s travel estimate',()=>{
  const rows=walk([100,103,102.5,105,103.5]);

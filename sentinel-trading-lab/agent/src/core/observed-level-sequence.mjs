@@ -1,5 +1,6 @@
 // Research: chronological level events and price-confirmed swing changes.
 // No timer, future candle, broker request, or permission to alter a held signal.
+import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
 export function observedSwings(rows,amplitude){
  if(!rows.length||!(amplitude>0))return [];
@@ -31,6 +32,24 @@ function receivedQuotes(history,ts,now){
   if(!old||(q.receivedAt??q.ts)<(old.receivedAt??old.ts))times.set(q.ts,q);
  }
  return [...times.values()].sort((a,b)=>a.ts-b.ts);
+}
+// A real local structure change can precede the next completed chart candle.
+// CALL: a confirmed higher low, then break of its intervening high; mirrored
+// for PUT. A first bounce / a single opposite tick is never enough.
+export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,price,side}={}){
+ const ts=Number(quoteAt),spot=Number(price),sign=side==='CALL'?1:side==='PUT'?-1:0;
+ if(!sign||!(ts>0&&ts<=now&&now-ts<=1450&&spot>0))return null;
+ let rows=receivedQuotes(quoteHistory,ts,now),start=0;
+ for(let i=1;i<rows.length;i++)if(rows[i].ts-rows[i-1].ts>2500)start=i;
+ rows=rows.slice(start);
+ if(rows.at(-1)?.ts!==ts||rows.at(-1)?.price!==spot||rows.length<5)return null;
+ const changes=rows.slice(1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(v=>v>0);
+ const amplitude=Math.max(spot*1e-8,median(changes)*2);
+ const turns=observedSwings(rows,amplitude),last=turns.at(-1),pivot=turns.at(-2),prior=turns.at(-3);
+ if(!last||!pivot||!prior||last.kind!==(sign>0?'low':'high')||prior.kind!==last.kind)return null;
+ if(!(sign*(last.price-prior.price)>0&&sign*(spot-pivot.price)>amplitude&&
+   sign*(spot-rows.at(-2).price)>=0))return null;
+ return {side,pivotPrice:pivot.price,turnPrice:last.price,confirmedAt:ts,amplitude};
 }
 export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quoteAt}={}){
  const spot=Number(price),ts=Number(quoteAt);
@@ -100,7 +119,9 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  // it is not a countdown, a guaranteed path, or a hidden future order book.
  let continuation=null;
  const turn=turns.at(-1),sign=turn?.kind==='high'?-1:turn?.kind==='low'?1:0;
- const anchor=turn&&levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2)
+ const anchor=turn&&levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2&&
+  (levelRoleEvidence(z,sign>0?'CALL':'PUT').confirmed||observedRoleRetest({
+    quoteHistory,quoteAt,now,price,side:sign>0?'CALL':'PUT',zone:z,tolerance})))
   .sort((a,b)=>Math.abs(turn.price-a.level)-Math.abs(turn.price-b.level))[0];
  const next=sign?levels.filter(z=>sign*(z.level-spot)>tolerance)
   .sort((a,b)=>sign*(a.level-b.level))[0]:null;
@@ -114,10 +135,12 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  return {amplitude,turns:turns.slice(-4),structureChange,continuation};
 }
 export function applyObservedLevelSequence({candidate,map,durationMs,...input}={}){
- if(!candidate||Number(durationMs)!==30000)return candidate;
+ if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
- const event=sequence.structureChange??sequence.continuation;
+ // Reclaim + break/retest geometry is independent of expiry. The distance
+ // projection below remains scoped to the 30s holding time it measures.
+ const event=sequence.structureChange??(Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release

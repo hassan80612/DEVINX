@@ -45,6 +45,7 @@ try{
  for(const engine of ['automatic','fibonacci_retest','trend','support_resistance','smart_confluence'])
   for(const durationMs of [5000,10000,15000,30000,60000,120000,300000])
    for(const latencyMs of [0,600]){
+    if(process.argv[2]&&[engine,durationMs,latencyMs].join(':')!==process.argv[2])continue;
     const before=replay(Baseline,durationMs,engine,latencyMs),after=replay(Candidate,durationMs,engine,latencyMs);
     const key=e=>e.at+'|'+e.side;
     const old=new Set(before.entries.map(key)),fresh=new Set(after.entries.map(key));

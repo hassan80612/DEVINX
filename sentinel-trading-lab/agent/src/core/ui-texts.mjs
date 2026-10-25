@@ -1,6 +1,11 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "▶ Iniciar análise": "▶ Start analysis",
+  "Configurações do bot": "Bot settings",
+  "Stops aguardam saldo": "Stops await balance",
+  "Stops ativos": "Stops active",
+  "Stops desativados": "Stops disabled",
   "Saldo disponível": "Available balance",
   "Stop Loss · saldo mínimo": "Stop Loss · minimum balance",
   "Stop Win · saldo-alvo": "Stop Win · target balance",

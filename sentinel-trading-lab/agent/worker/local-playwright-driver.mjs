@@ -1,7 +1,7 @@
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
-import {executorPanel} from './executor-panel.mjs';
+import {executorPanel,executorActions} from './executor-panel.mjs';
 import {isExecutionFrame} from './broker-ui-executor.mjs';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -16,6 +16,7 @@ import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspec
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 import {installBrokerNativeExpiryKeeper} from './broker-native-expiry-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
+import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -60,6 +61,7 @@ const PC_UI_KEYS=[
  "Índices direcionais, não taxa de acerto",
  "O terceiro card é a média de Estrutura Anterior + Mercado Agora. Estratégia e percentuais futuros somente no painel Projeção Futura.",
  "▶ Iniciar",
+ "▶ Iniciar análise",
  "Ⅱ Pausar",
  "■ Parar",
  "Detalhes da previsão",
@@ -361,7 +363,9 @@ function applyKnownBalance(st,{observed=false}={}){
   // A mudança de conta no PC pode chegar pelo cabeçalho antes do perfil.
   // Nesse caso o saldo/ID antigos não podem prevalecer sobre a conta selecionada.
   const visibleMode=st.visibleAccountMode==='real'||st.visibleAccountMode==='demo'?st.visibleAccountMode:null;
-  let selected=visibleMode?arr.find(x=>Number(x?.type)===(visibleMode==='real'?1:4)):null;
+  let selected=st.pageBalanceId!=null?arr.find(x=>String(x.id)===String(st.pageBalanceId)):null;
+  if(st.pageBalanceId!=null&&!selected){st.balanceId=st.pageBalanceId;st.balance=null;st.balanceSource=null;return false;}
+  if(!selected&&visibleMode)selected=selectedAccountRow(arr,{mode:visibleMode});
   if(!selected&&visibleMode){st.balanceId=null;st.balance=null;st.balanceSource=null;st.mode=visibleMode;return false}
   if(!selected&&st.balanceId!=null)selected=arr.find(x=>n(x?.id)===n(st.balanceId))||null;
   if(!selected&&st.mode)selected=arr.find(x=>(st.mode==='real'&&Number(x?.type)===1)||(st.mode==='demo'&&Number(x?.type)===4));
@@ -418,6 +422,18 @@ function protocolScan(data,st,direction='in'){
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
   const command=`${outer} ${inner}`.toLowerCase();
+  // A restored page may have missed profile and have BOTH balances, without
+  // a textual Real/Demo label. Its actual native order identifies the account.
+  // Observe only orders sent by the PAGE, never the independent feed/default.
+  if(direction==='page-out'&&/(?:open-option|place-digital-option|buyv3)$/.test(command)){
+    const id=n(body.user_balance_id??body.balance_id);
+    if(id!=null){
+      st.pageBalanceId=id;st.balanceId=id;
+      const selected=selectedAccountRow(st.lastBalances,{accountId:id});
+      st.visibleAccountMode=selected?(Number(selected.type)===1?'real':'demo'):null;
+      applyKnownBalance(st);
+    }
+  }
   const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote|^candles$/.test(command);
   const pageSelectionCommand=/get-candles/.test(command);
   const outboundMarket=/(?:page|direct)-out/.test(direction)&&activeRaw!=null&&marketCommand;
@@ -446,7 +462,7 @@ function protocolScan(data,st,direction='in'){
   }
 
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
-    const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null)st.balanceId=bid;
+    const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null&&st.pageBalanceId==null)st.balanceId=bid;
     let selected=null;const balances=Array.isArray(m.balances)?m.balances:[];
     if(balances.length)st.lastBalances=balances.slice(0,50).map(row=>({...row,__receivedAt:Date.now()}));
     const explicitType=Number(m.balance_type??m.balanceType);
@@ -457,7 +473,7 @@ function protocolScan(data,st,direction='in'){
     const typ=Number(selected?.type??([1,4].includes(explicitType)?explicitType:NaN));
     if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
     if(selected?.id!=null)st.balanceId=n(selected.id);
-    const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile';markObservedBalance(st)}else applyKnownBalance(st,{observed:true})
+    const val=n(selected?.amount??selected?.balance??((st.mode&&[1,4].includes(explicitType)&&(st.pageBalanceId==null||bid===st.pageBalanceId))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile';markObservedBalance(st)}else applyKnownBalance(st,{observed:true})
   }
   if(outer==='balances'){
     const arr=Array.isArray(data.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.balances)?data.msg.balances:[];
@@ -894,7 +910,9 @@ export class LocalPlaywrightDriver{
     // Preserve outbound active-tab selection without decoding inbound
     // high-frequency market traffic or costly broker HTTP response bodies.
     const observeSent=payload=>{
-      if(this.executionObserver&&typeof payload==='string'&&payload.length<=12000&&/open-option|place-digital-option|buyV3/i.test(payload)){try{this.observeExecution(provider,JSON.parse(payload),'page-out')}catch{}}
+      if(typeof payload==='string'&&payload.length<=12000&&/open-option|place-digital-option|buyV3/i.test(payload)){
+        try{const frame=JSON.parse(payload);this.ingest(provider,frame,'page-out');if(this.executionObserver)this.observeExecution(provider,frame,'page-out')}catch{}
+      }
       if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
       this.ingest(provider,payload,'page-out');
     };
@@ -987,7 +1005,7 @@ export class LocalPlaywrightDriver{
     return{ok:false,error:'direct_market_feed_unavailable'};
   }
   async requestBaseData(provider,{balancesOnly=false}={}){const st=this.state(provider),rid=reqId(provider);const requests=[
-    {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
+    {name:'sendMessage',msg:{name:'get-balances',version:'1.0',body:{}},request_id:`${rid}-bal`},
     ...(!balancesOnly?[{name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}]:[])
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
@@ -1266,6 +1284,7 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider),now=Date.now();
     if(st.lastMaintainAt&&now-st.lastMaintainAt<2200)return this.liveStatus(provider);
     st.lastMaintainAt=now;
+    await this.refreshSelectedAccount(provider).catch(()=>{});
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
@@ -1291,7 +1310,7 @@ export class LocalPlaywrightDriver{
     // Full base-data requests (balances + initialization metadata) are
     // unnecessary every 30s while the actual account and quotes arrive via
     // read-only broker events. Never stop explicit refresh/recovery requests.
-    const baseRetryMs=st.balance==null?15000:
+    const baseRetryMs=!this.accountBalanceSnapshot(provider)?15000:
       passiveStreamHealthy?120000:30000;
     if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)
       await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
@@ -1335,7 +1354,7 @@ export class LocalPlaywrightDriver{
     }else try{const dom=await page.evaluate((knownAssets)=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase(),codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m&&(codes.has(m[1])||codes.has(m[2])))return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m&&(codes.has(m[1])||codes.has(m[2])))return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;for(const [needle,label] of [['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']])if(raw.includes(needle))return label+(raw.includes('OTC')?' OTC':'');const otc=raw.trim().match(/^(?:OTC[.:-]([A-Z][A-Z0-9 .&_\-]{1,40})|([A-Z][A-Z0-9 .&_\-]{1,40}?)\s*[-.]?\s*\(?OTC\)?)$/);if(otc)return String(otc[1]||otc[2]).trim()+' OTC';return (knownAssets||[]).find(name=>String(name).toUpperCase()===raw.trim())||''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const activeAccounts=els.filter(el=>{const b=el.getBoundingClientRect();if(b.top>250||b.width<20)return false;const label=String(el.textContent||'').trim().slice(0,110).toLowerCase();if(!/(conta real|real account|live account|conta de prática|conta demo|practice account|demo account)/.test(label))return false;return el.getAttribute('aria-selected')==='true'||el.getAttribute('aria-checked')==='true'||el.getAttribute('aria-current')==='true'||/^(active|selected)$/.test(String(el.getAttribute('data-state')||''))||el.matches('[data-test*="current-account" i],[data-testid*="current-account" i]')});const activeText=activeAccounts.map(el=>String(el.textContent||'').trim().slice(0,110));const activeReal=activeText.some(s=>/conta real|real account|live account/i.test(s)),activeDemo=activeText.some(s=>/conta de prática|conta demo|practice account|demo account/i.test(s));const activeAccountMode=activeReal!==activeDemo?(activeReal?'real':'demo'):null;const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>=75?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),activeAccountMode,instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}},[...st.assets]);st.visibleAccountMode=dom.activeAccountMode==='demo'||dom.activeAccountMode==='real'?dom.activeAccountMode:null;accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of assetStrings(text))st.assets.add(a);const accountLabels=accountText.toLowerCase(),seenReal=/conta real|real account|live account|saldo real/.test(accountLabels),seenDemo=/conta de prática|conta demo|practice account|demo account|practice balance|saldo de prática/.test(accountLabels);
     const visibleMode=st.visibleAccountMode||(seenReal!==seenDemo?(seenReal?'real':'demo'):null);
-    if(visibleMode&&visibleMode!==st.mode){st.mode=visibleMode;st.balanceId=null;st.balance=null;st.balanceSource=null}
+    if(visibleMode&&visibleMode!==st.mode){st.mode=visibleMode;st.pageBalanceId=null;st.balanceId=null;st.balance=null;st.balanceSource=null}
     applyKnownBalance(st);
     const b=bestBalanceFromText(text,st.mode);
     if(b&&b.value!=null&&b.score>=10&&st.balanceId==null&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
@@ -1376,6 +1395,31 @@ export class LocalPlaywrightDriver{
     const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
+  async refreshSelectedAccount(provider){
+    const st=this.state(provider),now=Date.now(),page=this.sessions.get(provider)?.page;
+    if(!page||now-Number(st.lastAccountHeaderReadAt||0)<5000)return false;
+    // Native events remain instant. This small recovery read is independent
+    // of full-page scans and never runs on a quote or execution callback.
+    st.lastAccountHeaderReadAt=now;
+    const selection=await page.evaluate(readSelectedBrokerAccount);
+    if(!selection)return false;
+    const selected=selectedAccountRow(st.lastBalances,selection);
+    if(!selected)return false;
+    const revision=Number(st.balanceRevision||0);
+    st.pageBalanceId=n(selected.id);st.balanceId=n(selected.id);
+    st.visibleAccountMode=Number(selected.type)===1?'real':'demo';
+    // A header with explicit ID/mode may supply a fresh amount. A bare
+    // amount only identifies a uniquely matching RECEIVED protocol row.
+    if(selection.accountId!=null||selection.mode){
+      rememberBalanceChange(st,n(selected.id),Number(selected.type),selection.amount);
+      st.balance=selection.amount;st.balanceSource='dom:current-account';
+      markObservedBalance(st,now);
+    }else applyKnownBalance(st);
+    if(Number(st.balanceRevision||0)!==revision&&this.balanceUpdateHandler){
+      const balance=this.accountBalanceSnapshot(provider);if(balance)this.balanceUpdateHandler(provider,balance);
+    }
+    return true;
+  }
   accountBalanceSnapshot(provider){
     const st=this.state(provider);applyKnownBalance(st);const value=st.balanceObservation;
     if(!value||st.balanceId==null||String(st.balanceId)!==value.accountId)return null;
@@ -1526,7 +1570,7 @@ export class LocalPlaywrightDriver{
   async updateExecutorReadouts(provider,{state,revision,language='pt'}={}){
     const page=this.sessions.get(provider)?.page;
     if(!page||page.isClosed?.())return;
-    await page.evaluate(patchExecutorReadouts,{revision,html:executorPanel(state,language)});
+    await page.evaluate(patchExecutorReadouts,{revision,wins:Number(state.sessionWins||0),losses:Number(state.sessionLosses||0),html:executorActions(state,language)+executorPanel(state,language)});
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1534,6 +1578,7 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
       payload.executorPanelHtml=executorPanel(payload.autoExecutor,payload.uiLanguage);
+      payload.executorActionsHtml=executorActions(payload.autoExecutor,payload.uiLanguage);
       // Stable presentation slots only: no broker analysis, caching or extra timer.
       payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
@@ -2184,6 +2229,13 @@ export class LocalPlaywrightDriver{
               <div data-sentinel-strategy-when style="line-height:1.5;padding:3px 0 7px">${esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.engine)?.when||(d.visibleStrategies||[])[0]?.when||''))}</div>
               ${d.engine==='automatic'&&d.vnext?.nowObservation?.contextStrategy?'<small data-sentinel-automatic-context style="display:block;padding-bottom:6px;color:'+goldSoft+'">'+esc(tr('Contexto observado pelo Automático'))+': '+esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.vnext.nowObservation.contextStrategy)?.name||'Smart Confluence'))+'</small>':''}
             </details>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
+              <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">${tr('▶ Iniciar análise')}</button>
+              <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
+              <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
+            </div>
+            ${d.executorActionsHtml||''}
+            ${d.executorPanelHtml||''}
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
@@ -2245,13 +2297,8 @@ export class LocalPlaywrightDriver{
                   '<small style="display:block;margin-top:5px;color:'+muted+';line-height:1.35;font-size:9px">'+esc(c.hint||'')+'</small></div>';
               }).join('')}
             </div>
+            ${entryPlanActive?'<small data-sentinel-held-versus-live style="display:block;margin-top:6px;color:'+muted+'">Leitura atual para a próxima oportunidade. A operação em andamento mantém a direção da entrada.</small>':''}
             <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">${tr('O terceiro card é a média de Estrutura Anterior + Mercado Agora. Estratégia e percentuais futuros somente no painel Projeção Futura.')}</small>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
-              <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">${tr('▶ Iniciar')}</button>
-              <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
-              <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
-            </div>
-            ${d.executorPanelHtml||''}
             <div data-sentinel-control-msg style="margin-top:5px;color:${goldSoft};min-height:13px;font-size:10px;font-weight:700"></div>
             <details style="margin-top:10px;padding:7px;border:1px solid ${panelBorder};border-radius:8px">
               <summary style="font-size:10px;font-weight:750;cursor:pointer;color:${muted}">${tr('Detalhes da previsão')}</summary>
@@ -2282,6 +2329,7 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('Ⅱ PAUSAR')}</button>
                 <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('■ PARAR')}</button>
               </div>
+              ${d.executorActionsHtml||''}
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>

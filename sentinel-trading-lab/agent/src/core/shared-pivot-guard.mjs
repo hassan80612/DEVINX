@@ -2,8 +2,12 @@
 // a candidate reaction, but only the market base can authorize its direction.
 // Uses completed 5-second bars from already received, timestamped quotes;
 // adds no broker request, timer, waiting candle, or click path.
-export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt}={}){
+import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
+export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt,reversalEvidence=null}={}){
  const ts=Number(quoteAt),spot=Number(price),clock=Number(now);
+ const levelTurn=reversalEvidence?.kind==='failed-breakout-structure-change'&&
+  reversalEvidence.side===side&&Number(reversalEvidence.confirmedAt)<=ts&&
+  (Number(reversalEvidence.level?.confirmedPivots)>0||Number(reversalEvidence.level?.independentRejections)>=2);
  if(!['CALL','PUT'].includes(side)||!(ts>0&&spot>0&&clock>=ts&&clock-ts<=2500))return false;
  const end=Math.floor(ts/5000)*5000;
  const bucket=new Map();
@@ -62,8 +66,10 @@ export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=qu
  const minStep=Math.max(spot*1e-8,span*.035,mid*.28);
  const tolerance=Math.max(spot*1e-8,mid*.35);
  // Clear HH + HL: do not sell a tiny pullback as a confirmed TOP.
- if(h1-h0>minStep&&l1-l0>minStep&&side==='PUT'&&spot>=l1-tolerance)return true;
+ if(h1-h0>minStep&&l1-l0>minStep&&side==='PUT'&&spot>=l1-tolerance)
+   return !(levelTurn&&currentQuoteStructureTurn({quoteHistory,quoteAt,price,side,now}));
  // Clear LH + LL: do not buy a tiny rebound as a confirmed BOTTOM.
- if(h1-h0< -minStep&&l1-l0< -minStep&&side==='CALL'&&spot<=h1+tolerance)return true;
+ if(h1-h0< -minStep&&l1-l0< -minStep&&side==='CALL'&&spot<=h1+tolerance)
+   return !(levelTurn&&currentQuoteStructureTurn({quoteHistory,quoteAt,price,side,now}));
  return false;
 }

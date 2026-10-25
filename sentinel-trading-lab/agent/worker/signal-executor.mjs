@@ -169,7 +169,7 @@ export class SignalExecutor{
   }else this.message=reason;
   return this.status();
  }
- observeBalance(value){this.balanceRisk.observe(value);}
+ observeBalance(value){this.balanceRisk.observe(value);if(this.enabled)this.watch();}
  // Defensive reconciliation: a batch with all broker-identified results
  // should never remain in the old pending/unresolved maps after callback
  // ordering changes. Never infer an unreported result from a price move.
