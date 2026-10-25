@@ -30,12 +30,88 @@ jobs:
         run: |
           node --test --test-concurrency=1 tests/sentinel-13993-chart-period-isolation.test.mjs tests/sentinel-139100-broker-history-recovery.test.mjs tests/sentinel-139106-broker-cadence.test.mjs tests/sentinel-139107-causal-rejection-six-expiry.test.mjs tests/sentinel-139110-level-contest-surgical.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-13931-selected-forecast-structure.test.mjs tests/sentinel-13992-all-expiry-trend-reversal.test.mjs tests/sentinel-oneway-pivot-guard-20261023.test.mjs tests/sentinel-13957-stage5-level-priority-and-martingale3.test.mjs tests/sentinel-13989-expiry-probability-broker-latency.test.mjs tests/sentinel-13965-overlay-throttle.test.mjs tests/sentinel-trade-audit-20261024.test.mjs tests/sentinel-1377-clock-and-early-signal.test.mjs tests/sentinel-13996-verified-wall-exhaustion.test.mjs
           node --test --test-name-pattern='CALL starts|PUT mirrors|no unbroken range|outdated quotes|confirmed first break|unsupported wick|first-break improvement' tests/sentinel-first-break-timing.test.mjs
+      - name: Prove earlier genuine quote entry while respecting historic pivots
+        run: node --test tests/sentinel-139111-early-historical-quote-readiness.test.mjs
       - name: Verify surgical code scope matches published 13.9.110
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags origin 225f7df29e822b91b90593a8f57d9380c9a9f701
-          git diff --name-only 225f7df29e822b91b90593a8f57d9380c9a9f701 HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/|agent/worker/|src/app/api/|src/components/))' | grep -v '^sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs$' > /tmp/unsafe || true
+          git diff --name-only 225f7df29e822b91b90593a8f57d9380c9a9f701 HEAD | grep -E '(^supabase/|^sentinel-trading-lab/(db/|migrations/|agent/src/|agent/worker/|src/app/api/|src/components/))' | grep -v -e '^sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Only native broker expiry preference and strict validated current-bar quote readiness changed. Market signal decision code, click timing, chart period, broker maintenance, bot and mobile remain byte identical.'
+      - name: Build complete production site and Windows Agent installer
+        run: |
+          npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+          npm run build --prefix sentinel-trading-lab
+      - name: Validate release manifest and embedded signed Windows update payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          public=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((public/'agent-update.json').read_text())
+          assert release['version']=='13.9.111'
+          assert release['build']=='13.9.111-native-expiry-choice-proof'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version']
+          assert manifest['build']==release['build']
+          payload=(public/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(public/'Sentinel-Agent-13.9.111.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1000000 and payload in exe
+          assert exe==(public/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(public/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for path in z.namelist():
+              if path.endswith('/'):continue
+              assert z.read(path)==(agent/path).read_bytes(),path
+          print('SENTINEL 13.9.111 WINDOWS EXE AND PAYLOAD VERIFIED',len(exe),len(payload))
+          PY
+ -e '^sentinel-trading-lab/agent/src/core/runtime.mjs > /tmp/unsafe || true
+          test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
+          echo 'Only native broker expiry preference changed. All trade decisions, click timing, chart candle period, broker maintenance, bot and mobile remain byte identical.'
+      - name: Build complete production site and Windows Agent installer
+        run: |
+          npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+          npm run build --prefix sentinel-trading-lab
+      - name: Validate release manifest and embedded signed Windows update payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          agent=root/'agent'
+          public=root/'public/downloads'
+          release=json.loads((agent/'release.json').read_text())
+          manifest=json.loads((public/'agent-update.json').read_text())
+          assert release['version']=='13.9.111'
+          assert release['build']=='13.9.111-native-expiry-choice-proof'
+          assert manifest['format']=='sentinel-agent-update-v1'
+          assert manifest['version']==release['version']
+          assert manifest['build']==release['build']
+          payload=(public/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(public/'Sentinel-Agent-13.9.111.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1000000 and payload in exe
+          assert exe==(public/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(public/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for path in z.namelist():
+              if path.endswith('/'):continue
+              assert z.read(path)==(agent/path).read_bytes(),path
+          print('SENTINEL 13.9.111 WINDOWS EXE AND PAYLOAD VERIFIED',len(exe),len(payload))
+          PY
+ > /tmp/unsafe || true
           test ! -s /tmp/unsafe || { cat /tmp/unsafe; exit 1; }
           echo 'Only native broker expiry preference changed. All trade decisions, click timing, chart candle period, broker maintenance, bot and mobile remain byte identical.'
       - name: Build complete production site and Windows Agent installer
