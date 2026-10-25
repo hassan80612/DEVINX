@@ -15,7 +15,17 @@ export const PREMIUM_OVERLAY_CSS=`
 #sentinel-trading-overlay[data-console-layout="split"]{scrollbar-gutter:auto!important}
 [data-sentinel-command-dock] [data-sentinel-executor-monitor]{font-size:11px}
 .sentinel-monitor-head{display:flex;align-items:center;gap:7px;min-height:38px}.sentinel-monitor-head>[data-sentinel-executor-state]{font-size:10px;line-height:13px;max-width:160px}.sentinel-monitor-head strong{margin-left:auto;font-size:18px!important;white-space:nowrap}
-.sentinel-monitor-results{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:4px;font-size:10px;line-height:14px;flex-wrap:wrap}
+.sentinel-monitor-results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:18px 15px;align-items:center;gap:3px 7px;margin-top:4px;height:36px;min-height:36px;max-height:36px;font-size:10px;line-height:14px;overflow:hidden}
+.sentinel-monitor-results>[data-sentinel-executor-wl],.sentinel-monitor-results>[data-sentinel-executor-session]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sentinel-monitor-results>[data-sentinel-executor-broker-balance]{grid-column:1/-1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-sentinel-vnext-cards]>[data-sentinel-summary]{height:94px!important;min-height:94px!important;max-height:94px!important;overflow:hidden!important;contain:layout paint}
+[data-sentinel-vnext-cards] [data-sentinel-reading-side]{height:19px;min-height:19px;max-height:19px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-sentinel-vnext-cards] [data-sentinel-reading-call],[data-sentinel-vnext-cards] [data-sentinel-reading-put]{white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
+[data-sentinel-vnext-cards]>[data-sentinel-summary]>div:last-child{flex-wrap:nowrap!important;overflow:hidden}
+[data-sentinel-summary="market-total"]:not([data-collapsed="1"]),[data-sentinel-summary="strategy-total"]:not([data-collapsed="1"]),[data-sentinel-summary="operational-total"]:not([data-collapsed="1"]){height:148px!important;min-height:148px!important;max-height:148px!important;overflow:hidden!important}
+[data-sentinel-summary="market-total"]>div,[data-sentinel-summary="strategy-total"]>div,[data-sentinel-summary="operational-total"]>div{min-width:0}
+[data-sentinel-summary="market-total"]>div:nth-last-child(2),[data-sentinel-summary="strategy-total"]>div:nth-last-child(2),[data-sentinel-summary="operational-total"]>div:nth-last-child(2){flex-wrap:nowrap!important;overflow:hidden}
+[data-sentinel-summary="market-total"]>div:nth-last-child(2) span,[data-sentinel-summary="strategy-total"]>div:nth-last-child(2) span,[data-sentinel-summary="operational-total"]>div:nth-last-child(2) span{white-space:nowrap;font-variant-numeric:tabular-nums}
 .sentinel-monitor-results>[data-sentinel-executor-broker-balance]{margin-top:0!important;font-size:9px!important}
 [data-sentinel-executor-action-msg]:empty,[data-sentinel-control-msg]:empty{display:none}
 [data-sentinel-executor-state][data-bot-state="off"]{color:#ed9ca8;background:rgba(190,75,95,.13);display:inline-block;padding:3px 6px;border-radius:5px}

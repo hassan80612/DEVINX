@@ -4,7 +4,7 @@ import {patchMarketTotals} from './market-totals-readout.mjs';
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
-import {executorPanel,executorActions,executorMonitor} from './executor-panel.mjs';
+import {executorPanel,executorActions,executorMonitor,executorMonitorReadout} from './executor-panel.mjs';
 import {isExecutionFrame} from './broker-ui-executor.mjs';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -1576,7 +1576,7 @@ export class LocalPlaywrightDriver{
   async updateExecutorReadouts(provider,{state,revision,language='pt'}={}){
     const page=this.sessions.get(provider)?.page;
     if(!page||page.isClosed?.())return;
-    await page.evaluate(patchExecutorReadouts,{revision,wins:Number(state.sessionWins||0),losses:Number(state.sessionLosses||0),martingale:state.config?.martingaleEnabled?'ON · '+Number(state.martingaleLevel||0)+' / '+Math.min(3,Number(state.config?.martingaleLevels||0)):'OFF',html:executorMonitor(state,language)+executorActions(state,language)+executorPanel(state,language,{settingsOnly:true,externalMartingale:true})});
+    await page.evaluate(patchExecutorReadouts,{revision,readout:executorMonitorReadout(state,language)});
   }
   async updateCurrentQuote(provider,frame){
     const page=this.sessions.get(provider)?.page;

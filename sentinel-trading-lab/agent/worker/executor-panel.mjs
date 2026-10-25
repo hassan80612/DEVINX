@@ -66,3 +66,30 @@ export function executorMonitor(state,language='pt'){
  '<div class="sentinel-mg-strip"><label><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+(state.arming?' disabled':'')+'><span>Martingale</span></label><b data-sentinel-mg-readout>'+(c.martingaleEnabled?'ON · '+Number(state.martingaleLevel||0)+' / '+Math.min(3,Number(c.martingaleLevels||0)):'OFF')+'</b><span data-sentinel-stop-targets>SL '+(c.stopLoss>0?n(c.stopLoss):'—')+' · SW '+(c.stopWin>0?n(c.stopWin):'—')+'</span></div>'+
  '<div data-sentinel-executor-message title="'+escape(state.message)+'" style="font-size:10px;line-height:15px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escape(state.message)+'</div><div data-sentinel-executor-action-msg role="status" style="font-size:10px;line-height:14px"></div></div>';
 }
+
+// Small text-only monitor receipt. Build it OUTSIDE the broker tab, so
+// settlement updates no longer parse a second, large HTML tree in Chromium.
+export function executorMonitorReadout(state,language='pt'){
+ if(!state)return null;
+ const p=executorPanelParts(state,language),c=state.config||{},en=language==='en';
+ const amount=v=>Number(v||0).toFixed(2);
+ const available=state.availableBalance??state.brokerBalance?.amount??null;
+ const pending=Number(state.unresolvedDetail?.waitingResult||0)+
+   Number(state.unresolvedDetail?.waitingId||0)+Number(state.unresolvedDetail?.uncertainAttempts||0);
+ return {
+  state:p.active,status:p.status,
+  balance:(en?'Available':'Disponível')+': '+(available==null?'—':amount(available)),
+  winLoss:'WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+
+   (pending?' · '+pending+' pendente(s)':''),
+  session:(en?'Session':'Sessão')+': '+amount(state.netPnl),
+  brokerBalance:p.stopStatus,
+  risk:(['pt','en','es','fr','ar'].includes(language)?({pt:'Sequências perdedoras',en:'Confirmed losing batches',es:'Rachas perdedoras',fr:'Séries perdantes',ar:'سلاسل الخسارة'}[language]):'Sequências perdedoras')+
+   ': '+Number(state.consecutiveLossBatches||0)+' · '+amount(state.riskNetPnl),
+  message:String(state.message||''),
+  martingale:c.martingaleEnabled?'ON · '+Number(state.martingaleLevel||0)+' / '+Math.min(3,Number(c.martingaleLevels||0)):'OFF',
+  stopTargets:'SL '+(c.stopLoss>0?amount(c.stopLoss):'—')+' · SW '+(c.stopWin>0?amount(c.stopWin):'—'),
+  disabledStart:!!(state.enabled||state.arming),
+  disabledMap:!!(state.enabled||state.arming||state.pending||state.executing),
+  wins:Number(state.sessionWins||0),losses:Number(state.sessionLosses||0)
+ };
+}
