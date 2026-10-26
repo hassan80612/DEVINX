@@ -114,7 +114,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
-  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null;
+  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null,reclaimRoleAllowed=null;
   for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
@@ -126,13 +126,21 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
    }
    if(position===initial&&!reclaimedAt)reclaimedAt=q.ts;
    if(reclaimedAt){
+    // A zone's opposite-side pivots cannot authorize this direction. A
+    // genuine observed crossing/retest may establish the new role. Compute
+    // once per zone, using only the already received current tape.
+    if(reclaimRoleAllowed===null){
+     const side=initial>0?'CALL':'PUT',role=levelRoleEvidence(z,side);
+     reclaimRoleAllowed=!role.known||role.confirmed||observedRoleRetest({
+      quoteHistory:rows,quoteAt,now,price,side,zone:z,tolerance});
+    }
     const currentExtreme=initial>0?low:high;
     const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
     const pivot=extreme&&previousTurn.get(extreme);
     const priorExtreme=pivot&&previousTurn.get(pivot);
     // Reclaim alone is not a higher-low / lower-high structure change.
     // Both legs must belong to this break, with an improving second extreme.
-    if(pivot&&priorExtreme&&pivot.at>=brokenAt&&priorExtreme.at>=brokenAt&&
+    if(reclaimRoleAllowed&&pivot&&priorExtreme&&pivot.at>=brokenAt&&priorExtreme.at>=brokenAt&&
      priorExtreme.kind===extreme.kind&&initial*(extreme.price-priorExtreme.price)>0&&
      initial*(q.price-pivot.price)>amplitude&&position===initial)
      recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',

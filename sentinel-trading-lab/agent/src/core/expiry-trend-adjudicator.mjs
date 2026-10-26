@@ -45,6 +45,13 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  const vals=[...points].reverse().map(x=>priceAt(rows,t-x*1000));
  vals.push(current);
  if(vals.some(x=>!(x>0)))return candidate;
+ // Anchor agreement cannot prove a continuous path across missing market
+ // data. Keep the independently qualified original instead of manufacturing
+ // an opposite-side proof through a feed gap. No extra quote is requested.
+ const oldest=t-points[3]*1000;
+ const from=rows.findLastIndex(q=>q.ts<=oldest);
+ for(let i=from+1;i<rows.length;i++)
+  if(rows[i].ts-rows[i-1].ts>3500)return candidate;
  const delta=vals.slice(1).map((x,i)=>Math.log(x/vals[i]));
  const net=delta.reduce((a,b)=>a+b,0),absolute=delta.reduce((a,x)=>a+Math.abs(x),0);
  if(!(absolute>0))return candidate;

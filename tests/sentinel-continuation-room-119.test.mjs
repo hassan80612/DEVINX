@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {continuationRoomRisk as risk} from '../sentinel-trading-lab/agent/src/core/continuation-room-risk.mjs';
 import {readFileSync} from 'node:fs';
+import {reviewChangedOpportunitySide} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 const T=1800000000000;
 const prices=[100,100.09,100.18,100.24,100.285,100.31,100.322,100.328,100.332,100.336];
 const quotes=prices.map((price,i)=>({ts:T-9000+i*1000,receivedAt:T-9000+i*1000,price}));
@@ -47,8 +48,7 @@ test('all confirmed reversal/rejection decisions are left untouched',()=>{
    'historical-level-rejection','closed-range-extreme-reversal-confirmed','multiscale-candle-rejection']){
    const x=args();x.candidate.reason=reason;assert.equal(risk(x),null,reason);
  }
- const x=args();x.candidate.priceStructure={confirmedReversal:{side:'CALL',confirmedAt:T}};
- assert.equal(risk(x),null);
+
 });
 test('an isolated bad future tick, stale quote or missing current quote cannot create a veto',()=>{
  const x=args();assert.equal(risk({...x,now:T+1600}),null);
@@ -68,4 +68,29 @@ test('continuation safety is in the SAME market base and final direction review,
  assert.match(s,/roomRisk=!pivotRisk&&!wallRisk\?continuationRoomRisk/);
  assert.doesNotMatch(readFileSync(new URL('../sentinel-trading-lab/agent/src/core/continuation-room-risk.mjs',import.meta.url),'utf8'),
  /setTimeout\s*\(|setInterval\s*\(|\bawait\b|fetch\s*\(/);
+});
+
+test('inherited reversal metadata cannot exempt a final continuation into an opposing wall',()=>{
+ for(const side of ['CALL','PUT'])for(const confirmedAt of [T,T-60000]){
+  const x=args();x.candidate.priceStructure={confirmedReversal:{side,confirmedAt}};
+  assert.equal(risk(x)?.kind,'fading-continuation-into-opposing-wall');
+ }
+});
+
+test('both late direction correction paths must pass the same wall review in CALL and PUT',()=>{
+ for(const reason of ['observed-multi-interval-trend-correction','locally-verified-opposite-direction'])
+ for(const mirror of [false,true]){
+  const x=args();
+  if(mirror){
+   x.quoteHistory=quotes.map(q=>({...q,price:200-q.price}));x.price=200-x.price;
+   x.candidate.side='PUT';x.candidate.entryPrice=x.price;
+   x.structure.candleLevelMap.levels=[{...barrier,level:200-barrier.level,low:200-barrier.high,
+    high:200-barrier.low,supportPivots:2,supportRejections:3,resistancePivots:0,resistanceRejections:0}];
+  }
+  x.candidate.reason=reason;
+  const previousSide=mirror?'CALL':'PUT';
+  x.candidate.priceStructure={confirmedReversal:{side:previousSide,confirmedAt:T-60000}};
+  const result=reviewChangedOpportunitySide({...x,previousSide,structureCache:{get:()=>x.structure}});
+  assert.equal(result.ready,false,reason);assert.equal(result.reason,'final-side-continuation-wall-pressure');
+ }
 });

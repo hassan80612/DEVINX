@@ -8,13 +8,16 @@ const qualifyingReasons=new Set([
  'historical-level-breakout',
  'historical-trend-and-live-forecast',
  'break-retest-continuation',
- 'rejection-followthrough-clear-room'
+ 'rejection-followthrough-clear-room',
+ 'observed-multi-interval-trend-correction',
+ 'locally-verified-opposite-direction'
 ]);
 export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  if(candidate?.ready!==true||!qualifyingReasons.has(candidate.reason)||
    !['CALL','PUT'].includes(candidate.side))return null;
- // Explicitly leave ALL reversals outside this continuation-only protection.
- if(candidate.priceStructure?.confirmedReversal)return null;
+ // The final reason owns this check. Inherited reversal metadata must not
+ // exempt a proposal that has since become a continuation. Actual reversal
+ // reasons are already excluded by qualifyingReasons above.
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),sign=candidate.side==='CALL'?1:-1;
  if(!(usable(spot)&&at>0&&at<=clock&&clock-at<=1450&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;

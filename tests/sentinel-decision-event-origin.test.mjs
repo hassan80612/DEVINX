@@ -98,3 +98,18 @@ test('a reclaim cannot invent a structure change from a pivot preceding the brea
   assert.notEqual(event?.kind,'failed-breakout-structure-change',JSON.stringify({mirror,vertices,event}));
  }
 });
+
+test('reclaim respects directional level evidence and allows a real observed role change',()=>{
+ for(const mirror of [false,true]){
+  const originalRole=mirror?'support':'resistance',neededRole=mirror?'resistance':'support';
+  for(const roleChanged of [false,true]){
+   const f=fixture(roleChanged?[102,100.6,101.3,99.4,100.2,99.9,101.8]:
+    [102,100.6,101.3,99.2,99.95,99.55,101.8],mirror);
+   Object.assign(f.map.levels[0],{[originalRole+'Pivots']:2,[originalRole+'Rejections']:3,
+    [neededRole+'Pivots']:0,[neededRole+'Rejections']:0});
+   const event=observedLevelSequence(input(f))?.structureChange;
+   if(roleChanged){assert.equal(event?.kind,'failed-breakout-structure-change');assert.equal(event.side,mirror?'PUT':'CALL');}
+   else assert.notEqual(event?.kind,'failed-breakout-structure-change','a resistance cannot silently become support (or the reverse)');
+  }
+ }
+});
