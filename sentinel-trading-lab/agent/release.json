@@ -1,6 +1,6 @@
 {
-  "version": "13.9.138",
-  "build": "13.9.138-progressive-learning",
+  "version": "13.9.139",
+  "build": "13.9.139-early-reversal-evidence",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
