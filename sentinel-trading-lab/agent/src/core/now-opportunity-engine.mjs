@@ -89,7 +89,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
     part.some((q,i)=>i>0&&q.ts-part[i-1].ts>3500))continue;
   closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
  }
- if(closes.length<5)return null;
+ if(closes.length<10)return null;
  // A directional trend with small pullbacks has high total path efficiency.
  // A long oscillation traverses both directions, returning near its origin.
  let travelled=0;
@@ -112,7 +112,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   xx+=x*x;yy+=y*y;xy+=x*y;
  }
  const trendFit=xx>0&&yy>0?xy*xy/(xx*yy):0;
- // Trend fit alone cannot discard an observed historical edge.
+ if(trendFit>=.70)return null;
  const pivots=[];
  for(let i=2;i<closes.length-2;i++){
   const near=[closes[i-2],closes[i-1],closes[i+1],closes[i+2]];
@@ -148,7 +148,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
    recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
  // Uneven pivots with a directional fit belong to the trend assessment,
  // not a counter-trend reversal or a blanket "irregular" waiting state.
- // Irregular boundaries still receive live-price evaluation.
+ if(!regular&&trendFit>=.50)return null;
  // A confirmed oscillation retains its range identity even when a short
  // directional leg develops inside it. The October 22 escape caused trend
  // chasing near established extremes before the third-turn reaction.
