@@ -30,10 +30,11 @@ test('completed downward impulse near a prior floor is not blindly chased with P
   receivedAt:T-90000+i*1000,price:1.005-i*.00005}));
  const spot=rows.at(-1).price;
  const entry={ready:true,side:'PUT',reason:'closed-structure-and-live-impulse',
-  observedAt:T,entryPrice:spot};
+  observedAt:T,entryPrice:spot,expirySeconds:60};
  const params={candidate:entry,quoteHistory:rows,quoteAt:T,now:T,price:spot};
  assert.equal(lateUnverifiedFloorImpulseRisk(params)?.kind,'unverified-late-put-near-recent-floor');
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,side:'CALL'}}),null);
+ assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,expirySeconds:5}}),null);
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,reason:'historical-level-breakout'}}),null);
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,reason:'closed-range-extreme-reversal-confirmed'}}),null);
 });
@@ -42,6 +43,6 @@ test('a genuine newly established low remains eligible for independent breakout 
   receivedAt:T-90000+i*1000,price:i<85?1.005-(i*.000005):1.00458-(i-84)*.0001}));
  const spot=rows.at(-1).price;
  assert.equal(lateUnverifiedFloorImpulseRisk({candidate:{ready:true,side:'PUT',
-  reason:'closed-structure-and-live-impulse',observedAt:T,entryPrice:spot},
+  reason:'closed-structure-and-live-impulse',observedAt:T,entryPrice:spot,expirySeconds:60},
   quoteHistory:rows,quoteAt:T,now:T,price:spot}),null);
 });
