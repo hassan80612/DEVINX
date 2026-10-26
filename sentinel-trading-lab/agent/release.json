@@ -1,6 +1,6 @@
 {
-  "version": "13.9.142",
-  "build": "13.9.142-extreme-entry-context",
+  "version": "13.9.143",
+  "build": "13.9.143-broker-expiry-recovery",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
