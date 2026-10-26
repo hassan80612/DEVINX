@@ -66,6 +66,29 @@ test('a trusted click in a chart menu cannot authorize learning an automatic nat
   assert.equal(Number(m.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option')),60000);
  }finally{m.restore()}
 });
+test('trade duration skin preserves 60s when the broker resets to 30s',()=>{
+ const m=browser('1 min',60000);
+ try{
+  m.control.className='trade-duration';
+  m.control.getAttribute=key=>key==='aria-label'?'Duração da operação':null;
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,60000);
+  m.control._text='30 s';m.step();m.step();m.step();
+  assert.equal(m.control.innerText,'1 min');
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+ }finally{m.restore()}
+});
+test('chart duration is not mistaken for broker option expiry',()=>{
+ const m=browser('1 min',60000);
+ try{
+  m.control.className='chart-duration';
+  m.control.getAttribute=key=>key==='aria-label'?'Chart timeframe':null;
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  m.control._text='30 s';m.step();m.step();m.step();
+  assert.equal(m.control.innerText,'30 s');
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,null);
+ }finally{m.restore()}
+});
 test('never memorizes a default 30s unless manually selected',()=>{
  const m=browser('30 s');
  try{
