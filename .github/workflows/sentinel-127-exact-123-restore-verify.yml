@@ -1,0 +1,69 @@
+name: Sentinel 127 exact 123 rollback verification
+on:
+  push:
+    branches: [release/sentinel-139127-exact-123-rollback-20261026]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify original 123 is restored without new behavior
+        run: |
+          git fetch origin ef8adf51fea88408737b237d746945e602c18dc7 --no-tags
+          git diff --name-only ef8adf51fea88408737b237d746945e602c18dc7 HEAD > /tmp/changed.txt
+          cat /tmp/changed.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+            '.github/workflows/sentinel-127-exact-123-restore-verify.yml',
+            'sentinel-trading-lab/agent/release.json',
+            'sentinel-trading-lab/agent/package.json',
+            'sentinel-trading-lab/agent/package-lock.json',
+            'sentinel-trading-lab/package.json',
+            'tests/sentinel-13996-verified-wall-exhaustion.test.mjs',
+            'tests/sentinel-13999-native-expiry-keeper.test.mjs',
+            'tests/sentinel-139100-broker-history-recovery.test.mjs'
+          }
+          changed=set(Path('/tmp/changed.txt').read_text().splitlines())
+          assert changed==allowed,{'unexpected':changed-allowed,'missing':allowed-changed}
+          print('ORIGINAL 13.9.123 CODE FULLY PRESERVED; ONLY VERSION METADATA/ASSERTIONS CHANGED')
+          PY
+      - name: Install dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Full regression, production site, and Windows Agent compilation
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Check real installer and update manifest
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          release=json.loads((root/'agent/release.json').read_text())
+          assert release['version']=='13.9.127'
+          assert release['build']=='13.9.127-reversal-event-origin'
+          dl=root/'public/downloads'
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          payload=(dl/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
+          exe=(dl/'Sentinel-Agent-13.9.127.exe').read_bytes()
+          assert exe[:2]==b'MZ' and len(exe)>1_000_000 and payload in exe
+          assert exe==(dl/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(dl/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+            for name in z.namelist():
+              if name.endswith('/'):continue
+              assert z.read(name)==(root/'agent'/name).read_bytes(),name
+          print('SENTINEL 13.9.127 VERIFIED',len(exe),manifest['zipSha256'])
+          PY
