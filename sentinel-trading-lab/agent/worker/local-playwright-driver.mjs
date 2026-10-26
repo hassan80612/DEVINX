@@ -2602,12 +2602,11 @@ export class LocalPlaywrightDriver{
         // Keep live refreshes from producing a one-frame scroll/layout jump.
         el.scrollTop=stableScrollTop;
         el.__sentinelFitConsoleLayout=()=>{
-          const primary=el.querySelector('[data-sentinel-primary]');
-          el.dataset.consoleLayout=primary?'split':'legacy';
-          el.style.overflowY=primary?'hidden':'auto';
-          const fits=primary&&primary.offsetHeight+26<=el.clientHeight-24;
-          el.dataset.consoleLayout=primary?(fits?'split':'scroll'):'legacy';
-          el.style.overflowY=fits?'hidden':'auto';
+          // A dynamic height-dependent hidden/auto scroll switch made all
+          // cards jump during frequent quote updates. Keep the layout stable.
+          const layout=el.querySelector('[data-sentinel-primary]')?'split':'legacy';
+          if(el.dataset.consoleLayout!==layout)el.dataset.consoleLayout=layout;
+          if(el.style.overflowY!=='auto')el.style.overflowY='auto';
         };
         el.__sentinelFitConsoleLayout();
         const collapsedNow=new Set(collapsedSummaries);
@@ -2630,7 +2629,9 @@ export class LocalPlaywrightDriver{
           if(stableTop)el.style.top=stableTop;
           el.style.right=stableRight||el.style.right;
           const maxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
-          el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop));
+          // A live user scroll after the frame started takes precedence.
+          if(Math.abs(el.scrollTop-stableScrollTop)<=2)
+            el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop));
           if(el.dataset.geometryClamped!=='1'){
             el.dataset.geometryClamped='1';
             const r=el.getBoundingClientRect();
