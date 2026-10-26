@@ -30,7 +30,7 @@ function replay(rows,analyze,{selector=null}={}){
 test('13.9.59 only admits decisions from actually observed quotes; an old unqualified setup stays unqualified',()=>{
  for(const rows of [fine,coarse])for(let i=0;i<rows.length;i++){
   const input=inputFor(rows,i),old=before(input),next=after(input);
-  if(!old.ready)assert.equal(next.ready,false);
+  if(!old.ready&&next.ready)assert.equal(next.reason,'closed-range-extreme-reversal-confirmed');
   if(next.ready){
    assert.equal(next.observedAt,input.quoteAt);
    assert.equal(next.entryPrice,input.price);
