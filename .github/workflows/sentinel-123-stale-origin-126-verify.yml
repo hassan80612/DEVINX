@@ -27,3 +27,30 @@ jobs:
             tests/sentinel-118-reversal-price-authority.test.mjs \
             tests/sentinel-current-reversal-20261025.test.mjs \
             tests/sentinel-13999-native-expiry-keeper.test.mjs
+
+      - name: Install website dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund --package-lock=false
+      - name: Complete production site and Windows Agent build
+        run: npm run build --prefix sentinel-trading-lab
+      - name: Validate 13.9.126 auto-update package
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,zipfile
+          from pathlib import Path
+          p=Path('sentinel-trading-lab')
+          release=json.loads((p/'agent/release.json').read_text())
+          assert release['version']=='13.9.126'
+          assert release['build']=='13.9.126-base-123-fresh-retest-only'
+          out=p/'public/downloads'
+          m=json.loads((out/'agent-update.json').read_text())
+          assert m['version']==release['version'] and m['build']==release['build']
+          body=(out/'agent_payload_v88.zip').read_bytes()
+          assert hashlib.sha256(body).hexdigest()==m['zipSha256']
+          exe=(out/'Sentinel-Agent-13.9.126.exe').read_bytes()
+          assert exe.startswith(b'MZ') and len(exe)>1_000_000 and body in exe
+          assert exe==(out/'Sentinel-Agent-Windows.exe').read_bytes()
+          with zipfile.ZipFile(out/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+          print('SENTINEL 126 VALIDATED',len(exe),m['zipSha256'])
+          PY
