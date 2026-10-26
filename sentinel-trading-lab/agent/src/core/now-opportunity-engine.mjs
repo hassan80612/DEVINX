@@ -89,7 +89,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
     part.some((q,i)=>i>0&&q.ts-part[i-1].ts>3500))continue;
   closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
  }
- if(closes.length<10)return null;
+ if(closes.length<5)return null;
  // A directional trend with small pullbacks has high total path efficiency.
  // A long oscillation traverses both directions, returning near its origin.
  let travelled=0;
@@ -112,7 +112,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   xx+=x*x;yy+=y*y;xy+=x*y;
  }
  const trendFit=xx>0&&yy>0?xy*xy/(xx*yy):0;
- if(trendFit>=.70)return null;
+ // Trend fit alone cannot discard an observed historical edge.
  const pivots=[];
  for(let i=2;i<closes.length-2;i++){
   const near=[closes[i-2],closes[i-1],closes[i+1],closes[i+2]];
@@ -126,7 +126,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   }
  }
  if(pivots.length<2)return null;
- if(pivots.length===2)return {ready:false,reason:'range-awaiting-third-confirmed-turn'};
+ // Two confirmed opposite pivots already establish provisional bounds.
  const recent=pivots.slice(-4),gaps=recent.slice(1).map((p,i)=>(p.at-recent[i].at)/1000);
  const sorted=[...gaps].sort((a,b)=>a-b),half=sorted[Math.floor(sorted.length/2)];
  const minGap=Math.min(...gaps),maxGap=Math.max(...gaps);
@@ -148,7 +148,7 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
    recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
  // Uneven pivots with a directional fit belong to the trend assessment,
  // not a counter-trend reversal or a blanket "irregular" waiting state.
- if(!regular&&trendFit>=.50)return null;
+ // Irregular boundaries still receive live-price evaluation.
  // A confirmed oscillation retains its range identity even when a short
  // directional leg develops inside it. The October 22 escape caused trend
  // chasing near established extremes before the third-turn reaction.
@@ -178,10 +178,10 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // alongside a material retreat and a 3-second counter-move. Do not wait
  // for the next large candle to complete the entire move.
  const earlyRetreat=Math.max(minTurn*1.5,span*.028);
- const highTurn=position>=.73&&retreat>=minTurn&&
-   (down>=2||(regular&&efficiency>=.4&&down>=1&&retreat>=Math.max(earlyRetreat,span*.12)&&turnMove< -span*.05))&&turnMove<0&&lastStep<0;
- const lowTurn=position<=.27&&bounce>=minTurn&&
-   (up>=2||(regular&&efficiency>=.4&&up>=1&&bounce>=Math.max(earlyRetreat,span*.12)&&turnMove>span*.05))&&turnMove>0&&lastStep>0;
+ // A verified prior boundary and observed live turn may qualify without
+ // mandatory large retreat or a third pivot. Mere touch is not a turn.
+ const highTurn=position>=.73&&down>=1&&turnMove<0&&lastStep<0;
+ const lowTurn=position<=.27&&up>=1&&turnMove>0&&lastStep>0;
  if(highTurn||lowTurn){
  // Only protect actual turn SIGNALS. Keep WAIT and all previous
  // range-lifecycle classifications exactly as before.
