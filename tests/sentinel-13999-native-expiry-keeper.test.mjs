@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {installBrokerNativeExpiryKeeper} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
+import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 
 import {browser} from './helpers/broker-expiry-browser.mjs';
 test('an option nested inside the native picker is saved as a choice, not a new opener',()=>{
@@ -176,4 +177,24 @@ test('never treats a chart duration field as selected native option expiry',()=>
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,null);
   assert.equal(m.storage.size,0);
  }finally{m.restore()}
+});
+
+test('two confirmed 30-second broker settlements expose a mismatch with selected 60s',()=>{
+ let now=1800000000000;
+ const bot=new SignalExecutor({clock:()=>now,context:()=>({provider:'exnova',durationMs:60000})});
+ const settle=(id,elapsed)=>{
+  const clickedAt=now;
+  bot.ledger.set('exnova|'+id,{provider:'exnova',orderId:id,accountId:'demo',
+   sessionId:bot.sessionId,source:'unresolved',netPnl:0,
+   clickedAt,durationMs:60000,amount:1});
+  now+=elapsed;
+  assert.equal(bot.settle({provider:'exnova',orderId:id,accountId:'demo',netPnl:-1,source:'broker'}),true);
+ };
+ settle('a',29800);assert.equal(bot.lastBrokerExpiryMismatch,null);
+ settle('b',30200);
+ assert.equal(bot.lastBrokerExpiryMismatch.expectedDurationMs,60000);
+ assert.equal(bot.lastBrokerExpiryMismatch.reportedDurationFromClickMs,30000);
+ assert.equal(bot.sessionLosses,2);
+ settle('c',60000);
+ assert.equal(bot.lastBrokerExpiryMismatch,null,'a proper 60s settlement clears the prior alert');
 });
