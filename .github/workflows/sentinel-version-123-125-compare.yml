@@ -1,0 +1,26 @@
+name: Audit Sentinel 13.9.123 vs 13.9.125 equal-tape quotes
+on:
+  push:
+    branches: [audit/sentinel-123-vs-125-quoted-replay-20261026]
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ef8adf51fea88408737b237d746945e602c18dc7
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntactic validity
+        run: node --check scripts/sentinel-version123-125-comparison.mjs
+      - name: Replay identical previously observed price quotes (no trades, no deploy)
+        run: node scripts/sentinel-version123-125-comparison.mjs
