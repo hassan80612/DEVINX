@@ -52,13 +52,21 @@ test('an old structural event cannot replace an independently ready current deci
   assert.equal(out.side,candidate.side);assert.equal(out.reason,candidate.reason);assert.equal(out.observedAt,a.now);
  }
 });
-test('break/retest continuation retains its current-price confirmation independently of the reversal fix',()=>{
- for(const mirror of [false,true]){
+test('break/retest confirms only an already qualified, agreeing continuation at the selected expiry',()=>{
+ for(const mirror of [false,true])for(const durationMs of expiries){
   const f=fixture([102,100.4,100.9,99,100,99.7,98.6],mirror),a=input(f);
-  const event=observedLevelSequence(a).structureChange;
+  const event=observedLevelSequence(a).structureChange,side=mirror?'CALL':'PUT';
   assert.equal(event.kind,'break-retest-continuation');assert.equal(event.confirmedAt,a.quoteAt);
-  const out=applyObservedLevelSequence({candidate:{ready:false,side:null},...a,durationMs:60000});
-  assert.equal(out.ready,true);assert.equal(out.side,mirror?'CALL':'PUT');
+  const waiting={ready:false,side:null,reason:'own-horizon-not-qualified',expirySeconds:durationMs/1000};
+  const unready=applyObservedLevelSequence({candidate:waiting,...a,durationMs});
+  assert.equal(unready.ready,false);assert.equal(unready.reason,waiting.reason);
+  const qualified={ready:true,side,reason:'own-horizon-qualified',expirySeconds:durationMs/1000};
+  const fresh=applyObservedLevelSequence({candidate:qualified,...a,durationMs});
+  assert.equal(fresh.ready,true);assert.equal(fresh.side,side);assert.equal(fresh.observedAt,a.quoteAt);
+  assert.equal(fresh.expirySeconds,durationMs/1000);
+  const conflicting=applyObservedLevelSequence({candidate:{...qualified,side:mirror?'PUT':'CALL'},...a,durationMs});
+  assert.equal(conflicting.ready,false);assert.equal(conflicting.side,null);
+  assert.equal(conflicting.reason,'retest-versus-horizon-direction-conflict');
  }
 });
 test('the existing quote freshness limit is measured from the proof, with no additional waiting period',()=>{

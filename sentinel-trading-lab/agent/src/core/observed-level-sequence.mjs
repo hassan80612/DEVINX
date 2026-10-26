@@ -196,7 +196,10 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
- if(!candidate.ready&&!structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
+ const independentReclaim=structureChange?.kind==='failed-breakout-structure-change';
+ if(!candidate.ready&&!independentReclaim&&!reversal&&!fastReversal)return {...candidate,priceStructure};
+ if(event.kind==='break-retest-continuation'&&candidate.side!==event.side)
+  return {...candidate,ready:false,side:null,reason:'retest-versus-horizon-direction-conflict',priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
   reason:event.kind,priceStructure};

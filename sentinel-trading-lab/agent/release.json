@@ -1,6 +1,6 @@
 {
-  "version": "13.9.129",
-  "build": "13.9.129-frame-expiry-execution-evidence",
+  "version": "13.9.130",
+  "build": "13.9.130-horizon-owned-continuation",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
