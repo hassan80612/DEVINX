@@ -184,8 +184,12 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // Permit early turns without a third pivot when an independently established
  // range is regular and its already observed route is genuinely oscillatory.
  const earlyRangeProof=regular&&efficiency<.40&&pivots.length>=2;
- const highTurn=earlyRangeProof&&position>=.73&&down>=1&&turnMove<0&&lastStep<0;
- const lowTurn=earlyRangeProof&&position<=.27&&up>=1&&turnMove>0&&lastStep>0;
+ const priorHigh=position>=.73&&retreat>=minTurn&&
+  (down>=2||(regular&&efficiency>=.4&&down>=1&&retreat>=Math.max(earlyRetreat,span*.12)&&turnMove< -span*.05))&&turnMove<0&&lastStep<0;
+ const priorLow=position<=.27&&bounce>=minTurn&&
+  (up>=2||(regular&&efficiency>=.4&&up>=1&&bounce>=Math.max(earlyRetreat,span*.12)&&turnMove>span*.05))&&turnMove>0&&lastStep>0;
+ const highTurn=priorHigh||(earlyRangeProof&&position>=.73&&down>=1&&turnMove<0&&lastStep<0);
+ const lowTurn=priorLow||(earlyRangeProof&&position<=.27&&up>=1&&turnMove>0&&lastStep>0);
  if(highTurn||lowTurn){
  // Only protect actual turn SIGNALS. Keep WAIT and all previous
  // range-lifecycle classifications exactly as before.
