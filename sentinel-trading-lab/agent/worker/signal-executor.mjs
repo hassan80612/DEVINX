@@ -758,8 +758,9 @@ export class SignalExecutor{
   // settled P&L so Martingale never risks exceeding the chosen floor while
   // the broker's next balance receipt is still pending.
   const estimate=this.initialBalance==null?null:money(this.initialBalance+this.net);
-  const current=confirmed==null?estimate:
-    estimate==null?confirmed:Math.min(confirmed,estimate);
+  // A current broker balance supersedes any inferred baseline, including
+  // deposits or withdrawals made while the bot was active.
+  const current=confirmed==null?estimate:confirmed;
   if(current==null)return Number.POSITIVE_INFINITY;
   return money(Math.max(0,current-this.config.stopLoss-this.unresolvedExposure()));
  }
