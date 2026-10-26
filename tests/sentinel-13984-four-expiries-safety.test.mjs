@@ -46,7 +46,7 @@ test('all 4 selected holding times are accepted by Agent without broker expiry c
 });
 test('original analyst horizon and no third-pivot wait are preserved',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
- assert.match(source,/range-awaiting-third-confirmed-turn/);
+ assert.doesNotMatch(source,/if\(pivots\.length===2\)return /);
  const q=quotes(),last=q.at(-1);
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
  for(const duration of [30000,60000,120000,300000]){
