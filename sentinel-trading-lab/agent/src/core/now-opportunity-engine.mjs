@@ -179,9 +179,9 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // for the next large candle to complete the entire move.
  const earlyRetreat=Math.max(minTurn*1.5,span*.028);
  const highTurn=position>=.73&&retreat>=minTurn&&
-   (down>=2||(down>=1&&retreat>=earlyRetreat))&&turnMove<0&&lastStep<0;
+   (down>=2||(regular&&down>=1&&retreat>=earlyRetreat))&&turnMove<0&&lastStep<0;
  const lowTurn=position<=.27&&bounce>=minTurn&&
-   (up>=2||(up>=1&&bounce>=earlyRetreat))&&turnMove>0&&lastStep>0;
+   (up>=2||(regular&&up>=1&&bounce>=earlyRetreat))&&turnMove>0&&lastStep>0;
  if(highTurn||lowTurn){
  // Only protect actual turn SIGNALS. Keep WAIT and all previous
  // range-lifecycle classifications exactly as before.
