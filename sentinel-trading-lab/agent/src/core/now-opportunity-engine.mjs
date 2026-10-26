@@ -21,6 +21,52 @@ const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
 export const POST_EXPIRY_REASSESS_MS=3000;
+// Low-price continuation without a verified breakdown is not a valid
+// excuse to chase the final portion of a completed downward impulse.
+// History already buffered by the Agent: zero broker reads, fixed short scan.
+export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
+ if(candidate?.ready!==true||candidate.side!=='PUT'||
+  candidate.reason!=='closed-structure-and-live-impulse')return null;
+ const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+ if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
+   Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
+ const rows=[];
+ for(let i=quoteHistory.length-1;i>=0;i--){
+  const q=quoteHistory[i],ts=Number(q?.ts);
+  if(ts<at-90000)break;
+  if(ts>at||Number(q?.receivedAt??ts)>clock)continue;
+  const p=Number(q?.price);
+  if(!(p>0))return null;
+  rows.push({ts,price:p});
+ }
+ rows.reverse();
+ if(rows.length<30||at-rows[0].ts<45000||
+  rows.at(-1).ts!==at||rows.at(-1).price!==spot)return null;
+ let low=Infinity,high=-Infinity,priorLow=Infinity;
+ const steps=[];
+ for(let i=0;i<rows.length;i++){
+  const q=rows[i];
+  if(i&&q.ts<=rows[i-1].ts)return null;
+  low=Math.min(low,q.price);high=Math.max(high,q.price);
+  if(q.ts<=at-8000)priorLow=Math.min(priorLow,q.price);
+  if(i&&q.ts-rows[i-1].ts<=3000){
+   const move=Math.abs(q.price-rows[i-1].price);
+   if(move>0)steps.push(move);
+  }
+ }
+ const width=high-low;
+ if(!(width>spot*1e-7&&Number.isFinite(priorLow)&&steps.length>=10))return null;
+ const position=(spot-low)/width;
+ if(position>.15)return null;
+ steps.sort((a,b)=>a-b);
+ const typical=steps[Math.floor(steps.length/2)];
+ // A significant NEW verified downward break retains the continuation path.
+ // Otherwise wait for the independently assessed current-price reversal;
+ // do not reverse a signal merely because the price is low.
+ if(priorLow-spot>Math.max(typical*3,width*.1))return null;
+ return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,
+  priorLow,typicalStep:typical};
+}
 // Later evidence can revise a proposed side. Recheck that FINAL direction
 // against the same shared market safeguards; never rerun a learning selector.
 export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
@@ -342,7 +388,9 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const roomRisk=!pivotRisk&&!wallRisk&&proposed.ready?continuationRoomRisk({
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
-  const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?liveEntryContradiction({
+  const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?
+   lateUnverifiedFloorImpulseRisk({candidate:proposed,quoteHistory,quoteAt,now,price}):null;
+  const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk&&proposed.ready?liveEntryContradiction({
    candidate:proposed,quoteHistory,quoteAt,now,price
   }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
@@ -351,6 +399,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:
    roomRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-continuation-wall-pressure',entryRisk:roomRisk}:
+   floorRisk?{...proposed,ready:false,side:null,
+    reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
   return {...final,engineId,qualityPolicy,
