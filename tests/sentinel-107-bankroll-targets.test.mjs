@@ -27,9 +27,10 @@ test('fresh reconciled deposit replaces old opening-plus-profit for stops and al
  assert.equal(bot.stopLossReached(),false);assert.equal(bot.lossBudgetRemaining(),30);
  bot.watch();assert.equal(bot.enabled,true);
  bot.executing=true;balance(119);
- assert.equal(bot.stopTargetBalance(),120,'pending debit retains the deposit, not the obsolete opening bankroll');
+ assert.equal(bot.stopTargetBalance(),null,'pending execution is not a confirmed broker balance');
  assert.equal(bot.stopLossReached(),false);
- bot.net=-21;assert.equal(bot.stopTargetBalance(),119,'apply only settlements newer than the reconciled deposit');
+ bot.net=-21;assert.equal(bot.stopTargetBalance(),null,'settlements cannot fabricate an in-flight balance');
+ bot.executing=false;assert.equal(bot.stopTargetBalance(),119,'latest platform balance resumes after execution');
 });
 test('fresh withdrawal overrides historic accumulated profit',async()=>{
  const {bot,balance}=make();bot.configure({stopLoss:50,stopWin:150});await bot.start();
@@ -37,11 +38,12 @@ test('fresh withdrawal overrides historic accumulated profit',async()=>{
  assert.equal(bot.stopWinReached(),false);bot.watch();assert.equal(bot.enabled,true);
  balance(49);bot.watch();assert.equal(bot.enabled,false);
 });
-test('stale pre-settlement broker balance cannot mask a confirmed stop or freeze WIN/LOSS',async()=>{
- const {bot,settle}=make();bot.configure({stopLoss:50,stopWin:150});await bot.start();
+test('settlements update WIN/LOSS but only fresh broker balance may trigger a stop',async()=>{
+ const {bot,settle,balance}=make();bot.configure({stopLoss:50,stopWin:150});await bot.start();
  settle('first',-49);assert.equal(bot.enabled,true);assert.equal(bot.sessionLosses,1);
- settle('second',-1);assert.equal(bot.enabled,false);assert.equal(bot.sessionLosses,2);
- assert.equal(bot.stopTargetBalance(),50);
+ settle('second',-1);assert.equal(bot.enabled,true);assert.equal(bot.sessionLosses,2);
+ assert.equal(bot.stopTargetBalance(),null,'inferred equity must not trigger broker stop');
+ balance(50);assert.equal(bot.enabled,false,'confirmed account balance reaches the stop floor');
 });
 test('pending account debit is not a confirmed loss or a stop-target crossing',async()=>{
  const {bot,balance}=make();bot.configure({stopLoss:50,stopWin:150});await bot.start();
