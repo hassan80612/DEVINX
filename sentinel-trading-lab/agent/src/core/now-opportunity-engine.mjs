@@ -12,6 +12,7 @@ import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 import {continuationRoomRisk} from './continuation-room-risk.mjs';
+import {liveEntryContradiction} from './live-entry-contradiction.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 
@@ -30,9 +31,11 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
+ const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
   wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:
-  roomRisk?{...candidate,ready:false,side:null,reason:'final-side-continuation-wall-pressure',entryRisk:roomRisk}:candidate;
+  roomRisk?{...candidate,ready:false,side:null,reason:'final-side-continuation-wall-pressure',entryRisk:roomRisk}:
+  liveRisk?{...candidate,ready:false,side:null,reason:'final-side-live-evidence-conflict',entryRisk:liveRisk}:candidate;
 }
 function causalQuotes(history,now,windowMs=180000){
  return observedQuoteWindow({history,at:now,now,windowMs});
@@ -315,12 +318,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const roomRisk=!pivotRisk&&!wallRisk&&proposed.ready?continuationRoomRisk({
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
+  const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?liveEntryContradiction({
+   candidate:proposed,quoteHistory,quoteAt,now,price
+  }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
    reason:'shared-base-countertrend-pivot-risk'}:
    wallRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-verified-wall-exhaustion',entryRisk:wallRisk}:
    roomRisk?{...proposed,ready:false,side:null,
-    reason:'shared-base-continuation-wall-pressure',entryRisk:roomRisk}:proposed;
+    reason:'shared-base-continuation-wall-pressure',entryRisk:roomRisk}:
+   liveRisk?{...proposed,ready:false,side:null,
+    reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
   return {...final,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
