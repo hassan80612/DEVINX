@@ -390,13 +390,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // This structure is retained across cycles; never start collecting it
  // again at expiry. Holding time does not impose any post-expiry pause.
  const barMs=(seconds<=10?5:seconds<=30?10:15)*1000;
- const bars=closingBars(quotes,Number(quoteAt),barMs);
- if(!bars)return waiting('completed-structure-not-ready');
- const moves=bars.map(b=>Math.log(b.close/b.open));
- const net=Math.log(bars.at(-1).close/bars[0].open);
+ // A previously observed range must be inspected BEFORE the four-bar
+ // continuation gate. Otherwise a real edge turn can be lost while an old
+ // four-bar trend waits to qualify, and the next late impulse gets chased.
+ // Range reconstruction uses only finished historical 5s bars.
  const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
- if(!(noise>0))return waiting('insufficient-quote-variation');
- const range=completedRangeStructure(quotes,now,noise,Number(price),durationMs);
+ const range=noise>0?completedRangeStructure(quotes,now,noise,Number(price),durationMs):null;
  if(range){
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,
@@ -404,6 +403,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     strength:null,expirySeconds:seconds,
     regime:'observed-range-turn',observedSwingSeconds:range.observedSwingSeconds};
  }
+ const bars=closingBars(quotes,Number(quoteAt),barMs);
+ if(!bars)return waiting('completed-structure-not-ready');
+ const moves=bars.map(b=>Math.log(b.close/b.open));
+ const net=Math.log(bars.at(-1).close/bars[0].open);
+ if(!(noise>0))return waiting('insufficient-quote-variation');
  // Directional efficiency distinguishes a persistent move from price
  // zigzags of similar amplitude. A weak sideways swing must not trigger
  // CALL/PUT merely because 3 of 4 small candle bodies share a colour.
