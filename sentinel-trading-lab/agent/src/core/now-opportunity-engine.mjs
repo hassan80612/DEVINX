@@ -25,12 +25,12 @@ export const POST_EXPIRY_REASSESS_MS=3000;
 // excuse to chase the final portion of a completed downward impulse.
 // History already buffered by the Agent: zero broker reads, fixed short scan.
 export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
- // Price-extreme protection is shared by level and impulse forecasts:
+ // Only the audited 60-second signal horizon is changed. Earlier 30-second\n // reference winners and 5/10/15-second entries are preserved.\n // Price-extreme protection is shared by level and impulse forecasts:
  // a reason label cannot exempt selling the end of an observed decline.
  // Independently qualified breakouts and high-edge reversals remain eligible.
  const expiry=Number(durationMs??(Number(candidate?.expirySeconds)*1000));
  if(candidate?.ready!==true||candidate.side!=='PUT'||
-  ![30000,60000].includes(expiry)||
+  expiry!==60000||
   ['historical-level-breakout','confirmed-fast-level-reversal',
    'closed-range-extreme-reversal-confirmed'].includes(candidate.reason))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
