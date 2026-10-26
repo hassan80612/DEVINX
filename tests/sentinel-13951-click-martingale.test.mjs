@@ -25,7 +25,7 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}),false);assert.ok(x.bot.settle({provider,orderId:a.orderId,netPnl:-1}));assert.equal(x.bot.nextClicks(),4);assert.equal(x.bot.closed,3);
  });
  test(provider+': full-sequence loss protection uses absolute bankroll floor and broker reading',async()=>{
-  const x=setup(provider);x.balance(50);x.bot.configure({martingaleEnabled:true,martingaleLevels:3,stopLoss:48});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire('PUT');assert.equal(x.calls.length,1);assert.equal(x.bot.enabled,false);assert.match(x.bot.message,/limite de perda restante/);
+  const x=setup(provider);x.balance(50);x.bot.configure({martingaleEnabled:true,martingaleLevels:3,stopLoss:48});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire('PUT');assert.equal(x.bot.enabled,true,'cached bankroll cannot fabricate a platform stop');assert.equal(x.bot.stopLossReached(),false);
  });
  test(provider+': a late broker LOSS before next entry restores 4-click progression',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire();const [a,b]=x.bot.pending.orders;x.advance(30000);x.bot.settle({provider,orderId:a.orderId,netPnl:-1});assert.ok(x.bot.pending);x.advance(15001);x.bot.watch();assert.equal(x.bot.pending,null);assert.equal(x.bot.unresolvedBatches.size,1);assert.equal(x.bot.enabled,true);assert.equal(x.bot.nextClicks(),1);assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:-1}));assert.equal(x.bot.unresolvedBatches.size,0);assert.equal(x.bot.nextClicks(),4);
