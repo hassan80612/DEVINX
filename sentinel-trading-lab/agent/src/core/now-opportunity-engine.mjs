@@ -257,14 +257,21 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    thirtySecondCycleForecast({...input,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):null;
   // Preserve existing qualified entries. Historical price reactions below
   // can admit directly from current quotes without four newly closed bars.
-  const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
-  const selected=Number(durationMs)===30000&&expiryDirectionSelector?
+  // A current confirmed range-edge reversal is stronger evidence than
+  // extrapolating an earlier 30s movement through the opposite wall.
+  // Do not infer reversal from price alone: original must have qualified
+  // the established range and the current retreat already.
+  const establishedRangeTurn=original.ready===true&&
+   original.reason==='closed-range-extreme-reversal-confirmed';
+  const baseline=establishedRangeTurn?original:
+   forecast?.ready&&original.ready?{...original,...forecast}:original;
+  const selected=Number(durationMs)===30000&&!establishedRangeTurn&&expiryDirectionSelector?
    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):baseline;
   // Stage 4: compare ACTUAL completed 30s results on the rare occasions
   // when the qualified causal market structure and selected projection
   // disagree. After sufficient non-overlapping evidence the historical
   // structure can outrank the fitted cycle, but not on arbitrary opinion.
-  const decision=Number(durationMs)===30000&&directionDisagreement?
+  const decision=Number(durationMs)===30000&&!establishedRangeTurn&&directionDisagreement?
    directionDisagreement.observe({context:expiryDirectionContext,quoteHistory,quoteAt,
     price,now,structural:original,projected:selected,
     projectionTargetAt:projectionTargetAt??Number(now)+Number(durationMs)}):selected;
