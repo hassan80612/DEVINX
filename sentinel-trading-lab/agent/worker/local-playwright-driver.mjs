@@ -2639,7 +2639,7 @@ export class LocalPlaywrightDriver{
           el.style.right=stableRight||el.style.right;
           const maxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
           let restoredScroll=stableScrollTop;
-          if(anchorName!==null&&anchorTop!==null){
+          if(stableScrollTop>0&&anchorName!==null&&anchorTop!==null){
             const card=[...el.querySelectorAll('[data-sentinel-card]')]
               .find(node=>node.getAttribute('data-sentinel-card')===anchorName);
             if(card)restoredScroll+=card.getBoundingClientRect().top-anchorTop;
