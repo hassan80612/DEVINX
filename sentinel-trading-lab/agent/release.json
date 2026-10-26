@@ -1,6 +1,6 @@
 {
-  "version": "13.9.123",
-  "build": "13.9.123-reversal-event-origin",
+  "version": "13.9.124",
+  "build": "13.9.124-current-entry-recheck",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.123"
+  "publicVersion": "13.9.124"
 }

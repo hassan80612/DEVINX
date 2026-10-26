@@ -79,7 +79,8 @@
       "fix/sentinel-139117-live-totals-readout-20261025": false,
       "fix/sentinel-139121-expiry-fast-reversal-fluidity-20261025": false,
       "fix/sentinel-139122-native-picker-timing-20261025": false,
-      "fix/decision-event-origin-20261025": false
+      "fix/decision-event-origin-20261025": false,
+      "fix/current-entry-recheck-20261025": false
     }
   }
 }

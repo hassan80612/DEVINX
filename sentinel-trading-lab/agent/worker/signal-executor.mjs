@@ -3,6 +3,7 @@
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
+import {captureEntryReview,currentEntryRejection} from '../src/core/current-entry-review.mjs';
 // Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
 // Finishing the last complete losing batch cycles back to one normal click.
 export const MAX_MARTINGALE_LEVELS=3;
@@ -368,6 +369,7 @@ export class SignalExecutor{
   // Diagnostic metadata is never part of order acceptance/validation.
   if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){
+   if(mode==='automatic')s.entryGuard=captureEntryReview({signal:s,review:c.entryReview,context:c});
    this.seen.add(s.id);if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
    // Every NEW analyst signal is eligible. No independent bot cooldown.
    this.sequence++;this.queuedSignal=s;
@@ -457,7 +459,15 @@ export class SignalExecutor{
   // they can never continue beyond this operation's selected expiry.
   const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
   const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const operationallyValid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=(clickIndex=0)=>{
+   if(!operationallyValid(clickIndex))return false;
+   // Apply only before a batch's FIRST physical attempt. Once dispatched,
+   // preserve the existing sibling-click/settlement/Martingale lifecycle.
+   if(mode!=='automatic'||!queued.entryGuard||batch.orders.some(o=>o.clickAttempted||o.clicked||o.dispatchUncertain||o.requestId))return true;
+   batch.entryReviewRevoked??=currentEntryRejection({issued:queued.entryGuard,context:this.context(),now:this.clock()});
+   return !batch.entryReviewRevoked;
+  };
   let captured=false;
   const jobs=[];
   this.executing=true;
@@ -519,7 +529,8 @@ export class SignalExecutor{
     // A clearly cancelled before-click attempt can be skipped without
     // turning the automation OFF or manufacturing a Martingale loss.
     if(!order.clicked&&e?.beforeClick===true){
-     if(this.enabled)this.message=e.nativeExpiryChanged?
+     if(this.enabled)this.message=batch.entryReviewRevoked?
+      'Ligado · entrada descartada: confirmação mudou antes do clique · próximo sinal atual':e.nativeExpiryChanged?
       'Ligado · restaurando a expiração escolhida na corretora · próximo sinal atual':
       'Ligado · sinal ignorado antes do clique · próximo sinal do analista';
      return;

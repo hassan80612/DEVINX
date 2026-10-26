@@ -30,6 +30,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {currentEntryReview} from './current-entry-review.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1082,6 +1083,12 @@ export class DemoTradingRuntime{
         !entryQuoteFresh?
         {...observation,side:null,ready:false,reason:'late-quote-no-entry'}:
         observation;
+      // Publish the SAME final observation before the immediate entry callback.
+      // The executor can revoke an unclicked signal from a newer confirmed
+      // observation without rerunning analysis or reading a dashboard frame.
+      this.currentEntryReview=currentEntryReview({candidate:eligible,provider:snap.provider,
+        asset:settings.asset,engine:settings.engine,durationMs:settings.orderDurationMs,
+        quoteAt:snap.quoteTs,price:snap.price,now});
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
