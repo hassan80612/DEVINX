@@ -2,8 +2,15 @@
 // SELF-CONTAINED so Playwright can install it without evaluating extra source.
 // It never changes the selected candle period or the Sentinel analyst duration.
 export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
+ // An already ACCEPTED order must not prevent restoring the picker for the
+ // next operation. A permanently pending broker RESULT is not an active
+ // physical click. Never operate the picker while clicks are being dispatched
+ // or while an attempted click is still unidentified/uncertain.
+ const open=state?.unresolvedDetail||{};
+ const unidentified=Number(open.waitingId||0)>0||Number(open.uncertainAttempts||0)>0;
+ const awaitingAck=!!state?.pending&&Number(state.pending.confirmedClicks||0)===0;
  return {at,provider:state?.provider||null,allowed:!!state&&!state.arming&&!state.executing&&
-  !state.pending&&!Number(state.unresolvedBatches||0)};
+  !unidentified&&!awaitingAck};
 }
 // Runs on the existing broker page immediately before an actual direction
 // click. Unknown native controls never gate startup or imply a duration.
