@@ -21,13 +21,15 @@ test('bankroll 50, Stop Win target 60',async()=>{
  const {bot}=make();bot.configure({stopWin:60,stopLoss:40});await bot.start();
  assert.equal(bot.initialBalance,50);assert.equal(bot.lossBudgetRemaining(),10);
  settle(bot,'A',4);assert.equal(bot.enabled,true);
- settle(bot,'B',6);assert.equal(bot.enabled,false);
+ settle(bot,'B',6);assert.equal(bot.enabled,true,'do not stop on derived P&L before the broker updates');
+ bot.observeBalance({provider:'exnova',accountId:'demo',amount:60,receivedAt:T,revision:2});assert.equal(bot.enabled,false);
  assert.match(bot.message,/Stop Win atingido/);
 });
 test('bankroll 50, Stop Loss target 40',async()=>{
  const {bot}=make();bot.configure({stopWin:60,stopLoss:40});await bot.start();
  settle(bot,'A',-5);assert.equal(bot.enabled,true);
- settle(bot,'B',-5);assert.equal(bot.enabled,false);
+ settle(bot,'B',-5);assert.equal(bot.enabled,true,'do not stop on a derived balance');
+ bot.observeBalance({provider:'exnova',accountId:'demo',amount:40,receivedAt:T,revision:2});assert.equal(bot.enabled,false);
  assert.match(bot.message,/stop-loss|limite de perda/i);
 });
 test('Stop clears prior bankroll but retains thresholds; new Start reads deposit',async()=>{
