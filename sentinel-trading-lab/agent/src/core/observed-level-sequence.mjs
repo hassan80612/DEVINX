@@ -114,7 +114,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
-  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null;
+  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null,continuationExtreme=null;
   for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
@@ -133,9 +133,18 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
      recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
-    -initial*(q.price-breakExtreme)>amplitude)
-    events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
-     level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
+    -initial*(q.price-breakExtreme)>amplitude){
+    // Do not stamp an old breakout as a NEW opportunity at every quote.
+    // A CURRENT independently observed extension remains eligible: this
+    // uses the observed extreme, never an arbitrary countdown or new broker IO.
+    const freshExpansion=continuationExtreme===null||
+      -initial*(q.price-continuationExtreme)>=amplitude*.08;
+    if(freshExpansion){
+      continuationExtreme=q.price;
+      events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+       level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
+    }
+   }
   }
  }
  const valid=events.filter(e=>{
@@ -178,13 +187,18 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // projection below remains scoped to the 30s holding time it measures.
  const reversal=structureChange?null:confirmedLevelReversal({map,...input});
  const event=fastReversal??structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ // Freshness of the STRUCTURAL proof, not the age of the latest market tick.
+ // A stale retest may remain market context but cannot override an otherwise
+ // independently ready CALL/PUT or awaken a waiting strategy.
+ const activeEvent=event?.kind==='break-retest-continuation'&&
+   Number(input.now??input.quoteAt)-Number(event.confirmedAt)>1450?null:event;
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
- if(!event)return {...candidate,priceStructure};
+ if(!activeEvent)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
  if(!candidate.ready&&!structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
- return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
+ return {...candidate,ready:true,side:activeEvent.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
-  reason:event.kind,priceStructure};
+  reason:activeEvent.kind,priceStructure};
 }

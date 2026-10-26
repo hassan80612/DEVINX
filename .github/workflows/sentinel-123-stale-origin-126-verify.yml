@@ -1,0 +1,29 @@
+name: Sentinel 126 baseline 123 / only stale breakout origin - NO DEPLOY
+on:
+  push:
+    branches: [fix/sentinel-126-from-123-fresh-structure-only-20261026]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Syntax and targeted reversal and continuation checks
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs
+          node --test --test-concurrency=1 \
+            tests/sentinel-123-stale-origin-only-126.test.mjs \
+            tests/sentinel-decision-event-origin.test.mjs \
+            tests/sentinel-fast-level-reversal-121.test.mjs \
+            tests/sentinel-fast-reversal-121.test.mjs \
+            tests/sentinel-observed-level-sequence.test.mjs \
+            tests/sentinel-continuation-room-119.test.mjs \
+            tests/sentinel-118-reversal-price-authority.test.mjs \
+            tests/sentinel-current-reversal-20261025.test.mjs \
+            tests/sentinel-13999-native-expiry-keeper.test.mjs
