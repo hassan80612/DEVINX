@@ -1,6 +1,6 @@
 {
-  "version": "13.9.124",
-  "build": "13.9.124-current-entry-recheck",
+  "version": "13.9.125",
+  "build": "13.9.125-confirmed-pivot-break-fast-reversal",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -28,5 +28,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.124"
+  "publicVersion": "13.9.125"
 }
