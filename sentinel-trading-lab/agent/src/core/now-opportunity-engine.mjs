@@ -155,6 +155,8 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // For >=60s holds, do not enter a brief repeating swing whose observed
  // half-cycle is shorter than the intended broker outcome window.
  // This is a market-structure check, NOT an added timer or polling delay.
+ if(pivots.length===2&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
+  return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
   return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  const position=(Math.log(spot)-lower)/span;
