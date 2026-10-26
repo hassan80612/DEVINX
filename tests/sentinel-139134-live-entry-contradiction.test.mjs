@@ -47,7 +47,7 @@ test('a genuine newly established low remains eligible for independent breakout 
   quoteHistory:rows,quoteAt:T,now:T,price:spot}),null);
 });
 
-test('30s/60s shared decision refuses late-floor PUT regardless of trend versus level label',()=>{
+test('60s shared decision refuses late-floor PUT across trend and level labels, leaving 30s unmodified',()=>{
  const rows=Array.from({length:91},(_,i)=>({ts:T-90000+i*1000,
   receivedAt:T-90000+i*1000,price:1.005-i*.00005}));
  const spot=rows.at(-1).price;
@@ -58,11 +58,14 @@ test('30s/60s shared decision refuses late-floor PUT regardless of trend versus 
    const candidate={ready:true,side:'PUT',reason,observedAt:T,entryPrice:spot,
     expirySeconds:durationMs/1000};
    const params={candidate,quoteHistory:rows,quoteAt:T,now:T,price:spot,durationMs};
-   assert.equal(lateUnverifiedFloorImpulseRisk(params)?.kind,
-    'unverified-late-put-near-recent-floor',reason);
-   const revised=reviewChangedOpportunitySide({...params,previousSide:'CALL'});
-   assert.equal(revised.ready,false,'final side must not bypass extreme context: '+reason);
-   assert.equal(revised.side,null);
+   const risk=lateUnverifiedFloorImpulseRisk(params);
+   assert.equal(risk?.kind, durationMs===60000?
+    'unverified-late-put-near-recent-floor':undefined,reason);
+   if(durationMs===60000){
+    const revised=reviewChangedOpportunitySide({...params,previousSide:'CALL'});
+    assert.equal(revised.ready,false,'final side must not bypass extreme context: '+reason);
+    assert.equal(revised.side,null);
+   }
   }
  }
 });
