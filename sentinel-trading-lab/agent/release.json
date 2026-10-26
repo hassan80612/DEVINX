@@ -1,6 +1,6 @@
 {
-  "version": "13.9.139",
-  "build": "13.9.139-early-reversal-evidence",
+  "version": "13.9.140",
+  "build": "13.9.140-stable-cards-broker-stops",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
