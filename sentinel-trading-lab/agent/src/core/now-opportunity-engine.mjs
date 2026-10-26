@@ -358,6 +358,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const contextStrategy=useLearning?'mean_reversion':'trend';
   const qualifiedStructure=Number(durationMs)===30000?{structuralReady:structural.ready===true,
    structuralSide:structural.ready===true?structural.side:null}:{};
+  if(structural.ready===true&&structural.reason==='closed-range-extreme-reversal-confirmed')
+   return {...structural,...qualifiedStructure,engineId,qualityPolicy,
+    contextStrategy:engineId==='automatic'?'support_resistance':engineId,
+    signalOwner:'shared-market-base'};
   if(useLearning)return {...structural,...learning,...qualifiedStructure,engineId,qualityPolicy,
    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
