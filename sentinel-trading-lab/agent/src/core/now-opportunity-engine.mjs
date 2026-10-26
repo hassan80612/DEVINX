@@ -173,8 +173,15 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const turnBase=before(last,now-3000,2500);
  const turnMove=turnBase?Math.log(spot/turnBase.price):0;
  const previous=last.at(-2),lastStep=previous?Math.log(spot/previous.price):0;
- const highTurn=position>=.73&&retreat>=minTurn&&down>=2&&turnMove<0&&lastStep<=0;
- const lowTurn=position<=.27&&bounce>=minTurn&&up>=2&&turnMove>0&&lastStep>=0;
+ // The range edges are established by confirmed PRIOR closed pivots.
+ // At an edge a single recent opposite tick may start a turn, but only
+ // alongside a material retreat and a 3-second counter-move. Do not wait
+ // for the next large candle to complete the entire move.
+ const earlyRetreat=Math.max(minTurn*1.5,span*.028);
+ const highTurn=position>=.73&&retreat>=minTurn&&
+   (down>=2||(down>=1&&retreat>=earlyRetreat))&&turnMove<0&&lastStep<0;
+ const lowTurn=position<=.27&&bounce>=minTurn&&
+   (up>=2||(up>=1&&bounce>=earlyRetreat))&&turnMove>0&&lastStep>0;
  if(highTurn||lowTurn){
  // Only protect actual turn SIGNALS. Keep WAIT and all previous
  // range-lifecycle classifications exactly as before.
