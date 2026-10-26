@@ -163,3 +163,15 @@ test('audit ignores mismatched NOW tick metadata without blocking entry',()=>{
  assert.equal(record.structure.provenance,'analysis-snapshot');
  assert.equal(record.structure.reason,null);
 });
+
+test('market replay stores bounded primitive observations without arbitrary extra fields',()=>{
+ const signal={id:'market',at:100,side:'CALL',auditEvidence:{source:'now-structural-v1',signalAt:100,finalSide:'CALL',marketReplay:{durationMs:60000,historicalCandlesVerified:true,secret:'exclude',quotes:[[1,2,3,'exclude']],candles:[[1,2,3,4,1,3,null,'exclude']]}}};
+ const record=decisionAudit({signal,mode:'automatic'});
+ assert.deepEqual(record.marketReplay.quotes,[[1,2,3]]);
+ assert.equal(record.marketReplay.durationMs,60000);
+ assert.equal(JSON.stringify(record).includes('exclude'),false);
+ const accepted=acceptedAudit({exitAt:500,nativeExpiry:{preferredMs:60000,currentMs:30000,revision:6,secret:'exclude'}});
+ assert.equal(accepted.brokerReportedExitAt,null);
+ assert.equal(accepted.nativeExpiry.currentMs,30000);
+ assert.equal(JSON.stringify(accepted).includes('exclude'),false);
+});

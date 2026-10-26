@@ -495,6 +495,15 @@ export class SignalExecutor{
     this.accepted({...result,provider:c.provider,localId:order.id});
    }).catch(e=>{
     order.error=String(e?.message||e);
+    if(this.onAuditEvent)try{
+     const expiry=order.nativeExpiryInspection;
+     this.emitAudit({type:'trade_dispatch_failure',ts:this.clock(),provider:c.provider,
+      batchId:batch.id,localId:order.id,durationMs:order.durationMs,side:order.side,
+      reason:order.error.slice(0,240),beforeClick:e?.beforeClick===true,
+      clicked:order.clicked===true,dispatchUncertain:order.dispatchUncertain===true,
+      nativeExpiry:expiry?{preferredMs:expiry.preferredMs??null,currentMs:expiry.currentMs??null,
+       revision:expiry.revision??null,blocked:expiry.blocked===true}:null});
+    }catch{}
     if(e?.brokerRejected===true)order.rejected=true;
     if((order.clicked!==true&&!order.dispatchUncertain)||e?.beforeClick===true)order.cancelled=true;
     const context=this.context();
@@ -618,7 +627,7 @@ export class SignalExecutor{
   }
   batch.executionSource=p.executionSource='broker';batch.accountId=p.accountId;batch.orderId??=p.orderId;batch.exitAt=Math.max(batch.exitAt,p.exitAt);
   p.executionSource=event.source||'broker';
-  if(this.onAuditEvent){try{this.emitAudit(acceptedAudit({...event,localId:p.id,entryPrice:p.entryPrice,exitAt:p.exitAt},this.clock()))}catch{}}
+  if(this.onAuditEvent){try{this.emitAudit(acceptedAudit({...event,localId:p.id,entryPrice:p.entryPrice,exitAt:p.exitAt,brokerReportedExitAt:event.exitAt??null,nativeExpiry:p.nativeExpiryInspection??null},this.clock()))}catch{}}
   if(batch.detached)return;
   this.lastEntryAt=p.at;this.executed++;
   if(this.enabled)this.message=p.side+' · '+batch.orders.filter(p=>p.state==='accepted').length+'/'+batch.clickCount+' cliques confirmados'+(batch.martingaleFallback?' · martingale reduzido por lentidão':'');

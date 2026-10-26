@@ -256,6 +256,7 @@ export class BrokerUiExecutor{
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
    const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick);
+   order.nativeExpiryInspection=expiry;
    if(expiry?.blocked)throw Object.assign(errorBefore('A expiração escolhida na corretora está sendo restaurada; aguardando sinal atual.'),{nativeExpiryChanged:true});
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes

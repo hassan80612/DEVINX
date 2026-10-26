@@ -9,14 +9,14 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==5)return {blocked:false};
+ if(keeper?.revision!==6)return {blocked:false};
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
  const previous=keeper.snapshot();
  if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
  keeper.poll();
  const s=keeper.snapshot();
  return {blocked:!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs),
-  preferredMs:s.preferredMs,currentMs:s.currentMs};
+  preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
 }
 export function installBrokerNativeExpiryKeeper({provider}={}){
  try{
@@ -24,7 +24,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===5)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===6)return;
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
@@ -263,13 +263,33 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeperV3={revision:5,provider,poll,snapshot:()=>({
+  const onParentPermission=event=>{
+   try{
+    if(window.parent===window||event.source!==window.parent||
+      event.data?.type!=='sentinel-native-expiry-permission-v1')return;
+    const host=new URL(event.origin).hostname;
+    if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
+      (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
+    const next=event.data.permission,old=window.__sentinelNativeExpiryPermissionV3;
+    if(next?.provider!==provider||!Number.isFinite(next.at)||
+      typeof next.allowed!=='boolean'||Date.now()-next.at<0||Date.now()-next.at>=3500||
+      old&&Number(old.at)>next.at)return;
+    window.__sentinelNativeExpiryPermissionV3={provider,at:next.at,allowed:next.allowed};
+    for(let i=0;i<(window.frames?.length||0);i++)try{
+     window.frames[i].postMessage({type:'sentinel-native-expiry-permission-v1',permission:window.__sentinelNativeExpiryPermissionV3},'*');
+    }catch{}
+    if(next.allowed&&(old?.allowed!==true||preferredMs&&observedMs&&preferredMs!==observedMs))poll();
+   }catch{}
+  };
+  window.addEventListener?.('message',onParentPermission);
+  window.__sentinelNativeExpiryKeeperV3={revision:6,provider,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
   const timer=setInterval(poll,2500);
   window.__sentinelNativeExpiryKeeperV3.dispose=()=>{
    try{clearInterval(timer)}catch{}
+   window.removeEventListener?.('message',onParentPermission);
    document.removeEventListener('pointerdown',onPointerDown,true);
    document.removeEventListener('click',onClick,true);
    document.removeEventListener('change',onChange,true);

@@ -54,3 +54,31 @@ test('v3 migrates a v2 preference without allowing the older keeper to write',()
   assert.equal(window.__sentinelNativeExpiryKeeperV3,keeper,'idempotent install adds no new timer');
  }finally{m.restore()}
 });
+test('existing executor receipt relays expiry permission to nested broker documents',()=>{
+ const m=browser('1 min',60000),messages=[];
+ try{
+  window.frames=[{postMessage:(message,target)=>messages.push({message,target})}];
+  send(state,m.now);
+  assert.equal(messages.length,1);
+  assert.equal(messages[0].message.type,'sentinel-native-expiry-permission-v1');
+  assert.equal(messages[0].message.permission.provider,'iq_option');
+  assert.equal(messages[0].message.permission.allowed,true);
+ }finally{m.restore()}
+});
+test('a broker child keeper receives the idle lease; foreign senders and busy receipts cannot restore',()=>{
+ const m=browser('30 s',60000);let listener;
+ try{
+  window.parent={};window.frames=[];
+  window.addEventListener=(type,fn)=>{if(type==='message')listener=fn;};
+  window.removeEventListener=()=>{};
+  delete window.__sentinelNativeExpiryPermissionV3;
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  assert.equal(typeof listener,'function');
+  m.now+=5000;m.interval();assert.equal(m.control._text,'30 s');
+  const event={source:window.parent,origin:'https://iqoption.com',data:{type:'sentinel-native-expiry-permission-v1',permission:{provider:'iq_option',allowed:true,at:m.now}}};
+  listener({...event,origin:'https://unrelated.example'});assert.equal(m.control._text,'30 s');
+  listener({...event,source:{}});assert.equal(m.control._text,'30 s');
+  listener({...event,data:{...event.data,permission:{...event.data.permission,allowed:false}}});assert.equal(m.control._text,'30 s');
+  listener(event);assert.equal(m.control._text,'1 min');
+ }finally{m.restore()}
+});

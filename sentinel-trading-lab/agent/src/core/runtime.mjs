@@ -1129,6 +1129,16 @@ export class DemoTradingRuntime{
         const levels=original66.priceStructure||{};
         this.onNowOpportunity(anchor,{
           source:'now-structural-v1',signalAt:Number(anchor.entryTriggeredAt),
+          // Bounded market-only replay evidence, captured once per issued
+          // signal from the existing feed. No broker read or per-tick journal.
+          marketReplay:{durationMs:Number(settings.orderDurationMs),
+            historicalCandlesVerified:snap.historicalCandlesVerified!==false,
+            quotes:(snap.quoteHistory||[]).filter(q=>Number(q.ts)<=Number(snap.quoteTs)&&
+              Number(q.ts)>=Number(snap.quoteTs)-300000&&Number(q.receivedAt??q.ts)<=now&&Number(q.price)>0)
+              .slice(-6000).map(q=>[Number(q.ts),Number(q.price),Number(q.receivedAt??q.ts)]),
+            candles:(snap.historicalCandlesVerified===false?[]:(snap.candles||[])).slice(-400)
+              .map(c=>[c.from??c.ts,c.to??null,c.open,c.high??c.max,c.low??c.min,c.close,c.receivedAt??null])
+          },
           snapshotAt:now,quoteAt:Number(snap.quoteTs),
           rawSide:original66.side??null,rawReason:original66.reason??null,
           rawReady:original66.ready===true,rawStrength:original66.strength??null,

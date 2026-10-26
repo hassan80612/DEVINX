@@ -25,6 +25,14 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
   signalPrice:numberOrNull(signal?.entryPrice),snapshotQuote:numberOrNull(context?.quote),
   snapshotQuoteAt:numberOrNull(context?.quoteAt),
   martingaleLevel:numberOrNull(martingaleLevel),clickCount:numberOrNull(clickCount),
+  marketReplay:proof?.marketReplay?{
+   format:'bounded-market-replay-v1',durationMs:numberOrNull(proof.marketReplay.durationMs),
+   historicalCandlesVerified:proof.marketReplay.historicalCandlesVerified===true,
+   quotes:Array.isArray(proof.marketReplay.quotes)?proof.marketReplay.quotes.slice(-6000)
+    .map(q=>Array.isArray(q)?q.slice(0,3).map(numberOrNull):[]):[],
+   candles:Array.isArray(proof.marketReplay.candles)?proof.marketReplay.candles.slice(-400)
+    .map(c=>Array.isArray(c)?c.slice(0,7).map(numberOrNull):[]):[]
+  }:null,
   structure:{
    provenance:proof?'fired-tick-now':'analysis-snapshot',
    regime:short(proof?(proof.regime??proof.marketShape):a.entryPlanner?.regime?.label,75),
@@ -71,7 +79,11 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
 export function acceptedAudit(event,now=Date.now()){
  return {type:'broker_accepted',ts:now,provider:short(event?.provider,30),
   localId:short(event?.localId,1100),orderId:short(event?.orderId,180),
-  entryPrice:numberOrNull(event?.entryPrice),exitAt:numberOrNull(event?.exitAt)};
+  entryPrice:numberOrNull(event?.entryPrice),exitAt:numberOrNull(event?.exitAt),
+  brokerReportedExitAt:numberOrNull(event?.brokerReportedExitAt),
+  nativeExpiry:event?.nativeExpiry?{preferredMs:numberOrNull(event.nativeExpiry.preferredMs),
+   currentMs:numberOrNull(event.nativeExpiry.currentMs),revision:numberOrNull(event.nativeExpiry.revision),
+   blocked:event.nativeExpiry.blocked===true}:null};
 }
 export function settlementAudit(event,now=Date.now()){
  if(event?.source&&event.source!=='broker')return null;

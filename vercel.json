@@ -80,7 +80,8 @@
       "fix/sentinel-139121-expiry-fast-reversal-fluidity-20261025": false,
       "fix/sentinel-139122-native-picker-timing-20261025": false,
       "fix/decision-event-origin-20261025": false,
-      "release/sentinel-139128-decision-expiry-20261026": false
+      "release/sentinel-139128-decision-expiry-20261026": false,
+      "release/sentinel-139129-frame-expiry-execution-20261026": false
     }
   }
 }

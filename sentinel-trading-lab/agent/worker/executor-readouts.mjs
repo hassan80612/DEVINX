@@ -16,6 +16,10 @@ export function patchExecutorReadouts(frame){
    (!window.__sentinelNativeExpiryPermissionV3||window.__sentinelNativeExpiryPermissionV3.at<=permission.at)){
   const old=window.__sentinelNativeExpiryPermissionV3;
   window.__sentinelNativeExpiryPermissionV3=permission;
+  // Reuse this receipt for nested broker documents; no extra browser read.
+  for(let i=0;i<(window.frames?.length||0);i++)try{
+   window.frames[i].postMessage({type:'sentinel-native-expiry-permission-v1',permission},'*');
+  }catch{}
   const keeper=window.__sentinelNativeExpiryKeeperV3,s=keeper?.snapshot?.();
   if(permission.allowed===true&&keeper?.provider===permission.provider&&
     (old?.allowed!==true||s?.preferredMs&&s?.currentMs&&s.preferredMs!==s.currentMs))keeper.poll();
