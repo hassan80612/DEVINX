@@ -735,18 +735,9 @@ export class SignalExecutor{
   return b.amount;
  }
  stopTargetBalance(balance=this.balanceRisk.view(this.clock())){
-  // A fresh, reconciled account value includes deposits/withdrawals too.
-  // A historic opening bankroll must not override that newer balance.
-  const broker=this.brokerThresholdBalance(balance);
-  if(broker!=null){
-   this.stopBalanceReference={amount:broker,net:this.net};
-   return broker;
-  }
-  // Preserve the reconciled reference while the next order debits the
-  // account, or while its balance update is late. Apply only NEW settlements.
-  if(this.stopBalanceReference)return money(this.stopBalanceReference.amount+
-    this.net-this.stopBalanceReference.net);
-  return this.initialBalance==null?null:money(this.initialBalance+this.net);
+  // Only a fresh reconciled account balance can trigger absolute stop targets.
+  // No cached opening bankroll, speculative P&L, or account estimates.
+  return this.brokerThresholdBalance(balance);
  }
  // Stop targets are absolute broker balances: e.g. 50 -> win 60, loss 40.
  stopWinReached(balance=this.balanceRisk.view(this.clock())){
