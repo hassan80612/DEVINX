@@ -1,6 +1,6 @@
 {
-  "version": "13.9.130",
-  "build": "13.9.130-horizon-owned-continuation",
+  "version": "13.9.131",
+  "build": "13.9.131-current-structural-reversal-priority",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

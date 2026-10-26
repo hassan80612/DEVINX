@@ -189,8 +189,11 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
   sequence.structureChange:null;
  // Reclaim + break/retest geometry is independent of expiry. The distance
  // projection below remains scoped to the 30s holding time it measures.
- const reversal=structureChange?null:confirmedLevelReversal({map,...input});
- const event=fastReversal??structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ // A continuation sequence must not prevent evaluation of a verified
+ // opposite structural turn on the current quote. Preserve reclaim priority.
+ const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:
+  confirmedLevelReversal({map,...input});
+ const event=fastReversal??reversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
