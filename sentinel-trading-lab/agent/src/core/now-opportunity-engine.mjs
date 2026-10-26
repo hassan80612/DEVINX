@@ -52,7 +52,7 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
  const steps=[];
  for(let i=0;i<rows.length;i++){
   const q=rows[i];
-  if(i&&q.ts<=rows[i-1].ts)return null;
+  if(i&&(q.ts<=rows[i-1].ts||q.ts-rows[i-1].ts>5000))return null;
   low=Math.min(low,q.price);high=Math.max(high,q.price);
   if(q.ts<=at-8000)priorLow=Math.min(priorLow,q.price);
   if(i&&q.ts-rows[i-1].ts<=3000){
@@ -76,7 +76,7 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
 // Later evidence can revise a proposed side. Recheck that FINAL direction
 // against the same shared market safeguards; never rerun a learning selector.
 export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
- quoteAt,price,now=quoteAt,candles=[],structureCache=null,context=''}={}){
+ quoteAt,price,now=quoteAt,durationMs=null,candles=[],structureCache=null,context=''}={}){
  if(candidate?.ready!==true||!isSide(candidate.side)||candidate.side===previousSide)return candidate;
  const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now,
   reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
@@ -84,7 +84,7 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk?
-  lateUnverifiedFloorImpulseRisk({candidate,quoteHistory,quoteAt,now,price}):null;
+  lateUnverifiedFloorImpulseRisk({candidate,quoteHistory,quoteAt,now,price,durationMs}):null;
  const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
   wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:
