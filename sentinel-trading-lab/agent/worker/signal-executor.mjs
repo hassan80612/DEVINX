@@ -148,7 +148,7 @@ export class SignalExecutor{
    this.sessionId++;this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
    const existing=executorSignal(c.analysis);if(existing)this.seen.add(existing.id);
-   this.suspensionReason=null;this.hardHoldReason=null;this.enabled=true;this.message='Ligado · sessão nova · aguardando próximo CALL/PUT do analista';
+   this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;this.enabled=true;this.message='Ligado · sessão nova · aguardando próximo CALL/PUT do analista';
   }finally{this.arming=false;}
   return this.status();
  }
@@ -164,7 +164,7 @@ export class SignalExecutor{
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;
    this.executed=0;this.closed=0;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.history=[];
    this.ledger.clear();this.seen.clear();this.sessionId++;
-   this.suspensionReason=null;this.hardHoldReason=null;
+   this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;
    this.message='Desligado · sessão zerada; ordens já enviadas à corretora não são canceladas';
   }else this.message=reason;
   return this.status();
@@ -573,6 +573,25 @@ export class SignalExecutor{
     this.finishBatch(batch);
    }).finally(()=>{this.executing=false;});
  }
+ registerObservedExpiryMismatch(expectedMs,actualMs,source){
+  const expected=Number(expectedMs),actual=Number(actualMs);
+  if(!(expected>0&&actual>0&&actual<expected-7000))return false;
+  const candidate=[5000,10000,15000,30000,60000,120000,300000]
+    .find(ms=>ms<expected-7000&&Math.abs(ms-actual)<=Math.max(2500,ms*.09));
+  if(!candidate)return false;
+  this.lastBrokerExpiryMismatch={expectedDurationMs:expected,
+    reportedDurationFromClickMs:Math.round(actual),
+    estimatedNativeDurationMs:candidate,source,at:this.clock()};
+  // Never change broker UI or analyst horizon. Pause physical orders after
+  // identified evidence while the user's chosen expiry is not confirmed.
+  this.hardHoldReason='corretora encerrou em '+Math.round(candidate/1000)+
+    's; Sentinel prevê '+Math.round(expected/1000)+
+    's · ajuste a expiração na corretora e reinicie o bot';
+  this.suspensionReason=this.hardHoldReason;
+  this.message='Ligado · entradas suspensas por divergência comprovada de expiração';
+  this.queuedSignal=null;
+  return true;
+ }
  sent(requestId,localId){
   let p=this.pending?.orders.find(o=>o.id===localId)||(this.pending?.orders.length===1?this.pending.orders[0]:null);
   if(!p)for(const b of this.unresolvedBatches.values()){p=b.orders.find(o=>o.id===localId);if(p)break;}
@@ -617,6 +636,7 @@ export class SignalExecutor{
     this.lastBrokerExpiryMismatch={expectedDurationMs:p.durationMs,
       reportedExitAt:Number(event.exitAt),reportedDurationFromClickMs:Number(event.exitAt)-clickedAt,
       deltaMs:p.brokerExpiryMismatchMs,at:this.clock()};
+     this.registerObservedExpiryMismatch(p.durationMs,Number(event.exitAt)-clickedAt,'broker-ack-expiration');
    }
   }
   if(num(event.entryPrice)&&Number(event.entryPrice)>0)p.entryPrice=Number(event.entryPrice);
@@ -684,6 +704,11 @@ export class SignalExecutor{
     this.unresolvedBatches.delete(batch.id);
    return true; // Old broker settlement cannot change a freshly reset session.
   }
+  // A broker-identified close before our horizon proves wrong native expiry.
+  // This uses already-received settlement evidence, with no new I/O.
+  if(p&&!p.settled&&event.source==='broker'&&Number(p.clickedAt??p.at)>0)
+    this.registerObservedExpiryMismatch(p.durationMs,
+      this.clock()-Number(p.clickedAt??p.at),'identified-broker-settlement');
   const old=this.ledger.get(key);if((!p&&!old)||!num(event.netPnl)||(event.source&&event.source!=='broker'))return false;
   const trade=p||old;if(event.accountId!=null&&trade.accountId!=null&&String(event.accountId)!==String(trade.accountId))return false;
   if(old?.source==='broker'||trade.sessionId!==undefined&&trade.sessionId!==this.sessionId)return false;
