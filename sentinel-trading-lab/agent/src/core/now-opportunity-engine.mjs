@@ -24,10 +24,15 @@ export const POST_EXPIRY_REASSESS_MS=3000;
 // Low-price continuation without a verified breakdown is not a valid
 // excuse to chase the final portion of a completed downward impulse.
 // History already buffered by the Agent: zero broker reads, fixed short scan.
-export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
+export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+ // Price-extreme protection is shared by level and impulse forecasts:
+ // a reason label cannot exempt selling the end of an observed decline.
+ // Independently qualified breakouts and high-edge reversals remain eligible.
+ const expiry=Number(durationMs??(Number(candidate?.expirySeconds)*1000));
  if(candidate?.ready!==true||candidate.side!=='PUT'||
-  candidate.reason!=='closed-structure-and-live-impulse'||
-  Number(candidate.expirySeconds)!==60)return null;
+  ![30000,60000].includes(expiry)||
+  ['historical-level-breakout','confirmed-fast-level-reversal',
+   'closed-range-extreme-reversal-confirmed'].includes(candidate.reason))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
@@ -58,7 +63,7 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
  const width=high-low;
  if(!(width>spot*1e-7&&Number.isFinite(priorLow)&&steps.length>=10))return null;
  const position=(spot-low)/width;
- if(position>.15)return null;
+ if(position>.20)return null;
  steps.sort((a,b)=>a-b);
  const typical=steps[Math.floor(steps.length/2)];
  // A significant NEW verified downward break retains the continuation path.
@@ -78,10 +83,13 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
  const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
- const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
+ const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk?
+  lateUnverifiedFloorImpulseRisk({candidate,quoteHistory,quoteAt,now,price}):null;
+ const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
   wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:
   roomRisk?{...candidate,ready:false,side:null,reason:'final-side-continuation-wall-pressure',entryRisk:roomRisk}:
+  floorRisk?{...candidate,ready:false,side:null,reason:'final-side-unverified-floor-impulse',entryRisk:floorRisk}:
   liveRisk?{...candidate,ready:false,side:null,reason:'final-side-live-evidence-conflict',entryRisk:liveRisk}:candidate;
 }
 function causalQuotes(history,now,windowMs=180000){
@@ -390,7 +398,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
   const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?
-   lateUnverifiedFloorImpulseRisk({candidate:proposed,quoteHistory,quoteAt,now,price}):null;
+   lateUnverifiedFloorImpulseRisk({candidate:proposed,quoteHistory,quoteAt,now,price,durationMs}):null;
   const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk&&proposed.ready?liveEntryContradiction({
    candidate:proposed,quoteHistory,quoteAt,now,price
   }):null;
