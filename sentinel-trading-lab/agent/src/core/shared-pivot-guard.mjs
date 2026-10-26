@@ -8,6 +8,7 @@ export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=qu
  const ts=Number(quoteAt),spot=Number(price),clock=Number(now);
  const levelTurn=['failed-breakout-structure-change','confirmed-level-structure-reversal'].includes(reversalEvidence?.kind)&&
   reversalEvidence.side===side&&Number(reversalEvidence.confirmedAt)<=ts&&
+  clock-Number(reversalEvidence.confirmedAt)<=1450&&
   (Number(reversalEvidence.level?.confirmedPivots)>0||Number(reversalEvidence.level?.independentRejections)>=2);
  if(!['CALL','PUT'].includes(side)||!(ts>0&&spot>0&&clock>=ts&&clock-ts<=2500))return false;
  if(verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,price,side,now}))return false;

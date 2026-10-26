@@ -1,0 +1,11 @@
+# Sentinel 13.9.123
+
+Fixes a reproduced decision-origin defect in 13.9.122: an old failed-breakout reclaim could receive a new confirmation timestamp on every later quote and override a current decision or wake a waiting candidate. In the controlled case it remained admissible 13.5 seconds after the original break. Reclaim evidence now retains the first confirming quote for each actual pivot/turn. Only a fresh reclaim can authorize an entry; historical context stays visible. The existing 1450ms evidence freshness limit adds no waiting period. A current independently confirmed reversal remains eligible even when older structural evidence exists.
+
+Break/retest continuation retains its existing current-price validation. Fast V-shaped reversals, native expiry keeper, stop balance rules, readout pacing and card rendering are unchanged. The shared pivot guard cannot use an old reversal timestamp as current authority. This is a local calculation over the existing feed, with no new broker scans, polling, requests or timers.
+
+The regression reproduces both mirrored directions, every supported expiry, immediate current confirmation, old evidence failing to wake a waiting candidate, preservation of an independent current decision, continuation eligibility and quote-age boundaries. Existing current reversal and fast-V full-runtime coverage continues to pass. The old bounded-session reference comparison now explicitly covers unaffected swing geometry, continuation, evidence availability and side; it does not require the defective historical timestamp/ranking.
+
+Paired full-decision replay against the exact 13.9.122 source preserved all entries and outcomes in 70 overlapping strategy/duration/delay settings. These settings share one 179-second recording; they are not independent trials and do not establish improved live accuracy. Controlled regressions prove the corrected behavior, not the cause of every loss in the user's current session.
+
+Validation completed locally: Next production build and Windows cross-compilation passed. All 663 tests in the final registered release inventory passed. The built payload was checked byte-for-byte against the reviewed release identity and changed core modules. The Windows executable was not executed on Windows, and no live broker trades were placed.

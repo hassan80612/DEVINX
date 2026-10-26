@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {currentQuoteStructureTurn,applyObservedLevelSequence} from '../sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs';
+import {currentQuoteStructureTurn,observedLevelSequence,applyObservedLevelSequence} from '../sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs';
 import {countertrendPivotRisk} from '../sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs';
 const T=1700000000000;
 const wave=Array.from({length:181},(_,i)=>({ts:T+i*1000,price:1-.000008*i+.00055*Math.sin((i+24)*Math.PI*2/30)+.000006*Math.sin(i*1.4)}));
@@ -34,10 +34,14 @@ test('a proven historical level reclaim is assessed at every selected expiry wit
  const prices=[102,100.6,101.3,99.4,100.2,99.9,101.8],rows=[];
  for(let k=0;k<prices.length-1;k++)for(let i=0;i<10;i++)rows.push({ts:T+rows.length*500,price:prices[k]+(prices[k+1]-prices[k])*i/10});
  rows.push({ts:T+rows.length*500,price:101.8});
- const last=rows.at(-1),map={observedCandles:100,asOf:T-60000,tolerance:.15,
+ const map={observedCandles:100,asOf:T-60000,tolerance:.15,
   levels:[{low:100,high:100,level:100,confirmedPivots:2,independentTests:3,windows:[3,10,20,50,100]}]};
+ // Evaluate when the break FIRST becomes observable, rather than treating
+ // the end of the already-travelled movement as a new reversal signal.
+ const first=rows.findIndex((q,i)=>observedLevelSequence({map,quoteHistory:rows.slice(0,i+1),quoteAt:q.ts,now:q.ts,price:q.price})?.structureChange);
+ assert.ok(first>=0);const current=rows.slice(0,first+1),last=current.at(-1);
  for(const durationMs of [5000,10000,15000,30000,60000,120000,300000]){
-  const result=applyObservedLevelSequence({candidate:{ready:false,side:null},map,quoteHistory:rows,quoteAt:last.ts,now:last.ts,price:last.price,durationMs});
+  const result=applyObservedLevelSequence({candidate:{ready:false,side:null},map,quoteHistory:current,quoteAt:last.ts,now:last.ts,price:last.price,durationMs});
   assert.equal(result.side,'CALL',String(durationMs));assert.equal(result.observedAt,last.ts);
   assert.equal(result.reason,'failed-breakout-structure-change');
  }

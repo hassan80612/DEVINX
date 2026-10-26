@@ -22,7 +22,7 @@ test('runtime expires a sparse input below the old count cap without changing th
  assert.deepEqual(runtime.externalMarket.quoteHistory,rows.slice(-301));
  assert.deepEqual(runtime._marketSnapshot().quoteHistory.filter(q=>q.ts>=T-180000),rows.slice(-181));
 });
-test('indexed turns preserve the original output across 40 dense, sparse, mirrored and gapped paths',()=>{
+test('indexed turns preserve swings, continuation and structural direction across 40 dense, sparse, mirrored and gapped paths',()=>{
  let seed=917603;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
  for(let trial=0;trial<40;trial++){
   const hz=[1,5,20,40][trial%4],span=40+trial*3,rows=[],direction=trial%2?1:-1;
@@ -33,6 +33,13 @@ test('indexed turns preserve the original output across 40 dense, sparse, mirror
   const quoteHistory=trial%5===0?rows.filter(q=>q.ts<T-15000||q.ts>T-10000):rows;
   const map={observedCandles:100,asOf:T-60000,tolerance:.000003,levels:Array.from({length:20},(_,i)=>({low:1.0995+i*.00005,high:1.0995+i*.00005,level:1.0995+i*.00005,confirmedPivots:1,independentRejections:2,windows:[3,10,20,50,100]}))};
   const args={map,quoteHistory,quoteAt:T,now:T,price:quoteHistory.at(-1).price};
-  assert.deepEqual(observedLevelSequence(args),reference(args),`path ${trial}`);
+  const {structureChange:current,...actual}=observedLevelSequence(args);
+  const {structureChange:old,...expected}=reference(args);
+  // The frozen reference restamps each old reclaim on every tick. That
+  // timestamp/ranking bug is covered by sentinel-decision-event-origin;
+  // preserve all unaffected price geometry and continuation calculations.
+  assert.deepEqual(actual,expected,`path ${trial}`);
+  assert.equal(!!current,!!old,`structural evidence availability ${trial}`);
+  if(current){assert.equal(current.side,old.side);assert.ok(current.confirmedAt<=old.confirmedAt);}
  }
 });

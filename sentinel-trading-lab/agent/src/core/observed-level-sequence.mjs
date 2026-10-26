@@ -104,7 +104,13 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  const net=spot-(recent[0]?.price??spot),efficiency=travelled>0?Math.abs(net)/travelled:0;
  const seconds=recent.length>1?(ts-recent[0].ts)/1000:0;
  const velocity=seconds>0?net/seconds:0;
- const events=[];
+ const events=[],seenEvents=new Set();
+ // A reclaim reversal belongs to its FIRST confirming quote. Later ticks
+ // beyond the same pivot cannot renew the age of an already observed turn.
+ const recordEvent=(key,event)=>{
+  if(seenEvents.has(key))return;
+  seenEvents.add(key);events.push(event);
+ };
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
@@ -124,7 +130,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
     const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
     const pivot=extreme&&previousTurn.get(extreme);
     if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial)
-     events.push({kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
+     recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
     -initial*(q.price-breakExtreme)>amplitude)
@@ -164,16 +170,20 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
  const fastReversal=confirmedFastLevelReversal({map,...input});
+ const structureChange=sequence.structureChange&&
+  (sequence.structureChange.kind!=='failed-breakout-structure-change'||
+   Number(input.now??input.quoteAt)-sequence.structureChange.confirmedAt<=1450)?
+  sequence.structureChange:null;
  // Reclaim + break/retest geometry is independent of expiry. The distance
  // projection below remains scoped to the 30s holding time it measures.
- const reversal=sequence.structureChange?null:confirmedLevelReversal({map,...input});
- const event=fastReversal??sequence.structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ const reversal=structureChange?null:confirmedLevelReversal({map,...input});
+ const event=fastReversal??structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
- if(!candidate.ready&&!sequence.structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
+ if(!candidate.ready&&!structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
   reason:event.kind,priceStructure};
