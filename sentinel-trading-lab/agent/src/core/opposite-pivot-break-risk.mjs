@@ -5,7 +5,12 @@
 import {observedSwings} from './observed-level-sequence.mjs';
 const median=x=>{const a=[...x].sort((a,b)=>a-b);return a[Math.floor(a.length/2)]||0;};
 export function oppositePivotBreakRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
- if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side))return null;
+ // A fresh confirmed reversal is authoritative. Only continuation and
+ // ordinary trend projections can carry the outdated opposite-side bias.
+ const protectedReversal=/reversal|rejection|structure-change|range-extreme|failed-breakout/.test(String(candidate?.reason||''))||
+   candidate?.priceStructure?.confirmedReversal?.side===candidate?.side;
+ if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side)||
+   protectedReversal)return null;
  const ts=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(ts>0&&clock>=ts&&clock-ts<=1450&&spot>0&&
    Number(candidate.observedAt)===ts&&Number(candidate.entryPrice)===spot))return null;
@@ -20,7 +25,8 @@ export function oppositePivotBreakRisk({candidate,quoteHistory=[],quoteAt,now=qu
  rows=rows.slice(contiguous);
  if(rows.length<18||rows.at(-1).ts!==ts||rows.at(-1).price!==spot||
     rows.at(-1).ts-rows[0].ts<10000)return null;
- const recentChanges=rows.slice(-90).slice(1).map((r,i,a)=>Math.abs(r.price-a[i].price)).filter(x=>x>0);
+ const tail=rows.slice(-90);
+ const recentChanges=tail.slice(1).map((r,i)=>Math.abs(r.price-tail[i].price)).filter(x=>x>0);
  const typical=median(recentChanges);
  const amplitude=Math.max(spot*1e-8,typical*4);
  if(!(typical>0&&amplitude>0))return null;
