@@ -180,8 +180,12 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  const earlyRetreat=Math.max(minTurn*1.5,span*.028);
  // A verified prior boundary and observed live turn may qualify without
  // mandatory large retreat or a third pivot. Mere touch is not a turn.
- const highTurn=position>=.73&&down>=1&&turnMove<0&&lastStep<0;
- const lowTurn=position<=.27&&up>=1&&turnMove>0&&lastStep>0;
+ // A single counter-tick at the edge is only an observation, not an order.
+ // Permit early turns without a third pivot when an independently established
+ // range is regular and its already observed route is genuinely oscillatory.
+ const earlyRangeProof=regular&&efficiency<.40&&pivots.length>=2;
+ const highTurn=earlyRangeProof&&position>=.73&&down>=1&&turnMove<0&&lastStep<0;
+ const lowTurn=earlyRangeProof&&position<=.27&&up>=1&&turnMove>0&&lastStep>0;
  if(highTurn||lowTurn){
  // Only protect actual turn SIGNALS. Keep WAIT and all previous
  // range-lifecycle classifications exactly as before.
