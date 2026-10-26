@@ -1,6 +1,6 @@
 {
-  "version": "13.9.140",
-  "build": "13.9.140-stable-cards-broker-stops",
+  "version": "13.9.141",
+  "build": "13.9.141-broker-expiry-proof",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
