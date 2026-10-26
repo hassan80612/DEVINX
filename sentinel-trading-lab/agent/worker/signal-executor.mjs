@@ -388,7 +388,7 @@ export class SignalExecutor{
   if([...this.unresolvedBatches.values()].some(b=>!b.detached&&
    b.sessionId===this.sessionId&&!b.continuationReleased)){
    if(this.config.stopLoss>0&&this.nextAmount()>Math.max(0,this.lossBudgetRemaining())+0.000001){
-    this.stop('Bot parado · limite de perda restante insuficiente com ordens pendentes');
+    this.queuedSignal=null;this.message='Ligado · aguardando: ordens pendentes podem ultrapassar o risco disponível';
     return;
    }
    this.queuedSignal=null;
@@ -427,7 +427,7 @@ export class SignalExecutor{
   const amount=money(unitAmount*clickCount);
   if(!Number.isFinite(amount)||amount>1000000){this.message='Ligado · valor inválido · próximo sinal';return;}
   if(this.config.stopLoss>0&&amount>Math.max(0,this.lossBudgetRemaining(balance))+0.000001){
-   this.stop('Bot parado · próxima entrada excede o limite de perda restante (stop-loss)');
+   this.message='Ligado · sinal ignorado: risco de entrada excede saldo conservador; stop depende do saldo confirmado';
    return;
   }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
