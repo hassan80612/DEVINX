@@ -2602,12 +2602,12 @@ export class LocalPlaywrightDriver{
         // Keep live refreshes from producing a one-frame scroll/layout jump.
         el.scrollTop=stableScrollTop;
         el.__sentinelFitConsoleLayout=()=>{
+          // A content-height fit check was alternating split/scroll layouts
+          // on each live status render, visibly jumping cards up and down.
+          // Keep one stable layout while quote readouts change.
           const primary=el.querySelector('[data-sentinel-primary]');
-          el.dataset.consoleLayout=primary?'split':'legacy';
-          el.style.overflowY=primary?'hidden':'auto';
-          const fits=primary&&primary.offsetHeight+26<=el.clientHeight-24;
-          el.dataset.consoleLayout=primary?(fits?'split':'scroll'):'legacy';
-          el.style.overflowY=fits?'hidden':'auto';
+          el.dataset.consoleLayout=primary?'scroll':'legacy';
+          el.style.overflowY='auto';
         };
         el.__sentinelFitConsoleLayout();
         const collapsedNow=new Set(collapsedSummaries);
