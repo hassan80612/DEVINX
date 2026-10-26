@@ -13,9 +13,12 @@ for(const provider of ['iq_option','exnova'])test(`${provider}: received three-c
  assert.equal(live.analysisFeedValidated,false,'the legacy fifty-candle readiness remains separate');
  const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  runtime.stateName='running';runtime.settings.asset='EUR/USD';runtime.settings.engine='automatic';
- // Deterministic protocol fixtures can run at 23:59 BRT, outside the
- // default daily schedule. Exercise the market/price path, not wall-clock hours.
- runtime.settings.schedule.enabled=false;
+ // The fixture uses REAL recent broker quotes. Pick an existing allowed
+ // daytime timezone so it tests the broker/market path independently of the
+ // wall-clock minute at which CI happens to run (not a production change).
+ const utcHour=new Date(now).getUTCHours();
+ runtime.settings.schedule.timezone=utcHour<8?'Asia/Tokyo':
+   utcHour>=20?'America/Sao_Paulo':'UTC';
  runtime.setExternalMarket(runtimeMarketFromLive(provider,live,'EUR/USD'));
  const snap=runtime._marketSnapshot();
  assert.equal(snap.historicalCandlesVerified,true,'a valid received structure must not disappear because it has fewer than fifty bars');
@@ -32,9 +35,12 @@ for(const provider of ['iq_option','exnova'])test(`${provider}: resistance rejec
  const {now,live}=received(provider,3,true);
  const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  runtime.stateName='running';runtime.settings.asset='EUR/USD';runtime.settings.engine='automatic';
- // Deterministic protocol fixtures can run at 23:59 BRT, outside the
- // default daily schedule. Exercise the market/price path, not wall-clock hours.
- runtime.settings.schedule.enabled=false;
+ // The fixture uses REAL recent broker quotes. Pick an existing allowed
+ // daytime timezone so it tests the broker/market path independently of the
+ // wall-clock minute at which CI happens to run (not a production change).
+ const utcHour=new Date(now).getUTCHours();
+ runtime.settings.schedule.timezone=utcHour<8?'Asia/Tokyo':
+   utcHour>=20?'America/Sao_Paulo':'UTC';
  runtime.setExternalMarket(runtimeMarketFromLive(provider,live,'EUR/USD'));
  await runtime.tick(now,{skipStatus:true});
  const entry=runtime.lastResult.analysis.vnext.futureEntryAnchor;
