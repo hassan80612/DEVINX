@@ -29,3 +29,28 @@ test('queued executor receipts use their source timestamp, never delivery time, 
  assert.equal(payload.nativeExpiryPermission.at,1800000000000);
  assert.equal(payload.nativeExpiryPermission.provider,'exnova');
 });
+test('native input duration is read once instead of duplicating value as two ambiguous durations',()=>{
+ const m=browser('1 min');
+ try{
+  Object.defineProperty(m.control,'innerText',{get:()=>''});
+  Object.defineProperty(m.control,'textContent',{get:()=>''});
+  m.control.value='1 min';
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});m.step();
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+ }finally{m.restore()}
+});
+test('expiry-scoped duration item choices replace an older 30s preference on both brokers',()=>{
+ for(const provider of ['iq_option','exnova']){
+  const m=browser('30 s',30000);
+  try{
+   location.hostname=provider==='iq_option'?'iqoption.com':'exnova.com';
+   m.storage.set('sentinel-broker-native-expiration-preference-v3:'+provider,'30000');
+   window.__sentinelNativeExpiryPermissionV3.provider=provider;
+   for(const option of m.options)option.matches=selector=>selector.includes('[class*="item"');
+   installBrokerNativeExpiryKeeper({provider});m.event('pointerdown');m.control.click();
+   const option=m.options[2];m.event('pointerdown',option);m.event('click',option);option.click();m.step();
+   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,120000,provider);
+   m.step(15000);assert.equal(m.control._text,'2 min','must not restore the old 30s choice');
+  }finally{m.restore()}
+ }
+});

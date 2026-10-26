@@ -30,7 +30,7 @@ test('migrates v1 preference but revokes the old keeper repair lease',()=>{
   window.__sentinelNativeExpiryKeeperV3={revision:1};
   window.__sentinelNativeExpiryPermission={allowed:true,at:m.now};
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,4);
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,5);
   assert.equal(window.__sentinelNativeExpiryPermission.allowed,false);
   assert.equal(m.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'120000');
   m.step();m.step();m.step();
@@ -148,5 +148,5 @@ test('all expiry keeper wiring remains outside analysis, candle timeframe and ex
  assert.match(code,/nativeExpiryPermissionForExecutor/);
  assert.doesNotMatch(web,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
  const release=JSON.parse(readFileSync(new URL('agent/release.json',base),'utf8'));
- assert.equal(release.version,'13.9.127');
+ assert.equal(release.version,'13.9.128');
 });

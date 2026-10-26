@@ -1,6 +1,6 @@
 {
-  "version": "13.9.127",
-  "build": "13.9.127-reversal-event-origin",
+  "version": "13.9.128",
+  "build": "13.9.128-structural-proof-native-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

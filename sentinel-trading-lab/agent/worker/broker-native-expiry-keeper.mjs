@@ -9,7 +9,7 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==4)return {blocked:false};
+ if(keeper?.revision!==5)return {blocked:false};
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
  const previous=keeper.snapshot();
  if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
@@ -24,7 +24,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===4)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===5)return;
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
@@ -62,9 +62,15 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
   }catch{}
+  const readDuration=el=>{
+   const selected=el.matches?.('select')?el.selectedOptions:null;
+   if(selected?.length===1)return parse(selected[0].textContent||selected[0].label);
+   // Input value and visible label are alternative sources, not two choices.
+   return parse(el.value)||parse(el.innerText||el.textContent||'');
+  };
   function discover(){
    if(cached&&visible(cached)){
-    const found=parse((cached.innerText||cached.textContent||'')+' '+(cached.value||''));
+    const found=readDuration(cached);
     if(found)return {el:cached,value:found};
    }
    const candidates=[];
@@ -72,7 +78,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(!visible(el))continue;
     const text=String(el.innerText||el.textContent||el.value||'').trim();
     if(text.length>85)continue;
-    const v=parse(text+' '+String(el.value||''));
+    const v=readDuration(el);
     if(!v)continue;
     const r=el.getBoundingClientRect(),label=nativeLabel(el);
     const labelStrong=labelRe.test(label)||labelRe.test(text);
@@ -124,8 +130,8 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     const raw=String(el.innerText||el.textContent||'').trim();
     if(raw.length>25)continue;
     const value=parse(raw);
-    if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i]')||
-      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i]')))return value;
+    if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i],[class*="duration" i],[class*="item" i]')||
+      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i],[class*="duration" i],[class*="item" i]')))return value;
    }
    return null;
   };
@@ -257,7 +263,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeperV3={revision:4,provider,poll,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:5,provider,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
