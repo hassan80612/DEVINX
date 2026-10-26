@@ -49,11 +49,19 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   };
   const nativeLabel=el=>String(el.getAttribute?.('aria-label')||'')+' '+
    String(el.getAttribute?.('title')||'')+' '+String(el.className||'');
-  const labelRe=/expira|expir|vencim|expiry/i;
+  const labelRe=/expira|expir|vencim|expiry|duration|dura[çc][aã]o|trade[ _-]?time|purchase[ _-]?time/i;
+  const chartLabel=/chart|candle|timeframe|interval|period|gr[aá]fico|vela|per[ií]odo/i;
+  // Modern Exnova/IQ Option skins also name the *trade* expiry
+  // "duration" or "trade time". Avoid generic chart-period selectors.
   const CONTROL_SELECTORS=[
    '[data-testid*="expir" i]','[data-test*="expir" i]',
    '[class*="expiration" i]','[class*="expiry" i]',
-   '[aria-label*="expir" i]','[title*="expir" i]'
+   '[aria-label*="expir" i]','[title*="expir" i]',
+   '[data-testid*="duration" i]','[data-test*="duration" i]',
+   '[class*="trade-duration" i]','[class*="purchase-duration" i]',
+   '[class*="option-duration" i]','[class*="expiration-time" i]',
+   '[aria-label*="duration" i]','[title*="duration" i]',
+   '[class*="trade-time" i]','[class*="purchase-time" i]'
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
@@ -81,8 +89,12 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     const v=readDuration(el);
     if(!v)continue;
     const r=el.getBoundingClientRect(),label=nativeLabel(el);
-    const labelStrong=labelRe.test(label)||labelRe.test(text);
-    if(!labelStrong)continue;
+    // Do not confuse the chart candle selector with trade expiry.
+    if(chartLabel.test(label))continue;
+    const explicit=labelRe.test(label)||labelRe.test(text);
+    const context=/trade|trading|purchase|option|order|invest|buybox/i.test(label);
+    const timeLabel=/\b(?:tempo|time)\b/i.test(label+' '+text);
+    if(!explicit&&!(context&&timeLabel))continue;
     const score=(labelRe.test(text)?8:0)+(labelRe.test(label)?5:0)+
      (r.x>innerWidth*.5?2:0)+(r.y<innerHeight*.85?1:0)-
      (text.length>48?2:0);
