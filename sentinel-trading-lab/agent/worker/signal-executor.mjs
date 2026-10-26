@@ -690,8 +690,8 @@ export class SignalExecutor{
   // Settlement is independent evidence of the effective broker expiry.
   // Never mistake a 30s close for a 60s prediction. Require TWO distinct
   // broker-confirmed closes before diagnosing an unreported native reset.
-  if(p&&Number.isFinite(Number(p.clickedAt))&&Number(p.clickedAt)>0){
-   const requested=Number(p.durationMs),elapsed=this.clock()-Number(p.clickedAt);
+  if(Number.isFinite(Number(trade.clickedAt))&&Number(trade.clickedAt)>0){
+   const requested=Number(trade.durationMs),elapsed=this.clock()-Number(trade.clickedAt);
    const short60=requested===60000&&elapsed>=25000&&elapsed<=35000;
    const normal60=requested===60000&&elapsed>=54000&&elapsed<=68000;
    if(short60){
