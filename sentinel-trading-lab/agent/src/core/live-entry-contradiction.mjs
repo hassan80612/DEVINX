@@ -28,7 +28,7 @@ export function liveEntryContradiction({candidate,quoteHistory=[],quoteAt,now=qu
  // Evidence of an actual reversal while a stale continuation is proposed:
  // strong completed advance, material observed retreat, and adverse latest tick.
  const giveback=sign===1?Math.max(...path)-spot:spot-Math.min(...path);
- if(continuation.test(String(candidate.reason||''))&&first>span*.35&&
+ if(!reversal.test(String(candidate.reason||''))&&continuation.test(String(candidate.reason||''))&&first>span*.35&&
   last< -span*.22&&step< -span*.08&&giveback>span*.28)
   return {kind:'live-continuation-turned-back',first,last,step};
  // A reversal is not confirmed just because a prior high/low was touched.
