@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {installBrokerNativeExpiryKeeper} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
+import {installBrokerNativeExpiryKeeper,nativeExpiryPermissionForExecutor} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 
 import {browser} from './helpers/broker-expiry-browser.mjs';
@@ -197,4 +197,38 @@ test('two confirmed 30-second broker settlements expose a mismatch with selected
  assert.equal(bot.sessionLosses,2);
  settle('c',60000);
  assert.equal(bot.lastBrokerExpiryMismatch,null,'a proper 60s settlement clears the prior alert');
+});
+
+test('confirmed trade awaiting settlement does not freeze native expiry recovery for the next order',()=>{
+ const pending={clickCount:1,confirmedClicks:1,state:'accepted'};
+ const unresolvedDetail={batches:1,orders:1,waitingResult:1,waitingId:0,uncertainAttempts:0};
+ const base={provider:'exnova',enabled:true,arming:false,executing:false,
+   pending,unresolvedBatches:1,unresolvedDetail};
+ assert.equal(nativeExpiryPermissionForExecutor(base,100000).allowed,true);
+ assert.equal(nativeExpiryPermissionForExecutor({...base,executing:true},100000).allowed,false);
+ assert.equal(nativeExpiryPermissionForExecutor({...base,pending:{clickCount:1,confirmedClicks:0}},100000).allowed,false);
+ assert.equal(nativeExpiryPermissionForExecutor({...base,unresolvedDetail:{...unresolvedDetail,waitingId:1}},100000).allowed,false);
+ assert.equal(nativeExpiryPermissionForExecutor({...base,unresolvedDetail:{...unresolvedDetail,uncertainAttempts:1}},100000).allowed,false);
+});
+test('Exnova 60-second native preference is restored even while an accepted order remains pending settlement',()=>{
+ const m=browser('1 min',60000);
+ try{
+  globalThis.location.hostname='exnova.com';
+  m.storage.set('sentinel-broker-native-expiration-preference-v3:exnova','60000');
+  window.__sentinelNativeExpiryPermissionV3=nativeExpiryPermissionForExecutor({
+    provider:'exnova',enabled:true,executing:false,arming:false,
+    pending:{clickCount:1,confirmedClicks:1,state:'accepted'},
+    unresolvedBatches:1,
+    unresolvedDetail:{waitingResult:1,waitingId:0,uncertainAttempts:0}
+  },m.now);
+  installBrokerNativeExpiryKeeper({provider:'exnova'});
+  m.control._text='30 s';
+  for(let i=0;i<6;i++){
+   m.now+=2500;
+   window.__sentinelNativeExpiryPermissionV3.at=m.now;
+   m.interval();
+  }
+  assert.equal(m.control.innerText,'1 min');
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+ }finally{m.restore()}
 });
