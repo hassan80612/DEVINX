@@ -54,3 +54,19 @@ test('expiry-scoped duration item choices replace an older 30s preference on bot
   }finally{m.restore()}
  }
 });
+
+test('a trusted picker change to a stable non-default duration survives an unlabelled portal option',()=>{
+ const m=browser('30 s',30000);
+ try{
+  for(const option of m.options){option.matches=()=>false;option.closest=()=>null;}
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  m.event('pointerdown');m.control.click();
+  m.event('pointerdown',m.options[1]);m.event('click',m.options[1]);m.options[1].click();
+  m.step();m.step();
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+  m.step(15000);assert.equal(m.control._text,'1 min');
+  m.control._text='30 s';m.step();m.step();
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000,'a later automatic rollback cannot become the saved preference');
+  assert.equal(inspectNativeExpiryBeforeClick().blocked,true,'an unrecognized repair menu cannot cause a trade at the wrong duration');
+ }finally{m.restore()}
+});

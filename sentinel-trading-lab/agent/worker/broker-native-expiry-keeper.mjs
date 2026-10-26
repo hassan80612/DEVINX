@@ -9,7 +9,7 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==6)return {blocked:false};
+ if(keeper?.revision!==7)return {blocked:false};
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
  const previous=keeper.snapshot();
  if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
@@ -24,7 +24,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===6)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===7)return;
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
@@ -242,7 +242,14 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(observedMs===current)stableCount++;
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
-     if(chosenValue!=null&&current===chosenValue){
+     // Some native skins render choices in unlabelled portals. A trusted
+     // opener followed by a stable changed NON-default control value is
+     // independent confirmation of the user's selection. Never adopt a
+     // 30s rollback this way, nor infer a preference without manual activity.
+     const confirmedManualChange=chosenValue==null&&openingValue!=null&&
+      current!==openingValue&&current!==30000&&stableCount>=2&&
+      manualControl===c.el;
+     if((chosenValue!=null&&current===chosenValue)||confirmedManualChange){
       save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
      }
      notify(current);return;
@@ -282,7 +289,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    }catch{}
   };
   window.addEventListener?.('message',onParentPermission);
-  window.__sentinelNativeExpiryKeeperV3={revision:6,provider,poll,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:7,provider,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();

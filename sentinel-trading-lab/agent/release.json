@@ -1,6 +1,6 @@
 {
-  "version": "13.9.131",
-  "build": "13.9.131-current-structural-reversal-priority",
+  "version": "13.9.132",
+  "build": "13.9.132-manual-native-expiry-confirmation",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
