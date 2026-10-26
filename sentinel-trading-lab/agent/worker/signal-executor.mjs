@@ -752,7 +752,14 @@ export class SignalExecutor{
  }
  lossBudgetRemaining(balance=this.balanceRisk.view(this.clock())){
   // No fabricated zero remaining allowance before the broker sends a balance.
-  const current=this.stopTargetBalance(balance);
+  const confirmed=this.stopTargetBalance(balance);
+  // The stop itself is triggered ONLY by confirmed broker balance.
+  // Separately, keep conservative pre-click exposure budgeting from already
+  // settled P&L so Martingale never risks exceeding the chosen floor while
+  // the broker's next balance receipt is still pending.
+  const estimate=this.initialBalance==null?null:money(this.initialBalance+this.net);
+  const current=confirmed==null?estimate:
+    estimate==null?confirmed:Math.min(confirmed,estimate);
   if(current==null)return Number.POSITIVE_INFINITY;
   return money(Math.max(0,current-this.config.stopLoss-this.unresolvedExposure()));
  }
