@@ -30,12 +30,12 @@ test('historical rejection cannot override the selected wide projection using th
  assert.equal(result.ready,false);assert.equal(result.side,null);
  assert.equal(result.reason,'historical-level-versus-expiry-conflict');
 });
-test('a reaction agreeing with the selected wide projection is not vetoed by the discarded narrow one',()=>{
- // Corrected actual-timestamp sampling changes the fits at the old index.
- // This recorded point still exercises CALL narrow / PUT wide / PUT reaction;
- // no future outcome is used to choose this integration-contract fixture.
+test('wide projection remains PUT but a late entry at the floor is declined rather than inverted',()=>{
+ // The wide expiry fit and the observed level reaction are still PUT.
+ // Final admission can reject their shared downside when the latest price
+ // is already at the bottom of the actual recorded market route.
  const result=scenario(952,.842955);
  assert.equal(result.priceStructure.reaction.side,'PUT');
- assert.equal(result.ready,true);assert.equal(result.side,'PUT');
- assert.equal(result.reason,'historical-level-rejection');
+ assert.equal(result.ready,false);assert.equal(result.side,null);
+ assert.equal(result.reason,'shared-base-unverified-floor-impulse');
 });
