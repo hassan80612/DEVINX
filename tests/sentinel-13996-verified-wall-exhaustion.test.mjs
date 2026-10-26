@@ -69,3 +69,14 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.equal(release.build,'13.9.140-stable-overlay-cards');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
+
+test('live cards keep a stable scrolling layout without resetting user scroll',()=>{
+ const src=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const start=src.indexOf('el.__sentinelFitConsoleLayout=()=>{');
+ assert.ok(start>=0);
+ const end=src.indexOf('};',start);
+ const fit=src.slice(start,end+2);
+ assert.match(fit,/el\.style\.overflowY!=='auto'/);
+ assert.doesNotMatch(fit,/offsetHeight|clientHeight|\bfits\b/);
+ assert.match(src,/Math\.abs\(el\.scrollTop-stableScrollTop\)<=2/);
+});
