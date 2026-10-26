@@ -56,9 +56,14 @@ test('actual NEW expansion beyond the retest keeps continuation eligibility imme
  }
 });
 test('unchanged confirmed reversals do not require an extra candle or clock wait',()=>{
- const rows=make([102,100.6,101.3,99.4,100.2,99.9,101.8]);
- const a=input(rows),e=observedLevelSequence(a).structureChange;
- assert.equal(e?.kind,'failed-breakout-structure-change');
+ const full=make([102,100.6,101.3,99.4,100.2,99.9,101.8]);
+ const first=full.map((_,i)=>full.slice(0,i+1)).find(rows=>{
+  const e=observedLevelSequence(input(rows))?.structureChange;
+  return e?.kind==='failed-breakout-structure-change';
+ });
+ assert.ok(first,'observed reversal fixture confirms a structure');
+ const a=input(first),e=observedLevelSequence(a).structureChange;
+ assert.equal(e?.confirmedAt,a.now);
  const outcome=applyObservedLevelSequence({candidate:{ready:false,side:null},...a,durationMs:60000});
  assert.equal(outcome.ready,true);assert.equal(outcome.side,'CALL');
 });
