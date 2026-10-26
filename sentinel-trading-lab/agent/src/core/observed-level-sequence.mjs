@@ -1,6 +1,7 @@
 // Research: chronological level events and price-confirmed swing changes.
 // No timer, future candle, broker request, or permission to alter a held signal.
 import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
+import {confirmedFastLevelReversal} from './fast-level-reversal.mjs';
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
 export function observedSwings(rows,amplitude){
  if(!rows.length||!(amplitude>0))return [];
@@ -162,16 +163,17 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
+ const fastReversal=confirmedFastLevelReversal({map,...input});
  // Reclaim + break/retest geometry is independent of expiry. The distance
  // projection below remains scoped to the 30s holding time it measures.
  const reversal=sequence.structureChange?null:confirmedLevelReversal({map,...input});
- const event=sequence.structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ const event=fastReversal??sequence.structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
-  ...(reversal?{confirmedReversal:reversal}:{})};
+  ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
- if(!candidate.ready&&!sequence.structureChange&&!reversal)return {...candidate,priceStructure};
+ if(!candidate.ready&&!sequence.structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
   reason:event.kind,priceStructure};

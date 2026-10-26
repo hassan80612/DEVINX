@@ -17,7 +17,7 @@ import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
-import {installBrokerNativeExpiryKeeper} from './broker-native-expiry-keeper.mjs';
+import {installBrokerNativeExpiryKeeper,nativeExpiryPermissionForExecutor} from './broker-native-expiry-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
 
@@ -1306,7 +1306,7 @@ export class LocalPlaywrightDriver{
       candleFreshForState(st);
     const fullDomEveryMs=passiveStreamHealthy?300000:
       st.activeId!=null&&st.balance!=null?90000:30000;
-    if(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs){
+    if(!passiveStreamHealthy&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
@@ -1576,7 +1576,8 @@ export class LocalPlaywrightDriver{
   async updateExecutorReadouts(provider,{state,revision,language='pt'}={}){
     const page=this.sessions.get(provider)?.page;
     if(!page||page.isClosed?.())return;
-    await page.evaluate(patchExecutorReadouts,{revision,readout:executorMonitorReadout(state,language)});
+    await page.evaluate(patchExecutorReadouts,{revision,readout:executorMonitorReadout(state,language),
+      nativeExpiryPermission:nativeExpiryPermissionForExecutor({...state,provider})});
   }
   async updateCurrentQuote(provider,frame){
     const page=this.sessions.get(provider)?.page;
@@ -1609,15 +1610,8 @@ export class LocalPlaywrightDriver{
       await s.page.evaluate((d)=>{
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
-        // Fail closed during pending / live broker orders. Fresh permission
-        // comes from the current Agent overlay, not from an independent timer.
-        const expBot=d.autoExecutor,expAnchor=d.vnext?.futureEntryAnchor;
-        window.__sentinelNativeExpiryPermissionV2={
-          at:Date.now(),
-          allowed:!!expBot&&!expBot.arming&&!expBot.executing&&!expBot.pending&&
-            !expBot.unresolvedBatches&&
-            !(expBot.enabled&&expAnchor?.phase==='fired'&&Number(expAnchor.exitAt||0)>Date.now())
-        };
+                // Native expiry permission is refreshed by current executor receipts,
+        // independently of this deliberately slower cosmetic render.
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();

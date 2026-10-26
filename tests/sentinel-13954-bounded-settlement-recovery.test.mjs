@@ -77,7 +77,7 @@ test('the broker unknown-click mutex ages out only for its original quarantined 
   ackTimeoutMs:15,onSent:(rid,id)=>sent.push([rid,id])
  });
  let clicks=0;
- ui.controls=async()=>({frame:{locator:()=>({click:async()=>{clicks++;}})},callSelector:'#call',putSelector:'#put'});
+ ui.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{clicks++;}})},callSelector:'#call',putSelector:'#put'});
  order.captureEntry=()=>{};order.isValid=()=>true;order.asset='EUR/USD OTC';
  const result=await ui.execute(provider,order);
  assert.equal(result.pending,true);

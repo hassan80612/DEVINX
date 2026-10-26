@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {inspectNativeExpiryBeforeClick} from './broker-native-expiry-keeper.mjs';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
@@ -254,6 +255,8 @@ export class BrokerUiExecutor{
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);const c=await this.controls(provider);
+   const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick);
+   if(expiry?.blocked)throw Object.assign(errorBefore('A expiração escolhida na corretora está sendo restaurada; aguardando sinal atual.'),{nativeExpiryChanged:true});
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.

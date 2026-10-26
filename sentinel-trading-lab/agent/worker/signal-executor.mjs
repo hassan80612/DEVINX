@@ -519,7 +519,9 @@ export class SignalExecutor{
     // A clearly cancelled before-click attempt can be skipped without
     // turning the automation OFF or manufacturing a Martingale loss.
     if(!order.clicked&&e?.beforeClick===true){
-     if(this.enabled)this.message='Ligado · sinal ignorado antes do clique · próximo sinal do analista';
+     if(this.enabled)this.message=e.nativeExpiryChanged?
+      'Ligado · restaurando a expiração escolhida na corretora · próximo sinal atual':
+      'Ligado · sinal ignorado antes do clique · próximo sinal do analista';
      return;
     }
     // Explicit broker rejection and genuine state mismatches are distinct

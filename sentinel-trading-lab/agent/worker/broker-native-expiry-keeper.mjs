@@ -1,18 +1,38 @@
 // Browser-side native broker expiry preference. This function is intentionally
 // SELF-CONTAINED so Playwright can install it without evaluating extra source.
 // It never changes the selected candle period or the Sentinel analyst duration.
+export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
+ return {at,provider:state?.provider||null,allowed:!!state&&!state.arming&&!state.executing&&
+  !state.pending&&!Number(state.unresolvedBatches||0)};
+}
+// Runs on the existing broker page immediately before an actual direction
+// click. Unknown native controls never gate startup or imply a duration.
+export function inspectNativeExpiryBeforeClick(){
+ const keeper=window.__sentinelNativeExpiryKeeperV3;
+ if(keeper?.revision!==3)return {blocked:false};
+ window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
+ const previous=keeper.snapshot();
+ if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
+ keeper.poll();
+ const s=keeper.snapshot();
+ return {blocked:!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs),
+  preferredMs:s.preferredMs,currentMs:s.currentMs};
+}
 export function installBrokerNativeExpiryKeeper({provider}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeper?.revision===2)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===3)return;
+  try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
   window.__sentinelNativeExpiryPermission={allowed:false,at:0};
+  window.__sentinelNativeExpiryPermissionV2={allowed:false,at:0};
   const oldKey='sentinel-broker-native-expiration-preference-v1:'+provider;
-  const key='sentinel-broker-native-expiration-preference-v2:'+provider;
+  const v2Key='sentinel-broker-native-expiration-preference-v2:'+provider;
+  const key='sentinel-broker-native-expiration-preference-v3:'+provider;
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900]);
   const parse=text=>{
    const raw=String(text||'').replace(/\u00a0/g,' ').trim();
@@ -39,7 +59,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
    verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0;
   try{
-   const v=Number(localStorage.getItem(key)??localStorage.getItem(oldKey));
+   const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
   }catch{}
   function discover(){
@@ -107,15 +127,15 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    }
    return null;
   };
-  document.addEventListener('pointerdown',ev=>{
+  const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
    const target=ev.target;
    if(isManualPickerTarget(target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
     chosenValue=null;lastUserActivityAt=manualOpenedAt;
    }
-  },true);
-  document.addEventListener('click',ev=>{
+  };
+  const onClick=ev=>{
    if(repairing||!ev.isTrusted)return;
    // Options can be INSIDE the picker. Check the actual choice before the
    // opener, otherwise a real selection is mistaken for opening the menu.
@@ -125,19 +145,23 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
     chosenValue=null;lastUserActivityAt=manualOpenedAt;
    }
-  },true);
-  document.addEventListener('change',ev=>{
+  };
+  const onChange=ev=>{
    if(repairing||!ev.isTrusted||!ev.target?.matches?.('select'))return;
    const control=discover();
    if(!control||!inExpiryMenu(ev.target,control.el))return;
    const selected=ev.target.selectedOptions;
    const value=selected?.length===1?parse(selected[0].textContent||selected[0].label):null;
    if(value){manualOpenedAt=Date.now();chosenValue=value;lastUserActivityAt=manualOpenedAt;}
-  },true);
-  const permission=()=>window.__sentinelNativeExpiryPermissionV2?.allowed===true&&
-   Date.now()-Number(window.__sentinelNativeExpiryPermissionV2?.at||0)<3500;
+  };
+  document.addEventListener('pointerdown',onPointerDown,true);
+  document.addEventListener('click',onClick,true);
+  document.addEventListener('change',onChange,true);
+  const permission=()=>window.__sentinelNativeExpiryPermissionV3?.allowed===true&&
+   window.__sentinelNativeExpiryPermissionV3?.provider===provider&&
+   Date.now()-Number(window.__sentinelNativeExpiryPermissionV3?.at||0)<3500;
   const save=v=>{preferredMs=v;try{localStorage.setItem(key,String(v))}catch{}};
-  const notify=(value)=>{window.__sentinelNativeExpiryStatus={
+  const notify=(value)=>{window.__sentinelNativeExpiryStatusV3={
    preferredMs,currentMs:value,changedAt:Date.now(),lastRepairAt,restoring:repairing
   }};
   function restore(control){
@@ -163,7 +187,13 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
    // times, forecast dropdowns, and chart timeframe options are excluded.
    const choose=()=>{
     try{
-     if(!permission()){repairing=false;return}
+     if(!permission()){
+      // Close only a menu still owned and visibly opened by this restore.
+      const open=[...document.querySelectorAll('[role="option"],[role="menuitem"],[class*="option" i]')]
+       .some(el=>visible(el)&&inExpiryMenu(el,control.el));
+      if(open)try{opener.click()}catch{}
+      repairing=false;return;
+     }
      const elements=[...document.querySelectorAll(
       '[role="option"],[role="menuitem"],[class*="option" i],'+
       '[class*="expiration" i],[class*="duration" i],[class*="item" i],li,button'
@@ -211,17 +241,24 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     }
     if(current===preferredMs){mismatchSince=0;notify(current);return}
     if(!mismatchSince)mismatchSince=now;
-    if(now-mismatchSince<4000||now-lastRepairAt<10000||!permission()){
+    const defaultRollback=current===30000&&preferredMs!==30000&&stableCount>=2;
+    if(now-mismatchSince<(defaultRollback?1000:4000)||now-lastRepairAt<10000||!permission()){
      notify(current);return
     }
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeper={revision:2,poll,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:3,provider,poll,snapshot:()=>({
    preferredMs,currentMs:observedMs,mismatchSince,lastRepairAt,repairing
   })};
   poll();
   const timer=setInterval(poll,2500);
+  window.__sentinelNativeExpiryKeeperV3.dispose=()=>{
+   try{clearInterval(timer)}catch{}
+   document.removeEventListener('pointerdown',onPointerDown,true);
+   document.removeEventListener('click',onClick,true);
+   document.removeEventListener('change',onChange,true);
+  };
   try{timer.unref?.()}catch{}
  }catch{}
 }

@@ -11,6 +11,15 @@ export function executorReadoutKey(s){
 export function patchExecutorReadouts(frame){
  const previous=window.__sentinelExecutorReadouts;
  if(previous&&previous.revision>frame.revision)return;
+ const permission=frame.nativeExpiryPermission;
+ if(permission&&Number.isFinite(permission.at)&&permission.provider&&
+   (!window.__sentinelNativeExpiryPermissionV3||window.__sentinelNativeExpiryPermissionV3.at<=permission.at)){
+  const old=window.__sentinelNativeExpiryPermissionV3;
+  window.__sentinelNativeExpiryPermissionV3=permission;
+  const keeper=window.__sentinelNativeExpiryKeeperV3,s=keeper?.snapshot?.();
+  if(permission.allowed===true&&keeper?.provider===permission.provider&&
+    (old?.allowed!==true||s?.preferredMs&&s?.currentMs&&s.preferredMs!==s.currentMs))keeper.poll();
+ }
  window.__sentinelExecutorReadouts=frame;
  const apply=()=>{
   const latest=window.__sentinelExecutorReadouts;

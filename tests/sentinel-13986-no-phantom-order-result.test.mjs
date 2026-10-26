@@ -9,7 +9,7 @@ for(const provider of ['iq_option','exnova']){
  const ui=()=>{const t=new BrokerUiExecutor({state:()=>({symbol:'EUR/USD OTC',activeId:76,screenCandidateSymbol:null})},{ackTimeoutMs:15});return t;};
  test(provider+': failed Playwright click cannot become a fictitious broker order',async()=>{
   const a=ui(),p=order();
-  a.controls=async()=>({frame:{locator:()=>({click:async()=>{throw Error('locator timeout before broker request')}})},callSelector:'#call',putSelector:'#put'});
+  a.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{throw Error('locator timeout before broker request')}})},callSelector:'#call',putSelector:'#put'});
   await assert.rejects(()=>a.execute(provider,p),/locator timeout/);
   assert.equal(p.clickAttempted,true);
   assert.equal(p.clicked,false);
@@ -28,7 +28,7 @@ for(const provider of ['iq_option','exnova']){
  });
  test(provider+': actual completed browser click with missing ACK remains unconfirmed without duplicate click',async()=>{
   const a=ui(),p=order();let clicks=0;
-  a.controls=async()=>({frame:{locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
+  a.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
   const response=await a.execute(provider,p);
   assert.equal(response.pending,true);
   assert.equal(p.clicked,true);

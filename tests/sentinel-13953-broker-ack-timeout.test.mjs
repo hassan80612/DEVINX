@@ -20,7 +20,7 @@ for(const provider of ['iq_option','exnova']){
     onRejected:e=>bot.rejected(e),
     onUnexpectedOrder:()=>bot.stop('external-trade')
    });
-   ui.controls=async()=>({frame:{locator:()=>({click:async()=>{
+   ui.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{
      physicalClicks++;
      if(outboundTiming==='before-timeout')pageOut();
     }})},callSelector:'#call',putSelector:'#put'});
@@ -64,7 +64,7 @@ for(const provider of ['iq_option','exnova']){
   let bot;
   const ui=new BrokerUiExecutor({state:()=>({symbol:c.asset,activeId:c.activeId})},{ackTimeoutMs:20,
    onSent:(rid,id)=>bot.sent(rid,id),onAccepted:e=>bot.accepted(e),onSettlement:e=>bot.settle(e)});
-  ui.controls=async()=>({frame:{locator:()=>({click:async()=>{physicalClicks++}})},callSelector:'call',putSelector:'put'});
+  ui.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{physicalClicks++}})},callSelector:'call',putSelector:'put'});
   bot=new SignalExecutor({driver:{prepare:async()=>{},execute:(p,o)=>ui.execute(p,o)},context:()=>c,clock:()=>now});
   bot.configure({amount:1});await bot.start();
   c.analysis={vnext:{futureEntryAnchor:{context:'test|automatic|30000',engineId:'automatic',phase:'fired',side:'PUT',

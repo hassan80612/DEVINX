@@ -46,17 +46,18 @@ const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({base
 const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data),{
   isCriticalBusy:()=>executor.executing
 });
-let lastExecutorReadoutKey='',executorReadoutRevision=Date.now();
+let lastExecutorReadoutKey='',lastExecutorReadoutAt=0,executorReadoutRevision=Date.now();
 const executorReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateExecutorReadouts?.(provider,data),{
- minIntervalMs:250,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
+ minIntervalMs:250,slowThresholdMs:150,slowCooldownMs:1000
 });
 // A single text field, at most once per second. Reuse received quotes and
-// defer to physical execution; never regenerate the card or request prices.
+// never regenerate the card or request prices. These text-only updates also
+// run during execution, independently of the deferred full-card rendering.
 const quoteReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateCurrentQuote?.(provider,data),{
- minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
+ minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000
 });
 const marketTotalsUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateMarketTotals?.(provider,data),{
- minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000,isCriticalBusy:()=>executor.executing
+ minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000
 });
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
@@ -472,8 +473,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   if(activeProvider){
     const state={...executor.status(),provider:activeProvider};
     const readoutKey=(runtime.settings.uiLanguage||'pt')+'|'+executorReadoutKey(state);
-    if(readoutKey!==lastExecutorReadoutKey){
+    if(readoutKey!==lastExecutorReadoutKey||Date.now()-lastExecutorReadoutAt>=1000){
       lastExecutorReadoutKey=readoutKey;
+      lastExecutorReadoutAt=Date.now();
       executorReadoutUpdates.publish(activeProvider,{state,revision:(executorReadoutRevision=Math.max(executorReadoutRevision+1,Date.now())),language:runtime.settings.uiLanguage||'pt'});
     }
     // A full status() rebuild includes research summaries, broker metadata and

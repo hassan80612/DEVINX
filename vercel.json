@@ -76,7 +76,8 @@
       "release/sentinel-139114-account-premium-reversals-20261025": false,
       "fix/sentinel-139115-compact-console-level-context-20261025": false,
       "fix/sentinel-139116-clean-layout-price-pair-20261025": false,
-      "fix/sentinel-139117-live-totals-readout-20261025": false
+      "fix/sentinel-139117-live-totals-readout-20261025": false,
+      "fix/sentinel-139121-expiry-fast-reversal-fluidity-20261025": false
     }
   }
 }

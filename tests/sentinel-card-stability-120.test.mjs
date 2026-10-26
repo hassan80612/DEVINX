@@ -67,6 +67,6 @@ test('three market totals and three summary totals reserve stable geometry, with
 });
 test('driver uses small receipt instead of regenerate monitor HTML on every WIN/LOSS result',()=>{
  const source=read('local-playwright-driver.mjs');
- assert.match(source,/page\.evaluate\(patchExecutorReadouts,\{revision,readout:executorMonitorReadout\(state,language\)\}\)/);
+ assert.match(source,/page\.evaluate\(patchExecutorReadouts,\{revision,readout:executorMonitorReadout\(state,language\)/);
  assert.doesNotMatch(source,/page\.evaluate\(patchExecutorReadouts,\{revision,wins/);
 });

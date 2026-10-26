@@ -50,7 +50,7 @@ for(const provider of ['exnova','iq_option']){
   entryDeadlineAt:Date.now()+remaining,captureEntry:()=>{},isValid:()=>true});
  test(provider+': deadline almost expired -> skip BEFORE Playwright click and without phantom order',async()=>{
   const b=ui(),o=order(55);let clicks=0;
-  b.controls=async()=>({frame:{locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
+  b.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
   await assert.rejects(()=>b.execute(provider,o),/sem tempo seguro para o clique/);
   assert.equal(clicks,0);
   assert.notEqual(o.clickAttempted,true);
@@ -60,7 +60,7 @@ for(const provider of ['exnova','iq_option']){
  });
  test(provider+': sufficiently fresh quote still leads to precisely one click',async()=>{
   const b=ui(),o=order(900);let clicks=0;
-  b.controls=async()=>({frame:{locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
+  b.controls=async()=>({frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async()=>{clicks++}})},callSelector:'#call',putSelector:'#put'});
   const outcome=await b.execute(provider,o);
   assert.equal(outcome.pending,true);
   assert.equal(clicks,1);
