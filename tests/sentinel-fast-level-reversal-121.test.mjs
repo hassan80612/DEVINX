@@ -55,9 +55,11 @@ test('unreceived future quotes, unordered ticks, gaps, and old confirmations nev
  assert.equal(confirmedFastLevelReversal({...a,now:a.now+2000}),null);
  assert.equal(verifiedFastLevelReversal({...a,side:'CALL',reversalEvidence:{...proof,confirmedAt:a.now-10000}}),false);
 });
-test('a fast opposite observation cannot reverse an already issued broker window',()=>{
+test('skipped late-floor PUT leaves the way open for a later proven CALL reversal',()=>{
  const f=fixture(),r=runtime(f,'automatic',60000),before=f.q.filter(q=>q.ts<=T-10000);
- const original=gate(r,before).futureEntryAnchor;assert.equal(original?.side,'PUT');
- const during=gate(r,f.q);assert.equal(during.nowObservation.side,'CALL');
- assert.equal(during.futureEntryAnchor.side,'PUT');assert.equal(during.futureEntryAnchor.entryAt,original.entryAt);
+ const first=gate(r,before);
+ assert.notEqual(first.futureEntryAnchor?.side,'PUT','do not chase an unverified downside impulse at the floor');
+ const second=gate(r,f.q);
+ assert.equal(second.nowObservation.side,'CALL');
+ assert.equal(second.futureEntryAnchor?.side,'CALL','confirmed fast turn can be acted on');
 });
