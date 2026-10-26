@@ -2162,7 +2162,15 @@ export class LocalPlaywrightDriver{
 
 
         const stableScrollTop=el.scrollTop;
+        // Anchor the first visible card: live data above it may change height.
+        // Keeping only the numeric scrollTop makes every card below it jump.
         const stableRect=el.getBoundingClientRect();
+        const scrollAnchor=[...el.querySelectorAll('[data-sentinel-card]')].find(card=>{
+          const r=card.getBoundingClientRect();
+          return r.bottom>stableRect.top+32&&r.top<stableRect.bottom-32;
+        });
+        const anchorName=scrollAnchor?.getAttribute('data-sentinel-card')||null;
+        const anchorTop=scrollAnchor?.getBoundingClientRect().top??null;
         const stableLeft=el.style.left,stableTop=el.style.top,stableRight=el.style.right;
         // Shared single-source prediction is pinned by the Agent itself.
         // The PC and mobile receive the SAME issuedAt/targetAt and price.
@@ -2630,7 +2638,13 @@ export class LocalPlaywrightDriver{
           if(stableTop)el.style.top=stableTop;
           el.style.right=stableRight||el.style.right;
           const maxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
-          el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop));
+          let restoredScroll=stableScrollTop;
+          if(anchorName!==null&&anchorTop!==null){
+            const card=[...el.querySelectorAll('[data-sentinel-card]')]
+              .find(node=>node.getAttribute('data-sentinel-card')===anchorName);
+            if(card)restoredScroll+=card.getBoundingClientRect().top-anchorTop;
+          }
+          el.scrollTop=Math.max(0,Math.min(maxScroll,restoredScroll));
           if(el.dataset.geometryClamped!=='1'){
             el.dataset.geometryClamped='1';
             const r=el.getBoundingClientRect();
