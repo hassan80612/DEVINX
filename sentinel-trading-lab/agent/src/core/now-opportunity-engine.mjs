@@ -26,7 +26,8 @@ export const POST_EXPIRY_REASSESS_MS=3000;
 // History already buffered by the Agent: zero broker reads, fixed short scan.
 export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  if(candidate?.ready!==true||candidate.side!=='PUT'||
-  candidate.reason!=='closed-structure-and-live-impulse')return null;
+  candidate.reason!=='closed-structure-and-live-impulse'||
+  Number(candidate.expirySeconds)!==60)return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
