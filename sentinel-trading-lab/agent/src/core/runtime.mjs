@@ -1077,11 +1077,32 @@ export class DemoTradingRuntime{
           strategy:original66.contextStrategy,marketShape:original66.marketShape,
           marketValid:duration.allowed&&entryQuoteFresh
         }):null;
+      // The persisted entry learner is a last-mile advisory guard only when
+      // independently validated. Read in-memory features, no broker polling.
+      const learnContext={provider:String(snap.provider||'unknown'),
+        asset:String(settings.asset||'').toUpperCase(),
+        durationMs:Number(settings.orderDurationMs),
+        kind:'now-confirmed',side:observation.side,
+        regime:String(observation.reason||'unknown'),combo:String(settings.engine||'automatic')};
+      const cv=observation.candleEvidence||original66.candleEvidence||{};
+      const signed=observation.side==='CALL'?1:-1;
+      const learnFeatures=[
+        Math.max(-1,Math.min(1,signed*Number(cv.displacement||0)*10000)),
+        Math.max(0,Math.min(1,Number(cv.observedBars||0)/4)),
+        Math.max(-1,Math.min(1,signed*(cv.direction==='CALL'?1:cv.direction==='PUT'?-1:0))),
+        ...Array(7).fill(0)
+      ];
+      const learnedReview=observation.ready===true&&['CALL','PUT'].includes(observation.side)?
+        this.entryResearch.predict(learnContext,learnFeatures,.5):null;
+      const learnedBlocked=learnedReview?.qualified===true&&
+        learnedReview.probability<.48;
+      const reviewedObservation=learnedBlocked?
+        {...observation,ready:false,side:null,reason:'verified-entry-context-underperforming'}:observation;
       const eligible=!duration.allowed?
-        {...observation,side:null,ready:false,reason:duration.reason}:
+        {...reviewedObservation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
-        {...observation,side:null,ready:false,reason:'late-quote-no-entry'}:
-        observation;
+        {...reviewedObservation,side:null,ready:false,reason:'late-quote-no-entry'}:
+        reviewedObservation;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1091,6 +1112,14 @@ export class DemoTradingRuntime{
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
       if(freshSignal){
+        if(learnedReview&&Number(next.entryPrice)>0){
+          this.entryResearch.record({
+            id:['now',next.context,next.entryTriggeredAt].join('|'),
+            context:learnContext,features:learnFeatures,baseline:.5,
+            price:Number(next.entryPrice),now:Number(next.entryTriggeredAt),
+            durationMs:Number(settings.orderDurationMs),prediction:learnedReview
+          });
+        }
         this.vnextWindowOutcomes.push({
           windowId:next.entryTriggeredAt,asset:next.asset,provider:snap.provider??null,entryReason:observation.reason,
           engineId:next.engineId,forecastMode:'now',
