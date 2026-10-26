@@ -1577,7 +1577,7 @@ export class LocalPlaywrightDriver{
     const page=this.sessions.get(provider)?.page;
     if(!page||page.isClosed?.())return;
     await page.evaluate(patchExecutorReadouts,{revision,readout:executorMonitorReadout(state,language),
-      nativeExpiryPermission:nativeExpiryPermissionForExecutor({...state,provider})});
+      nativeExpiryPermission:nativeExpiryPermissionForExecutor({...state,provider},revision)});
   }
   async updateCurrentQuote(provider,frame){
     const page=this.sessions.get(provider)?.page;

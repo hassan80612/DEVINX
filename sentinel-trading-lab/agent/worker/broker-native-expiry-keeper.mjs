@@ -9,7 +9,7 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==3)return {blocked:false};
+ if(keeper?.revision!==4)return {blocked:false};
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
  const previous=keeper.snapshot();
  if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
@@ -24,7 +24,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===3)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===4)return;
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
@@ -57,7 +57,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
-   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0;
+   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,manualControl=null,chosenTarget=null,observedAt=0;
   try{
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
@@ -116,7 +116,9 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   // Opening the picker proves no duration choice. Record an exact trusted
   // option click, then require the native control to confirm that value.
   const pickedOption=target=>{
-   const control=discover();
+   // Opening a native popup can make the control wrapper contain several
+   // duration labels. Keep its verified opener identity during that choice.
+   const control=manualControl?{el:manualControl}:discover();
    if(!control||!inExpiryMenu(target,control.el))return null;
    for(let el=target,depth=0;el&&depth<3;el=el.parentElement,depth++){
     const raw=String(el.innerText||el.textContent||'').trim();
@@ -130,19 +132,24 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
    const target=ev.target;
+   const value=manualOpenedAt&&Date.now()-manualOpenedAt<12000?pickedOption(target):null;
+   if(value){chosenValue=value;chosenTarget=target;lastUserActivityAt=Date.now();return;}
    if(isManualPickerTarget(target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
+    manualControl=discover()?.el??null;chosenTarget=null;
     chosenValue=null;lastUserActivityAt=manualOpenedAt;
    }
   };
   const onClick=ev=>{
    if(repairing||!ev.isTrusted)return;
+   if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target)))return;
    // Options can be INSIDE the picker. Check the actual choice before the
    // opener, otherwise a real selection is mistaken for opening the menu.
    const value=manualOpenedAt&&Date.now()-manualOpenedAt<12000?pickedOption(ev.target):null;
    if(value){chosenValue=value;lastUserActivityAt=Date.now();}
    else if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
+    manualControl=discover()?.el??null;chosenTarget=null;
     chosenValue=null;lastUserActivityAt=manualOpenedAt;
    }
   };
@@ -222,17 +229,19 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   function poll(){
    try{
     if(document.visibilityState==='hidden'||repairing)return;
-    const c=discover();if(!c)return;
+    const c=discover();
+    if(!c){observedMs=null;stableCount=0;observedAt=Date.now();notify(null);return;}
     const current=c.value,now=Date.now();
+    observedAt=now;
     if(observedMs===current)stableCount++;
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
      if(chosenValue!=null&&current===chosenValue){
-      save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;mismatchSince=0;
+      save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
      }
      notify(current);return;
     }
-    if(manualOpenedAt){manualOpenedAt=0;openingValue=null;chosenValue=null;}
+    if(manualOpenedAt){manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;}
     if(!preferredMs){
      // Bootstrap only a stable non-default selected duration. A fresh
      // default 30s is never silently treated as the user's last preference.
@@ -248,8 +257,8 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeperV3={revision:3,provider,poll,snapshot:()=>({
-   preferredMs,currentMs:observedMs,mismatchSince,lastRepairAt,repairing
+  window.__sentinelNativeExpiryKeeperV3={revision:4,provider,poll,snapshot:()=>({
+   preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
   const timer=setInterval(poll,2500);
