@@ -125,12 +125,12 @@ test('a recent market regime change revokes opposite-side authority without dela
  assert.equal(final.side,'CALL','previously qualified original decision must still flow');
  assert.equal(final.probabilityOverride,false);
 });
-test('PC and mobile explain existing market waits; the third-turn protection remains unchanged',()=>{
+test('PC and mobile explain existing market waits; the first historical edge is evaluated without third-pivot waiting',()=>{
  const current=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
  const pc=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const mobile=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
  const review=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-probability-review.mjs',import.meta.url),'utf8');
- assert.match(current,/if\(pivots.length===2\)return \{ready:false,reason:'range-awaiting-third-confirmed-turn'\}/);
+ assert.doesNotMatch(current,/if\(pivots.length===2\)return /);
  for(const display of [pc,mobile]){
   assert.match(display,/AGUARDANDO 3ª VIRADA/);
   assert.match(display,/AGUARDANDO REVERSÃO/);
