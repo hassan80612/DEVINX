@@ -123,3 +123,19 @@ test('support/resistance specialist cannot revive the same rejected historical r
  assert.equal(automatic.ready,false);assert.equal(specialist.ready,false);
  assert.equal(specialist.reason,'shared-base-level-role-conflict');
 });
+
+test('short crossing of a known level requires the correct role for an independent breakout',()=>{
+ for(const mirror of [false,true])for(const correctRole of [false,true]){
+  const q=quotes([99.7,99.85,100.05,100.18,100.22,100.25,100.3]);
+  if(mirror)for(const row of q)row.price=200-row.price;
+  const support=mirror?correctRole:!correctRole;
+  const zone={low:100,high:100,level:100,confirmedPivots:2,independentRejections:3,touches:4,pivots:2,ages:[2,6,10],
+   supportPivots:support?2:0,supportRejections:support?3:0,
+   resistancePivots:support?0:2,resistanceRejections:support?0:3};
+  const out=applyHistoricalPriceStructure({candidate:{ready:false,side:null,reason:'not-ready'},
+   structure:{candles:80,periodMs:60000,atr:1,tolerance:.1,averages:[{value:99,slope:.01,period:20}],zones:[zone]},
+   quoteHistory:q,quoteAt:T,now:T,price:q.at(-1).price,durationMs:60000});
+  assert.equal(out.ready,correctRole);
+  if(correctRole){assert.equal(out.side,mirror?'PUT':'CALL');assert.equal(out.reason,'historical-level-breakout');}
+ }
+});

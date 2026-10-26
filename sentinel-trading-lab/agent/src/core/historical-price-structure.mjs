@@ -135,8 +135,11 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   const recent=q.filter(x=>x.ts>=ts-2500);
   const heldUp=recent.length>=3&&recent[0].ts<=ts-1500&&recent.every(x=>x.price>z.high+tolerance*.25);
   const heldDown=recent.length>=3&&recent[0].ts<=ts-1500&&recent.every(x=>x.price<z.low-tolerance*.25);
-  const breakoutUp=origin<level&&spot>z.high+tolerance&&heldUp&&move>minReaction&&step>=0;
-  const breakoutDown=origin>level&&spot<z.low-tolerance&&heldDown&&move< -minReaction&&step<=0;
+  // Break through resistance upward or support downward. Crossing a
+  // support upward inside a rebound is not a resistance breakout.
+  const breakoutUpRole=levelRoleEvidence(z,'PUT'),breakoutDownRole=levelRoleEvidence(z,'CALL');
+  const breakoutUp=(!breakoutUpRole.known||breakoutUpRole.confirmed)&&origin<level&&spot>z.high+tolerance&&heldUp&&move>minReaction&&step>=0;
+  const breakoutDown=(!breakoutDownRole.known||breakoutDownRole.confirmed)&&origin>level&&spot<z.low-tolerance&&heldDown&&move< -minReaction&&step<=0;
   // A prior wick is a region, not an automatic reversal. Current retreat
   // must be visible in received prices and still advancing on this quote.
   const rejectionUp=origin>level&&lo<=z.high+tolerance&&lo>=z.low-tolerance*2&&

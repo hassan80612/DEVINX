@@ -84,7 +84,8 @@
       "release/sentinel-139129-frame-expiry-execution-20261026": false,
       "release/sentinel-139130-horizon-owned-retest-20261026": false,
       "release/sentinel-139131-reversal-priority-20261026": false,
-      "release/sentinel-139132-native-expiry-confirmation-20261026": false
+      "release/sentinel-139132-native-expiry-confirmation-20261026": false,
+      "release/sentinel-139133-level-role-event-origin-20261026": false
     }
   }
 }

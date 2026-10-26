@@ -121,3 +121,16 @@ test('reclaim respects directional level evidence and allows a real observed rol
   }
  }
 });
+
+test('later improving pivot pairs cannot mint another reclaim event for the same original break',()=>{
+ for(const mirror of [false,true]){
+  const f=fixture([102,100.6,101.3,99.4,100.2,99.9,101.8,100.8,101.5,101.1,102],mirror);
+  const first=firstEvent(f),event=observedLevelSequence(input(f)).structureChange;
+  assert.equal(event.confirmedAt,first.event.confirmedAt);
+  assert.equal(event.pivotPrice,first.event.pivotPrice);
+  for(const durationMs of expiries){
+   const out=applyObservedLevelSequence({candidate:{ready:false,side:null},...input(f),durationMs});
+   assert.notEqual(out.reason,'failed-breakout-structure-change');
+  }
+ }
+});

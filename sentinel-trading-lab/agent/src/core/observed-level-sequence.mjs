@@ -143,7 +143,9 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
     if(reclaimRoleAllowed&&pivot&&priorExtreme&&pivot.at>=brokenAt&&priorExtreme.at>=brokenAt&&
      priorExtreme.kind===extreme.kind&&initial*(extreme.price-priorExtreme.price)>0&&
      initial*(q.price-pivot.price)>amplitude&&position===initial)
-     recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
+     // One break/reclaim owns one confirming event. Later unrelated
+     // pivot pairs cannot renew that event's time or entry permission.
+     recordEvent(['reclaim',z.level,brokenAt].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
     -initial*(q.price-breakExtreme)>amplitude)

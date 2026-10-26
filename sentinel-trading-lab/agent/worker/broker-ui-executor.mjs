@@ -274,7 +274,10 @@ export class BrokerUiExecutor{
      // Insufficient time to dispatch is a skipped signal, not permission
      // to submit an order after its original forecast timestamp.
      if(remaining<=80)throw errorBefore('Sinal sem tempo seguro para o clique; aguarde novo sinal.');
-     return Math.max(1,Math.min(350,Math.floor(remaining-30)));
+     // Use the existing signal validity budget instead of imposing an
+     // unrelated 350ms canvas actionability deadline. This never extends
+     // the original entry deadline or retries a possibly delivered click.
+     return Math.max(1,Math.floor(remaining-30));
    };
    try{
     if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{const timeout=clickTimeout();before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout,noWaitAfter:true});order.clicked=true;}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}

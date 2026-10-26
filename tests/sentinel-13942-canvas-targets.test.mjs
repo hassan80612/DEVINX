@@ -23,3 +23,18 @@ test('map save checks the live page before accepting stale points',async()=>{
 test('bot panel names the selected broker and exposes one mapping action',()=>{
  for(const [provider,label] of [['iq_option','IQ Option'],['exnova','Exnova']]){const html=executorPanel({provider,config:{}});assert.ok(html.includes(label));assert.equal((html.match(/data-sentinel-executor-action="map"/g)||[]).length,1);}
 });
+
+test('canvas actionability uses the remaining valid signal budget without a second click or extended deadline',async()=>{
+ const ui=new BrokerUiExecutor({state:()=>({symbol:'EUR/USD OTC',activeId:76})},{ackTimeoutMs:10});
+ let clicks=0,options;
+ ui.controls=async()=>({canvasSelector:'canvas',positions:{CALL:{x:900,y:300}},frame:{evaluate:async()=>({blocked:false}),locator:()=>({click:async opts=>{
+  clicks++;options=opts;
+  if(opts.timeout<400)throw Error('locator.click: Timeout exceeded before canvas ready');
+ }})}});
+ const deadline=Date.now()+800;
+ const order={id:'budget',asset:'EUR/USD OTC',activeId:76,side:'CALL',entryDeadlineAt:deadline,isValid:()=>Date.now()<deadline};
+ const result=await ui.execute('exnova',order);
+ assert.equal(clicks,1);assert.equal(order.clicked,true);assert.equal(result.pending,true);
+ assert.ok(options.timeout>=400&&options.timeout<=770);
+ assert.equal(order.entryDeadlineAt,deadline);assert.equal(order.dispatchUncertain,undefined);
+});
