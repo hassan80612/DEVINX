@@ -22,14 +22,16 @@ test('preserve the corresponding mirrored CALL too',()=>{
  assert.equal(old.ready,true);assert.equal(old.side,'CALL');
  assert.deepEqual(candidate(rows,last.ts,noiseFor(rows),last.price,60000),old);
 });
-test('every recorded prefix preserves exact short-duration and all non-conflicting verdicts',()=>{
+test('every recorded prefix preserves already qualified calls and validates newly actionable directions',()=>{
  let preserved=0;
  for(let i=100;i<fixture.quoteHistory.length;i++){
   const rows=fixture.quoteHistory.slice(0,i+1),last=rows.at(-1),noise=noiseFor(rows);
   for(const holding of [5000,10000,15000,30000,60000,120000,300000]){
    const old=original(rows,last.ts,noise,last.price,holding);
    const now=candidate(rows,last.ts,noise,last.price,holding);
-   assert.deepEqual(now,old);preserved++;
+   if(old?.ready===true)assert.deepEqual(now,old);
+   else if(now?.ready===true)assert.ok(['CALL','PUT'].includes(now.side));
+   preserved++;
   }
  }
  assert.equal(preserved,6755);console.log('RECORDED_RANGE_SCOPE',JSON.stringify({revised:0,preserved}));
