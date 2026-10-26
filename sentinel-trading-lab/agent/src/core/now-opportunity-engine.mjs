@@ -409,15 +409,20 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  }
  // Build a causal observation from the FIRST fully observed candle onward.
  // This is evidence for continuous analysis, never a one-candle order.
- const progressive=[1,2,3,4].map(n=>closingBars(quotes,Number(quoteAt),barMs,n))
-  .filter(Boolean);
- const firstEvidence=progressive.length?progressive.at(-1):null;
+ const bars=closingBars(quotes,Number(quoteAt),barMs);
+ let firstEvidence=bars;
+ if(!firstEvidence){
+  // Short-circuit on the longest available prefix; no additional feed reads.
+  for(let n=3;n>=1;n--){
+   firstEvidence=closingBars(quotes,Number(quoteAt),barMs,n);
+   if(firstEvidence)break;
+  }
+ }
  const observedBars=firstEvidence?.length||0;
  const earliestMove=firstEvidence?.length?
   Math.log(firstEvidence.at(-1).close/firstEvidence[0].open):0;
  const candleEvidence={observedBars,direction:sideOf(earliestMove),
   displacement:earliestMove,barSeconds:barMs/1000};
- const bars=closingBars(quotes,Number(quoteAt),barMs);
  if(!bars)return {...waiting('completed-structure-not-ready'),candleEvidence};
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const net=Math.log(bars.at(-1).close/bars[0].open);
