@@ -6,8 +6,16 @@ export function validBrokerBalance(value){
 export class ExecutorBalanceRisk{
  constructor(){this.current=null;this.session=null;this.trade=null;this.last=null;}
  observe(value){
-  this.current=validBrokerBalance(value);
-  if(this.current&&this.session&&this.current.provider===this.session.provider&&this.current.accountId===this.session.accountId)this.last=this.current;
+  const next=validBrokerBalance(value);
+  // Keep the last genuine account observation when a slower context frame
+  // still carries null/old balance. Stop/reset explicitly clears this state.
+  if(!next)return;
+  const previous=this.current;
+  if(previous&&previous.provider===next.provider&&previous.accountId===next.accountId&&
+   (next.receivedAt<previous.receivedAt||
+    (next.receivedAt===previous.receivedAt&&next.revision<=previous.revision)))return;
+  this.current=next;
+  if(this.session&&next.provider===this.session.provider&&next.accountId===this.session.accountId)this.last=next;
  }
  begin(provider){
   const value=this.current?.provider===provider?this.current:null;
