@@ -87,3 +87,14 @@ test('the full decision gate admits the current reclaim and rejects its late rep
   }
  }
 });
+
+test('a reclaim cannot invent a structure change from a pivot preceding the breakdown or a worsening second extreme',()=>{
+ for(const mirror of [false,true])for(const vertices of [
+  [102,101,102,99,103],
+  [102,100.6,101.3,99.4,100.2,99,101.8]
+ ]){
+  const f=fixture(vertices,mirror);
+  const event=observedLevelSequence(input(f))?.structureChange;
+  assert.notEqual(event?.kind,'failed-breakout-structure-change',JSON.stringify({mirror,vertices,event}));
+ }
+});

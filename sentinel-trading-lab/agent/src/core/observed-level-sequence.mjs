@@ -129,7 +129,12 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
     const currentExtreme=initial>0?low:high;
     const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
     const pivot=extreme&&previousTurn.get(extreme);
-    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial)
+    const priorExtreme=pivot&&previousTurn.get(pivot);
+    // Reclaim alone is not a higher-low / lower-high structure change.
+    // Both legs must belong to this break, with an improving second extreme.
+    if(pivot&&priorExtreme&&pivot.at>=brokenAt&&priorExtreme.at>=brokenAt&&
+     priorExtreme.kind===extreme.kind&&initial*(extreme.price-priorExtreme.price)>0&&
+     initial*(q.price-pivot.price)>amplitude&&position===initial)
      recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
