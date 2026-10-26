@@ -30,7 +30,7 @@ test('migrates v1 preference but revokes the old keeper repair lease',()=>{
   window.__sentinelNativeExpiryKeeperV3={revision:1};
   window.__sentinelNativeExpiryPermission={allowed:true,at:m.now};
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,7);
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,8);
   assert.equal(window.__sentinelNativeExpiryPermission.allowed,false);
   assert.equal(m.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'120000');
   m.step();m.step();m.step();
@@ -149,4 +149,31 @@ test('all expiry keeper wiring remains outside analysis, candle timeframe and ex
  assert.doesNotMatch(web,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
  const release=JSON.parse(readFileSync(new URL('agent/release.json',base),'utf8'));
  assert.equal(release.version,'13.9.140');
+});
+
+test('Exnova native duration field accepts 01:00 and repairs a spontaneous 00:30 reset',()=>{
+ const m=browser('01:00');
+ try{
+  globalThis.location.hostname='exnova.com';
+  m.control.className='trade-duration-control';
+  m.storage.set('sentinel-broker-native-expiration-preference-v3:exnova','60000');
+  installBrokerNativeExpiryKeeper({provider:'exnova'});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,60000);
+  window.__sentinelNativeExpiryPermissionV3={allowed:true,provider:'exnova',at:m.now};
+  m.control._text='00:30';
+  for(let i=0;i<8;i++){
+   m.now+=2500;window.__sentinelNativeExpiryPermissionV3.at=m.now;m.interval();
+  }
+  assert.equal(m.control.innerText,'1 min');
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,60000);
+ }finally{m.restore()}
+});
+test('never treats a chart duration field as selected native option expiry',()=>{
+ const m=browser('01:00');
+ try{
+  m.control.className='chart-duration-timeframe';
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,null);
+  assert.equal(m.storage.size,0);
+ }finally{m.restore()}
 });
