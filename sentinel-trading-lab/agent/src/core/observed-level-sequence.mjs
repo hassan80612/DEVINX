@@ -114,7 +114,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
-  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null;
+  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null,continuationExtreme=null;
   for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
@@ -133,10 +133,19 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
      recordEvent(['reclaim',z.level,brokenAt,extreme.at,pivot.at].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
-    -initial*(q.price-breakExtreme)>amplitude)
-    recordEvent(['retest',z.level,brokenAt,retestAt,initial].join('|'),
-     {kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+    -initial*(q.price-breakExtreme)>amplitude){
+    // An established break/retest is not new merely because it remains
+    // beyond the old level. Fresh expansion to a new *observed* extreme,
+    // however, is valid current continuation evidence and must not be
+    // suppressed along with stale, non-advancing signals.
+    const progressed=continuationExtreme===null||
+      -initial*(q.price-continuationExtreme)>=amplitude*.08;
+    if(progressed){
+     continuationExtreme=q.price;
+     events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
       level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
+    }
+   }
   }
  }
  const valid=events.filter(e=>{
