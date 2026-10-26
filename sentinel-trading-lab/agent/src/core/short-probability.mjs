@@ -45,7 +45,12 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
   quadratic+=r*r;span+=dt;
  }
  if(span<minObserved-1||gaps>Math.max(1,Math.ceil(minObserved/60))||!(quadratic>=0))return wait('incomplete-recent-price-path');
- const r30=logs.find(x=>x.seconds===30).value;
+ // Longer horizons may have their 90s/180s anchor while the common 30s
+ // reversal reference falls inside a feed gap. Missing evidence is not a
+ // zero return, and must never throw during an otherwise valid analysis.
+ const reference30=logs.find(x=>x.seconds===30);
+ if(!reference30)return wait('missing-30s-reference-price');
+ const r30=reference30.value;
  const five=logs.find(x=>x.seconds===5),three=logs.find(x=>x.seconds===3);
  const instant=five||three;
  const contrary=instant&&Math.sign(instant.value)!==Math.sign(r30)&&Math.abs(instant.value)>1e-9;
