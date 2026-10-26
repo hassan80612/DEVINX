@@ -8,8 +8,9 @@ const engine=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-op
 const pc=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
 const mobile=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
 const agent=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
-test('third confirmed pivot remains mandatory, October 22 directional-range escape is removed',()=>{
- assert.match(engine,/if\(pivots\.length===2\)return \{ready:false,reason:'range-awaiting-third-confirmed-turn'/);
+test('first confirmed boundary turn can qualify without a mandatory third pivot',()=>{
+ assert.doesNotMatch(engine,/if\(pivots\.length===2\)return /);
+ assert.match(engine,/const highTurn=position>=\.73&&down>=1&&turnMove<0&&lastStep<0/);
  assert.match(engine,/closed-range-extreme-reversal-confirmed/);
  assert.doesNotMatch(engine,/const leg=closes\.slice\(-5\)/);
  assert.doesNotMatch(engine,/legPath>=\.65/);
@@ -34,7 +35,7 @@ test('range mismatch is observational and does not insert a timed delay',()=>{
  assert.equal(seenGuard,true,'regular 48s range should not authorize a 60s expiration');
  // Third-turn evidence is guarded in the source, independent of when the
  // generated synthetic wave first has sufficient history.
- assert.match(engine,/if\(pivots\.length===2\)return /);
+ assert.doesNotMatch(engine,/if\(pivots\.length===2\)return /);
 });
 test('PC and mobile WIN/LOSS by countdown originate exclusively from broker executor session',()=>{
  assert.match(pc,/data-sentinel-executor-clock-wl/);
