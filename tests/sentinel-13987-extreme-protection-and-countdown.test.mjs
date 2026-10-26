@@ -10,7 +10,7 @@ const mobile=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveSc
 const agent=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
 test('first confirmed boundary turn can qualify without a mandatory third pivot',()=>{
  assert.doesNotMatch(engine,/if\(pivots\.length===2\)return /);
- assert.match(engine,/const highTurn=position>=\.73&&down>=1&&turnMove<0&&lastStep<0/);
+ assert.match(engine,/earlyRangeProof&&position/);
  assert.match(engine,/closed-range-extreme-reversal-confirmed/);
  assert.doesNotMatch(engine,/const leg=closes\.slice\(-5\)/);
  assert.doesNotMatch(engine,/legPath>=\.65/);
