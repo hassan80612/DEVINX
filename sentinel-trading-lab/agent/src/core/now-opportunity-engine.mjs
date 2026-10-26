@@ -12,6 +12,7 @@ import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 import {continuationRoomRisk} from './continuation-room-risk.mjs';
+import {oppositePivotBreakRisk} from './opposite-pivot-break-risk.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 

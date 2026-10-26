@@ -134,8 +134,9 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
     -initial*(q.price-breakExtreme)>amplitude)
-    events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
-     level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
+    recordEvent(['retest',z.level,brokenAt,retestAt,initial].join('|'),
+     {kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+      level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
   }
  }
  const valid=events.filter(e=>{
@@ -178,13 +179,18 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // projection below remains scoped to the 30s holding time it measures.
  const reversal=structureChange?null:confirmedLevelReversal({map,...input});
  const event=fastReversal??structureChange??reversal??(Number(durationMs)===30000?sequence.continuation:null);
+ // The first observed break/retest owns the trade. Historical events may
+ // remain useful as structure but cannot be re-stamped on the newest tick.
+ // Only admission is freshness-gated; the audit still shows old structures.
+ const currentEvent=event?.kind==='break-retest-continuation'&&
+   Number(input.now??input.quoteAt)-Number(event.confirmedAt)>1450?null:event;
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
- if(!event)return {...candidate,priceStructure};
+ if(!currentEvent)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
  if(!candidate.ready&&!structureChange&&!reversal&&!fastReversal)return {...candidate,priceStructure};
- return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
+ return {...candidate,ready:true,side:currentEvent.side,observedAt:Number(input.quoteAt),
   entryPrice:Number(input.price),predictedPrice:null,expectedLogMove:null,
-  reason:event.kind,priceStructure};
+  reason:currentEvent.kind,priceStructure};
 }

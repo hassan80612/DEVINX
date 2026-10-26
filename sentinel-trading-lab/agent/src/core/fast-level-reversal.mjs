@@ -36,9 +36,21 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
    if(!(sign*(rows[0].price-boundary)>=tol&&sign*(rows[0].price-touch.price)>=tol*1.5))continue;
    const qualifies=i=>{
     if(i<touchIndex+2)return false;
-    const q=rows[i],last=sign*(q.price-rows[i-1].price),before=sign*(rows[i-1].price-rows[i-2].price);
-    return last>0&&before>0&&last+before>=tol*.4&&
-     sign*(q.price-touch.price)>=minRejection&&sign*(q.price-boundary)>=tol*.5;
+    const q=rows[i],last=sign*(q.price-rows[i-1].price);
+    // Independent *observed* advances, not necessarily adjacent green ticks.
+    // A small intervening counter-tick is normal on a real V reversal.
+    // Never accept a single bounce, a material re-break below the touch,
+    // or a signal whose first confirmed move is already old.
+    let advances=0,maxRetreat=0;
+    for(let j=touchIndex+1;j<=i;j++){
+      const step=sign*(rows[j].price-rows[j-1].price);
+      if(step>0)advances++;
+      maxRetreat=Math.max(maxRetreat,sign*(touch.price-rows[j].price));
+    }
+    const net=sign*(q.price-touch.price);
+    return last>0&&advances>=2&&net>=minRejection&&
+      net>=tol*.4&&maxRetreat<=tol*.35&&
+      sign*(q.price-boundary)>=tol*.5;
    };
    const first=rows.findIndex((_,i)=>qualifies(i));
    if(first<0||!qualifies(rows.length-1)||clock-rows[first].ts>1450||
