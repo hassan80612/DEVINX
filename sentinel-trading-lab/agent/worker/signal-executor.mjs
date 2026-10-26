@@ -37,7 +37,7 @@ export class SignalExecutor{
  constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.onAuditEvent=typeof onAuditEvent==='function'?onAuditEvent:null;this.config={...DEFAULT_EXECUTOR_CONFIG};
   this.balanceRisk=new ExecutorBalanceRisk();this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.stakeRefreshPending=null;this.stakeRefreshAt=0;this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
-  this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;
+  this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;this.expirySettlementEvidence=null;
  }
  emitAudit(record){
   if(!this.onAuditEvent||!record)return;
@@ -687,6 +687,28 @@ export class SignalExecutor{
   const old=this.ledger.get(key);if((!p&&!old)||!num(event.netPnl)||(event.source&&event.source!=='broker'))return false;
   const trade=p||old;if(event.accountId!=null&&trade.accountId!=null&&String(event.accountId)!==String(trade.accountId))return false;
   if(old?.source==='broker'||trade.sessionId!==undefined&&trade.sessionId!==this.sessionId)return false;
+  // Settlement is independent evidence of the effective broker expiry.
+  // Never mistake a 30s close for a 60s prediction. Require TWO distinct
+  // broker-confirmed closes before diagnosing an unreported native reset.
+  if(p&&Number.isFinite(Number(p.clickedAt))&&Number(p.clickedAt)>0){
+   const requested=Number(p.durationMs),elapsed=this.clock()-Number(p.clickedAt);
+   const short60=requested===60000&&elapsed>=25000&&elapsed<=35000;
+   const normal60=requested===60000&&elapsed>=54000&&elapsed<=68000;
+   if(short60){
+    const prior=this.expirySettlementEvidence;
+    const count=prior?.expectedMs===60000&&
+      this.clock()-Number(prior.at)<600000?prior.count+1:1;
+    this.expirySettlementEvidence={expectedMs:60000,actualMs:30000,count,at:this.clock()};
+    if(count>=2)this.lastBrokerExpiryMismatch={
+      expectedDurationMs:60000,reportedDurationFromClickMs:30000,
+      deltaMs:-30000,at:this.clock(),source:'broker-settlement-timing',samples:count
+    };
+   }else if(normal60){
+    this.expirySettlementEvidence=null;
+    if(this.lastBrokerExpiryMismatch?.source==='broker-settlement-timing')
+      this.lastBrokerExpiryMismatch=null;
+   }
+  }
   this.net=money(this.net+Number(event.netPnl)-Number(old?.netPnl||0));this.lastBrokerSettlementAt=this.clock();this.lastSettlementBalanceRevision=Number(this.balanceRisk.current?.revision||0);if(!old||old.source==='unresolved'){
    this.closed++;
    if(Number(event.netPnl)>0)this.sessionWins++;
@@ -718,6 +740,10 @@ export class SignalExecutor{
    }else this.stop('Bot parado · Stop Win atingido (saldo-alvo: '+money(this.config.stopWin)+')');
   }
   else if(this.enabled&&this.config.stopLoss>0&&this.stopLossReached())this.stop('Bot parado · limite de perda da sessão atingido');
+  if(this.enabled&&this.lastBrokerExpiryMismatch?.source==='broker-settlement-timing'&&
+    this.clock()-this.lastBrokerExpiryMismatch.at<600000&&
+    Number(this.session?.durationMs)===60000)
+   this.message='EXPIRAÇÃO DIVERGENTE: corretora encerrou em ~30s; Sentinel configurado em 60s. Confira a expiração na corretora.';
   return true;
  }
  nextClicks(){return this.config.martingaleMultiplier**(this.config.martingaleEnabled?this.martingaleLevel:0);}
