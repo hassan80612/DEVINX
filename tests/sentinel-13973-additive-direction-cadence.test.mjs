@@ -89,11 +89,12 @@ test('new controls preserve old status length and decode optional string directi
  assert.match(html,/Somente CALL/);assert.match(html,/Somente PUT/);
  assert.doesNotMatch(html,/data-sentinel-executor-setting="intervalMs"/);
 });
-test('2m 5m are accepted without entering the 30s probability override',()=>{
+test('5m remains supported while obsolete 2m is rejected without a 30s override',()=>{
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
- for(const ms of [120000,300000]){rt.patchSettings({orderDurationMs:ms},'test');assert.equal(rt.settings.orderDurationMs,ms);}
+ assert.throws(()=>rt.patchSettings({orderDurationMs:120000},'test'),/invalid_short_operation_duration/);
+ rt.patchSettings({orderDurationMs:300000},'test');assert.equal(rt.settings.orderDurationMs,300000);
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
- assert.match(worker,/5000,10000,15000,30000,60000,120000,300000/);
+ assert.match(worker,/30000,60000,300000/);
  const ui=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(ui,/<label[^\n]*>EXPIRAÇÃO <select data-sentinel-setting="duration"/);
 });
@@ -188,7 +189,7 @@ test('missing broker settlement does not indefinitely freeze fixed-direction ent
 });
 test('30s forecast reference cannot reset selected duration through update or restart',()=>{
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
- for(const duration of [60000,120000,300000]){
+ for(const duration of [30000,60000,300000]){
   rt.patchSettings({orderDurationMs:duration},'test');
   rt.patchSettings({forecastHorizonSeconds:30},'test');
   assert.equal(rt.settings.orderDurationMs,duration);
