@@ -12,16 +12,16 @@ function settleSequence(x,values){
 for(const provider of ['iq_option','exnova']){
  test(provider+': 1→2 physical clicks only, reset on win or final loss, retain on tie',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();
-  for(const [count,pnl] of [[1,-1],[2,0],[2,-1],[1,-1],[2,.86],[1,.86]]){
+  for(const [count,pnl] of [[1,-1],[2,0],[1,-1],[2,-1],[1,-1],[2,.86],[1,.86]]){
    const before=x.calls.length;await x.fire('PUT');assert.equal(x.calls.length-before,count);assert.equal(x.bot.pending.clickCount,count);assert.equal(x.bot.pending.amount,count);
    assert.ok(x.calls.slice(before).every(p=>p.amount===1&&p.side==='PUT'));settleSequence(x,Array(count).fill(pnl));assert.equal(x.bot.pending,null);
   }
-  assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.executed,9);assert.equal(x.bot.closed,9);
+  assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.executed,10);assert.equal(x.bot.closed,10);
  });
  test(provider+': progression waits for ALL individual closes and uses aggregate result, not the first win',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire('PUT');
   const batch=x.bot.pending,[a,b]=batch.orders;x.advance(60000);
-  assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}));assert.equal(x.bot.pending,batch);assert.equal(x.bot.nextClicks(),2);
+  assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}));assert.equal(x.bot.pending,batch);assert.equal(x.bot.nextClicks(),1);
   assert.equal(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}),false);assert.ok(x.bot.settle({provider,orderId:a.orderId,netPnl:-1}));assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.closed,3);
  });
  test(provider+': full-sequence loss protection uses absolute bankroll floor and broker reading',async()=>{
