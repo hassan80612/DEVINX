@@ -2252,10 +2252,11 @@ export class LocalPlaywrightDriver{
             </div>
             <div data-sentinel-command-dock data-analysis-state="${runtime}">
             ${d.executorMonitorHtml||''}
-            <div data-sentinel-command-buttons><div data-sentinel-analysis-actions style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
+            <div data-sentinel-command-buttons><div data-sentinel-analysis-actions style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:#3167a8;font-size:11px;font-weight:900;color:#f2f6ff;cursor:pointer">${tr('▶ Iniciar análise')}</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
               <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
+              <button data-sentinel-executor-action="map" ${d.autoExecutor?.enabled||d.autoExecutor?.arming||d.autoExecutor?.pending||d.autoExecutor?.executing?'disabled':''} title="${tr('Mapear os botões CALL e PUT sem executar operações')}" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${goldSoft};font-size:10px;font-weight:850;cursor:pointer">${tr('Mapear controles')}</button>
             </div>
             ${d.executorActionsHtml||''}</div>
             <div data-sentinel-control-msg role="status" style="font-size:10px;line-height:13px;opacity:.85"></div>
@@ -2344,10 +2345,11 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" title="${tr('↻ Leitura')}" style="border:1px solid ${panelBorder};border-radius:8px;height:29px;padding:0 8px;background:${uiTheme==='light'?'linear-gradient(180deg,#fff,#f4eee2)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:900 9.5px/1 inherit;cursor:pointer;white-space:nowrap">${tr('↻ LEITURA')}</button>
                 <button data-sentinel-scroll title="${tr('Descer / voltar ao topo')}" style="border:1px solid ${panelBorder};border-radius:8px;width:29px;height:29px;background:${uiTheme==='light'?'#fff':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:700 15px/1 inherit;cursor:pointer;display:grid;place-items:center">↓</button>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:5px;width:100%;max-width:310px">
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(78px,1fr));gap:5px;width:100%;max-width:310px">
                 <button data-sentinel-action="start" style="height:31px;border:1px solid rgba(215,182,93,.56);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,#f2dc9a,#cda646)':'linear-gradient(180deg,rgba(215,182,93,.18),rgba(215,182,93,.06))'};color:${runtime==='running'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('● INICIAR')}</button>
                 <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('Ⅱ PAUSAR')}</button>
                 <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('■ PARAR')}</button>
+                <button data-sentinel-executor-action="map" ${d.autoExecutor?.enabled||d.autoExecutor?.arming||d.autoExecutor?.pending||d.autoExecutor?.executing?'disabled':''} title="${tr('Mapear os botões CALL e PUT sem executar operações')}" style="height:31px;border:1px solid rgba(215,182,93,.46);border-radius:8px;background:rgba(215,182,93,.08);color:${goldSoft};font:700 9px/1 inherit;cursor:pointer;white-space:nowrap">${tr('MAPEAR CONTROLES')}</button>
               </div>
               ${d.executorActionsHtml||''}
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
