@@ -1639,7 +1639,7 @@ export class DemoTradingRuntime{
   delete this.settings.motorVariant;
   // Migrate obsolete operation expiries on restart. Previously accepted 5/10/15s\n  // and 2m must never reappear as executable after a restart.
   if(![30000,60000,300000].includes(Number(this.settings.orderDurationMs)))
-    this.settings.orderDurationMs=30000;
+    this.settings.orderDurationMs=Number(this.settings.orderDurationMs)===120000?60000:30000;
   this.settings.forecastHorizonSeconds=30;
   this.settings.engine=normalizeUserStrategy(this.settings.engine);
   this.settings.strategy=normalizeTechnicalStrategy(this.settings.strategy)||'smart_confluence';
