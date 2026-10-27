@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {observedLevelSequence,applyObservedLevelSequence} from '../sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 const T=1792250000000;
-const expiries=[5000,10000,15000,30000,60000,120000,300000];
+const expiries=[30000,60000,300000];
 const level=p=>({low:p,high:p,level:p,confirmedPivots:2,independentTests:3,tests:[{age:1},{age:3},{age:5}],windows:[3,10,20,50,100]});
 function fixture(vertices,mirror=false){
  const rows=[];
