@@ -35,11 +35,11 @@ for(const ms of [30000,60000,120000,300000]){
   assert.equal(combine66WithProbability(old,{pCall:.30,pPut:.70},{durationMs:ms,proof:record}).side,'CALL');
  });
 }
-test('all 4 selected holding times are accepted by Agent without broker expiry controls',()=>{
+test('only 30s, 1m and 5m are user-selectable, without broker expiry manipulation',()=>{
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  const bot=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs',import.meta.url),'utf8');
- assert.match(worker,/\[5000,10000,15000,30000,60000,120000,300000\]/);
+ assert.match(worker,/\[30000,60000,300000\]/);
  assert.match(driver,/The broker's native expiry selection|user's native expiry selection/i);
  assert.match(bot,/async recoverDigitalAfterClose\(_provider\)\{return false;\}/);
  assert.doesNotMatch(bot,/await hits\[0\]\.frame\.locator\(hits\[0\]\.selector\)\.click/);
@@ -49,7 +49,7 @@ test('original analyst horizon and no third-pivot wait are preserved',()=>{
  assert.doesNotMatch(source,/if\(pivots\.length===2\)return /);
  const q=quotes(),last=q.at(-1);
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
- for(const duration of [30000,60000,120000,300000]){
+ for(const duration of [30000,60000,300000]){
   rt.patchSettings({orderDurationMs:duration},'test');
   const snap={provider:'iq_option',quoteHistory:q,quoteTs:last.ts,price:last.price,payout:.8};
   const v=rt._signalValidationGate({analysis:{},snap,settings:rt.settings,now:last.ts});
@@ -58,4 +58,28 @@ test('original analyst horizon and no third-pivot wait are preserved',()=>{
   assert.equal(v.analysis.vnext.nowObservation.probabilityCalibrated,false);
   assert.ok(v.analysis.vnext.nowObservation.probabilityCall!=null);
  }
+});
+
+test('legacy selected expiry is migrated, while unrelated bot cadence is untouched',()=>{
+ const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+ for(const durationMs of [5000,10000,15000,120000]){
+  assert.throws(()=>rt.patchSettings({orderDurationMs:durationMs},'test'),/invalid_short_operation_duration/);
+  assert.equal(rt.settings.orderDurationMs,30000);
+ }
+ for(const durationMs of [30000,60000,300000]){
+  rt.patchSettings({orderDurationMs:durationMs},'test');
+  assert.equal(rt.settings.orderDurationMs,durationMs);
+ }
+ const snapshot=rt.snapshotPersistent();
+ snapshot.settings.orderDurationMs=120000;
+ const restored=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+ restored.restore(snapshot);
+ assert.equal(restored.settings.orderDurationMs,30000);
+ const consoleUi=readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
+ const overlay=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const phone=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
+ assert.match(consoleUi,/const allowed=\[30000,60000,300000\]/);
+ assert.match(overlay,/\$\{\[30,60,300\]\.map/);
+ assert.match(phone,/const expiryChoices=\[30,60,300\]/);
+ assert.doesNotMatch(overlay,/<option value="120"[^>]*>2 min/);
 });
