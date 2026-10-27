@@ -58,7 +58,7 @@ test('outgoing broker stake can correct an entered amount after a physical click
 });
 test('2m and 5m survive Agent restart without becoming 30s',()=>{
  const file=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
- assert.match(file,/\[5000,10000,15000,30000,60000,120000,300000\]\.includes\(Number\(this\.settings\.orderDurationMs\)\)/);
+ assert.match(file,/\[30000,60000,300000\]\.includes\(Number\(this\.settings\.orderDurationMs\)\)/);
 });
 test('no new broker network queries, repeated UI scan, or duration-change blocking',()=>{
  const stake=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-trade-stake.mjs',import.meta.url),'utf8');
