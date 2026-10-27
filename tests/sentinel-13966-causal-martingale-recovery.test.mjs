@@ -24,7 +24,7 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(brokerClose(x,old.orders[0],-1),true);
   assert.equal(x.bot.nextClicks(),1,'late prior loss cannot mutate already-open new cycle');
  });
- test(provider+': a real late LOSS arriving AFTER expiry but BEFORE another entry still advances 1→3',async()=>{
+ test(provider+': a real late LOSS arriving AFTER expiry but BEFORE another entry still advances 1→2',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
   await x.bot.start();await x.fire('CALL');const old=x.bot.pending;
@@ -33,13 +33,13 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.nextClicks(),1,'temporarily show base while result is unknown');
   assert.equal(brokerClose(x,old.orders[0],-1),true);
   assert.equal(x.bot.unresolvedBatches.size,0);
-  assert.equal(x.bot.nextClicks(),3,'identified prior LOSS must drive own progression');
+  assert.equal(x.bot.nextClicks(),2,'identified prior LOSS must drive own progression');
   const before=x.calls.length;
   await x.fire('PUT');
-  assert.equal(x.calls.length-before,3,'never lose martingale when broker close arrives before next trade');
-  assert.equal(x.bot.pending.clickCount,3);
+  assert.equal(x.calls.length-before,2,'never lose martingale when broker close arrives before next trade');
+  assert.equal(x.bot.pending.clickCount,2);
  });
- test(provider+': broker WIN after expiry before next trade never forces 3 clicks',async()=>{
+ test(provider+': broker WIN after expiry before next trade never forces doubled recovery clicks',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
   x.bot.configure({martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
   await x.bot.start();await x.fire('CALL');const old=x.bot.pending;
