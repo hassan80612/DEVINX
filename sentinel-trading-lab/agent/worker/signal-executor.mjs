@@ -3,9 +3,9 @@
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
-// Three increases after the normal 1-click entry. User-selected multiplier 2 or 3.
-// Finishing the last complete losing batch cycles back to one normal click.
-export const MAX_MARTINGALE_LEVELS=3;
+// Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
+// A WIN or completed second LOSS resets the next batch to 1 click.
+export const MAX_MARTINGALE_LEVELS=1;
 export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:900,other:1500});
 // Freshness of the FIRST broker entry differs from completion of an already
 // started multi-click batch. Each broker click has its own 30s expiry.
@@ -22,7 +22,7 @@ export function maxBatchDispatchMs(durationMs){
   ms<=15000?MAX_BATCH_DISPATCH_MS.fifteen:
   ms<=30000?MAX_BATCH_DISPATCH_MS.thirty:MAX_BATCH_DISPATCH_MS.other;
 }
-export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,directionMode:'automatic',stopAfterMinutes:0,stopLoss:0,stopWin:0,martingaleLevels:2,martingaleMultiplier:2,martingaleEnabled:false,maxConsecutiveLosses:0});
+export const DEFAULT_EXECUTOR_CONFIG=Object.freeze({amount:0,intervalMs:30000,directionMode:'automatic',stopAfterMinutes:0,stopLoss:0,stopWin:0,martingaleLevels:1,martingaleMultiplier:2,martingaleEnabled:false,maxConsecutiveLosses:0});
 const num=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const symbol=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const money=x=>Math.round(Number(x)*1000000)/1000000;
@@ -48,7 +48,9 @@ export class SignalExecutor{
  configure(patch={}){
   if(this.arming)throw Error('Aguarde a ativação do bot concluir.');
   const next={...this.config};
-  for(const key of Object.keys(DEFAULT_EXECUTOR_CONFIG))if(patch[key]!==undefined){if(key==='directionMode'){if(!['automatic','call','put'].includes(patch[key]))throw Error('Modo de direção inválido.');next[key]=patch[key];}else if(key==='martingaleEnabled'){if(typeof patch[key]!=='boolean')throw Error('Ativação de martingale inválida.');next[key]=patch[key];}else next[key]=Number(patch[key]);}
+  for(const key of Object.keys(DEFAULT_EXECUTOR_CONFIG))if(patch[key]!==undefined){
+   if(key==='martingaleLevels'||key==='martingaleMultiplier')continue;if(key==='directionMode'){if(!['automatic','call','put'].includes(patch[key]))throw Error('Modo de direção inválido.');next[key]=patch[key];}else if(key==='martingaleEnabled'){if(typeof patch[key]!=='boolean')throw Error('Ativação de martingale inválida.');next[key]=patch[key];}else next[key]=Number(patch[key]);}
+  next.martingaleLevels=1;next.martingaleMultiplier=2;
   if(!num(next.amount)||next.amount<0||next.amount>1000000||!Number.isInteger(next.martingaleLevels)||next.martingaleLevels<0||next.martingaleLevels>MAX_MARTINGALE_LEVELS||![2,3].includes(next.martingaleMultiplier)||!Number.isInteger(next.intervalMs)||next.intervalMs<5000||next.intervalMs>3600000||
    !num(next.stopAfterMinutes)||next.stopAfterMinutes<0||next.stopAfterMinutes>1440||!num(next.stopLoss)||next.stopLoss<0||next.stopLoss>1e8||!num(next.stopWin)||next.stopWin<0||next.stopWin>1e8||!Number.isInteger(next.maxConsecutiveLosses)||next.maxConsecutiveLosses<0||next.maxConsecutiveLosses>50)throw Error('Configuração do bot inválida.');
   if(this.enabled){
