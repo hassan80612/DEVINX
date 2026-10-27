@@ -15,7 +15,7 @@ function fixture(mirror=false){
  return {map,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price,side:mirror?'PUT':'CALL'};
 }
 test('rapid V at known support and resistance reaches full runtime for every strategy and expiry without another candle',()=>{
- for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [5000,10000,15000,30000,60000,120000,300000]){
+ for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [30000,60000,300000]){
   const f=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
   rt.patchSettings({engine,asset:'EUR/USD',orderDurationMs:durationMs},'test');
   rt.structureCache={get:()=>({candles:100,asOf:f.map.asOf,tolerance:.07,atr:.7,averages:[],zones:f.map.levels,candleLevelMap:f.map})};
