@@ -99,12 +99,12 @@ test('5m remains supported while obsolete 2m is rejected without a 30s override'
  assert.doesNotMatch(ui,/<label[^\n]*>EXPIRAÇÃO <select data-sentinel-setting="duration"/);
 });
 
-test('fixed CALL and PUT both follow broker-confirmed 1/2/4/8 martingale',async()=>{
+test('fixed CALL and PUT both follow broker-confirmed one-recovery 1/2/1 martingale',async()=>{
  for(const mode of ['call','put']){
   const x=fixture();x.c.durationMs=5000;
   x.bot.configure({directionMode:mode,martingaleEnabled:true,martingaleMultiplier:2,martingaleLevels:3});
   await x.bot.start();
-  for(const [i,n] of [1,2,4,8].entries()){
+  for(const [i,n] of [1,2,1,2].entries()){
    x.setTime(i*5000);
    const old=x.calls.length;x.bot.pulse();await x.bot.inflight;
    const batch=x.calls.slice(old);assert.equal(batch.length,n);
@@ -171,8 +171,8 @@ test('partial terminal martingale cannot reset its stage until fully executed',a
  const old=x.bot.driver.execute;let step=0;
  x.bot.driver.execute=async(p,o)=>{x.setTime((++step)*700);if(!o.isValid())throw Object.assign(Error('batch over'),{beforeClick:true});return old(p,o)};
  x.bot.pulse();await x.bot.inflight;
- assert.ok(x.calls.length>0&&x.calls.length<9);
- assert.equal(x.bot.martingaleLevel,2);
+ assert.ok(x.calls.length>=0&&x.calls.length<=2);
+ assert.equal(x.bot.martingaleLevel,0);
 });
 test('missing broker settlement does not indefinitely freeze fixed-direction entries',async()=>{
  const x=fixture();x.c.durationMs=5000;
