@@ -31,7 +31,8 @@ const freshBalance=(b,now)=>b&&Number.isFinite(Number(b.receivedAt))&&Number(b.r
 export function executorSignal(analysis){
  const a=analysis?.vnext?.futureEntryAnchor;
  if(a?.phase!=='fired'||!['CALL','PUT'].includes(a.side)||!(Number(a.entryTriggeredAt)>0))return null;
- return{id:[a.context,a.entryTriggeredAt].join('|'),engineId:a.engineId??String(a.context||'').split('|').at(-2)??null,side:a.side,at:Number(a.entryTriggeredAt),exitAt:Number(a.exitAt),entryPrice:Number(a.confirmedEntryPrice??a.entryPrice??a.projectedEntryPrice),durationMs:Number(a.holdingSeconds??a.actualHoldingSeconds)*1000};
+ return{id:[a.context,a.entryTriggeredAt].join('|'),engineId:a.engineId??String(a.context||'').split('|').at(-2)??null,side:a.side,at:Number(a.entryTriggeredAt),exitAt:Number(a.exitAt),entryPrice:Number(a.confirmedEntryPrice??a.entryPrice??a.projectedEntryPrice),durationMs:Number(a.holdingSeconds??a.actualHoldingSeconds)*1000,
+  fiveMinuteReversalConfirmed:a.fiveMinuteReversalConfirmed===true};
 }
 export class SignalExecutor{
  constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
@@ -345,9 +346,21 @@ export class SignalExecutor{
   this.watch();if(!this.enabled||this.suspensionReason)return;
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
-  if(mode==='automatic')s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
-  else {
-    // NO separate interval. The analyst's one selected duration is the cadence.
+  if(mode==='automatic'||Number(c.durationMs)===300000){
+    // For five minutes, reversal-only wins over periodic CALL/PUT settings.
+    // The original forced cadence remains untouched for 30s and 1m.
+    s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
+    if(Number(c.durationMs)===300000){
+      if(s?.fiveMinuteReversalConfirmed!==true){
+        s=null;
+        if(mode!=='automatic')this.message='Ligado · 5m apenas reversões confirmadas · aguardando';
+      }else if(mode!=='automatic'&&s.side!==(mode==='call'?'CALL':'PUT')){
+        s=null;
+        this.message='Ligado · aguardando reversão 5m na direção escolhida';
+      }
+    }
+  }else {
+    // Below 5m, periodic CALL/PUT retains its established behavior.
     const interval=Number(c.durationMs);
     if(!(interval>=5000&&interval<=300000))return;
     if(this.lastCadenceDurationMs!==interval){
@@ -365,6 +378,9 @@ export class SignalExecutor{
     }
   }
   if(s?.engineId&&s.engineId!==c.engine)return;
+  // Last mile: never queue a 5m signal without the current quote's proof.
+  if(Number(c.durationMs)===300000&&s&&
+     (Number(s.durationMs)!==300000||s.fiveMinuteReversalConfirmed!==true))return;
   // Diagnostic metadata is never part of order acceptance/validation.
   if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){
