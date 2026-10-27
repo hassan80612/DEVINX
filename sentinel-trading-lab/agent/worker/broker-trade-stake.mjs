@@ -63,3 +63,42 @@ export function readBrokerTradeStake(){
  const distinct=[...new Set(values)];
  return distinct.length===1?distinct[0]:null;
 }
+
+// One bounded recovery attempt after the broker replaces its Invest widget
+// on DEMO/REAL account changes. This selects ONLY a uniquely identified,
+// visible, broker-owned investment field: never a CALL/PUT or trade button.
+// The caller performs at most one Playwright click and re-reads the amount.
+export function locateBrokerInvestRecovery(){
+ const visible=el=>{
+  if(!el?.getBoundingClientRect||el.closest?.('#sentinel-trading-overlay-host,[inert],[aria-hidden="true"]'))return false;
+  const r=el.getBoundingClientRect(),style=getComputedStyle(el);
+  return r.width>=24&&r.height>=13&&r.width<=290&&r.height<=145&&
+   style.display!=='none'&&style.visibility!=='hidden'&&
+   !el.disabled&&el.getAttribute?.('aria-disabled')!=='true';
+ };
+ const excludes=/\b(?:call|put|buy|sell|comprar|vender|trade now|negociar|confirm|accept|deposit|depositar|retirar|withdraw|saldo|balance|payout|profit|lucro|multiplicar|multiply|divide|dividir)\b/i;
+ const invest=/\binvest(?:imento|ment)?\b/i;
+ const selectors='input,[role="spinbutton"],[data-testid*="invest" i],[data-test*="invest" i],[aria-label*="invest" i]';
+ const matches=[];
+ for(const el of [...document.querySelectorAll(selectors)].slice(0,100)){
+  if(!visible(el))continue;
+  const label=[el.getAttribute?.('aria-label'),el.getAttribute?.('title'),
+   el.getAttribute?.('data-testid'),el.getAttribute?.('data-test'),
+   el.getAttribute?.('placeholder'),el.getAttribute?.('name'),el.closest?.('label')?.textContent,
+   String(el.className||'')].filter(Boolean).join(' ');
+  if(!invest.test(label)||excludes.test(label))continue;
+  if(el.closest?.('button[aria-label*="call" i],button[aria-label*="put" i],[data-test*="buy" i],[data-test*="sell" i]'))continue;
+  const target=el.matches?.('input,[role="spinbutton"],button,[role="button"]')?el:
+   el.querySelector?.('input,[role="spinbutton"]')||el;
+  if(!visible(target))continue;
+  if(target.querySelector?.('button,[role="button"]')&&target!==el)continue;
+  matches.push(target);
+ }
+ const unique=[...new Set(matches)];
+ if(unique.length!==1)return{ready:false,reason:unique.length?'ambiguous':'not-found'};
+ const target=unique[0];
+ // A temporary attribute only identifies the exact element for one browser
+ // click; it is NOT an order selector and does not change the Invest value.
+ target.setAttribute('data-sentinel-invest-recovery','1');
+ return{ready:true,selector:'[data-sentinel-invest-recovery="1"]'};
+}
