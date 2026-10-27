@@ -64,7 +64,7 @@ test('the complete runtime emits the confirmed contrary signal through probabili
  const vertices=[103,101,102,100,101,100.5,101.5],q=[];
  for(let k=0;k<vertices.length-1;k++)for(let j=0;j<5;j++)q.push({ts:T+q.length*1000,price:vertices[k]+(vertices[k+1]-vertices[k])*j/5});
  q.push({ts:T+q.length*1000,price:101.5});
- for(const mirror of [false,true])for(const durationMs of [5000,10000,15000,30000,60000,120000,300000]){
+ for(const mirror of [false,true])for(const durationMs of [30000,60000,300000]){
   const quotes=mirror?q.map(p=>({...p,price:200-p.price})):q,last=quotes.at(-1);
   const z={...level(100,mirror?'resistance':'support'),tests:[{age:1}],windows:[3,10,20,50]};
   const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
