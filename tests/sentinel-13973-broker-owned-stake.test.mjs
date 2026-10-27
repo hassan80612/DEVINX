@@ -134,3 +134,44 @@ test('native Invest mapping reports each captured control persistently and never
  assert.match(route,/MAPEANDO 2\/3/);
  assert.match(route,/MAPEANDO 3\/3/);
 });
+
+test('a DEMO/REAL Invest DOM reset gets one targeted safe field click and fresh stake read',async()=>{
+ const {BrokerUiExecutor}=await import('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs');
+ const {readBrokerTradeStake,locateBrokerInvestRecovery}=await import('../sentinel-trading-lab/agent/worker/broker-trade-stake.mjs');
+ let reads=0,clicks=0,matched='';
+ const frame={
+  evaluate:async(fn,arg)=>{
+   if(fn===readBrokerTradeStake)return++reads===1?null:12;
+   if(fn===locateBrokerInvestRecovery)return{ready:true,selector:'[data-sentinel-invest-recovery="1"]'};
+   return true;
+  },
+  locator:selector=>({click:async()=>{matched=selector;clicks++;}})
+ };
+ const ui=new BrokerUiExecutor({state:()=>({symbol:'EUR/USD',activeId:76})});
+ ui.controls=async()=>({frame});
+ const result=await ui.prepare('exnova',{asset:'EUR/USD',activeId:76});
+ assert.equal(result.amount,12);
+ assert.equal(reads,2);assert.equal(clicks,1);
+ assert.equal(matched,'[data-sentinel-invest-recovery="1"]');
+});
+test('unknown Invest control never creates a trade or guesses stale account value',async()=>{
+ const {BrokerUiExecutor}=await import('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs');
+ const {readBrokerTradeStake,locateBrokerInvestRecovery}=await import('../sentinel-trading-lab/agent/worker/broker-trade-stake.mjs');
+ let clicks=0;
+ const frame={
+  evaluate:async fn=>fn===readBrokerTradeStake?null:
+   fn===locateBrokerInvestRecovery?{ready:false,reason:'ambiguous'}:null,
+  locator:()=>({click:async()=>{clicks++}})
+ };
+ const ui=new BrokerUiExecutor({state:()=>({symbol:'EUR/USD',activeId:76})});
+ ui.controls=async()=>({frame});
+ const result=await ui.prepare('exnova',{asset:'EUR/USD',activeId:76});
+ assert.equal(result.amount,null);assert.equal(clicks,0);
+});
+test('map controls is visible beside the PC analysis buttons, no Martingale levels are exposed',()=>{
+ const ui=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const panel=readFileSync(new URL('../sentinel-trading-lab/agent/worker/executor-panel.mjs',import.meta.url),'utf8');
+ assert.match(ui,/data-sentinel-action="stop"[\\s\\S]{0,1100}data-sentinel-executor-action="map"/);
+ assert.doesNotMatch(panel,/input\\('martingaleLevels'/);
+ assert.doesNotMatch(panel,/input\\('martingaleMultiplier'/);
+});
