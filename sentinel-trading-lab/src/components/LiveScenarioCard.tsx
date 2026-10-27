@@ -142,7 +142,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const vnext=!!s?.settings?.engine;
   // Duration selection is the lead time to a FUTURE entry.
   // Only the recorded entry schedule owns the hero countdown and direction.
-  const expiryChoices=vnext?[5,10,15,30,60]:[5,10,15,30,45,60,120,180,300,600,900,3600];
+  const expiryChoices=[30,60,300];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   const pausedReadings=s?.settings?.pausedReadings;
   const strategyCards=s?.lastResult?.analysis?.strategyCards;
@@ -286,7 +286,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // This is not a re-labelled candle: EVERY cell contains the selected
   // motor's actual forecast calculated at that particular future expiry.
   // 9 fixed slots prevent changing data/selection from moving the card.
-  const allFutureHorizons=[...new Set([5,10,30,60,120,300,Number(expirySeconds)])]
+  const allFutureHorizons=[...new Set([30,60,300])]
     .filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).slice(0,9);
 
   const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
