@@ -73,6 +73,32 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
  return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,
   priorLow,typicalStep:typical};
 }
+// Strict five-minute exception: ONLY an observed and confirmed reversal can
+// authorize a CALL/PUT. Trend continuations, breakouts, forecasts, EMA alignment
+// and old turns remain explanatory evidence, never trade permission.
+export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt,price}={}){
+ if(Number(durationMs)!==300000||candidate?.ready!==true)return candidate;
+ const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+ const valid=Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot&&
+  at>0&&at<=clock&&clock-at<=2500&&spot>0&&isSide(candidate.side);
+ const proof=candidate.priceStructure||{},reason=candidate.reason;
+ const current=e=>e&&e.side===candidate.side&&Number(e.confirmedAt)>0&&
+  Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=1450;
+ const rangeTurn=reason==='closed-range-extreme-reversal-confirmed'&&
+  candidate.regime==='observed-range-turn';
+ const levelTurn=['confirmed-fast-level-reversal','confirmed-level-structure-reversal'].includes(reason)&&
+  proof.confirmedReversal?.kind===reason&&current(proof.confirmedReversal);
+ const reclaimed=reason==='failed-breakout-structure-change'&&
+  proof.observedSequence?.structureChange?.kind===reason&&current(proof.observedSequence.structureChange);
+ const rejected=reason==='historical-level-rejection'&&
+  proof.reaction?.kind==='rejection'&&proof.reaction.side===candidate.side&&
+  proof.reactionProof?.confirmed===true&&proof.reactionProof?.kind==='sustained-level-reversal'&&
+  Number(proof.reactionProof.durationMs)===300000;
+ if(valid&&(rangeTurn||levelTurn||reclaimed||rejected))
+  return {...candidate,fiveMinuteReversalConfirmed:true};
+ return {...candidate,ready:false,side:null,reason:'five-minute-reversal-only-awaiting-proof',
+  fiveMinuteReversalConfirmed:false};
+}
 // Later evidence can revise a proposed side. Recheck that FINAL direction
 // against the same shared market safeguards; never rerun a learning selector.
 export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
@@ -412,7 +438,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
-  return {...final,engineId,qualityPolicy,
+  return {...fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price}),engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
