@@ -54,14 +54,14 @@ function settleAll(x,pnl){
   provider:x.c.provider,orderId:order.orderId,netPnl:pnl,source:'broker'}));
 }
 for(const provider of ['iq_option','exnova']){
- test(provider+': hard cap is exactly THREE Martingale increments, complete loss cycle 1→2→4→8→1 without stopping',async()=>{
+ test(provider+': hard cap is one Martingale recovery, complete loss cycle 1→2→1 without stopping',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;
-  assert.equal(MAX_MARTINGALE_LEVELS,3);
-  assert.throws(()=>x.bot.configure({martingaleLevels:4}));
-  assert.throws(()=>x.bot.configure({martingaleLevels:10}));
+  assert.equal(MAX_MARTINGALE_LEVELS,1);
+  x.bot.configure({martingaleLevels:4});assert.equal(x.bot.config.martingaleLevels,1);
+  x.bot.configure({martingaleLevels:10});assert.equal(x.bot.config.martingaleLevels,1);
   x.bot.configure({martingaleEnabled:true,martingaleLevels:3});
   await x.bot.start();
-  for(const n of [1,2,4,8]){
+  for(const n of [1,2]){
    const previous=x.calls.length;
    await x.fire('PUT');assert.equal(x.calls.length-previous,n);
    assert.equal(x.bot.pending.clickCount,n);
@@ -75,11 +75,11 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.enabled,true);
  });
 }
-test('dashboard enforces max3 and progression up to 8 in every supported language',()=>{
+test('dashboard has no levels or multiplier selectors, shows just one doubled recovery',()=>{
  for(const language of ['pt','en','es','fr','ar']){
   const html=executorPanel({config:{amount:1,martingaleEnabled:true,martingaleLevels:3},nextClicks:8},language);
-  assert.match(html,/data-sentinel-executor-setting="martingaleLevels"[^>]*max="3"/);
-  assert.match(html,/1 .* → 2 .* → 4 .* → 8 /);
+  assert.doesNotMatch(html,/data-sentinel-executor-setting="martingaleLevels"/);assert.doesNotMatch(html,/data-sentinel-executor-setting="martingaleMultiplier"/);
+  assert.match(html,/1 .* → 2 /);
   assert.doesNotMatch(html,/→ 16 /);
  }
 });
