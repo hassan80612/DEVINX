@@ -256,11 +256,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       runtime.patchSettings({[key]:String(value)},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
-      const n=Number(value);if(![5000,10000,15000,30000,60000,120000,300000].includes(n))throw new Error('invalid_short_operation_duration');
+      const n=Number(value);if(![30000,60000,300000].includes(n))throw new Error('invalid_short_operation_duration');
       runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:30},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
-      const n=Math.round(Number(value));if(![30,60,120,300,600,900,3600].includes(n))throw new Error('invalid_forecast_horizon');
+      const n=Math.round(Number(value));if(![30,60,300].includes(n))throw new Error('invalid_forecast_horizon');
       runtime.patchSettings({forecastHorizonSeconds:n},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='minConfidence'){
@@ -512,7 +512,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     // Match the strategy's quote-freshness gate. A new historical candle must
     // never make an old live quote appear current to the trader.
     const liveTs=Number(view.liveBroker?.lastQuoteAt||view.feed?.quoteTs||view.liveBroker?.lastCandleAt||0);
-    const forecastSeconds=view.settings?.engine?Math.max(5,Number(view.settings?.orderDurationMs||60000)/1000):Math.max(30,Number(view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000)));
+    const forecastSeconds=view.settings?.engine?Math.max(30,Number(view.settings?.orderDurationMs||60000)/1000):Math.max(30,Number(view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000)));
     const configuredFreshnessMs=Math.max(500,Number(view.settings?.risk?.maxFeedLatencyMs||2500));
     const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
