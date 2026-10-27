@@ -655,7 +655,7 @@ export class DemoTradingRuntime{
   _entryTimingState(analysis,snap,now=Date.now()){
     const general=analysis?.generalConsensus||{},quality=analysis?.quality||{},plans=analysis?.entryPlanner?.horizons||{},metrics=analysis?.metrics||{},short=metrics?.shortModel||{},micro=metrics?.micro||{};
     const durationMs=Math.max(15000,Number(this.settings.orderDurationMs||60000)),durationKey=String(Math.round(durationMs/1000));
-    const allowedHorizons=new Set([30,60,120,300,600,900,3600]),configuredHorizon=Math.round(Number(this.settings.forecastHorizonSeconds||durationMs/1000)),forecastHorizonSeconds=allowedHorizons.has(configuredHorizon)?configuredHorizon:Math.round(durationMs/1000),horizonKey=String(forecastHorizonSeconds),forecastHorizonMs=forecastHorizonSeconds*1000;
+    const allowedHorizons=new Set([30,60,300]),configuredHorizon=Math.round(Number(this.settings.forecastHorizonSeconds||durationMs/1000)),forecastHorizonSeconds=allowedHorizons.has(configuredHorizon)?configuredHorizon:Math.round(durationMs/1000),horizonKey=String(forecastHorizonSeconds),forecastHorizonMs=forecastHorizonSeconds*1000;
     const rawFuturePlan=plans[horizonKey]||null,rawExecutionPlan=plans[durationKey]||null;
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
     const futureThreshold=Math.max(50,Math.min(95,Number(this.settings.futureDisplayThreshold||70))),signalPoints=Math.max(55,Math.min(95,Number(this.settings.risk?.minConfidence||74)));
@@ -837,10 +837,10 @@ export class DemoTradingRuntime{
       patch={...patch};delete patch.engine;
     }
     if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
-      // Explicit 5s–1m operation expiries. The shared 30s chart reference
+      // Supported user operation expiries: 30s, 1m, 5m. The shared 30s chart reference
       // does not override the holding period selected by the user.
       if(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')&&
-        ![5000,10000,15000,30000,60000,120000,300000].includes(Number(patch.orderDurationMs)))
+        ![30000,60000,300000].includes(Number(patch.orderDurationMs)))
         throw new Error('invalid_short_operation_duration');
       patch={...patch,forecastMode:'continuous',
         ...(Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')?{forecastHorizonSeconds:30}:{})};
@@ -1637,8 +1637,8 @@ export class DemoTradingRuntime{
   restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.continuousCalibration.restore(data.continuousExpiryCalibration||[]);this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(['now-structural-v1','short-probability-v1'].includes(this.forecastModel)){
   delete this.settings.clockMode;
   delete this.settings.motorVariant;
-  // Persist all user-selected 5s to 5m durations across Agent restarts.
-  if(![5000,10000,15000,30000,60000,120000,300000].includes(Number(this.settings.orderDurationMs)))
+  // Migrate obsolete operation expiries on restart. Previously accepted 5/10/15s\n  // and 2m must never reappear as executable after a restart.
+  if(![30000,60000,300000].includes(Number(this.settings.orderDurationMs)))
     this.settings.orderDurationMs=30000;
   this.settings.forecastHorizonSeconds=30;
   this.settings.engine=normalizeUserStrategy(this.settings.engine);
