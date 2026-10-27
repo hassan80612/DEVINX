@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {inspectNativeExpiryBeforeClick} from './broker-native-expiry-keeper.mjs';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
-import {readBrokerTradeStake} from './broker-trade-stake.mjs';
+import {readBrokerTradeStake,locateBrokerInvestRecovery} from './broker-trade-stake.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
@@ -239,7 +239,32 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
- async prepare(provider,expected){this.checkContext(provider,expected);const c=await this.controls(provider);const amount=typeof c?.frame?.evaluate==='function'?await c.frame.evaluate(readBrokerTradeStake).catch(()=>null):null;return{ready:true,amount};}
+ async prepare(provider,expected){
+  this.checkContext(provider,expected);
+  const controls=await this.controls(provider),frame=controls?.frame;
+  let amount=typeof frame?.evaluate==='function'?
+   await frame.evaluate(readBrokerTradeStake).catch(()=>null):null;
+  if(!(Number(amount)>0)&&typeof frame?.evaluate==='function'){
+   // Account switching re-creates the broker's Invest field. Click ONLY an
+   // unambiguous Invest control, never CALL/PUT, then read its fresh amount.
+   const target=await frame.evaluate(locateBrokerInvestRecovery).catch(()=>null);
+   if(target?.ready&&typeof frame.locator==='function'){
+    const selector=target.selector;
+    try{
+     this.checkContext(provider,expected);
+     await frame.locator(selector).click({timeout:650});
+     amount=await frame.evaluate(readBrokerTradeStake).catch(()=>null);
+    }catch{}
+    finally{
+     await frame.evaluate(selector=>{
+      for(const el of document.querySelectorAll(selector))
+       el.removeAttribute('data-sentinel-invest-recovery');
+     },selector).catch(()=>{});
+    }
+   }
+  }
+  return{ready:true,amount:Number(amount)>0?Number(amount):null};
+ }
  async execute(provider,order){
   let yes,no,sentYes,sentNo,timer,timeoutResolve;
   const confirmation=new Promise((resolve,reject)=>{yes=resolve;no=reject;});confirmation.catch(()=>{});
