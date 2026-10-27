@@ -20,8 +20,12 @@ test('local mapper does not start execution or place a click',async()=>{
 test('map save checks the live page before accepting stale points',async()=>{
  const ui=new BrokerUiExecutor({sessions:new Map([['exnova',{page:{evaluate:async()=>({error:'Tamanho ou zoom mudou'})}}]])});await assert.rejects(ui.saveBinding('exnova',binding()),/zoom/);assert.equal(ui.canvasBindings.exnova,undefined);
 });
-test('bot panel names the selected broker and exposes one mapping action',()=>{
- for(const [provider,label] of [['iq_option','IQ Option'],['exnova','Exnova']]){const html=executorPanel({provider,config:{}});assert.ok(html.includes(label));assert.equal((html.match(/data-sentinel-executor-action="map"/g)||[]).length,1);}
+test('bot panel names the broker and mapping stays outside collapsed settings',()=>{
+ for(const [provider,label] of [['iq_option','IQ Option'],['exnova','Exnova']]){
+  const html=executorPanel({provider,config:{}});
+  assert.ok(html.includes(label));
+  assert.equal((html.match(/data-sentinel-executor-action="map"/g)||[]).length,0);
+ }
 });
 
 test('canvas actionability uses the remaining valid signal budget without a second click or extended deadline',async()=>{
