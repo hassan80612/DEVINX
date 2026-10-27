@@ -1147,6 +1147,9 @@ export class DemoTradingRuntime{
       const anchor=active?{
         ...next,projectedEntryPrice:next.entryPrice,
         projectedExitPrice:null,actualHoldingSeconds:next.holdingSeconds,
+        // Explicit evidence gate travels with the immutable one-shot entry.
+        fiveMinuteReversalConfirmed:Number(settings.orderDurationMs)===300000&&
+          observation.fiveMinuteReversalConfirmed===true,
         entryReadyNow:freshSignal
       }:null;
       this.vnextFutureEntryAnchor=anchor;
