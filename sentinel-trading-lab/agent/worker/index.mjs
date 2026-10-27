@@ -343,10 +343,10 @@ function saveState(){
 await loadState();
 try{
  const saved=JSON.parse(await readFile(executorSettingsFile,'utf8'));
- // Old installations could retain levels 4-10. Migrate to the new safe cap
- // instead of rejecting the entire saved bot configuration on startup.
- if(Number.isInteger(saved?.martingaleLevels)&&saved.martingaleLevels>3)
-  saved.martingaleLevels=3;
+ // Old Martingale levels are retired. Only one doubled recovery remains;
+ // never allow saved two/three-level configurations to reappear.
+ saved.martingaleLevels=1;
+ saved.martingaleMultiplier=2;
  executor.configure(saved);
 }catch{}
 try{uiExecutor.restoreBindings(JSON.parse(await readFile(executorTargetsFile,'utf8')))}catch{}
