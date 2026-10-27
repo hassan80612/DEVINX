@@ -143,22 +143,22 @@ test('fixed-mode martingale does not reset on a broker settlement delayed beyond
  assert.equal(x.calls.length,3,'next fresh cadence uses 2 clicks after confirmed loss');
 });
 
-test('nine sequential martingale clicks finish within bounded batch time',async()=>{
+test('two fixed Martingale recovery clicks finish within bounded batch time',async()=>{
  const x=fixture();x.c.durationMs=30000;
  x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
- await x.bot.start();x.bot.martingaleLevel=2;
+ await x.bot.start();x.bot.martingaleLevel=1;
  const old=x.bot.driver.execute;let step=0;
  x.bot.driver.execute=async(p,order)=>{x.setTime((++step)*350);return old(p,order)};
  x.bot.pulse();await x.bot.inflight;
- assert.equal(x.calls.length,9);
+ assert.equal(x.calls.length,2);
  assert.equal(x.calls[0].at,START+350,'first click still punctual');
- assert.equal(x.calls.at(-1).at,START+3150,'last click fits bounded window');
+ assert.equal(x.calls.at(-1).at,START+700,'last click fits bounded window');
  assert.equal(x.bot.enabled,true);
 });
 test('a first martingale click arriving late never starts the batch',async()=>{
  const x=fixture();x.c.durationMs=30000;
  x.bot.configure({directionMode:'put',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
- await x.bot.start();x.bot.martingaleLevel=2;
+ await x.bot.start();x.bot.martingaleLevel=1;
  x.bot.driver.execute=async(_,order)=>{x.setTime(1100);assert.equal(order.isValid(),false);throw Object.assign(Error('late first'),{beforeClick:true})};
  x.bot.pulse();await x.bot.inflight;
  assert.equal(x.calls.length,0);
@@ -167,7 +167,7 @@ test('a first martingale click arriving late never starts the batch',async()=>{
 test('partial terminal martingale cannot reset its stage until fully executed',async()=>{
  const x=fixture();x.c.durationMs=30000;
  x.bot.configure({directionMode:'call',martingaleEnabled:true,martingaleMultiplier:3,martingaleLevels:2});
- await x.bot.start();x.bot.martingaleLevel=2;
+ await x.bot.start();x.bot.martingaleLevel=1;
  const old=x.bot.driver.execute;let step=0;
  x.bot.driver.execute=async(p,o)=>{x.setTime((++step)*700);if(!o.isValid())throw Object.assign(Error('batch over'),{beforeClick:true});return old(p,o)};
  x.bot.pulse();await x.bot.inflight;
