@@ -6,7 +6,7 @@ test('compact card preserves every editable bot setting and exposes only one sta
  const html=executorPanel(state),actions=executorActions(state);
  for(const key of ['directionMode','stopLoss','stopWin','martingaleEnabled','maxConsecutiveLosses'])assert.equal((html.match(new RegExp('data-sentinel-executor-setting="'+key+'"','g'))||[]).length,1,key);
  assert.match(html,/value="37\.25"/);assert.match(html,/value="123\.45"/);
- assert.match(html,/1 clique\\(s\\) → 2 clique\\(s\\)/);assert.doesNotMatch(html,/data-sentinel-executor-setting=\"martingaleLevels\"|data-sentinel-executor-setting=\"martingaleMultiplier\"/);
+ assert.ok(html.includes('1 clique(s) → 2 clique(s)'));assert.doesNotMatch(html,/data-sentinel-executor-setting=\"martingaleLevels\"|data-sentinel-executor-setting=\"martingaleMultiplier\"/);
  assert.match(html,/Disponível: 72\.99/);assert.match(html,/WIN: 2 \/ LOSS: 3/);
  assert.doesNotMatch(html,/<details[^>]*\sopen[\s>]/);
  assert.doesNotMatch(html,/executor-action="(?:start|stop)"/);
