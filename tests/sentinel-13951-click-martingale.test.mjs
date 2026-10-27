@@ -10,25 +10,25 @@ function settleSequence(x,values){
  for(const [i,p] of [...batch.orders].entries())assert.ok(x.bot.settle({provider:x.c.provider,accountId:'10',orderId:p.orderId,netPnl:values[i],source:'broker'}));
 }
 for(const provider of ['iq_option','exnova']){
- test(provider+': 1→2→4 physical clicks at fixed stake, reset on win/final level, retain on tie',async()=>{
+ test(provider+': 1→2 physical clicks only, reset on win or final loss, retain on tie',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();
-  for(const [count,pnl] of [[1,-1],[2,0],[2,-1],[4,-1],[1,-1],[2,.86],[1,.86]]){
+  for(const [count,pnl] of [[1,-1],[2,0],[2,-1],[1,-1],[2,.86],[1,.86]]){
    const before=x.calls.length;await x.fire('PUT');assert.equal(x.calls.length-before,count);assert.equal(x.bot.pending.clickCount,count);assert.equal(x.bot.pending.amount,count);
    assert.ok(x.calls.slice(before).every(p=>p.amount===1&&p.side==='PUT'));settleSequence(x,Array(count).fill(pnl));assert.equal(x.bot.pending,null);
   }
-  assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.executed,13);assert.equal(x.bot.closed,13);
+  assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.executed,9);assert.equal(x.bot.closed,9);
  });
  test(provider+': progression waits for ALL individual closes and uses aggregate result, not the first win',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire('PUT');
   const batch=x.bot.pending,[a,b]=batch.orders;x.advance(60000);
   assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}));assert.equal(x.bot.pending,batch);assert.equal(x.bot.nextClicks(),2);
-  assert.equal(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}),false);assert.ok(x.bot.settle({provider,orderId:a.orderId,netPnl:-1}));assert.equal(x.bot.nextClicks(),4);assert.equal(x.bot.closed,3);
+  assert.equal(x.bot.settle({provider,orderId:b.orderId,netPnl:.86}),false);assert.ok(x.bot.settle({provider,orderId:a.orderId,netPnl:-1}));assert.equal(x.bot.nextClicks(),1);assert.equal(x.bot.closed,3);
  });
  test(provider+': full-sequence loss protection uses absolute bankroll floor and broker reading',async()=>{
   const x=setup(provider);x.balance(50);x.bot.configure({martingaleEnabled:true,martingaleLevels:3,stopLoss:48});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire('PUT');assert.equal(x.bot.enabled,true,'cached bankroll cannot fabricate a platform stop');assert.equal(x.bot.stopLossReached(),false);
  });
- test(provider+': a late broker LOSS before next entry restores 4-click progression',async()=>{
-  const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire();const [a,b]=x.bot.pending.orders;x.advance(30000);x.bot.settle({provider,orderId:a.orderId,netPnl:-1});assert.ok(x.bot.pending);x.advance(15001);x.bot.watch();assert.equal(x.bot.pending,null);assert.equal(x.bot.unresolvedBatches.size,1);assert.equal(x.bot.enabled,true);assert.equal(x.bot.nextClicks(),1);assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:-1}));assert.equal(x.bot.unresolvedBatches.size,0);assert.equal(x.bot.nextClicks(),4);
+ test(provider+': a late broker LOSS at the final recovery returns to a single click',async()=>{
+  const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire();const [a,b]=x.bot.pending.orders;x.advance(30000);x.bot.settle({provider,orderId:a.orderId,netPnl:-1});assert.ok(x.bot.pending);x.advance(15001);x.bot.watch();assert.equal(x.bot.pending,null);assert.equal(x.bot.unresolvedBatches.size,1);assert.equal(x.bot.enabled,true);assert.equal(x.bot.nextClicks(),1);assert.ok(x.bot.settle({provider,orderId:b.orderId,netPnl:-1}));assert.equal(x.bot.unresolvedBatches.size,0);assert.equal(x.bot.nextClicks(),1);
  });
  test(provider+': disabling martingale while a sequence is open preserves orders then returns to one click',async()=>{
   const x=setup(provider);x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);await x.fire();assert.equal(x.bot.pending.orders.length,2);x.bot.configure({martingaleEnabled:false});settleSequence(x,[-1,-1]);assert.equal(x.bot.nextClicks(),1);await x.fire();assert.equal(x.bot.pending.orders.length,1);
@@ -61,8 +61,8 @@ for(const provider of ['iq_option','exnova']){
   assert.equal(x.bot.enabled,true);
  });;
 }
-test('maximum is finite/integer, zero disables progression, and wire carries click count without IDs',async()=>{
- const x=setup();for(const levels of [-1,1.5,11,Infinity])assert.throws(()=>x.bot.configure({martingaleLevels:levels}));x.bot.configure({martingaleEnabled:true,martingaleLevels:0});await x.bot.start();await x.fire();settleSequence(x,[-1]);assert.equal(x.bot.nextClicks(),1);
+test('one fixed recovery ignores old level/multiplier inputs, wire hides account IDs',async()=>{
+ const x=setup();for(const levels of [-1,1.5,11,Infinity]){x.bot.configure({martingaleLevels:levels,martingaleMultiplier:3});assert.equal(x.bot.config.martingaleLevels,1);assert.equal(x.bot.config.martingaleMultiplier,2);}x.bot.configure({martingaleEnabled:true});await x.bot.start();await x.fire();settleSequence(x,[-1]);assert.equal(x.bot.nextClicks(),2);
  const out=unpackExecutor(packExecutor({...x.bot.status(),nextClicks:8,brokerBalance:{amount:30,accountId:'private-id'}}));assert.equal(out.nextClicks,8);assert.equal(out.capabilities.brokerExecution,5);assert.doesNotMatch(JSON.stringify(out),/private-id/);
 });
 test('clean pre-martingale base has only CALL/PUT mapping; no value/expiry/keyboard/diagnostic dependency',async()=>{
@@ -71,7 +71,7 @@ test('clean pre-martingale base has only CALL/PUT mapping; no value/expiry/keybo
  for(const provider of ['iq_option','exnova']){const ui=new BrokerUiExecutor({state:()=>({symbol:'EURUSD',activeId:76})});let lookups=0;ui.controls=async()=>{lookups++;return{};};await ui.prepare(provider,{asset:'EUR/USD',activeId:76});assert.equal(lookups,1);}
 });
 test('PC panel says fixed-value clicks and removes keyboard diagnosis in every language',()=>{
- for(const language of ['pt','en','es','fr','ar']){const html=executorPanel({config:{amount:3,martingaleEnabled:true,martingaleLevels:3},nextClicks:4},language);assert.doesNotMatch(html,/executor-action="diagnose"/);assert.doesNotMatch(html,/executor-setting="(?:initialBalance|payoutPercent)"/);assert.match(html,/1 .* → 2 .* → 4 .* → 8 /);}
+ for(const language of ['pt','en','es','fr','ar']){const html=executorPanel({config:{amount:3,martingaleEnabled:true,martingaleLevels:3},nextClicks:4},language);assert.doesNotMatch(html,/executor-action="diagnose"/);assert.doesNotMatch(html,/executor-setting="(?:initialBalance|payoutPercent)"/);assert.match(html,/1 .* → 2 /);assert.doesNotMatch(html,/data-sentinel-executor-setting="martingaleLevels"/);assert.doesNotMatch(html,/data-sentinel-executor-setting="martingaleMultiplier"/);}
 });
 test('Stop during dispatch cancels remaining clicks but keeps an accepted order and its loss accounting',async()=>{
  const x=setup();x.c.brokerBalance=null;x.bot.configure({martingaleEnabled:true,martingaleLevels:2});await x.bot.start();await x.fire();settleSequence(x,[-1]);let clicks=0;
