@@ -50,9 +50,9 @@ function executorPanelParts(state,language='pt',options={}){
  '<label style="display:grid;gap:4px">'+l[1]+'<select data-sentinel-executor-setting="directionMode" style="padding:7px;max-width:100%;background:#092025;color:#f4faf8;border:1px solid #657977;border-radius:7px">'+['automatic','call','put'].map((mode,i)=>'<option value="'+mode+'"'+((c.directionMode||'automatic')===mode?' selected':'')+'>'+l[i+2]+'</option>').join('')+'</select></label>'+
  (options.externalMartingale?'':'<label style="display:flex;gap:6px;align-items:center"><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+(state.arming?' disabled':'')+'>'+l[7]+'</label>')+
  input('stopLoss',l[5],c.stopLoss??0,'0.01')+input('stopWin',l[6],c.stopWin??0,'0.01')+
- input('martingaleLevels',l[8],Math.min(3,c.martingaleLevels??2))+input('martingaleMultiplier',l[9],multiplier)+
+ 
  input('maxConsecutiveLosses',l[10],c.maxConsecutiveLosses??0)+'</div><div style="margin-top:7px;opacity:.8">'+progression+'</div><small style="display:block;margin-top:7px;line-height:1.4;opacity:.8">'+l[20]+'</small>'+
- '<button data-sentinel-executor-action="map"'+(state.enabled||state.arming||state.pending||state.executing?' disabled':'')+' style="margin-top:8px;background:transparent;color:inherit;border:1px solid #657977;border-radius:7px;padding:6px 9px">'+l[11]+'</button></details>'+
+ '</details>'+
  '<details data-sentinel-preserve-open="1" style="margin-top:7px"><summary style="cursor:pointer;opacity:.7">'+l[19]+'</summary><div data-sentinel-executor-risk style="margin-top:5px">'+l[22]+': '+Number(state.consecutiveLossBatches||0)+' · '+number(state.riskNetPnl)+'</div></details>';
  return {styles,summary,details,active,status,stopStatus};
 }
