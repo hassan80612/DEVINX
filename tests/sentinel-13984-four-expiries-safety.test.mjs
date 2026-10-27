@@ -74,7 +74,7 @@ test('legacy selected expiry is migrated, while unrelated bot cadence is untouch
  snapshot.settings.orderDurationMs=120000;
  const restored=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
  restored.restore(snapshot);
- assert.equal(restored.settings.orderDurationMs,30000);
+ assert.equal(restored.settings.orderDurationMs,60000,'obsolete 2m migrates to 1m rather than silently resetting to 30s');
  const consoleUi=readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
  const overlay=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const phone=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
