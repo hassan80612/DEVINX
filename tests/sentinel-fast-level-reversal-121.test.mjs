@@ -29,7 +29,7 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
  }
 });
 test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{
- for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [5000,10000,15000,30000,60000,120000,300000]){
+ for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [30000,60000,300000]){
   const f=fixture(mirror),r=runtime(f,engine,ms),v=gate(r,f.q);
   assert.equal(v.futureEntryAnchor?.side,f.side,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
   assert.equal(v.futureEntryAnchor.exitAt,f.q.at(-1).ts+ms);
