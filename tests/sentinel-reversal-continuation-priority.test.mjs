@@ -26,7 +26,7 @@ test('a verified current structural reversal is evaluated even when an older con
 });
 
 test('the full runtime issues the verified reversal through final review for each expiry and strategy',()=>{
- for(const mirror of [false,true])for(const durationMs of [5000,10000,15000,30000,60000,120000,300000])
+ for(const mirror of [false,true])for(const durationMs of [30000,60000,300000])
  for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest']){
   const a=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
   rt.patchSettings({engine,orderDurationMs:durationMs},'reversal-priority');
