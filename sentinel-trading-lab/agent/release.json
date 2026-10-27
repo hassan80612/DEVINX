@@ -1,6 +1,6 @@
 {
-  "version": "13.9.146",
-  "build": "13.9.146-five-minute-reversal-only",
+  "version": "13.9.147",
+  "build": "13.9.147-invest-recovery-map-martingale-one",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
