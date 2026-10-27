@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {analyzeNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
-const short=[5000,10000,15000,30000,60000,120000,300000];
+const short=[30000,60000,300000];
 const make=()=>new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
 test('new short-term Sentinel engine defaults to 30-second expiry and reference',()=>{
  const runtime=make();
  assert.equal(runtime.settings.orderDurationMs,30000);
  assert.equal(runtime.settings.forecastHorizonSeconds,30);
 });
-test('5/10/15/30/60s and 2/5m are independent expiries under shared 30s analysis reference',()=>{
+test('30s 1m and 5m are the supported independent expiries under shared 30s analysis reference',()=>{
  for(const value of short){
   const runtime=make();
   runtime.patchSettings({orderDurationMs:value,forecastHorizonSeconds:value/1000});
@@ -19,7 +19,7 @@ test('5/10/15/30/60s and 2/5m are independent expiries under shared 30s analysis
  }
 });
 test('unsupported expiries remain rejected; supported 1m is explicitly accepted',()=>{
- for(const value of [31000,45000,90000,3600000]){
+ for(const value of [5000,10000,15000,31000,45000,90000,120000,3600000]){
   const runtime=make();
   assert.throws(()=>runtime.patchSettings({orderDurationMs:value}),/invalid_short_operation_duration/);
   assert.equal(runtime.settings.orderDurationMs,30000);
