@@ -9,9 +9,13 @@ const words={
 // Shared controls stay next to the analyst controls, outside collapsed settings.
 export function executorActions(state,language='pt'){
  if(!state)return '';const w=words[language]||words.pt;
- return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">'+
- '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-height:35px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer">'+w[6]+'</button>'+
- '<button data-sentinel-executor-action="stop" style="min-height:35px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer">'+w[7]+'</button></div>';
+ // All six commands share one stable parent grid in the PC overlay.
+ const mapDisabled=!!(state.enabled||state.arming||state.pending||state.executing);
+ const css='min-width:0;min-height:34px;border-radius:8px;font:800 9px/1 inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+ return '<div data-sentinel-bot-actions style="display:contents">'+
+  '<button data-sentinel-executor-action="map"'+(mapDisabled?' disabled':'')+' style="'+css+';border:1px solid #657977;background:#18383c;color:#e9f6f2">Mapear</button>'+
+  '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="'+css+';border:1px solid #65c9a5;background:#174c40;color:#d8fff0">'+w[6]+'</button>'+
+  '<button data-sentinel-executor-action="stop" style="'+css+';border:1px solid #c07983;background:#4b2932;color:#ffe5e9">'+w[7]+'</button></div>';
 }
 function executorPanelParts(state,language='pt',options={}){
  if(!state)return '';const w=words[language]||words.pt,c=state.config||{};
