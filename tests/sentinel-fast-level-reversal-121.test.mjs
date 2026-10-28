@@ -63,3 +63,19 @@ test('skipped late-floor PUT leaves the way open for a later proven CALL reversa
  assert.equal(second.nowObservation.side,'CALL');
  assert.equal(second.futureEntryAnchor?.side,'CALL','confirmed fast turn can be acted on');
 });
+
+test('5m at a respected extreme takes only a proven fast turn, not a late continuation',()=>{
+ for(const mirror of [false,true]){
+  const f=fixture(mirror),r=runtime(f,'automatic',300000);
+  const last=f.q.at(-1);
+  const v=gate(r,f.q);
+  assert.equal(v.nowObservation.ready,true,mirror?'resistance must allow PUT':'support must allow CALL');
+  assert.equal(v.nowObservation.side,f.side);
+  assert.equal(v.nowObservation.reason,'confirmed-fast-level-reversal');
+  assert.equal(v.futureEntryAnchor?.side,f.side);
+  assert.equal(v.futureEntryAnchor?.exitAt-last.ts,300000,'5m order must expire in 5 minutes');
+  const stale=f.q.map((q,i)=>i===f.q.length-1?{...q,receivedAt:last.ts+2000}:q);
+  assert.equal(confirmedFastLevelReversal({...input(f),quoteHistory:stale}),null,
+   'an unreceived quote must never fabricate a reversal');
+ }
+});
