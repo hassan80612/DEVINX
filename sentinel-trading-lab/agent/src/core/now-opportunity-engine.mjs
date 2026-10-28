@@ -233,12 +233,14 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // A confirmed oscillation retains its range identity even when a short
  // directional leg develops inside it. The October 22 escape caused trend
  // chasing near established extremes before the third-turn reaction.
- // For >=60s holds, do not enter a brief repeating swing whose observed
- // half-cycle is shorter than the intended broker outcome window.
- // This is a market-structure check, NOT an added timer or polling delay.
- if(pivots.length===2&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
+ // Keep the observed-swing duration screen for shorter holds. For 5m,
+ // a confirmed turn at a verified range edge is its own structural evidence;
+ // the 135s local tape cannot prove a 5m half-cycle and rejected those turns
+ // before their extreme position and current reversal could be evaluated.
+ const shortExpirySwingGuard=Number(holdingMs)>=60000&&Number(holdingMs)<300000;
+ if(shortExpirySwingGuard&&pivots.length===2&&Number(holdingMs)/1000>half*1.35)
   return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
- if(regular&&Number(holdingMs)>=60000&&Number(holdingMs)/1000>half*1.35)
+ if(shortExpirySwingGuard&&regular&&Number(holdingMs)/1000>half*1.35)
   return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  const position=(Math.log(spot)-lower)/span;
  // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
@@ -499,7 +501,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,
     observedAt:Number(quoteAt),entryPrice:Number(price),
-    strength:null,expirySeconds:seconds,
+    strength:null,expirySeconds:seconds,rangePosition:range.position,
+    rangeExtreme:range.position<=.27||range.position>=.73,
     regime:'observed-range-turn',observedSwingSeconds:range.observedSwingSeconds};
  }
  // Build a causal observation from the FIRST fully observed candle onward.
