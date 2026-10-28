@@ -1,6 +1,6 @@
 {
-  "version": "13.9.149",
-  "build": "13.9.149-adaptive-persistence-expiry-ui",
+  "version": "13.9.150",
+  "build": "13.9.150-persistence-click-chart-smoothness",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -19,5 +19,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.149"
+  "publicVersion": "13.9.150"
 }
