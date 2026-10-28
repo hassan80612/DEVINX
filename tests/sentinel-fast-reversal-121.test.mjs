@@ -9,15 +9,20 @@ const level=(price,role)=>({low:price,high:price,level:price,tests:[{age:1},{age
 function fixture(mirror=false){
  const quoteHistory=Array.from({length:720},(_,i)=>({ts:T-180000+i*250,price:106-5.89*i/720}));
  for(const [i,price] of [100.11,100.07,100.025,99.99,100.018,100.044,100.065].entries())quoteHistory.push({ts:T+i*250,price});
- for(const [i,price] of [100.085,100.105,100.125,100.145].entries())quoteHistory.push({ts:T+1750+i*250,price});
  if(mirror)for(const q of quoteHistory)q.price=200-q.price;
  const levels=mirror?[level(100,'resistance'),level(99,'support')]:[level(100,'support'),level(101,'resistance')];
  const last=quoteHistory.at(-1),map={observedCandles:100,asOf:T-60000,tolerance:.07,levels,windows:[]};
  return {map,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price,side:mirror?'PUT':'CALL'};
 }
+function oneMinuteFixture(f){
+ const quoteHistory=[...f.quoteHistory],raw=f.side==='PUT'?[200-100.085,200-100.105]:[100.085,100.105];
+ for(const [i,price] of raw.entries())quoteHistory.push({ts:T+1750+i*250,price});
+ const last=quoteHistory.at(-1);return {...f,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price};
+}
 test('rapid V at known support and resistance reaches full runtime for every strategy and expiry without another candle',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [30000,60000,300000]){
-  const f=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+  const base=fixture(mirror),f=durationMs===60000?oneMinuteFixture(base):base,
+   rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
   rt.patchSettings({engine,asset:'EUR/USD',orderDurationMs:durationMs},'test');
   rt.structureCache={get:()=>({candles:100,asOf:f.map.asOf,tolerance:.07,atr:.7,averages:[],zones:f.map.levels,candleLevelMap:f.map})};
   const out=rt._signalValidationGate({analysis:{},settings:rt.settings,now:f.now,snap:{provider:'exnova',price:f.price,quoteTs:f.quoteAt,quoteHistory:f.quoteHistory,candles:[],historicalCandlesVerified:true}});

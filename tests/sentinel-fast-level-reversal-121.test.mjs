@@ -7,7 +7,6 @@ function fixture(mirror=false,scale=1){
  const transform=p=>(mirror?200-p:p)*scale;
  const q=Array.from({length:720},(_,i)=>({ts:T-180000+i*250,price:transform(106-(106-100.11)*i/720)}));
  for(const [i,p] of [100.11,100.07,100.025,99.99,100.018,100.044,100.065].entries())q.push({ts:T+i*250,price:transform(p)});
- for(const [i,p] of [100.085,100.105,100.125,100.145].entries())q.push({ts:T+1750+i*250,price:transform(p)});
  const level=(p,role)=>({low:transform(p),high:transform(p),level:transform(p),touches:3,pivots:1,tests:[{age:1},{age:3}],windows:[3,10,20,50,100],confirmedPivots:1,independentTests:3,independentRejections:2,
   supportPivots:role==='support'?1:0,resistancePivots:role==='resistance'?1:0,supportRejections:role==='support'?2:0,resistanceRejections:role==='resistance'?2:0,supportWick:role==='support'?.8:0,resistanceWick:role==='resistance'?.8:0});
  const zs=[level(100,mirror?'resistance':'support'),level(101,mirror?'support':'resistance')];
@@ -22,6 +21,11 @@ function runtime(f,engine,durationMs){
  return r;
 }
 const gate=(r,q)=>r._signalValidationGate({analysis:{},settings:r.settings,now:q.at(-1).ts,snap:{provider:'exnova',price:q.at(-1).price,quoteTs:q.at(-1).ts,quoteHistory:q,candles:[],historicalCandlesVerified:true,payout:null}}).analysis.vnext;
+function oneMinuteFixture(f){
+ const q=[...f.q],raw=f.side==='PUT'?[200-100.085,200-100.105]:[100.085,100.105];
+ for(const [i,p] of raw.entries())q.push({ts:T+1750+i*250,price:p});
+ const last=q.at(-1);return {...f,q,quoteHistory:q,quoteAt:last.ts,now:last.ts,price:last.price};
+}
 test('a meaningful fast V at a pre-existing respected support/resistance qualifies without a second pullback, symmetrically at different price scales',()=>{
  for(const mirror of [false,true])for(const scale of [.01,1,20]){
   const f=fixture(mirror,scale),proof=confirmedFastLevelReversal(input(f));
@@ -36,7 +40,7 @@ test('short expiries reject a two-tick bounce while the 5m rule remains unchange
    if(row.ts===T+1000)row.price=(mirror?200-100.05:100.05);
    if(row.ts===T+1250)row.price=(mirror?200-100.11:100.11);
   }
-  const a={...input(f),q:undefined,quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
+  const a={...input(f),quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
   assert.equal(confirmedFastLevelReversal({...a,durationMs:30000}),null);
   assert.equal(confirmedFastLevelReversal({...a,durationMs:60000}),null);
   assert.equal(confirmedFastLevelReversal({...a,durationMs:300000})?.side,f.side);
@@ -48,7 +52,8 @@ test('short expiries reject a two-tick bounce while the 5m rule remains unchange
 });
 test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [30000,60000,300000]){
-  const f=fixture(mirror),r=runtime(f,engine,ms),v=gate(r,f.q);
+  const base=fixture(mirror),f=ms===60000?oneMinuteFixture(base):base,
+   r=runtime(f,engine,ms),v=gate(r,f.q);
   assert.equal(v.futureEntryAnchor?.side,f.side,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
   assert.equal(v.futureEntryAnchor.exitAt,f.q.at(-1).ts+ms);
   assert.equal(v.nowObservation.reason,'confirmed-fast-level-reversal');
