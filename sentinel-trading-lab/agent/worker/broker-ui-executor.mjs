@@ -1,5 +1,4 @@
 import {randomUUID} from 'node:crypto';
-import {inspectNativeExpiryBeforeClick} from './broker-native-expiry-keeper.mjs';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 import {readBrokerTradeStake,locateBrokerInvestRecovery} from './broker-trade-stake.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
@@ -281,12 +280,10 @@ export class BrokerUiExecutor{
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);this.setNativeExpiryPreference(provider,order.durationMs);const c=await this.controls(provider);
-   const expiryWaitMs=Number.isFinite(Number(order.entryDeadlineAt))?
-    Math.max(0,Math.min(850,Number(order.entryDeadlineAt)-Date.now()-120)):850;
-   const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick,{maxWaitMs:expiryWaitMs});
-   order.nativeExpiryInspection=expiry;
-   if(expiry?.blocked)throw Object.assign(errorBefore('Prazo da corretora não sincronizou dentro da janela do sinal; nenhum clique foi enviado.'),{nativeExpiryChanged:true});
-   this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
+   // Native expiry is restored by the background keeper. Do not hold a fresh
+   // signal while polling the broker UI; an expiry mismatch is diagnostic only.
+   order.nativeExpiryInspection={requiredDurationMs:Number(order.durationMs),validatedSynchronously:false};
+   this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.
    this.attempt=attempt;
@@ -294,7 +291,7 @@ export class BrokerUiExecutor{
     timeoutResolve({pending:true,accepted:false,requestId:attempt.requestId,localId:order.id,
       message:'Clique aguardando confirmação da corretora · sem repetir'});
    },this.ackTimeoutMs);
-   const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Entrada cancelada antes do clique.');order.captureEntry?.();order.clickAttempted=true;};
+   const before=()=>{this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Entrada cancelada antes do clique.');order.captureEntry?.();order.clickAttempted=true;};
    // Restrict Playwright's own click wait to remaining valid signal time.
    const clickTimeout=()=>{
      if(!Number.isFinite(Number(order.entryDeadlineAt)))return 350;
