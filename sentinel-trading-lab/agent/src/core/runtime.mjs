@@ -29,7 +29,7 @@ import {evolveOpportunity,opportunityContext} from './single-opportunity-window.
 import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
-import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly} from './now-opportunity-engine.mjs';
+import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly,assessDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1272,6 +1272,23 @@ export class DemoTradingRuntime{
           probabilitySource:preliminary?.source??null
         });
       }
+      const persistenceDuration=Number(settings.orderDurationMs);
+      const trendPersistence=[30000,60000].includes(persistenceDuration)?
+        assessDirectionalPersistence({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+          now,price:snap.price,durationMs:persistenceDuration}):null;
+      const phaseCandidate=eligible.ready===true?eligible:observation;
+      const phaseReason=String(phaseCandidate?.reason||'');
+      const confirmedPhase=/reversal|rejection|failed-breakout|structure-change|range-extreme/i.test(phaseReason);
+      const fadingPhase=['weakening','reversal-testing'].includes(trendPersistence?.phase);
+      const derivedPhase=persistenceDuration===300000?
+        (eligible.ready===true?'reversal-confirmed':'reversal-review'):
+        eligible.ready===true&&confirmedPhase?'reversal-confirmed':
+        eligible.ready===true&&trendPersistence?.side&&eligible.side!==trendPersistence.side&&fadingPhase?
+          'reversal-forming':trendPersistence?.phase||'insufficient';
+      const phaseLabels={continuing:'CONTINUIDADE',weakening:'CONTINUIDADE PERDENDO FORÇA',
+        'reversal-testing':'REVERSÃO EM TESTE','reversal-forming':'REVERSÃO EM FORMAÇÃO',
+        'reversal-confirmed':'REVERSÃO CONFIRMADA','reversal-review':'OBSERVANDO EXTREMO',
+        range:'LATERAL',mixed:'INCONCLUSIVO',insufficient:'OBSERVANDO'};
       const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
       const currentWindowOutcomes=this.vnextWindowOutcomes.filter(x=>
         String(x.asset).toUpperCase()===String(settings.asset).toUpperCase()&&
@@ -1292,12 +1309,10 @@ export class DemoTradingRuntime{
           side:eligible.side,provisionalSide:eligible.side||eligible.provisionalSide||null,
           rawSide:observation.side,rawReason:observation.reason,
           ready:eligible.ready,reason:eligible.reason,
-          marketPhase:eligible.marketPhase||observation.marketPhase||
-            (Number(settings.orderDurationMs)===300000?(eligible.ready?'reversal-confirmed':'reversal-review'):null),
-          marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||
-            (Number(settings.orderDurationMs)===300000?(eligible.ready?'REVERSÃO CONFIRMADA':'OBSERVANDO EXTREMO'):'OBSERVANDO'),
-          marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||null,
-          trendPersistence:eligible.trendPersistence||observation.trendPersistence||null,
+          marketPhase:eligible.marketPhase||observation.marketPhase||derivedPhase,
+          marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase]||'OBSERVANDO',
+          marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side||null,
+          trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
           observedAt:eligible.observedAt,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
