@@ -762,6 +762,9 @@ export class LocalPlaywrightDriver{
     // the Sentinel prediction expiry. Install once per broker page context.
     if(provider&&['iq_option','exnova'].includes(provider)){
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
+      // Do not capture a mutable expiry in this one-time script: an old 30s
+      // default could overwrite the user's saved duration on a later broker reload.
+      // New documents read the stored choice; the current runtime choice is applied below.
       if(!page.__sentinelNativeExpiryInitScript){
         page.__sentinelNativeExpiryInitScript=true;
         await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
