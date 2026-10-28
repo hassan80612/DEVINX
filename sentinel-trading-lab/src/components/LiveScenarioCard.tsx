@@ -9,6 +9,7 @@ import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '.
 import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
+const SENTINEL_RELEASE_VERSION='13.9.148';
 const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id));
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
@@ -342,7 +343,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>{t("● AO VIVO · PUSH")}</small>:null;
   const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
     'PC '+m.quoteAgeAtFrame+'s · CANAL '+m.transportAge+'s':null;
-  if(compact)return <section className={`liveScenario liveScenarioRefined liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
+  if(compact)return <section className={`liveScenario liveScenarioRefined liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact" data-release-version={SENTINEL_RELEASE_VERSION}>
     <header className="compactHeader"><div><small>{t("SENTINEL · ANALISTA PC")}</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">{t("← Início")}</button></header>
     {engineSettings}
     {!vnext&&<>
@@ -390,7 +391,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="compactContext">{vnext?(nowMode?t('Estratégia · vencimento '):t('Estratégia selecionada · horizonte '))+expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000):t('Previsão ')+Math.round(Number(s?.settings?.forecastHorizonSeconds||60))+'s'}</div>
     <footer>{t("Cotação recebida do PC.")}</footer>
   </section>;
-  return <section className={`liveScenario ${m.tone}`} aria-label={t('Cenário ao vivo')} data-testid="live-scenario">
+  return <section className={`liveScenario ${m.tone}`} aria-label={t('Cenário ao vivo')} data-testid="live-scenario" data-release-version={SENTINEL_RELEASE_VERSION}>
     <header><div><small>{m.asset} · {t('LEITURA DO PC')}</small><h2>{t(m.scenarioLabel)}</h2><b>{t(m.state)}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>{t("Modo flutuante ↘")}</button></div></header>
     {engineSettings}
     {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?t('JANELA DE ENTRADA ')+m.entryRemaining+t('s · confirme a expiração na corretora'):t(m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida')}</span>{scenarioClock}</div>}
