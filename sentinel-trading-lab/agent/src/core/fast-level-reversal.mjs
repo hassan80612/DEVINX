@@ -4,14 +4,7 @@ import {levelRoleEvidence} from './level-role-evidence.mjs';
 const median=a=>{const v=[...a].sort((x,y)=>x-y);return v[Math.floor(v.length/2)]||0;};
 const copyLevel=z=>Object.fromEntries(['low','high','level','confirmedPivots','independentRejections',
  'supportPivots','resistancePivots','supportRejections','resistanceRejections'].map(k=>[k,z[k]]));
-export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
- const expiry=Number(durationMs);
- const shortExpiry=expiry===30000||expiry===60000;
- // Short entries require three advancing received quotes. Remove the old
- // 600ms/1.2s dwell so confirmation follows live structure, not a timer.
- // 5m retains its existing two-quote confirmation and movement threshold.
- const confirmationSteps=shortExpiry?3:2;
- const minTouchToCurrentMs=0;
+export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),tol=Number(map?.tolerance);
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&tol>0&&at>0&&at<=clock&&
    clock-at<=1450&&spot>0&&Array.isArray(map.levels)))return null;
@@ -32,10 +25,9 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
   for(let i=1;i<rows.length;i++)if(sign*(rows[i].price-rows[touchIndex].price)<=0)touchIndex=i;
   if(touchIndex<2||touchIndex>rows.length-3)continue;
   const touch=rows[touchIndex];
-  if(!(Number(map.asOf)<=touch.ts)||clock-touch.ts<minTouchToCurrentMs)continue;
+  if(!(Number(map.asOf)<=touch.ts))continue;
   const approach=rows.slice(1,touchIndex+1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(x=>x>0);
-   const minRejection=Math.max(tol*(shortExpiry ? .85 : .75),median(approach)*2);
-   const minConfirmedMove=shortExpiry?Math.max(tol*.4,median(approach)*1.5):tol*.4;
+  const minRejection=Math.max(tol*.75,median(approach)*2);
   for(const zone of map.levels){
    const role=levelRoleEvidence(zone,side);
    if(!(role.known&&role.pivots>=1&&role.rejections>=2&&
@@ -43,15 +35,9 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
    const boundary=Number(sign>0?zone.high:zone.low);
    if(!(sign*(rows[0].price-boundary)>=tol&&sign*(rows[0].price-touch.price)>=tol*1.5))continue;
    const qualifies=i=>{
-    if(i<touchIndex+confirmationSteps)return false;
-    let confirmedMove=0;
-    for(let step=0;step<confirmationSteps;step++){
-     const move=sign*(rows[i-step].price-rows[i-step-1].price);
-     if(!(move>0))return false;
-     confirmedMove+=move;
-    }
-    const q=rows[i];
-    return confirmedMove>=minConfirmedMove&&
+    if(i<touchIndex+2)return false;
+    const q=rows[i],last=sign*(q.price-rows[i-1].price),before=sign*(rows[i-1].price-rows[i-2].price);
+    return last>0&&before>0&&last+before>=tol*.4&&
      sign*(q.price-touch.price)>=minRejection&&sign*(q.price-boundary)>=tol*.5;
    };
    const first=rows.findIndex((_,i)=>qualifies(i));
@@ -66,15 +52,15 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
    return {kind:'confirmed-fast-level-reversal',side,confirmedAt:rows[first].ts,
     touchAt:touch.ts,touchPrice:touch.price,invalidation:touch.price-sign*tol*.1,
     level:copyLevel(zone),nextLevel:copyLevel(next),tolerance:tol,
-    observedCandles:map.observedCandles,asOf:map.asOf,room,quoteConfirmations:confirmationSteps};
+    observedCandles:map.observedCandles,asOf:map.asOf,room,quoteConfirmations:2};
   }
  }
  return null;
 }
-export function verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,now,price,side,durationMs=30000}={}){
+export function verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,now,price,side}={}){
  const e=reversalEvidence;
  if(e?.kind!=='confirmed-fast-level-reversal'||e.side!==side)return false;
  const proof=confirmedFastLevelReversal({map:{observedCandles:e.observedCandles,asOf:e.asOf,
-  tolerance:e.tolerance,levels:[e.level,e.nextLevel]},quoteHistory,quoteAt,now,price,durationMs});
+  tolerance:e.tolerance,levels:[e.level,e.nextLevel]},quoteHistory,quoteAt,now,price});
  return !!proof&&proof.side===side&&proof.confirmedAt===e.confirmedAt&&proof.touchAt===e.touchAt;
 }
