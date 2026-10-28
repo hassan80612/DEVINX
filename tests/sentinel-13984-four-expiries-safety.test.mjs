@@ -83,3 +83,15 @@ test('legacy selected expiry is migrated, while unrelated bot cadence is untouch
  assert.match(phone,/const expiryChoices=\[30,60,300\]/);
  assert.doesNotMatch(overlay,/<option value="120"[^>]*>2 min/);
 });
+
+test('six PC commands are horizontally aligned, including Mapear, with no duplicate top-right start dock',()=>{
+ const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const executor=readFileSync(new URL('../sentinel-trading-lab/agent/worker/executor-panel.mjs',import.meta.url),'utf8');
+ assert.match(driver,/grid-template-columns:repeat\(6,minmax\(82px,1fr\)\)/);
+ assert.match(driver,/data-sentinel-analysis-actions style="display:contents"/);
+ assert.match(executor,/data-sentinel-bot-actions style="display:contents"/);
+ assert.match(executor,/data-sentinel-executor-action="map"/);
+ assert.match(executor,/data-sentinel-executor-action="start"/);
+ assert.match(executor,/data-sentinel-executor-action="stop"/);
+ assert.doesNotMatch(driver,/grid-template-columns:repeat\(3,minmax\(78px,1fr\)\)/);
+});
