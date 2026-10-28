@@ -30,6 +30,7 @@ export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  if(typeof window==='undefined')return {blocked:false};
+ // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
  if(keeper?.revision!==8)return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
