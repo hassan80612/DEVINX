@@ -9,9 +9,9 @@ const words={
 // Shared controls stay next to the analyst controls, outside collapsed settings.
 export function executorActions(state,language='pt'){
  if(!state)return '';const w=words[language]||words.pt;
- return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">'+
- '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-height:35px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer">'+w[6]+'</button>'+
- '<button data-sentinel-executor-action="stop" style="min-height:35px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer">'+w[7]+'</button></div>';
+ return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;min-width:0;width:100%">'+
+ '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-width:0;min-height:35px;white-space:normal;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer">'+w[6]+'</button>'+
+ '<button data-sentinel-executor-action="stop" style="min-width:0;min-height:35px;white-space:normal;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer">'+w[7]+'</button></div>';
 }
 function executorPanelParts(state,language='pt',options={}){
  if(!state)return '';const w=words[language]||words.pt,c=state.config||{};
