@@ -4,14 +4,14 @@
 // adds no broker request, timer, waiting candle, or click path.
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
-export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt,reversalEvidence=null}={}){
+export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt,reversalEvidence=null,durationMs=30000}={}){
  const ts=Number(quoteAt),spot=Number(price),clock=Number(now);
  const levelTurn=['failed-breakout-structure-change','confirmed-level-structure-reversal'].includes(reversalEvidence?.kind)&&
   reversalEvidence.side===side&&Number(reversalEvidence.confirmedAt)<=ts&&
   clock-Number(reversalEvidence.confirmedAt)<=1450&&
   (Number(reversalEvidence.level?.confirmedPivots)>0||Number(reversalEvidence.level?.independentRejections)>=2);
  if(!['CALL','PUT'].includes(side)||!(ts>0&&spot>0&&clock>=ts&&clock-ts<=2500))return false;
- if(verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,price,side,now}))return false;
+ if(verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,price,side,now,durationMs}))return false;
  const end=Math.floor(ts/5000)*5000;
  const bucket=new Map();
  for(const q of quoteHistory){

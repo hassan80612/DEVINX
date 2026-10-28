@@ -203,7 +203,7 @@ export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt
 export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistory=[],
  quoteAt,price,now=quoteAt,durationMs=null,candles=[],structureCache=null,context=''}={}){
  if(candidate?.ready!==true||!isSide(candidate.side)||candidate.side===previousSide)return candidate;
- const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now,
+ const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now,durationMs,
   reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
@@ -513,7 +513,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // a strong opposing trend. The shared base verifies ALL candidate sides.
   // No new timer, quote read or additional candle requirement.
   const pivotRisk=proposed.ready&&countertrendPivotRisk({
-   quoteHistory,quoteAt,price,side:proposed.side,now,
+   quoteHistory,quoteAt,price,side:proposed.side,now,durationMs,
    reversalEvidence:proposed.priceStructure?.confirmedReversal??proposed.priceStructure?.observedSequence?.structureChange
   });
   // One final shared-market-base screen for a fading approach to a verified
