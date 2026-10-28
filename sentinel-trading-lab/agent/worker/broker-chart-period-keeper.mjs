@@ -109,16 +109,15 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    if(!ACCEPT.has(Number(value)))return;
    preferredSeconds=Number(value);try{localStorage.setItem(key,String(preferredSeconds))}catch{}
   };
-  const permission=()=>window.__sentinelNativeExpiryPermissionV3?.allowed===true&&
-   window.__sentinelNativeExpiryPermissionV3?.provider===provider&&
-   Date.now()-Number(window.__sentinelNativeExpiryPermissionV3?.at||0)<3500;
+  // Chart interval is independent of order expiry and remains recoverable
+  // while the executor temporarily revokes permission around order clicks.
   const notify=()=>{window.__sentinelBrokerChartPeriodStatusV1={
    provider,preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,
    repairing,revision:1
   }};
   function restore(control){
    const now=Date.now();
-   if(repairing||!permission()||!control||!preferredSeconds||
+   if(repairing||!control||!preferredSeconds||
      lastUserActivityAt>now-12000||now-lastAttemptAt<5000)return;
    repairing=true;lastAttemptAt=now;lastRepairAt=now;
    const select=control.el.matches?.('select')?control.el:control.el.querySelector?.('select');
@@ -138,7 +137,6 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    try{opener.click()}catch{repairing=false;return}
    setTimeout(()=>{
     try{
-     if(!permission()){repairing=false;notify();return;}
      const elements=[...document.querySelectorAll('[role="option"],[role="menuitem"],'+
       '[class*="timeframe" i],[class*="period" i],li,button')]
       .filter(el=>visible(el)&&inChartMenu(el,control.el));
@@ -174,7 +172,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
     if(control.value===preferredSeconds){lastAttemptAt=0;notify();return;}
     // This broker's documented refresh reset is 30s. Leave any other
     // unobserved change alone so an external user choice is never undone.
-    if(control.value===30&&preferredSeconds!==30&&stableCount>=2&&permission())restore(control);
+    if(control.value===30&&preferredSeconds!==30&&stableCount>=2)restore(control);
     notify();
    }catch{}
   }
