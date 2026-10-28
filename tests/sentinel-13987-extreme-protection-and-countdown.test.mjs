@@ -14,7 +14,8 @@ test('first confirmed boundary turn can qualify without a mandatory third pivot'
  assert.match(engine,/closed-range-extreme-reversal-confirmed/);
  assert.doesNotMatch(engine,/const leg=closes\.slice\(-5\)/);
  assert.doesNotMatch(engine,/legPath>=\.65/);
- assert.match(engine,/if\(regular&&Number\(holdingMs\)>=60000&&Number\(holdingMs\)\/1000>half\*1\.35\)/);
+ assert.match(engine,/const shortExpirySwingGuard=Number\(holdingMs\)>=60000&&Number\(holdingMs\)<300000;/);
+ assert.match(engine,/if\(shortExpirySwingGuard&&regular&&Number\(holdingMs\)\/1000>half\*1\.35\)/);
 });
 test('range mismatch is observational and does not insert a timed delay',()=>{
  const origin=Date.UTC(2026,9,1);
