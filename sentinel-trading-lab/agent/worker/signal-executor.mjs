@@ -6,14 +6,16 @@ import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
 // Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
 // A WIN or completed second LOSS resets the next batch to 1 click.
 export const MAX_MARTINGALE_LEVELS=1;
-export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:900,other:1500});
+export const MAX_SIGNAL_TO_CLICK_AGE_MS=Object.freeze({short:500,thirty:1450,minute:1950,five:2500,other:1500});
 // Freshness of the FIRST broker entry differs from completion of an already
 // started multi-click batch. Each broker click has its own 30s expiry.
 export const MAX_BATCH_DISPATCH_MS=Object.freeze({five:850,short:1600,fifteen:2500,thirty:5000,other:8000});
 export function maxSignalAgeMs(durationMs){
  const ms=Number(durationMs);
  return ms<=15000?MAX_SIGNAL_TO_CLICK_AGE_MS.short:
-  ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
+  ms<=30000?MAX_SIGNAL_TO_CLICK_AGE_MS.thirty:
+  ms<=60000?MAX_SIGNAL_TO_CLICK_AGE_MS.minute:
+  ms<=300000?MAX_SIGNAL_TO_CLICK_AGE_MS.five:MAX_SIGNAL_TO_CLICK_AGE_MS.other;
 }
 export function maxBatchDispatchMs(durationMs){
  const ms=Number(durationMs);
@@ -489,11 +491,30 @@ export class SignalExecutor{
   const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
   const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
   const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const invalidReason=(clickIndex=0)=>{
+   const current=this.context(),at=this.clock(),age=at-Number(queued.at);
+   if(!this.enabled||generation!==this.generation)return 'bot desligado ou sessão alterada';
+   if(this.pending!==batch)return 'operação pendente mudou antes do clique';
+   if(this.config.directionMode!==mode)return 'modo do bot mudou antes do clique';
+   if(at<Number(queued.at)||at>=(clickIndex===0?firstClickDeadline:batchClickDeadline)||at>=Number(queued.exitAt))
+    return 'sinal venceu na preparação ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms)';
+   if(!this.sameContext(this.session,current))return 'corretora ou ativo mudou antes do clique';
+   if(Number(batch.durationMs)!==Number(current.durationMs))return 'expiração do analista mudou antes do clique';
+   if(batch.engine!==current.engine)return 'estratégia do analista mudou antes do clique';
+   if(current.state!=='running'||current.licensed!==true)return 'analista pausado ou licença inativa';
+   if(!this.accountCompatible(current.brokerBalance))return 'conta da corretora mudou antes do clique';
+   if(current.brokerBalance&&batch.accountId!=null&&String(current.brokerBalance.accountId)!==String(batch.accountId))
+    return 'conta da corretora mudou antes do clique';
+   if(this.config.stopLoss>0&&batch.amount>this.lossBudgetRemaining()+0.000001)
+    return 'limite de perda restante não autoriza a entrada';
+   if(this.deadlineAt&&at>=this.deadlineAt)return 'limite de tempo da sessão atingido';
+   return 'validação da entrada mudou antes do clique';
+  };
   let captured=false;
   const jobs=[];
   this.executing=true;
   for(let i=0;i<clickCount;i++){
-   const order={...queued,entryDeadlineAt:i===0?firstClickDeadline:batchClickDeadline,id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
+   const order={...queued,entryDeadlineAt:i===0?firstClickDeadline:batchClickDeadline,invalidReason:()=>invalidReason(i),id:batch.id+'|click-'+i,engine:batch.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount:unitAmount,martingaleLevel:batch.martingaleLevel,sessionId:this.sessionId,accountId:batch.accountId,state:'sending',requestId:null,orderId:null};
    batch.orders.push(order);order.isValid=()=>valid(i);
    order.useBrokerStake=(source,{confirmed=false}={})=>{
     const stake=money(Number(source));
@@ -511,7 +532,7 @@ export class SignalExecutor{
     if(num(snapshot.quote)&&Number(snapshot.quote)>0&&Number(snapshot.quoteAt)>0&&order.clickedAt-Number(snapshot.quoteAt)>=0&&order.clickedAt-Number(snapshot.quoteAt)<=2500){order.entryPrice=Number(snapshot.quote);order.entryQuoteAt=Number(snapshot.quoteAt);}
    };
    jobs.push(Promise.resolve().then(async()=>{
-    if(!order.isValid())throw Object.assign(Error('Entrada cancelada antes do clique.'),{beforeClick:true});
+    if(!order.isValid())throw Object.assign(Error(order.invalidReason?.()||'Entrada cancelada antes do clique.'),{beforeClick:true});
     const result=await this.driver.execute(c.provider,order);
     if(result?.pending===true&&order.clicked===true){
      // The broker request/response may arrive later. Keep the exact
@@ -559,9 +580,7 @@ export class SignalExecutor{
     // A clearly cancelled before-click attempt can be skipped without
     // turning the automation OFF or manufacturing a Martingale loss.
     if(!order.clicked&&e?.beforeClick===true){
-     if(this.enabled)this.message=e.nativeExpiryChanged?
-      'Ligado · restaurando a expiração escolhida na corretora · próximo sinal atual':
-      'Ligado · sinal ignorado antes do clique · próximo sinal do analista';
+     if(this.enabled)this.message='Ligado · clique não enviado: '+String(order.error||'validação antes do clique').slice(0,105)+' · aguardando novo sinal';
      return;
     }
     // Explicit broker rejection and genuine state mismatches are distinct
