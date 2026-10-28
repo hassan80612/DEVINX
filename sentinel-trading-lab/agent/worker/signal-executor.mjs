@@ -281,6 +281,7 @@ export class SignalExecutor{
   // starts a fresh session; rebasing it silently could carry old P/L targets
   // into the wrong bankroll. Asset/duration changes without an open order can
   // still be rebased safely from the current broker balance.
+  if(!this.sameContext(this.session,context))return false;
   const accountChanged=current&&this.session.accountId!=null&&
     String(this.session.accountId)!==String(current.accountId);
   if(accountChanged)return false;
