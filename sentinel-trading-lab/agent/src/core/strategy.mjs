@@ -589,7 +589,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    // Anti-atraso: se o movimento atual já esticou e começa a perder aceleração,
    // a previsão deixa de perseguir a vela atual e antecipa a possibilidade de virada.
    if(predictionModel){
-     signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,seconds});
+     signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,persistenceWeakening:signal>0?short.weakeningUp:short.weakeningDown,seconds});
      // Continuous prospective evidence, never an opposite-side override.
      signal=clamp(signal+Number(earlyTurn?.signal||0)*(seconds<=60?.12:seconds<=120?.07:0),-1,1);
    }else{
