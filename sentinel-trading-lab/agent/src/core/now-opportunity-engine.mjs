@@ -76,6 +76,109 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
 // Strict five-minute exception: ONLY an observed and confirmed reversal can
 // authorize a CALL/PUT. Trend continuations, breakouts, forecasts, EMA alignment
 // and old turns remain explanatory evidence, never trade permission.
+const CONTINUATION_SETUP=/continuation|followthrough|breakout|trend|impulse|cycle|analogue|forecast/i;
+const CONFIRMED_REVERSAL_SET=new Set([
+ 'closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
+ 'confirmed-fast-level-reversal','failed-breakout-structure-change',
+ 'multiscale-candle-rejection','historical-level-rejection'
+]);
+const phaseLabel=phase=>({
+ continuing:'CONTINUIDADE',
+ weakening:'CONTINUIDADE PERDENDO FORÇA',
+ 'reversal-testing':'REVERSÃO EM TESTE',
+ 'reversal-forming':'REVERSÃO EM FORMAÇÃO',
+ 'reversal-confirmed':'REVERSÃO CONFIRMADA',
+ range:'LATERAL',
+ mixed:'INCONCLUSIVO',
+ insufficient:'OBSERVANDO'
+}[phase]||'OBSERVANDO');
+
+// Reads only quotes already received. Weakening persistence is not itself a
+// reversal: the opposite side still needs its own ready structural candidate.
+export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+ const horizon=Number(durationMs);
+ if(horizon!==30000&&horizon!==60000)return{phase:'insufficient',side:null};
+ const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+ if(!(at>0&&at<=clock&&spot>0&&clock-at<=2500))return{phase:'insufficient',side:null};
+ const windowMs=horizon===30000?12000:20000;
+ const middleMs=horizon===30000?4000:7000;
+ const recentMs=horizon===30000?1200:1800;
+ const rows=[];
+ for(let i=quoteHistory.length-1;i>=0;i--){
+  const q=quoteHistory[i],ts=Number(q?.ts),p=Number(q?.price);
+  if(ts<at-windowMs)break;
+  if(ts>at||Number(q?.receivedAt??ts)>clock||!(p>0))continue;
+  rows.push({ts,price:p});
+ }
+ rows.reverse();
+ if(rows.length<5||rows.at(-1)?.ts!==at||rows.at(-1)?.price!==spot||
+   rows.some((q,i)=>i>0&&(q.ts<=rows[i-1].ts||q.ts-rows[i-1].ts>2500)))
+  return{phase:'insufficient',side:null,windowMs};
+ const old=before(rows,at-windowMs,2500),mid=before(rows,at-middleMs,1800),
+  recent=before(rows,at-recentMs,1500);
+ if(!old||!mid||!recent)return{phase:'insufficient',side:null,windowMs};
+ const net=Math.log(spot/old.price),side=sideOf(net);
+ if(!side)return{phase:'range',side:null,windowMs};
+ const direction=sign(side),early=direction*Math.log(mid.price/old.price),
+  late=direction*Math.log(spot/mid.price),fast=direction*Math.log(spot/recent.price);
+ let travel=0;
+ for(let i=1;i<rows.length;i++)travel+=Math.abs(Math.log(rows[i].price/rows[i-1].price));
+ const prices=rows.map(q=>q.price),range=Math.log(Math.max(...prices)/Math.min(...prices));
+ const threshold=Math.max(range*.06,travel*.008,1e-12);
+ const efficiency=travel>0?Math.abs(net)/travel:0;
+ const retracement=range>0?Math.max(0,direction>0?
+  Math.log(Math.max(...prices)/spot):Math.log(spot/Math.min(...prices)))/range:0;
+ let phase='mixed';
+ if(efficiency<.18||Math.abs(net)<=threshold)phase='range';
+ else if(late< -threshold&&fast< -threshold&&retracement>=.16)phase='reversal-testing';
+ else if(early>threshold&&(late<=Math.max(threshold,early*.35)||fast< -threshold))
+  phase='weakening';
+ else if(late>threshold&&fast>=-threshold&&efficiency>=.20)phase='continuing';
+ return{phase,side,windowMs,netMove:Number(net.toPrecision(6)),
+  earlyMove:Number(early.toPrecision(6)),lateMove:Number(late.toPrecision(6)),
+  latestMove:Number(fast.toPrecision(6)),efficiency:Number(efficiency.toFixed(3)),
+  retracement:Number(retracement.toFixed(3))};
+}
+function confirmedReversalCandidate(candidate){
+ const reason=String(candidate?.reason||'');
+ if(!candidate?.ready||!isSide(candidate.side)||!CONFIRMED_REVERSAL_SET.has(reason))return false;
+ if(reason==='closed-range-extreme-reversal-confirmed')
+  return candidate.regime==='observed-range-turn';
+ if(reason==='historical-level-rejection')
+  return candidate.priceStructure?.reactionProof?.confirmed===true||
+   candidate.priceStructure?.confirmedReversal?.side===candidate.side;
+ return true;
+}
+function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,durationMs}={}){
+ const horizon=Number(durationMs),state=assessDirectionalPersistence({
+  quoteHistory,quoteAt,now,price,durationMs
+ });
+ if(!candidate||typeof candidate!=='object')return candidate;
+ if(horizon===300000)return{...candidate,trendPersistence:state,
+  marketPhase:candidate.fiveMinuteReversalConfirmed===true?'reversal-confirmed':
+   candidate.ready===true?'reversal-review':state.phase,
+  marketPhaseLabel:candidate.fiveMinuteReversalConfirmed===true?'REVERSÃO CONFIRMADA':
+   candidate.ready===true?'EXTREMO EM REVERSÃO':'OBSERVANDO EXTREMO'};
+ const base={...candidate,trendPersistence:state,marketPhase:state.phase,
+  marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
+ if(candidate.ready!==true||!isSide(candidate.side)||!isSide(state.side))return base;
+ if(confirmedReversalCandidate(candidate))return{...base,marketPhase:'reversal-confirmed',
+  marketPhaseLabel:phaseLabel('reversal-confirmed')};
+ const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
+ const fading=['weakening','reversal-testing'].includes(state.phase);
+ if(candidate.side===state.side&&continuation&&fading)
+  return{...base,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.',
+   marketPhase:state.phase,marketPhaseLabel:phaseLabel(state.phase)};
+ if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
+  return{...base,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.',
+   marketPhase:'continuing',marketPhaseLabel:phaseLabel('continuing')};
+ if(candidate.side!==state.side&&fading)
+  return{...base,marketPhase:'reversal-forming',marketPhaseLabel:phaseLabel('reversal-forming')};
+ return base;
+}
+
 export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt,price}={}){
  if(Number(durationMs)!==300000||candidate?.ready!==true)return candidate;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
@@ -440,7 +543,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
-  return {...fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price}),engineId,qualityPolicy,
+  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});
+  const persistenceDecision=reviewDirectionalPersistence({
+   candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
+  });
+  return {...persistenceDecision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
