@@ -29,15 +29,18 @@ export function fuseForecastEvidence(features=[]){
 }
 // Exhaustion is evidence that the move may weaken. It cannot manufacture an
 // opposite forecast merely by subtracting more than the original signal.
-export function attenuateForecast(signal,{overextended=false,turning=false,flowConflict=false,accelerationConflict=false,persistenceWeakening=false,seconds=60}={}){
+export function attenuateForecast(signal,{overextended=false,turning=false,flowConflict=false,accelerationConflict=false,persistenceDecay=0,seconds=60}={}){
   let retain=1;
   if(overextended)retain*=.52;
   if(turning)retain*=seconds<=60?.65:.80;
   if(flowConflict)retain*=.70;
   if(accelerationConflict)retain*=.82;
-  // A slowdown without a confirmed turn softens continuation only. It never flips the forecast.
-  if(persistenceWeakening&&!overextended&&!turning&&!flowConflict&&!accelerationConflict)
-    retain*=seconds<=60?.86:seconds<=300?.94:1;
+  // Continuation confidence fades in proportion to the measured speed loss;
+  // a slowdown alone cannot flip direction. Stronger conflicts already have their own attenuation.
+  if(!overextended&&!turning&&!flowConflict&&!accelerationConflict){
+    const decay=clamp(Number(persistenceDecay)||0,0,1);
+    retain*=1-decay*(seconds<=60?.14:seconds<=300?.06:0);
+  }
   return signal*retain;
 }
 export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),periodSeconds=null,requireFresh=false}={}){
