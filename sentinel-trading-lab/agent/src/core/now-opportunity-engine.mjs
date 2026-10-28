@@ -83,7 +83,7 @@ export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt
   at>0&&at<=clock&&clock-at<=2500&&spot>0&&isSide(candidate.side);
  const proof=candidate.priceStructure||{},reason=candidate.reason;
  const current=e=>e&&e.side===candidate.side&&Number(e.confirmedAt)>0&&
-  Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=1450;
+  Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=2500;
  const rangeTurn=reason==='closed-range-extreme-reversal-confirmed'&&
   candidate.regime==='observed-range-turn';
  const levelTurn=['confirmed-fast-level-reversal','confirmed-level-structure-reversal'].includes(reason)&&
