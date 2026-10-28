@@ -10,8 +10,10 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  if(![30,60,120,300].includes(h))return wait('unsupported-probability-horizon');
  const t=Number(quoteAt),p=Number(price);
  if(!Number.isFinite(t)||t>now||now-t>1500||!(p>0))return wait('stale-or-invalid-quote');
- const lookback=h>=300?190:h>=120?100:66;
- const minObserved=h>=300?180:h>=120?90:30;
+ // Each expiry gets its own causal warm-up. The 1m path now uses a longer
+ // observed segment than 30s, while 2m/5m retain their expiry-sized anchors.
+ const lookback=h>=300?190:h>=120?100:h>=60?90:66;
+ const minObserved=h>=300?180:h>=120?90:h>=60?45:30;
  const rows=observedQuoteWindow({history:quoteHistory,at:t,now,windowMs:lookback*1000,maxQuotes:6000});
  if(rows.length<8||rows.at(-1).ts!==t||Math.abs(rows.at(-1).price-p)>p*.0000001)return wait('insufficient-observed-quotes');
  const earliest=rows[0].ts;
@@ -27,12 +29,14 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  const logs=[],weights=[];
  const scales=h>=300?[[3,.02],[5,.03],[10,.05],[15,.05],[30,.10],[60,.15],[90,.20],[180,.40]]:
   h>=120?[[3,.04],[5,.06],[10,.10],[15,.10],[30,.15],[60,.20],[90,.35]]:
+  h>=60?[[3,.07],[5,.09],[10,.12],[15,.13],[30,.18],[45,.18],[60,.23]]:
   [[3,.10],[5,.15],[10,.18],[15,.17],[30,.30],[60,.10]];
  for(const [seconds,weight] of scales){
   const previous=observedAt(t-seconds*1000);
   if(previous>0){logs.push({seconds,value:Math.log(p/previous),weight});weights.push(weight)}
  }
- if(!logs.some(x=>x.seconds===(h>=300?180:h>=120?90:30)))return wait('missing-horizon-price-evidence');
+ const horizonReferenceSeconds=h>=300?180:h>=120?90:h>=60?60:30;
+ if(!logs.some(x=>x.seconds===horizonReferenceSeconds))return wait('missing-horizon-price-evidence');
  const size=weights.reduce((a,b)=>a+b,0),driftPerSecond=logs.reduce((a,x)=>a+x.weight*x.value/x.seconds,0)/size;
  const earliestVarianceMs=Math.max(t-(h>=300?180000:h>=120?90000:60000),earliest);
  const recent=rows.filter(x=>x.ts>=earliestVarianceMs);

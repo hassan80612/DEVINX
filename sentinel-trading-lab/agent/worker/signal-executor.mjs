@@ -81,12 +81,10 @@ export class SignalExecutor{
   // A stopped bot can be rearmed while older broker orders are still
   // reconciling. Keep that exact batch and its Martingale ledger intact.
   const suspendedBatch=this.pending;
-  let brokerStakeConfirmed=false;
-  const c=this.context(),cfg={...this.config};
+  const c=this.context();
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
   const candidate=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
   const broker=candidate&&freshBalance(candidate,this.clock())?candidate:null;
-  const openingBalance=broker?.amount;
   if(c.state!=='running')throw Error('Inicie o analista antes de ligar o bot.');
   if(!c.licensed||!c.provider||!c.asset)throw Error('Conecte a corretora e inicie o analista.');
   if(!(c.durationMs>0))throw Error('Selecione a expiração no analista.');
@@ -102,20 +100,11 @@ export class SignalExecutor{
     // without touching the controls; map controls only for NEW physical clicks.
     this.driver.checkContext?.(c.provider,c);
    }else{
-    const prepared=await this.driver.prepare(c.provider,{...c,amount:cfg.amount});
-    const selectedAmount=Number(prepared?.amount);
-    if(Number.isFinite(selectedAmount)&&selectedAmount>0){
-      brokerStakeConfirmed=true;
-      cfg.amount=money(selectedAmount);this.config.amount=cfg.amount;
-    }
+    // Invest is intentionally read on the first physical order, not during
+    // activation. A broker DOM read here used to stall the bot before it
+    // could react to a valid signal and could also capture the previous asset.
    }
    const current=this.context();
-   if(!(cfg.amount>0))throw Error('Valor da entrada ainda não identificado na corretora.');
-   if(broker&&freshBalance(broker,this.clock())&&cfg.amount>openingBalance){
-    if(!brokerStakeConfirmed)
-      throw Error('Invest atual não identificado. Valor salvo no bot pode estar desatualizado; confira o Invest na corretora.');
-    throw Error('Invest confirmado maior que saldo disponível da corretora.');
-   }
    if(generation!==this.generation||!this.sameContext(c,current)||c.durationMs!==current.durationMs||(broker&&current.brokerBalance&&String(broker.accountId)!==String(current.brokerBalance.accountId))||current.state!=='running'||!current.licensed)throw Error('Analista mudou durante a ativação.');
    if(suspendedBatch&&this.pending===suspendedBatch){
     // Do not reset seen signals, pending orders, balance reservations,
@@ -146,7 +135,7 @@ export class SignalExecutor{
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
    if(!freshBalance(this.balanceRisk.current,this.clock()))this.balanceRisk.current=null;
-   const opening=this.balanceRisk.begin(c.provider);if(opening&&freshBalance(opening,this.clock())&&cfg.amount>opening.amount)throw Error('Invest confirmado maior que o saldo disponível da corretora.');
+   const opening=this.balanceRisk.begin(c.provider);
    this.initialBalance=opening?.amount??null;
    this.sessionId++;this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
    this.martingaleLevel=0;this.lastEntryAt=null;this.sequence=0;this.seen.clear();this.queuedSignal=null;
@@ -288,6 +277,34 @@ export class SignalExecutor{
  }
  accountCompatible(balance=this.balanceRisk.current){return !balance||!this.session||balance.provider===this.session.provider&&(this.session.accountId==null||String(balance.accountId)===String(this.session.accountId));}
  sameContext(a,b){return a.provider===b.provider&&symbol(a.asset)===symbol(b.asset);}
+ rebaseSessionIfSafe(context,balance,now){
+  if(!this.enabled||!this.session||this.pending||this.executing||this.unresolvedExposure()>0)return false;
+  const current=balance?.current;
+  // A live account switch must remain a visible safety hold until the user
+  // starts a fresh session; rebasing it silently could carry old P/L targets
+  // into the wrong bankroll. Asset/duration changes without an open order can
+  // still be rebased safely from the current broker balance.
+  if(!this.sameContext(this.session,context))return false;
+  const accountChanged=current&&this.session.accountId!=null&&
+    String(this.session.accountId)!==String(current.accountId);
+  if(accountChanged)return false;
+  const changed=!this.sameContext(this.session,context)||
+    Number(this.session.durationMs)!==Number(context.durationMs);
+  if(!changed||!current||current.provider!==context.provider||!freshBalance(current,now))return false;
+  this.session={provider:context.provider,asset:context.asset,durationMs:context.durationMs,
+    engine:context.engine,accountId:String(current.accountId)};
+  this.balanceRisk.begin(context.provider);
+  // Keep the session P/L counters, but anchor absolute stops to the new
+  // account/asset snapshot so an old asset cannot distort the target.
+  this.initialBalance=money(current.amount-this.net);
+  if(this.balanceRisk.session)this.balanceRisk.session.initial=this.initialBalance;
+  this.stopBalanceReference={amount:current.amount,net:this.net};
+  this.lastSettlementBalanceRevision=0;this.lastBrokerSettlementAt=0;
+  this.queuedSignal=null;this.seen.clear();this.lastCadenceDurationMs=null;
+  this.nextScheduledAt=now;this.suspensionReason=null;
+  this.message='Ligado · conta/ativo atualizado · aguardando nova confirmação';
+  return true;
+ }
  watch(){
   if(!this.enabled&&!this.pending)return;
   const now=this.clock(),c=this.context(),p=this.pending;
@@ -309,6 +326,7 @@ export class SignalExecutor{
     this.session.accountId=String(balance.current.accountId);
     balance=this.balanceRisk.view(now);
    }
+   if(this.rebaseSessionIfSafe(c,balance,now))balance=this.balanceRisk.view(now);
    // Unknown balance postpones ONLY the two balance-based stops, never CALL/PUT.
    const blocker=this.hardHoldReason||(!c.licensed||c.state!=='running'?'aguardando analista/acesso':
     !this.session||!this.sameContext(this.session,c)?'ativo diferente · confira o ativo':
@@ -322,15 +340,9 @@ export class SignalExecutor{
    }
    else if(this.stopLossReached(balance))
     this.stop('Bot parado · stop-loss atingido');
-   else if(!this.pending&&!this.executing&&balance.current?.provider===this.session?.provider&&
-    !balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<this.config.amount){
-    // Local cached Invest can lag behind a manual broker stake change.
-    // One one-shot reconfirmation replaces an immediate false bot STOP.
-    this.suspensionReason='confirmando Invest atual';
-    this.message='Ligado · conferindo Invest atual antes de avaliar saldo';
-    this.confirmStakeAfterBalanceMismatch(c,now);
-   }
    else if(blocker)this.message='Ligado · suspenso por segurança: '+blocker;
+   else if(!this.pending&&!this.executing&&!(this.config.amount>0))
+    this.message='Ligado · aguardando sinal; Invest será sincronizado no primeiro clique';
    else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
   }
   if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider)this.session.accountId=String(balance.current.accountId);
@@ -450,7 +462,8 @@ export class SignalExecutor{
   }
   if(!this.accountCompatible(balance.current)){this.suspensionReason='conta divergente';this.message='Ligado · suspenso: conta divergente';return;}
   if(balance.current&&balance.current.provider===c.provider&&!balance.reconciling&&freshBalance(balance.current,now)&&balance.current.amount<amount){
-   this.stop('Bot parado · saldo insuficiente para '+clickCount+' clique(s)');
+   this.message='Ligado · saldo abaixo do Invest atual; sinal ignorado';
+   this.queuedSignal=null;
    return;
   }
   const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};

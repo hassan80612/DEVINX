@@ -40,6 +40,12 @@ export function patchExecutorReadouts(frame){
   patch('[data-sentinel-executor-risk]',f.risk);
   patch('[data-sentinel-executor-balance]',f.balance);
   patch('[data-sentinel-executor-session]',f.session);
+  if(f.pnlTone){
+   const nodes=typeof root.querySelectorAll==='function'
+    ? root.querySelectorAll('[data-sentinel-executor-session]')
+    : [root.querySelector('[data-sentinel-executor-session]')].filter(Boolean);
+   for(const node of nodes)if(node.getAttribute('data-pnl-tone')!==f.pnlTone)node.setAttribute('data-pnl-tone',f.pnlTone);
+  }
   patch('[data-sentinel-executor-message]',f.message);
   patch('[data-sentinel-executor-state]',f.status);
   patch('[data-sentinel-stop-targets]',f.stopTargets);

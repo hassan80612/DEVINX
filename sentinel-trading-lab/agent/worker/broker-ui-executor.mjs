@@ -239,6 +239,7 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
+ setNativeExpiryPreference(provider,preferredMs){return this.driver.setNativeExpiryPreference?.(provider,preferredMs)??false}
  async prepare(provider,expected){
   this.checkContext(provider,expected);
   const controls=await this.controls(provider),frame=controls?.frame;
@@ -279,7 +280,7 @@ export class BrokerUiExecutor{
    if((this.unidentifiedClick?.order?.clicked||this.unidentifiedClick?.order?.dispatchUncertain)&&!this.unidentifiedClick.requestId)
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
-   this.checkContext(provider,order);const c=await this.controls(provider);
+   this.checkContext(provider,order);this.setNativeExpiryPreference(provider,order.durationMs);const c=await this.controls(provider);
    const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick);
    order.nativeExpiryInspection=expiry;
    if(expiry?.blocked)throw Object.assign(errorBefore('A expiração escolhida na corretora está sendo restaurada; aguardando sinal atual.'),{nativeExpiryChanged:true});

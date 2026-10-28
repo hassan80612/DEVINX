@@ -1,6 +1,6 @@
 {
   "version": "13.9.147",
-  "build": "13.9.147-invest-recovery-map-martingale-one",
+  "build": "13.9.147-invest-recovery-map-martingale-one-precision-v47",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -9,6 +9,7 @@
     "engineArchitecture": "shared-market-base-strategies-as-evidence",
     "modelValidation": "unverified-in-live-trading-override-only-after-16-independent-expiries-with-6-of-last-8-recent-confirmation-no-guaranteed-win-rate",
     "forecastModel": "short-probability-v1",
+    "precisionProfile": "reversal-extreme-v47",
     "historicalStructure": {
       "closedCandles": 100,
       "emaPeriods": [

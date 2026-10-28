@@ -258,6 +258,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,300000].includes(n))throw new Error('invalid_short_operation_duration');
       runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:30},'overlay');
+      driver.setNativeExpiryPreference?.(activeProvider,n);
       runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
       const n=Math.round(Number(value));if(![30,60,300].includes(n))throw new Error('invalid_forecast_horizon');
@@ -417,6 +418,7 @@ function scheduleBrokerMaintenance(provider){
   });
 }
 let shuttingDown=false;
+let lastNativeExpiryPreferenceKey='';
 let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   executor.observeBalance(activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null);
   executor.watch();
@@ -426,10 +428,17 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const activePeek=driver.peek?.(activeProvider);
     if(activePeek?.updatedAt&&activePeek.open===false){
       if(brokers[activeProvider])brokers[activeProvider].connected=false;
-      activeProvider=null;lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
+      activeProvider=null;lastNativeExpiryPreferenceKey='';lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
     }
   }
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
+  if(activeProvider){
+    const preferenceKey=activeProvider+'|'+Number(runtime.settings.orderDurationMs||0);
+    if(preferenceKey!==lastNativeExpiryPreferenceKey){
+      lastNativeExpiryPreferenceKey=preferenceKey;
+      driver.setNativeExpiryPreference?.(activeProvider,Number(runtime.settings.orderDurationMs||0));
+    }
+  }else lastNativeExpiryPreferenceKey='';
   // Live broker quote events and the dedicated 220ms signed-feed timer
   // already publish the latest pre-analysis source values. Do not duplicate
   // the expensive mobile snapshot serialization in the critical quote->click
@@ -438,6 +447,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
   executor.pulse();
+  // Push the post-decision state before optional broker maintenance so a
+  // mobile viewer never waits for a DOM recovery pass.
+  void publishLiveFrame();
   // Do maintenance only AFTER the current quote has reached the engine and
   // immediate click dispatcher. This preserves the existing 2.5s cadence
   // without allowing a heavy broker DOM scan to preempt this decision.
@@ -451,9 +463,6 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       scheduleBrokerMaintenance(activeProvider);
     }
   }
-  // Deliver a confirmed decision immediately, BEFORE timing diagnostics,
-  // broker overlay rendering, journals or any other optional work.
-  void publishLiveFrame();
   const tickElapsed=Date.now()-tickStarted;
   evaluationPerformance.lastMs=tickElapsed;
   evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?

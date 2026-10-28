@@ -37,6 +37,7 @@ import {combine66WithProbability} from './66-probability-integration.mjs';
 import {CausalProbabilityReview} from './causal-probability-review.mjs';
 import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
+import {precisionEntryGate} from './precision-entry-policy.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -85,10 +86,10 @@ function newPriceStructure(main,side,snap,strict=false){
 }
 
 export class DemoTradingRuntime{
-  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
+  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67',precisionProfile='off'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
-    this.forecastModel=forecastModel;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.precisionProfile=precisionProfile;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -1101,11 +1102,20 @@ export class DemoTradingRuntime{
         learnedReview.probability<.48;
       const reviewedObservation=learnedBlocked?
         {...observation,ready:false,side:null,reason:'verified-entry-context-underperforming'}:observation;
-      const eligible=!duration.allowed?
+      const structurallyEligible=!duration.allowed?
         {...reviewedObservation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
         {...reviewedObservation,side:null,ready:false,reason:'late-quote-no-entry'}:
         reviewedObservation;
+      const precision=this.precisionProfile==='reversal-extreme-v47'?
+        precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
+          quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
+      const eligible=precision?.enabled?
+        (structurallyEligible.ready===true&&precision.ready===true?
+          {...structurallyEligible,precision}:
+          {...structurallyEligible,side:null,ready:false,
+            reason:structurallyEligible.ready===true?precision.reason:structurallyEligible.reason,
+            precision}):structurallyEligible;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1124,7 +1134,7 @@ export class DemoTradingRuntime{
           });
         }
         this.vnextWindowOutcomes.push({
-          windowId:next.entryTriggeredAt,asset:next.asset,provider:snap.provider??null,entryReason:observation.reason,
+          windowId:next.entryTriggeredAt,asset:next.asset,provider:snap.provider??null,entryReason:eligible.reason,
           engineId:next.engineId,forecastMode:'now',
           periodSeconds:next.holdingSeconds,side:next.side,
           entryAt:next.entryAt,exitAt:next.exitAt,
@@ -1213,7 +1223,7 @@ export class DemoTradingRuntime{
         x.engineId===settings.engine&&Number(x.periodSeconds)===Number(settings.orderDurationMs)/1000);
       const vnext={
         mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
-        computedStatus:observation.ready?'observed-confirmation':'observing-now',
+        computedStatus:eligible.ready?'observed-confirmation':'observing-now',
         forecastFoundation:'completed-structure-and-current-quote-with-statistical-confirmation',
         receipt:null,projection:null,targetAnchor:null,targetProjection:null,
         futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
@@ -1223,9 +1233,10 @@ export class DemoTradingRuntime{
           windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
           exitAt:next.exitAt,side:next.side
         }:null,nowObservation:{
-          side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
-          ready:observation.ready,reason:eligible.reason,
-          observedAt:observation.observedAt,strength:observation.strength,
+          side:eligible.side,provisionalSide:eligible.side||eligible.provisionalSide||null,
+          rawSide:observation.side,rawReason:observation.reason,
+          ready:eligible.ready,reason:eligible.reason,
+          observedAt:eligible.observedAt,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           // Calibration flag reflects actual independent quote outcomes, not
@@ -1234,6 +1245,7 @@ export class DemoTradingRuntime{
           probabilityCalibrated:expiryCalibration?.calibrated===true,
           probabilitySource:preliminary?.source??null,
           probabilityInfluenced:observation.probabilityOverride===true,
+          precision:precision||null,
           probabilitySamples:expiryCalibration?.samples??0,
           probabilityInversionSamples:probabilityProof?.n??0,
           probabilityAudit:expiryCalibration?{
@@ -1274,8 +1286,8 @@ export class DemoTradingRuntime{
         strategyCards:[],strategyConfluence:null,strategyGuidance:null,
         generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
 
-        reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
-          'Analisando o mercado atual para a próxima entrada.',observation.reason]
+          reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
+          'Analisando o mercado atual para a próxima entrada.',eligible.reason]
       };
       return{allowed:false,analysis:analysisResult,reasons:analysisResult.reasons};
     }
