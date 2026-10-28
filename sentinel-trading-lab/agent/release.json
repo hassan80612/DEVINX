@@ -1,6 +1,6 @@
 {
-  "version": "13.9.148",
-  "build": "13.9.148-horizon-balanced-entry-flow",
+  "version": "13.9.149",
+  "build": "13.9.149-button-label-fit",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -12,22 +12,12 @@
     "precisionProfile": "horizon-balanced-v148",
     "historicalStructure": {
       "closedCandles": 100,
-      "emaPeriods": [
-        20,
-        50,
-        100
-      ],
+      "emaPeriods": [20, 50, 100],
       "timing": "received-history-no-collection-reset",
-      "windows": [
-        3,
-        10,
-        20,
-        50,
-        100
-      ],
+      "windows": [3, 10, 20, 50, 100],
       "levelEvidence": "confirmed-pivot-priority-over-unconfirmed-nearby-level",
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.148"
+  "publicVersion": "13.9.149"
 }
