@@ -31,7 +31,7 @@ test('broker amount becomes the source at start and updates every executed order
     return{accepted:true,orderId:String(++ctr)};}};
  const bot=new SignalExecutor({clock:()=>now,context:()=>ctx,driver});
  bot.configure({amount:0});await bot.start();
- assert.equal(bot.config.amount,2);
+ assert.equal(bot.config.amount,0,'activation does not read the broker Invest control');
  now=T+1500;ctx.quoteAt=now;ctx.analysis={vnext:{futureEntryAnchor:{
   context:'iq_option|EURUSDOTC|automatic|60000',phase:'fired',side:'CALL',
   entryTriggeredAt:now,holdingSeconds:60,exitAt:now+60000}}};
@@ -171,7 +171,7 @@ test('unknown Invest control never creates a trade or guesses stale account valu
 test('map controls is visible beside the PC analysis buttons, no Martingale levels are exposed',()=>{
  const ui=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const panel=readFileSync(new URL('../sentinel-trading-lab/agent/worker/executor-panel.mjs',import.meta.url),'utf8');
- assert.equal(ui.includes('data-sentinel-executor-action="map"'),true);
+ assert.equal(panel.includes('data-sentinel-executor-action="map"'),true);
  assert.equal(panel.includes("input('martingaleLevels'"),false);
  assert.equal(panel.includes("input('martingaleMultiplier'"),false);
 });
