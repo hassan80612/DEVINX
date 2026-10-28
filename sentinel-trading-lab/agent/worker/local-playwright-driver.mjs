@@ -764,7 +764,7 @@ export class LocalPlaywrightDriver{
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       if(!page.__sentinelNativeExpiryInitScript){
         page.__sentinelNativeExpiryInitScript=true;
-        await page.addInitScript(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
+        await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
       }
       await page.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
     }
