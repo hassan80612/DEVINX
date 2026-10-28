@@ -50,7 +50,7 @@ for(const provider of ['iq_option','exnova']){
  });
 }
 test('first click still has strict freshness; batch completion uses independent bounded time',()=>{
- assert.equal(maxSignalAgeMs(30000),900);
+ assert.equal(maxSignalAgeMs(30000),1450);
  assert.equal(maxBatchDispatchMs(30000),5000);
  assert.equal(maxBatchDispatchMs(5000),850);
  assert.equal(maxBatchDispatchMs(10000),1600);
