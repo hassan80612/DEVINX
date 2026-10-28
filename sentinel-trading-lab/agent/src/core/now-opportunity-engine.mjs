@@ -156,28 +156,23 @@ function confirmedReversalCandidate(candidate){
 }
 function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,durationMs}={}){
  const horizon=Number(durationMs);
- // The new phase review is scoped to the requested 30s and 1m entries.
- // Other legacy horizons keep their exact previous result shape.
- if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object')return candidate;
+ // Only the requested 30s and 1m continuations are screened. Routine waiting
+ // and admitted results retain their established shape.
+ if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object'||
+   candidate.ready!==true||!isSide(candidate.side))return candidate;
  const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
- const base={...candidate,trendPersistence:state,marketPhase:state.phase,
-  marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
- if(candidate.ready!==true||!isSide(candidate.side)||!isSide(state.side))return base;
- if(confirmedReversalCandidate(candidate))return{...base,marketPhase:'reversal-confirmed',
-  marketPhaseLabel:phaseLabel('reversal-confirmed')};
+ if(!isSide(state.side)||confirmedReversalCandidate(candidate))return candidate;
  const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
  const fading=['weakening','reversal-testing'].includes(state.phase);
+ const diagnostic={trendPersistence:state,marketPhase:state.phase,
+  marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
  if(candidate.side===state.side&&continuation&&fading)
-  return{...base,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.',
-   marketPhase:state.phase,marketPhaseLabel:phaseLabel(state.phase)};
+  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.'};
  if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
-  return{...base,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.',
-   marketPhase:'continuing',marketPhaseLabel:phaseLabel('continuing')};
- if(candidate.side!==state.side&&fading)
-  return{...base,marketPhase:'reversal-forming',marketPhaseLabel:phaseLabel('reversal-forming')};
- return base;
+  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.'};
+ return candidate;
 }
 
 export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt,price}={}){
