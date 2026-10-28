@@ -13,11 +13,11 @@ test('manual selection retains its verified native opener even when an open pick
   assert.equal(m.control._text,'2 min');
  }finally{m.restore()}
 });
-test('disappearing native controls clear the last observation instead of blocking on an old mismatch',()=>{
+test('disappearing native controls clear the last observation instead of blocking on an old mismatch',async()=>{
  const m=browser('30 s',60000);
  try{
-  installBrokerNativeExpiryKeeper({provider:'iq_option'});assert.equal(inspectNativeExpiryBeforeClick().blocked,true);
-  m.control.isConnected=false;assert.equal(inspectNativeExpiryBeforeClick().blocked,false);
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});assert.equal((await inspectNativeExpiryBeforeClick({maxWaitMs:0})).blocked,true);
+  m.control.isConnected=false;assert.equal((await inspectNativeExpiryBeforeClick({maxWaitMs:0})).blocked,false);
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,null);
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
  }finally{m.restore()}
@@ -55,7 +55,7 @@ test('expiry-scoped duration item choices replace an older 30s preference on bot
  }
 });
 
-test('a trusted picker change to a stable non-default duration survives an unlabelled portal option',()=>{
+test('a trusted picker change to a stable non-default duration survives an unlabelled portal option',async()=>{
  const m=browser('30 s',30000);
  try{
   for(const option of m.options){option.matches=()=>false;option.closest=()=>null;}
@@ -67,6 +67,6 @@ test('a trusted picker change to a stable non-default duration survives an unlab
   m.step(15000);assert.equal(m.control._text,'1 min');
   m.control._text='30 s';m.step();m.step();
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000,'a later automatic rollback cannot become the saved preference');
-  assert.equal(inspectNativeExpiryBeforeClick().blocked,true,'an unrecognized repair menu cannot cause a trade at the wrong duration');
+  assert.equal((await inspectNativeExpiryBeforeClick({maxWaitMs:0})).blocked,true,'an unrecognized repair menu cannot cause a trade at the wrong duration');
  }finally{m.restore()}
 });
