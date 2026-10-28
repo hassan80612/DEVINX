@@ -1,11 +1,12 @@
 // Causal horizon proof for a historical level REJECTION, not a direction predictor.
 // The 2-6 second wick is a *candidate*: authority requires a real observed
-// follow-through appropriate to the actual selected broker settlement horizon.
+// follow-through appropriate to the selected horizon. For 5m, use a compact
+// 20-second confirmation so the setup remains actionable near the level.
 // No timers, loops awaiting completion, browser calls, forecast probabilities,
 // future quotations, position instructions or changes to actual broker expiry.
 const WINDOWS=Object.freeze({
  5000:[1,2,3],15000:[2,4,7],30000:[3,6,12],
- 60000:[4,10,20],120000:[5,15,35],300000:[6,20,60]
+ 60000:[4,10,20],120000:[5,15,35],300000:[3,10,20]
 });
 const sign=s=>s==='CALL'?1:s==='PUT'?-1:0;
 const median=a=>{const v=[...a].sort((x,y)=>x-y);return v[Math.floor(v.length/2)]??0};
