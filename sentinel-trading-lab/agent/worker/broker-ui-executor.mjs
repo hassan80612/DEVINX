@@ -256,9 +256,10 @@ export class BrokerUiExecutor{
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
    this.checkContext(provider,order);this.setNativeExpiryPreference(provider,order.durationMs);const c=await this.controls(provider);
-   const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick);
+   const remaining=finite(order.entryDeadlineAt)?Math.max(0,Number(order.entryDeadlineAt)-Date.now()-120):900;
+   const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick,{maxWaitMs:Math.min(900,remaining)});
    order.nativeExpiryInspection=expiry;
-   if(expiry?.blocked)throw Object.assign(errorBefore('A expiração escolhida na corretora está sendo restaurada; aguardando sinal atual.'),{nativeExpiryChanged:true});
+   if(expiry?.blocked)throw Object.assign(errorBefore('Prazo da corretora não sincronizou dentro da janela deste sinal; nenhum clique foi enviado.'),{nativeExpiryChanged:true});
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.
