@@ -9,6 +9,7 @@ const level=(price,role)=>({low:price,high:price,level:price,tests:[{age:1},{age
 function fixture(mirror=false){
  const quoteHistory=Array.from({length:720},(_,i)=>({ts:T-180000+i*250,price:106-5.89*i/720}));
  for(const [i,price] of [100.11,100.07,100.025,99.99,100.018,100.044,100.065].entries())quoteHistory.push({ts:T+i*250,price});
+ for(const [i,price] of [100.085,100.105,100.125,100.145].entries())quoteHistory.push({ts:T+1750+i*250,price});
  if(mirror)for(const q of quoteHistory)q.price=200-q.price;
  const levels=mirror?[level(100,'resistance'),level(99,'support')]:[level(100,'support'),level(101,'resistance')];
  const last=quoteHistory.at(-1),map={observedCandles:100,asOf:T-60000,tolerance:.07,levels,windows:[]};

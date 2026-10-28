@@ -149,7 +149,7 @@ test('all expiry keeper wiring remains outside analysis, candle timeframe and ex
  assert.match(code,/nativeExpiryPermissionForExecutor/);
  assert.doesNotMatch(web,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
  const release=JSON.parse(readFileSync(new URL('agent/release.json',base),'utf8'));
- assert.equal(release.version,'13.9.152');
+ assert.equal(release.version,'13.9.153');
 });
 
 test('Exnova native duration field accepts 01:00 and repairs a spontaneous 00:30 reset',()=>{

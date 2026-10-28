@@ -7,6 +7,7 @@ function fixture(mirror=false,scale=1){
  const transform=p=>(mirror?200-p:p)*scale;
  const q=Array.from({length:720},(_,i)=>({ts:T-180000+i*250,price:transform(106-(106-100.11)*i/720)}));
  for(const [i,p] of [100.11,100.07,100.025,99.99,100.018,100.044,100.065].entries())q.push({ts:T+i*250,price:transform(p)});
+ for(const [i,p] of [100.085,100.105,100.125,100.145].entries())q.push({ts:T+1750+i*250,price:transform(p)});
  const level=(p,role)=>({low:transform(p),high:transform(p),level:transform(p),touches:3,pivots:1,tests:[{age:1},{age:3}],windows:[3,10,20,50,100],confirmedPivots:1,independentTests:3,independentRejections:2,
   supportPivots:role==='support'?1:0,resistancePivots:role==='resistance'?1:0,supportRejections:role==='support'?2:0,resistanceRejections:role==='resistance'?2:0,supportWick:role==='support'?.8:0,resistanceWick:role==='resistance'?.8:0});
  const zs=[level(100,mirror?'resistance':'support'),level(101,mirror?'support':'resistance')];
@@ -26,6 +27,23 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
   const f=fixture(mirror,scale),proof=confirmedFastLevelReversal(input(f));
   assert.equal(proof?.side,f.side);assert.ok(proof.confirmedAt<=f.q.at(-1).ts);
   assert.equal(verifiedFastLevelReversal({...input(f),side:f.side,reversalEvidence:proof}),true);
+ }
+});
+test('short expiries reject a two-tick bounce while the 5m rule remains unchanged',()=>{
+ for(const mirror of [false,true]){
+  const f=fixture(mirror),q=f.q.filter(x=>x.ts<=T+1250).map(x=>({...x}));
+  for(const row of q){
+   if(row.ts===T+1000)row.price=(mirror?200-100.05:100.05);
+   if(row.ts===T+1250)row.price=(mirror?200-100.11:100.11);
+  }
+  const a={...input(f),q:undefined,quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000}),null);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000}),null);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:300000})?.side,f.side);
+  const threeSteps=f.q.filter(x=>x.ts<=T+1500).map(x=>({...x}));
+  const b={...a,quoteHistory:threeSteps,quoteAt:threeSteps.at(-1).ts,now:threeSteps.at(-1).ts,price:threeSteps.at(-1).price};
+  assert.equal(confirmedFastLevelReversal({...b,durationMs:30000})?.side,f.side);
+  assert.equal(confirmedFastLevelReversal({...b,durationMs:60000}),null,'1m requires 1.2s after the level touch');
  }
 });
 test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{
