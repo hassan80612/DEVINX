@@ -1,6 +1,6 @@
 {
   "version": "13.9.151",
-  "build": "13.9.151-asset-switch-chart-stability",
+  "build": "13.9.151-selected-asset-startup-chart-stability",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
