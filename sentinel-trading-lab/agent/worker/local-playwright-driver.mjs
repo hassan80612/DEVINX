@@ -455,7 +455,7 @@ function protocolScan(data,st,direction='in'){
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       if(activeChanged&&prevActiveId!=null&&Number(prevActiveId)!==Number(aid)){
         const resolved=symbolForActiveId(st,aid);
-        st.activeId=Number(aid);st.pendingPageActiveId=Number(aid);
+        st.activeId=Number(aid);st.pendingPageActiveId=Number(aid);st.lastAssetSwitchAt=Date.now();
         st.symbol=resolved||null;st.uiSymbol=resolved||null;st.uiSymbolSource=resolved?'protocol-page':'protocol-page-pending';st.screenCandidateSymbol=null;st.validatedAt=Date.now();
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'active_id_switch'};st.quoteBackfillKey=null;
         st.suggestedSymbol=null;st.lastRequestAt=null;
@@ -631,7 +631,7 @@ export class LocalPlaywrightDriver{
   // no new polling, DOM scan, socket or broker request.
   setBalanceUpdateHandler(handler){this.balanceUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
-  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,screenCandidateSymbol:null,validatedAt:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],predictionCandles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
+  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,screenCandidateSymbol:null,validatedAt:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],predictionCandles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null,lastAssetSwitchAt:0});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
@@ -1035,7 +1035,7 @@ export class LocalPlaywrightDriver{
     }
     if(pairKey(st.uiSymbol||st.symbol||'')!==pairKey(targetSymbol))return false;
     const differentAsset=Number(st.activeId)!==Number(targetId)||pairKey(st.symbol||'')!==pairKey(targetSymbol);
-    if(differentAsset){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastTickQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'}}
+    if(differentAsset){st.lastAssetSwitchAt=Date.now();st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastTickQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'}}
     st.symbol=targetSymbol;st.activeId=Number(targetId);
     // Start current prices before any history request can spend 6s waiting.
     if(needsSubscribe){
@@ -1128,7 +1128,7 @@ export class LocalPlaywrightDriver{
     const screenSymbol=st.uiSymbol||st.symbol;
     if(!screenSymbol)return false;
     if(!st.symbol||pairKey(st.symbol)!==pairKey(screenSymbol)){
-      st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.quoteBackfillKey=null;st.autoSelected=false;st.suggestedSymbol=null;
+      st.lastAssetSwitchAt=Date.now();st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.quoteBackfillKey=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
     let targetId=st.activeMap.get(pairKey(screenSymbol));
     if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(pairKey(screenSymbol))}
@@ -1261,7 +1261,7 @@ export class LocalPlaywrightDriver{
       if(st.activeId!=null)st.validatedAt=st.validatedAt||Date.now();
       return true
     }
-    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??aid;st.pendingPageActiveId=null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;st.screenCandidateSymbol=null;st.validatedAt=Date.now();
+    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??aid;st.pendingPageActiveId=null;st.lastAssetSwitchAt=Date.now();st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;st.screenCandidateSymbol=null;st.validatedAt=Date.now();
     st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.quoteBackfillKey=null;st.suggestedSymbol=null;st.lastRequestAt=null;st.marketStatus='switching';st.marketReason='Validando novo ativo: '+next;
     try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true,validatedAt:st.validatedAt})).catch(()=>{})}catch{}
     if(st.switchRequestTimer){clearTimeout(st.switchRequestTimer);st.switchRequestTimer=null}
@@ -1321,7 +1321,7 @@ export class LocalPlaywrightDriver{
       candleFreshForState(st);
     const fullDomEveryMs=passiveStreamHealthy?300000:
       st.activeId!=null&&st.balance!=null?90000:30000;
-    if(!passiveStreamHealthy&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)){
+    if(!passiveStreamHealthy&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)&&now-Number(st.lastAssetSwitchAt||0)>=12000){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
@@ -1389,7 +1389,7 @@ export class LocalPlaywrightDriver{
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
-        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
+        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastAssetSwitchAt=Date.now();st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.quoteBackfillKey=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
         try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:nextUi,uiSymbol:nextUi,activeId:st.activeId,assetChanged:true,source:uiSource,marketStatus:'switching'})).catch(()=>{})}catch{}
