@@ -10,10 +10,10 @@ const words={
 export function executorActions(state,language='pt'){
  if(!state)return '';const w=words[language]||words.pt;
  const mapLabel={pt:'Mapear',en:'Map controls',es:'Mapear',fr:'Repérer',ar:'تحديد'}[language]||'Mapear';
- return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:0">'+
- '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+w[6]+'</button>'+
- '<button data-sentinel-executor-action="stop" style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+w[7]+'</button>'+
- '<button data-sentinel-executor-action="map"'+(state.enabled||state.arming||state.pending||state.executing?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #657977;border-radius:9px;background:transparent;color:inherit;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+mapLabel+'</button></div>';
+ return '<div data-sentinel-bot-actions style="display:contents">'+
+ '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 10px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+w[6]+'">'+w[6]+'</button>'+ 
+ '<button data-sentinel-executor-action="stop" style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 10px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+w[7]+'">'+w[7]+'</button>'+ 
+ '<button data-sentinel-executor-action="map"'+(state.enabled||state.arming||state.pending||state.executing?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #657977;border-radius:9px;background:transparent;color:inherit;font:750 10px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+mapLabel+'">'+mapLabel+'</button></div>';
 }
 function executorPanelParts(state,language='pt',options={}){
  if(!state)return '';const w=words[language]||words.pt,c=state.config||{};
