@@ -89,11 +89,11 @@ test('new controls preserve old status length and decode optional string directi
  assert.match(html,/Somente CALL/);assert.match(html,/Somente PUT/);
  assert.doesNotMatch(html,/data-sentinel-executor-setting="intervalMs"/);
 });
-test('2m 5m are accepted without entering the 30s probability override',()=>{
+test('2m 5m remain internal-only while the visible Agent offers the three Sentinel horizons',()=>{
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
  for(const ms of [120000,300000]){rt.patchSettings({orderDurationMs:ms},'test');assert.equal(rt.settings.orderDurationMs,ms);}
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
- assert.match(worker,/5000,10000,15000,30000,60000,120000,300000/);
+ assert.match(worker,/30000,60000,300000/);
  const ui=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(ui,/<label[^\n]*>EXPIRAÇÃO <select data-sentinel-setting="duration"/);
 });
