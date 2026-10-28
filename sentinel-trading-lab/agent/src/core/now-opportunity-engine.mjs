@@ -379,7 +379,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,
     observedAt:Number(quoteAt),entryPrice:Number(price),
-    strength:null,expirySeconds:seconds,
+    strength:null,expirySeconds:seconds,position:range.position,
     regime:'observed-range-turn',observedSwingSeconds:range.observedSwingSeconds};
  }
  // Directional efficiency distinguishes a persistent move from price
