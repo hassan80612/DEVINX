@@ -1,6 +1,6 @@
 {
   "version": "13.9.149",
-  "build": "13.9.149-adaptive-persistence-expiry-restore",
+  "build": "13.9.149-adaptive-persistence-expiry-ui",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
