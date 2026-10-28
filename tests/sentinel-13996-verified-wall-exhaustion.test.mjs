@@ -65,7 +65,7 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.doesNotMatch(read('agent/src/core/verified-wall-exhaustion.mjs'),/\bawait\b|setTimeout\s*\(|setInterval\s*\(|fetch\s*\(/);
  assert.equal(JSON.parse(read('package.json')).version,'13.9.148');
  const release=JSON.parse(read('agent/release.json'));
- assert.equal(release.version,'13.9.149');
- assert.equal(release.build,'13.9.149-adaptive-persistence-expiry-ui');
+ assert.equal(release.version,'13.9.150');
+ assert.equal(release.build,'13.9.150-persistence-click-chart-smoothness');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
