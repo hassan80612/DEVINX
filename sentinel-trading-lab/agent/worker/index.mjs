@@ -500,9 +500,6 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.ready,
-      runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.score,
-      runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.reason,
-      runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.observedAt,
       // A new future entry is a FIRST-CLASS decision change, not a
       // once-per-second cosmetic refresh. Deliver the new PC deadline
       // on the same evaluated frame used by the mobile signed broadcast.
@@ -546,7 +543,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const op=a.operationalSignal||{},scenario=op.scenario||{},admission=a.vnext?.nowObservation?.precision||{},
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
-        admission.ready,admission.score,admission.reason,admission.observedAt,
+        admission.ready,admission.score,admission.reason,
         a.vnext?.futureEntryAnchor?.issuedAt,
         a.vnext?.futureEntryAnchor?.entryAt,
         a.vnext?.futureEntryAnchor?.side,
@@ -564,7 +561,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       actionAnchor.side,actionAnchor.phase,actionAnchor.entryTriggeredAt,
       actionAnchor.entryAt,actionAnchor.exitAt,
       actionWindow.phase,actionWindow.windowStartedAt,actionWindow.windowEndsAt,
-      admission.ready,admission.score,admission.reason,admission.observedAt
+      admission.ready
     ].join('|');
     const urgentOverlay=overlayActionKey!==lastOverlayActionKey;
     lastOverlayActionKey=overlayActionKey;
