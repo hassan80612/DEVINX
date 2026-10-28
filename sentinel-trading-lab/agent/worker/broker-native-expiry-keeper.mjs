@@ -29,6 +29,7 @@ export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
 // Runs on the existing broker page immediately before an actual direction
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
+ if(typeof window==='undefined')return {blocked:false};
  const keeper=window.__sentinelNativeExpiryKeeperV3;
  if(keeper?.revision!==8)return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
