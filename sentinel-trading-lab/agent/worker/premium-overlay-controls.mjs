@@ -27,13 +27,17 @@ export const PREMIUM_OVERLAY_CSS=`
 [data-sentinel-summary="market-total"]>div:nth-last-child(2),[data-sentinel-summary="strategy-total"]>div:nth-last-child(2),[data-sentinel-summary="operational-total"]>div:nth-last-child(2){flex-wrap:nowrap!important;overflow:hidden}
 [data-sentinel-summary="market-total"]>div:nth-last-child(2) span,[data-sentinel-summary="strategy-total"]>div:nth-last-child(2) span,[data-sentinel-summary="operational-total"]>div:nth-last-child(2) span{white-space:nowrap;font-variant-numeric:tabular-nums}
 .sentinel-monitor-results>[data-sentinel-executor-broker-balance]{margin-top:0!important;font-size:9px!important}
+[data-sentinel-executor-session]{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:.02em;font-weight:850}
+[data-sentinel-executor-session][data-pnl-tone="positive"]{color:#74e0b5!important}
+[data-sentinel-executor-session][data-pnl-tone="negative"]{color:#ff91a0!important}
+[data-sentinel-executor-session][data-pnl-tone="neutral"]{color:#e6c879!important}
 [data-sentinel-executor-action-msg]:empty,[data-sentinel-control-msg]:empty{display:none}
 [data-sentinel-executor-state][data-bot-state="off"]{color:#ed9ca8;background:rgba(190,75,95,.13);display:inline-block;padding:3px 6px;border-radius:5px}
 [data-sentinel-executor-state][data-bot-state="scanning"],[data-sentinel-executor-state][data-bot-state="trading"]{color:#72ddb1;background:rgba(60,179,128,.13);display:inline-block;padding:3px 6px;border-radius:5px}
 [data-sentinel-executor-state][data-bot-state="arming"],[data-sentinel-executor-state][data-bot-state="waiting"]{color:#efc66f;background:rgba(192,143,57,.14);display:inline-block;padding:3px 6px;border-radius:5px}
-[data-sentinel-command-buttons]{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:8px}
+[data-sentinel-command-buttons]{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:8px;min-width:0;width:100%}
 [data-sentinel-command-buttons] [data-sentinel-analysis-actions],[data-sentinel-command-buttons] [data-sentinel-bot-actions]{display:contents!important}
-[data-sentinel-command-buttons] button{height:33px!important;min-height:33px!important;padding:4px!important;font-size:10px!important;line-height:1.15}
+[data-sentinel-command-buttons] button{height:33px!important;min-height:33px!important;min-width:0!important;width:100%;padding:4px!important;font-size:10px!important;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-sentinel-command-dock] [data-sentinel-executor-balance]{font-size:19px!important;letter-spacing:-.3px}
 [data-sentinel-command-dock] [data-sentinel-executor-broker-balance]{font-size:10px;opacity:.78}
 [data-sentinel-command-dock] [data-sentinel-executor-message]{max-height:28px;overflow:auto;font-size:10px}

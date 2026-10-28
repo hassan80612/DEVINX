@@ -16,6 +16,10 @@ export function patchExecutorReadouts(frame){
    (!window.__sentinelNativeExpiryPermissionV3||window.__sentinelNativeExpiryPermissionV3.at<=permission.at)){
   const old=window.__sentinelNativeExpiryPermissionV3;
   window.__sentinelNativeExpiryPermissionV3=permission;
+  // Reuse this receipt for nested broker documents; no extra browser read.
+  for(let i=0;i<(window.frames?.length||0);i++)try{
+   window.frames[i].postMessage({type:'sentinel-native-expiry-permission-v1',permission},'*');
+  }catch{}
   const keeper=window.__sentinelNativeExpiryKeeperV3,s=keeper?.snapshot?.();
   if(permission.allowed===true&&keeper?.provider===permission.provider&&
     (old?.allowed!==true||s?.preferredMs&&s?.currentMs&&s.preferredMs!==s.currentMs))keeper.poll();
@@ -36,6 +40,12 @@ export function patchExecutorReadouts(frame){
   patch('[data-sentinel-executor-risk]',f.risk);
   patch('[data-sentinel-executor-balance]',f.balance);
   patch('[data-sentinel-executor-session]',f.session);
+  if(f.pnlTone){
+   const nodes=typeof root.querySelectorAll==='function'
+    ? root.querySelectorAll('[data-sentinel-executor-session]')
+    : [root.querySelector('[data-sentinel-executor-session]')].filter(Boolean);
+   for(const node of nodes)if(node.getAttribute('data-pnl-tone')!==f.pnlTone)node.setAttribute('data-pnl-tone',f.pnlTone);
+  }
   patch('[data-sentinel-executor-message]',f.message);
   patch('[data-sentinel-executor-state]',f.status);
   patch('[data-sentinel-stop-targets]',f.stopTargets);

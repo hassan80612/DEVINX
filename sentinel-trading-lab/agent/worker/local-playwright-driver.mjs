@@ -17,7 +17,7 @@ import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
-import {installBrokerNativeExpiryKeeper,nativeExpiryPermissionForExecutor} from './broker-native-expiry-keeper.mjs';
+import {installBrokerNativeExpiryKeeper,updateBrokerNativeExpiryPreference,nativeExpiryPermissionForExecutor} from './broker-native-expiry-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
 
@@ -622,7 +622,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
-  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
@@ -761,11 +761,12 @@ export class LocalPlaywrightDriver{
     // Native broker selection is independent of the chart candle size AND
     // the Sentinel prediction expiry. Install once per broker page context.
     if(provider&&['iq_option','exnova'].includes(provider)){
+      const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       if(!page.__sentinelNativeExpiryInitScript){
         page.__sentinelNativeExpiryInitScript=true;
-        await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
+        await page.addInitScript(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
       }
-      await page.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
+      await page.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
     }
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
@@ -838,11 +839,11 @@ export class LocalPlaywrightDriver{
     for(const frame of page.frames()){
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
-      if(provider)await frame.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
+      if(provider)await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider)frame.evaluate(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{})};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider)frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{})};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
@@ -1274,6 +1275,17 @@ export class LocalPlaywrightDriver{
     const p=Number(period);
     if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
   }
+  setNativeExpiryPreference(provider,preferredMs){
+    if(!['iq_option','exnova'].includes(provider))return false;
+    const ms=Number(preferredMs),accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
+    if(!accepted.has(ms/1000))return false;
+    this.nativeExpiryPreferences.set(provider,ms);
+    const page=this.sessions.get(provider)?.page;
+    if(!page||page.isClosed?.())return true;
+    const payload={provider,preferredMs:ms};
+    for(const frame of page.frames())void frame.evaluate(updateBrokerNativeExpiryPreference,payload).catch(()=>{});
+    return true;
+  }
   async refreshPredictionHistory(provider,now=Date.now()){
     const st=this.state(provider),size=Number(st.predictionPeriod);
     if(!size||size===Number(st.candleSize)||st.activeId==null||now-Number(st.lastPredictionRequestAt||0)<9000)return false;
@@ -1316,7 +1328,8 @@ export class LocalPlaywrightDriver{
     // Full base-data requests (balances + initialization metadata) are
     // unnecessary every 30s while the actual account and quotes arrive via
     // read-only broker events. Never stop explicit refresh/recovery requests.
-    const baseRetryMs=!this.accountBalanceSnapshot(provider)?15000:
+    const hasKnownBalance=st.balance!=null&&st.balanceId!=null;
+    const baseRetryMs=!hasKnownBalance?15000:
       passiveStreamHealthy?120000:30000;
     if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)
       await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
@@ -2254,6 +2267,7 @@ export class LocalPlaywrightDriver{
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:auto auto minmax(74px,auto) auto;gap:5px;margin-top:7px;padding:8px 10px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr(runtimeLabel)+' · '+durationText:tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
+              ${d.vnext?.nowObservation?.precision?.enabled?'<small data-sentinel-precision-quality style="font-size:9px;font-weight:850;color:'+(d.vnext.nowObservation.precision.ready?'#74e0b5':'#e6c879')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">FILTRO DE ADMISSÃO '+Number(d.vnext.nowObservation.precision.ready?100:d.vnext.nowObservation.precision.score||0)+'/100 · '+(d.vnext.nowObservation.precision.ready?'ENTRADA LIBERADA':'AGUARDANDO REVERSÃO CONFIRMADA')+'</small>':''}
               <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:${d.autoExecutor?'minmax(95px,.78fr) minmax(78px,.56fr) minmax(145px,1.16fr)':'minmax(85px,.82fr) minmax(0,1.18fr)'};height:auto;min-height:74px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:visible">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-signal-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
@@ -2336,12 +2350,14 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" title="${tr('↻ Leitura')}" style="border:1px solid ${panelBorder};border-radius:8px;height:29px;padding:0 8px;background:${uiTheme==='light'?'linear-gradient(180deg,#fff,#f4eee2)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:900 9.5px/1 inherit;cursor:pointer;white-space:nowrap">${tr('↻ LEITURA')}</button>
                 <button data-sentinel-scroll title="${tr('Descer / voltar ao topo')}" style="border:1px solid ${panelBorder};border-radius:8px;width:29px;height:29px;background:${uiTheme==='light'?'#fff':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:700 15px/1 inherit;cursor:pointer;display:grid;place-items:center">↓</button>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:5px;width:100%;max-width:310px">
+              <div data-sentinel-command-buttons style="width:100%;max-width:310px">
+              <div data-sentinel-analysis-actions style="display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:5px;width:100%">
                 <button data-sentinel-action="start" style="height:31px;border:1px solid rgba(215,182,93,.56);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,#f2dc9a,#cda646)':'linear-gradient(180deg,rgba(215,182,93,.18),rgba(215,182,93,.06))'};color:${runtime==='running'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('● INICIAR')}</button>
                 <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('Ⅱ PAUSAR')}</button>
                 <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('■ PARAR')}</button>
               </div>
               ${d.executorActionsHtml||''}
+              </div>
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>

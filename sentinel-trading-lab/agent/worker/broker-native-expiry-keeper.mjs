@@ -5,26 +5,43 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
  return {at,provider:state?.provider||null,allowed:!!state&&!state.arming&&!state.executing&&
   !state.pending&&!Number(state.unresolvedBatches||0)};
 }
+// Called from the Node driver when the Sentinel selector changes. It writes a
+// preference only; the keeper still requires its normal permission lease before
+// it can repair a visible native control after a broker refresh.
+export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
+ try{
+  if(!['iq_option','exnova'].includes(provider))return false;
+  const ms=Number(preferredMs),accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
+  if(!accepted.has(ms/1000))return false;
+  const keeper=window.__sentinelNativeExpiryKeeperV3;
+  if(keeper?.provider===provider&&typeof keeper.setPreferred==='function')return keeper.setPreferred(ms);
+  localStorage.setItem('sentinel-broker-native-expiration-preference-v3:'+provider,String(ms));
+  return true;
+ }catch{return false}
+}
 // Runs on the existing broker page immediately before an actual direction
 // click. Unknown native controls never gate startup or imply a duration.
 export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==4)return {blocked:false};
+ if(keeper?.revision!==7)return {blocked:false};
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
  const previous=keeper.snapshot();
  if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
  keeper.poll();
  const s=keeper.snapshot();
  return {blocked:!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs),
-  preferredMs:s.preferredMs,currentMs:s.currentMs};
+  preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
 }
-export function installBrokerNativeExpiryKeeper({provider}={}){
+export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===4)return;
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===7){
+   if(Number.isFinite(Number(requestedMs)))window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
+   return;
+  }
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
   // Older documents may still have a v1 timer. Revoke its write permission;
   // v2 uses its own lease and preference so the old listener cannot fight it.
@@ -61,10 +78,18 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
   try{
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
+   const requested=Number(requestedMs);
+   if(ACCEPT.has(requested/1000)){preferredMs=requested;localStorage.setItem(key,String(requested));}
   }catch{}
+  const readDuration=el=>{
+   const selected=el.matches?.('select')?el.selectedOptions:null;
+   if(selected?.length===1)return parse(selected[0].textContent||selected[0].label);
+   // Input value and visible label are alternative sources, not two choices.
+   return parse(el.value)||parse(el.innerText||el.textContent||'');
+  };
   function discover(){
    if(cached&&visible(cached)){
-    const found=parse((cached.innerText||cached.textContent||'')+' '+(cached.value||''));
+    const found=readDuration(cached);
     if(found)return {el:cached,value:found};
    }
    const candidates=[];
@@ -72,7 +97,7 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(!visible(el))continue;
     const text=String(el.innerText||el.textContent||el.value||'').trim();
     if(text.length>85)continue;
-    const v=parse(text+' '+String(el.value||''));
+    const v=readDuration(el);
     if(!v)continue;
     const r=el.getBoundingClientRect(),label=nativeLabel(el);
     const labelStrong=labelRe.test(label)||labelRe.test(text);
@@ -124,8 +149,8 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     const raw=String(el.innerText||el.textContent||'').trim();
     if(raw.length>25)continue;
     const value=parse(raw);
-    if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i]')||
-      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i]')))return value;
+    if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,[class*="option" i],[class*="duration" i],[class*="item" i]')||
+      el.closest?.('[role="option"],[role="menuitem"],[class*="option" i],[class*="duration" i],[class*="item" i]')))return value;
    }
    return null;
   };
@@ -236,7 +261,14 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     if(observedMs===current)stableCount++;
     else{observedMs=current;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
-     if(chosenValue!=null&&current===chosenValue){
+     // Some native skins render choices in unlabelled portals. A trusted
+     // opener followed by a stable changed NON-default control value is
+     // independent confirmation of the user's selection. Never adopt a
+     // 30s rollback this way, nor infer a preference without manual activity.
+     const confirmedManualChange=chosenValue==null&&openingValue!=null&&
+      current!==openingValue&&current!==30000&&stableCount>=2&&
+      manualControl===c.el;
+     if((chosenValue!=null&&current===chosenValue)||confirmedManualChange){
       save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
      }
      notify(current);return;
@@ -257,13 +289,39 @@ export function installBrokerNativeExpiryKeeper({provider}={}){
     restore(c);
    }catch{}
   }
-  window.__sentinelNativeExpiryKeeperV3={revision:4,provider,poll,snapshot:()=>({
+  const onParentPermission=event=>{
+   try{
+    if(window.parent===window||event.source!==window.parent||
+      event.data?.type!=='sentinel-native-expiry-permission-v1')return;
+    const host=new URL(event.origin).hostname;
+    if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
+      (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
+    const next=event.data.permission,old=window.__sentinelNativeExpiryPermissionV3;
+    if(next?.provider!==provider||!Number.isFinite(next.at)||
+      typeof next.allowed!=='boolean'||Date.now()-next.at<0||Date.now()-next.at>=3500||
+      old&&Number(old.at)>next.at)return;
+    window.__sentinelNativeExpiryPermissionV3={provider,at:next.at,allowed:next.allowed};
+    for(let i=0;i<(window.frames?.length||0);i++)try{
+     window.frames[i].postMessage({type:'sentinel-native-expiry-permission-v1',permission:window.__sentinelNativeExpiryPermissionV3},'*');
+    }catch{}
+    if(next.allowed&&(old?.allowed!==true||preferredMs&&observedMs&&preferredMs!==observedMs))poll();
+   }catch{}
+  };
+  window.addEventListener?.('message',onParentPermission);
+  const setPreferred=value=>{
+   const ms=Number(value);
+   if(!ACCEPT.has(ms/1000))return false;
+   save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
+   notify(observedMs);return true;
+  };
+  window.__sentinelNativeExpiryKeeperV3={revision:7,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
   const timer=setInterval(poll,2500);
   window.__sentinelNativeExpiryKeeperV3.dispose=()=>{
    try{clearInterval(timer)}catch{}
+   window.removeEventListener?.('message',onParentPermission);
    document.removeEventListener('pointerdown',onPointerDown,true);
    document.removeEventListener('click',onClick,true);
    document.removeEventListener('change',onChange,true);

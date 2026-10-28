@@ -20,18 +20,20 @@ test('trade input is read without clicking or polling and supports comma decimal
  assert.equal(withDom([input({amount:'0'})],readBrokerTradeStake),null);
  assert.equal(withDom([input({amount:'10'}),input({amount:'12'})],readBrokerTradeStake),null);
 });
-test('broker amount becomes the source at start and updates every executed order',async()=>{
+test('broker amount is not read during start and becomes the source at the first executed order',async()=>{
  let now=T;const sent=[];let ctr=0;
  const ctx={state:'running',licensed:true,provider:'iq_option',asset:'EUR/USD OTC',activeId:1,
   durationMs:60000,engine:'automatic',analysis:{},quote:1.1,quoteAt:T,
   brokerBalance:{provider:'iq_option',accountId:'demo',amount:1000,receivedAt:T,revision:1}};
- const driver={prepare:async()=>({ready:true,amount:2}),
+ let prepared=0;
+ const driver={prepare:async()=>{prepared++;return{ready:true,amount:2}},
    execute:async(_,order)=>{order.useBrokerStake?.(7);
     order.captureEntry();order.clicked=true;sent.push({amount:order.amount,side:order.side});
     return{accepted:true,orderId:String(++ctr)};}};
  const bot=new SignalExecutor({clock:()=>now,context:()=>ctx,driver});
  bot.configure({amount:0});await bot.start();
- assert.equal(bot.config.amount,2);
+ assert.equal(prepared,0);
+ assert.equal(bot.config.amount,0);
  now=T+1500;ctx.quoteAt=now;ctx.analysis={vnext:{futureEntryAnchor:{
   context:'iq_option|EURUSDOTC|automatic|60000',phase:'fired',side:'CALL',
   entryTriggeredAt:now,holdingSeconds:60,exitAt:now+60000}}};

@@ -142,7 +142,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const vnext=!!s?.settings?.engine;
   // Duration selection is the lead time to a FUTURE entry.
   // Only the recorded entry schedule owns the hero countdown and direction.
-  const expiryChoices=vnext?[5,10,15,30,60]:[5,10,15,30,45,60,120,180,300,600,900,3600];
+  const expiryChoices=vnext?[5,10,15,30,60,120,300]:[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   const pausedReadings=s?.settings?.pausedReadings;
   const strategyCards=s?.lastResult?.analysis?.strategyCards;
@@ -219,8 +219,12 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     await act('settings',{engine:value,strategy2:'none',strategy3:'none'});
   };
   const changeExpiry=async(value:string)=>{
+    settingsEditing.current=true;
     setExpirySeconds(value);
-    await act('settings',{orderDurationMs:Number(value)*1000,forecastHorizonSeconds:Number(value)});
+    try{
+      const result=await act('settings',{orderDurationMs:Number(value)*1000,forecastHorizonSeconds:Number(value)});
+      if(result===false)setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
+    }finally{settingsEditing.current=false;}
   };
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
@@ -258,6 +262,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="vnextReceiptTitle"><b>{t(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?(nowMode?'COTAÇÃO AO VIVO':'PROJEÇÃO FUTURA'):'DADOS A CONFERIR')}</small></div>
     {nowMode&&<small data-testid="now-live-reading">{t('Última análise')}: {clock(m.evaluationAt)}</small>}
     {nowMode&&m.nowObservation?.probabilityCall!=null&&m.nowObservation?.probabilityPut!=null&&<small data-testid="now-probability-reading" style={{fontSize:11,opacity:.86}}>CALL {Math.round(Number(m.nowObservation.probabilityCall)*100)}% · PUT {Math.round(Number(m.nowObservation.probabilityPut)*100)}% · {t('Estimativa não calibrada')}</small>}
+    {nowMode&&m.nowObservation?.precision?.enabled&&<small data-testid="precision-entry-quality" style={{fontSize:11,fontWeight:850,color:m.nowObservation.precision.ready?'#74e0b5':'#e6c879'}}>FILTRO DE ADMISSÃO {Number(m.nowObservation.precision.ready?100:m.nowObservation.precision.score||0)}/100 · {m.nowObservation.precision.ready?'ENTRADA LIBERADA':'AGUARDANDO REVERSÃO CONFIRMADA'}</small>}
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} nowMode={nowMode} observation={m.nowObservation}/>
     {s?.autoExecutor&&<div data-testid="mobile-countdown-executor-wl" style={{display:'flex',gap:12,alignItems:'center',fontSize:11,fontWeight:800,marginTop:3,marginBottom:4}}>
       <span>WIN: {Number(s.autoExecutor.sessionWins||0)}</span>

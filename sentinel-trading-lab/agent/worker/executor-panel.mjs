@@ -9,9 +9,11 @@ const words={
 // Shared controls stay next to the analyst controls, outside collapsed settings.
 export function executorActions(state,language='pt'){
  if(!state)return '';const w=words[language]||words.pt;
- return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">'+
- '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-height:35px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer">'+w[6]+'</button>'+
- '<button data-sentinel-executor-action="stop" style="min-height:35px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer">'+w[7]+'</button></div>';
+ const mapLabel={pt:'Mapear',en:'Map controls',es:'Mapear',fr:'Repérer',ar:'تحديد'}[language]||'Mapear';
+ return '<div data-sentinel-bot-actions style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:0">'+
+ '<button data-sentinel-executor-action="start"'+(state.enabled||state.arming?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #65c9a5;border-radius:9px;background:#174c40;color:#d8fff0;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+w[6]+'</button>'+
+ '<button data-sentinel-executor-action="stop" style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #c07983;border-radius:9px;background:#4b2932;color:#ffe5e9;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+w[7]+'</button>'+
+ '<button data-sentinel-executor-action="map"'+(state.enabled||state.arming||state.pending||state.executing?' disabled':'')+' style="min-width:0;width:100%;height:33px;min-height:33px;border:1px solid #657977;border-radius:9px;background:transparent;color:inherit;font:750 11px inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+mapLabel+'</button></div>';
 }
 function executorPanelParts(state,language='pt',options={}){
  if(!state)return '';const w=words[language]||words.pt,c=state.config||{};
@@ -24,6 +26,7 @@ function executorPanelParts(state,language='pt',options={}){
  };const l=dict[language]||dict.pt;
  const provider=state.provider==='iq_option'?'IQ Option':state.provider==='exnova'?'Exnova':'';
  const active=state.arming?'arming':state.enabled?(state.suspendedReason?'waiting':state.pending||state.executing?'trading':'scanning'):'off';
+ const pnlTone=Number(state.netPnl)>0?'positive':Number(state.netPnl)<0?'negative':'neutral';
  const status=active==='waiting'?(language==='pt'?'BOT LIGADO · EM ESPERA':'BOT ON · WAITING'):language==='pt'?(active==='off'?'BOT PARADO':active==='arming'?'ATIVANDO BOT':active==='trading'?'BOT LIGADO · OPERANDO':'BOT LIGADO · ANALISANDO'):l[{off:12,scanning:13,trading:14,arming:15}[active]];
  const available=state.availableBalance??state.brokerBalance?.amount??null;
  const protectedStops=Number(c.stopLoss)>0||Number(c.stopWin)>0;
@@ -37,7 +40,7 @@ function executorPanelParts(state,language='pt',options={}){
  const styles='<style>.sentinel-robot{--robot:#91a6a6;position:relative;display:grid;place-items:center;width:38px;height:38px;color:var(--robot);flex:0 0 38px}.sentinel-robot[data-state="scanning"],.sentinel-robot[data-state="arming"],.sentinel-robot[data-state="waiting"]{--robot:#dfc47e}.sentinel-robot[data-state="trading"]{--robot:#75dfb4}.sentinel-robot-orbit{position:absolute;inset:0;border:1px solid currentColor;border-top:2px solid transparent;border-radius:50%}.sentinel-robot:not([data-state="off"]) .sentinel-robot-orbit{animation:sentinel-robot-orbit 3s linear infinite}@keyframes sentinel-robot-orbit{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.sentinel-robot-orbit{animation:none!important}}</style>';
  const summary=
  '<div style="display:flex;align-items:center;gap:9px"><span class="sentinel-robot" data-sentinel-robot data-state="'+active+'" aria-hidden="true"><span class="sentinel-robot-orbit"></span><svg width="25" height="25" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4v4M7 17H4m24 0h-3M11 26v2m10-2v2"/><rect x="7" y="8" width="18" height="17" rx="5"/><circle cx="12" cy="15" r="1.3" fill="currentColor"/><circle cx="20" cy="15" r="1.3" fill="currentColor"/><path d="M12 21h8"/></svg></span><div style="flex:1"><b>'+w[0]+(provider?' · '+provider:'')+'</b><div data-sentinel-executor-state data-bot-state="'+active+'" style="margin-top:3px;font-weight:850">'+status+'</div></div><strong data-sentinel-executor-balance style="font-size:14px;white-space:nowrap">'+w[13]+': '+(available==null?'—':number(available))+'</strong></div>'+
- '<div style="display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap;margin-top:9px"><b data-sentinel-executor-wl>WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+(waiting?' · '+waiting+' pendente(s)':'')+'</b><span data-sentinel-executor-session>'+w[9]+': '+number(state.netPnl)+'</span></div>'+
+ '<div style="display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap;margin-top:9px"><b data-sentinel-executor-wl>WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+(waiting?' · '+waiting+' pendente(s)':'')+'</b><span data-sentinel-executor-session data-pnl-tone="'+pnlTone+'">'+w[9]+': '+number(state.netPnl)+'</span></div>'+
  '<div data-sentinel-executor-broker-balance style="margin-top:6px;opacity:.8">'+stopStatus+(state.brokerBalance?.receivedAt?' · '+new Date(state.brokerBalance.receivedAt).toLocaleTimeString():'')+'</div>'+
  '<div data-sentinel-executor-next style="margin-top:5px;opacity:.8">'+l[21]+': '+Number(state.nextClicks??1)+' '+clicks+' × '+number(c.amount)+' · '+Number(state.durationMs||0)/1000+' s</div>'+
  '<div data-sentinel-executor-action-msg role="status" style="margin-top:5px;overflow-wrap:anywhere"></div><div data-sentinel-executor-message role="status" style="margin-top:3px;overflow-wrap:anywhere">'+escape(state.message)+'</div>';
@@ -47,10 +50,9 @@ function executorPanelParts(state,language='pt',options={}){
  (options.externalMartingale?'':'<label style="display:flex;gap:6px;align-items:center"><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+(state.arming?' disabled':'')+'>'+l[7]+'</label>')+
  input('stopLoss',l[5],c.stopLoss??0,'0.01')+input('stopWin',l[6],c.stopWin??0,'0.01')+
  input('martingaleLevels',l[8],Math.min(3,c.martingaleLevels??2))+input('martingaleMultiplier',l[9],multiplier)+
- input('maxConsecutiveLosses',l[10],c.maxConsecutiveLosses??0)+'</div><div style="margin-top:7px;opacity:.8">'+progression+'</div><small style="display:block;margin-top:7px;line-height:1.4;opacity:.8">'+l[20]+'</small>'+
- '<button data-sentinel-executor-action="map"'+(state.enabled||state.arming||state.pending||state.executing?' disabled':'')+' style="margin-top:8px;background:transparent;color:inherit;border:1px solid #657977;border-radius:7px;padding:6px 9px">'+l[11]+'</button></details>'+
+ input('maxConsecutiveLosses',l[10],c.maxConsecutiveLosses??0)+'</div><div style="margin-top:7px;opacity:.8">'+progression+'</div><small style="display:block;margin-top:7px;line-height:1.4;opacity:.8">'+l[20]+'</small></details>'+
  '<details data-sentinel-preserve-open="1" style="margin-top:7px"><summary style="cursor:pointer;opacity:.7">'+l[19]+'</summary><div data-sentinel-executor-risk style="margin-top:5px">'+l[22]+': '+Number(state.consecutiveLossBatches||0)+' · '+number(state.riskNetPnl)+'</div></details>';
- return {styles,summary,details,active,status,stopStatus};
+ return {styles,summary,details,active,status,stopStatus,pnlTone};
 }
 
 export function executorPanel(state,language='pt',options={}){
@@ -62,7 +64,7 @@ export function executorMonitor(state,language='pt'){
  const available=state.availableBalance??state.brokerBalance?.amount??null,n=x=>Number(x||0).toFixed(2);
  const waiting=Number(state.unresolvedDetail?.waitingResult||0)+Number(state.unresolvedDetail?.waitingId||0)+Number(state.unresolvedDetail?.uncertainAttempts||0);
  return p.styles+'<div data-sentinel-executor-monitor><div class="sentinel-monitor-head"><span class="sentinel-robot" data-sentinel-robot data-state="'+p.active+'" aria-hidden="true"><span class="sentinel-robot-orbit"></span><svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4v4M7 17H4m24 0h-3"/><rect x="7" y="8" width="18" height="17" rx="5"/><circle cx="12" cy="15" r="1.3"/><circle cx="20" cy="15" r="1.3"/><path d="M12 21h8"/></svg></span><b data-sentinel-executor-state data-bot-state="'+p.active+'">'+p.status+'</b><strong data-sentinel-executor-balance>'+(en?'Available':'Disponível')+': '+(available==null?'—':n(available))+'</strong></div>'+
- '<div class="sentinel-monitor-results"><b data-sentinel-executor-wl>WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+(waiting?' · '+waiting+' pendente(s)':'')+'</b><span data-sentinel-executor-session>'+(en?'Session':'Sessão')+': '+n(state.netPnl)+'</span><span data-sentinel-executor-broker-balance>'+p.stopStatus+'</span></div>'+
+ '<div class="sentinel-monitor-results"><b data-sentinel-executor-wl>WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+(waiting?' · '+waiting+' pendente(s)':'')+'</b><span data-sentinel-executor-session data-pnl-tone="'+p.pnlTone+'">'+(en?'Session':'Sessão')+': '+n(state.netPnl)+'</span><span data-sentinel-executor-broker-balance>'+p.stopStatus+'</span></div>'+
  '<div class="sentinel-mg-strip"><label><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+(state.arming?' disabled':'')+'><span>Martingale</span></label><b data-sentinel-mg-readout>'+(c.martingaleEnabled?'ON · '+Number(state.martingaleLevel||0)+' / '+Math.min(3,Number(c.martingaleLevels||0)):'OFF')+'</b><span data-sentinel-stop-targets>SL '+(c.stopLoss>0?n(c.stopLoss):'—')+' · SW '+(c.stopWin>0?n(c.stopWin):'—')+'</span></div>'+
  '<div data-sentinel-executor-message title="'+escape(state.message)+'" style="font-size:10px;line-height:15px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escape(state.message)+'</div><div data-sentinel-executor-action-msg role="status" style="font-size:10px;line-height:14px"></div></div>';
 }
@@ -82,6 +84,7 @@ export function executorMonitorReadout(state,language='pt'){
   winLoss:'WIN: '+Number(state.sessionWins||0)+' / LOSS: '+Number(state.sessionLosses||0)+
    (pending?' · '+pending+' pendente(s)':''),
   session:(en?'Session':'Sessão')+': '+amount(state.netPnl),
+  pnlTone:Number(state.netPnl)>0?'positive':Number(state.netPnl)<0?'negative':'neutral',
   brokerBalance:p.stopStatus,
   risk:(['pt','en','es','fr','ar'].includes(language)?({pt:'Sequências perdedoras',en:'Confirmed losing batches',es:'Rachas perdedoras',fr:'Séries perdantes',ar:'سلاسل الخسارة'}[language]):'Sequências perdedoras')+
    ': '+Number(state.consecutiveLossBatches||0)+' · '+amount(state.riskNetPnl),

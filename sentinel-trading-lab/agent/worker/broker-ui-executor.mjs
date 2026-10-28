@@ -239,6 +239,7 @@ export class BrokerUiExecutor{
   const s=this.driver.state(provider);
   if(clean(s.symbol)!==clean(expected.asset)||Number(s.activeId)!==Number(expected.activeId)||s.screenCandidateSymbol)throw errorBefore('Ativo mudou na corretora.');
  }
+ setNativeExpiryPreference(provider,preferredMs){return this.driver.setNativeExpiryPreference?.(provider,preferredMs)??false}
  async prepare(provider,expected){this.checkContext(provider,expected);const c=await this.controls(provider);const amount=typeof c?.frame?.evaluate==='function'?await c.frame.evaluate(readBrokerTradeStake).catch(()=>null):null;return{ready:true,amount};}
  async execute(provider,order){
   let yes,no,sentYes,sentNo,timer,timeoutResolve;
@@ -254,8 +255,9 @@ export class BrokerUiExecutor{
    if((this.unidentifiedClick?.order?.clicked||this.unidentifiedClick?.order?.dispatchUncertain)&&!this.unidentifiedClick.requestId)
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
-   this.checkContext(provider,order);const c=await this.controls(provider);
+   this.checkContext(provider,order);this.setNativeExpiryPreference(provider,order.durationMs);const c=await this.controls(provider);
    const expiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick);
+   order.nativeExpiryInspection=expiry;
    if(expiry?.blocked)throw Object.assign(errorBefore('A expiração escolhida na corretora está sendo restaurada; aguardando sinal atual.'),{nativeExpiryChanged:true});
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore('Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
@@ -273,7 +275,10 @@ export class BrokerUiExecutor{
      // Insufficient time to dispatch is a skipped signal, not permission
      // to submit an order after its original forecast timestamp.
      if(remaining<=80)throw errorBefore('Sinal sem tempo seguro para o clique; aguarde novo sinal.');
-     return Math.max(1,Math.min(350,Math.floor(remaining-30)));
+     // Use the existing signal validity budget instead of imposing an
+     // unrelated 350ms canvas actionability deadline. This never extends
+     // the original entry deadline or retries a possibly delivered click.
+     return Math.max(1,Math.floor(remaining-30));
    };
    try{
     if(c.canvasSelector){await c.frame.evaluate(canvasControlBridge,{action:'passthrough-on'});try{const timeout=clickTimeout();before();await c.frame.locator(c.canvasSelector).click({position:c.positions[order.side],timeout,noWaitAfter:true});order.clicked=true;}finally{await c.frame.evaluate(canvasControlBridge,{action:'passthrough-off'}).catch(()=>{});}}
