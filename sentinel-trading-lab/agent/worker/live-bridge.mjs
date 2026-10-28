@@ -235,6 +235,10 @@ export class LiveBridge{
       op.side,op.state,op.ready,op.actionable,op.activeUntil,
       op.scenario?.side,op.scenario?.status,op.scenario?.closed,op.scenario?.deadline,
       op.subanalyst?.alert?.side,op.subanalyst?.alert?.testing
+      ,snapshot.lastResult?.analysis?.vnext?.nowObservation?.precision?.ready
+      ,snapshot.lastResult?.analysis?.vnext?.nowObservation?.precision?.score
+      ,snapshot.lastResult?.analysis?.vnext?.nowObservation?.precision?.reason
+      ,snapshot.lastResult?.analysis?.vnext?.nowObservation?.precision?.observedAt
     ].join('|');
     if(fingerprint===this.lastFingerprint)return false;
     snapshot.seq=++this.seq;
