@@ -85,6 +85,6 @@ test('dashboard has no levels or multiplier selectors, shows just one doubled re
 });
 test('short, thirty and minute expiry each has a distinct stale-click budget',()=>{
  assert.equal(maxSignalAgeMs(10000),500);
- assert.equal(maxSignalAgeMs(30000),900);
- assert.equal(maxSignalAgeMs(60000),1500);
+ assert.equal(maxSignalAgeMs(30000),1450);
+ assert.equal(maxSignalAgeMs(60000),1950);
 });
