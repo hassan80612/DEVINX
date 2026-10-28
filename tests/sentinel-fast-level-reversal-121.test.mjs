@@ -79,7 +79,7 @@ test('unreceived future quotes, unordered ticks, gaps, and old confirmations nev
  assert.equal(verifiedFastLevelReversal({...a,side:'CALL',reversalEvidence:{...proof,confirmedAt:a.now-10000}}),false);
 });
 test('skipped late-floor PUT leaves the way open for a later proven CALL reversal',()=>{
- const f=fixture(),r=runtime(f,'automatic',60000),before=f.q.filter(q=>q.ts<=T-10000);
+ const f=oneMinuteFixture(fixture()),r=runtime(f,'automatic',60000),before=f.q.filter(q=>q.ts<=T-10000);
  const first=gate(r,before);
  assert.notEqual(first.futureEntryAnchor?.side,'PUT','do not chase an unverified downside impulse at the floor');
  const second=gate(r,f.q);

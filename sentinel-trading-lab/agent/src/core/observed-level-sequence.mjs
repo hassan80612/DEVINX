@@ -184,6 +184,7 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
+ const shortHorizon=Number(durationMs)===30000||Number(durationMs)===60000;
  const fastReversal=confirmedFastLevelReversal({map,...input,durationMs});
  const structureChange=sequence.structureChange&&
   (sequence.structureChange.kind!=='failed-breakout-structure-change'||
@@ -195,15 +196,17 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // opposite structural turn on the current quote. Preserve reclaim priority.
  const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:
   confirmedLevelReversal({map,...input});
- const shortHorizon=Number(durationMs)===30000||Number(durationMs)===60000;
  const event=shortHorizon?
   (structureChange?.kind==='failed-breakout-structure-change'?structureChange:
    reversal??fastReversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null)):
   (fastReversal??reversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null));
  const selectedReversal=event?.kind==='confirmed-fast-level-reversal'?fastReversal:
   event?.kind==='confirmed-level-structure-reversal'?reversal:null;
- const priceStructure={...candidate.priceStructure,observedSequence:sequence,
-  ...(selectedReversal?{confirmedReversal:selectedReversal}:{})};
+ const priceStructure=shortHorizon?
+  {...candidate.priceStructure,observedSequence:sequence,
+   ...(selectedReversal?{confirmedReversal:selectedReversal}:{})}:
+  {...candidate.priceStructure,observedSequence:sequence,
+   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
