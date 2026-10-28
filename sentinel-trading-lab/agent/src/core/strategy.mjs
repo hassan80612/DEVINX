@@ -88,8 +88,12 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const failedBreakDown=Number.isFinite(sr.support)&&Number(lastBar.low)<Number(sr.support)-tol*.05&&Number(lastBar.close)>=Number(sr.support)-tol*.08&&lowerWick>bodyAbs*.8;
  const turnDown=micro.delta15>0&&micro.delta5<0&&rate5<Math.min(-accelFloor,prior10Rate*.35);
  const turnUp=micro.delta15<0&&micro.delta5>0&&rate5>Math.max(accelFloor,prior10Rate*.35);
- const weakeningUp=micro.delta15>0&&rate5>0&&prior10Rate>0&&rate5<prior10Rate*.45;
- const weakeningDown=micro.delta15<0&&rate5<0&&prior10Rate<0&&rate5>prior10Rate*.45;
+ const persistenceRatioUp=micro.delta15>0&&rate5>0&&prior10Rate>0?Math.abs(rate5/prior10Rate):1;
+ const persistenceRatioDown=micro.delta15<0&&rate5<0&&prior10Rate<0?Math.abs(rate5/prior10Rate):1;
+ const persistenceDecayUp=micro.delta15>0&&rate5>0&&prior10Rate>0?clamp(1-persistenceRatioUp,0,1):0;
+ const persistenceDecayDown=micro.delta15<0&&rate5<0&&prior10Rate<0?clamp(1-persistenceRatioDown,0,1):0;
+ const weakeningUp=micro.delta15>0&&rate5>0&&prior10Rate>0&&persistenceRatioUp<.45;
+ const weakeningDown=micro.delta15<0&&rate5<0&&prior10Rate<0&&persistenceRatioDown<.45;
  const localHigh=prevBar&&prev2Bar&&Number(lastBar.high)>=Math.max(Number(prevBar.high),Number(prev2Bar.high));
  const localLow=prevBar&&prev2Bar&&Number(lastBar.low)<=Math.min(Number(prevBar.low),Number(prev2Bar.low));
 
@@ -192,7 +196,7 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  return{
    ready:true,bars:bars.length,callScore:call,putScore:put,edge,readyCall,readyPut,
    flowReadyCall,flowReadyPut,structureReadyCall,structureReadyPut,callReversalRisk,putReversalRisk,
-   callStretched,putStretched,callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallScore,reversalPutScore,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,failedBreakUp,failedBreakDown,
+   callStretched,putStretched,callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallScore,reversalPutScore,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,persistenceDecayUp,persistenceDecayDown,failedBreakUp,failedBreakDown,
    reversalCallConfirmed:micro.delta5>0&&(turnUp||failedBreakDown||(reversalCallCandidate&&rejectionUp&&micro.delta2>0)),reversalPutConfirmed:micro.delta5<0&&(turnDown||failedBreakUp||(reversalPutCandidate&&rejectionDown&&micro.delta2<0)),
    fast,slow,rsi:microRsi,momentum:microMom,macd:microMacd,structure,sr,trendlines:lines,
    patterns:patterns.map(p=>p.name),retest,range,callReasons:callReasons.slice(0,9),putReasons:putReasons.slice(0,9)
@@ -589,7 +593,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    // Anti-atraso: se o movimento atual já esticou e começa a perder aceleração,
    // a previsão deixa de perseguir a vela atual e antecipa a possibilidade de virada.
    if(predictionModel){
-     signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,persistenceWeakening:signal>0?short.weakeningUp:short.weakeningDown,seconds});
+     signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,persistenceDecay:signal>0?short.persistenceDecayUp:short.persistenceDecayDown,seconds});
      // Continuous prospective evidence, never an opposite-side override.
      signal=clamp(signal+Number(earlyTurn?.signal||0)*(seconds<=60?.12:seconds<=120?.07:0),-1,1);
    }else{
@@ -603,6 +607,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    if(seconds<=60&&trendSignal<-.20&&microSignal>.25)signal+=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,accelerationSignal)*.10);
    if(signal>0&&accelerationSignal<-.35)signal-=Math.min(.16,Math.abs(accelerationSignal)*.18);
    if(signal<0&&accelerationSignal>.35)signal+=Math.min(.16,Math.abs(accelerationSignal)*.18);
+   const persistenceDecay=Math.max(0,Math.min(1,Number(signal>0?short.persistenceDecayUp:signal<0?short.persistenceDecayDown:0)||0));
+   const strongerFade=signal>0?(short.callOverextended||short.turnDown||microSignal<-.25||accelerationSignal<-.35):signal<0?(short.putOverextended||short.turnUp||microSignal>.25||accelerationSignal>.35):true;
+   if(persistenceDecay>0&&!strongerFade)signal*=1-persistenceDecay*(seconds<=60?.14:seconds<=300?.06:0);
    if(seconds<=120&&reversalAuthoritySide!=='NEUTRO'){
      const score=reversalAuthoritySide==='CALL'?Number(short.reversalCallScore||0):Number(short.reversalPutScore||0);
      const magnitude=clamp(.38+Math.max(0,score-62)/95,.38,.72),authoritySignal=reversalAuthoritySide==='CALL'?magnitude:-magnitude;
