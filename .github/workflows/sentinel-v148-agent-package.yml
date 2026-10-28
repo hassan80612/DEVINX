@@ -50,7 +50,7 @@ jobs:
           const release=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
           const zip=fs.readFileSync('public/downloads/agent_payload_v88.zip');
           const manifest={format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256:crypto.createHash('sha256').update(zip).digest('hex')};
-          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify(manifest)+'\\n');
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify(manifest)+'\n');
           NODE
           go install github.com/akavel/rsrc@latest
           "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
