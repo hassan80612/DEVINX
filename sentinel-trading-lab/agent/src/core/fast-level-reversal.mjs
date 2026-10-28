@@ -5,12 +5,9 @@ const median=a=>{const v=[...a].sort((x,y)=>x-y);return v[Math.floor(v.length/2)
 const copyLevel=z=>Object.fromEntries(['low','high','level','confirmedPivots','independentRejections',
  'supportPivots','resistancePivots','supportRejections','resistanceRejections'].map(k=>[k,z[k]]));
 export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
- const expiry=Number(durationMs);
- const shortExpiry=expiry===30000||expiry===60000;
- // Short entries require three advancing received quotes. Remove the old
- // 600ms/1.2s dwell so confirmation follows live structure, not a timer.
- // 5m retains its existing two-quote confirmation and movement threshold.
- const confirmationSteps=shortExpiry?3:2;
+ // Restore 13.9.149 confirmation for 30s/1m: two advancing quotes, with
+ // no dwell timer. The current 5m thresholds remain unchanged.
+ const confirmationSteps=2;
  const minTouchToCurrentMs=0;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),tol=Number(map?.tolerance);
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&tol>0&&at>0&&at<=clock&&
@@ -34,8 +31,8 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
   const touch=rows[touchIndex];
   if(!(Number(map.asOf)<=touch.ts)||clock-touch.ts<minTouchToCurrentMs)continue;
   const approach=rows.slice(1,touchIndex+1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(x=>x>0);
-   const minRejection=Math.max(tol*(shortExpiry ? .85 : .75),median(approach)*2);
-   const minConfirmedMove=shortExpiry?Math.max(tol*.4,median(approach)*1.5):tol*.4;
+   const minRejection=Math.max(tol*.75,median(approach)*2);
+   const minConfirmedMove=tol*.4;
   for(const zone of map.levels){
    const role=levelRoleEvidence(zone,side);
    if(!(role.known&&role.pivots>=1&&role.rejections>=2&&

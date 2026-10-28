@@ -33,7 +33,7 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
   assert.equal(verifiedFastLevelReversal({...input(f),side:f.side,reversalEvidence:proof}),true);
  }
 });
-test('short expiries require a three-tick turn without dwell, reject a shallow bounce, and preserve 5m',()=>{
+test('30s and 1m restore the 13.9.149 two-quote reversal while preserving 5m',()=>{
  for(const mirror of [false,true]){
   const f=fixture(mirror),q=f.q.filter(x=>x.ts<=T+1250).map(x=>({...x}));
   for(const row of q){
@@ -41,8 +41,8 @@ test('short expiries require a three-tick turn without dwell, reject a shallow b
    if(row.ts===T+1250)row.price=(mirror?200-100.11:100.11);
   }
   const a={...input(f),quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000}),null);
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000}),null);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000})?.side,f.side);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000})?.side,f.side);
   assert.equal(confirmedFastLevelReversal({...a,durationMs:300000})?.side,f.side);
   const threeSteps=f.q.filter(x=>x.ts<=T+1500).map(x=>({...x}));
   const fast={...a,quoteHistory:threeSteps,quoteAt:threeSteps.at(-1).ts,

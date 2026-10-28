@@ -540,9 +540,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
   const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});
-  const persistenceDecision=reviewDirectionalPersistence({
-   candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
-  });
+  const shortExpiry=Number(durationMs)===30000||Number(durationMs)===60000;
+  // Restore the 13.9.149 decision path on 30s and 1m. Keep persistence phase
+  // diagnostics available in runtime readouts; they no longer veto these entries.
+  const persistenceDecision=shortExpiry?structuralDecision:
+   reviewDirectionalPersistence({
+    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
+   });
   return {...persistenceDecision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
