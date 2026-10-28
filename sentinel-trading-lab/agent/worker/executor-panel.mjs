@@ -31,8 +31,7 @@ function executorPanelParts(state,language='pt',options={}){
  const available=state.availableBalance??state.brokerBalance?.amount??null;
  const protectedStops=Number(c.stopLoss)>0||Number(c.stopWin)>0;
  const stopStatus=!protectedStops?l[18]:available==null?l[16]:l[17];
- const input=(key,label,value,step='1')=>'<label style="display:grid;gap:4px;min-width:0">'+label+'<input data-sentinel-executor-setting="'+key+'" type="number" min="'+(key==='martingaleMultiplier'?2:0)+'"'+(key==='martingaleLevels'||key==='martingaleMultiplier'?' max="3"':key==='maxConsecutiveLosses'?' max="50"':'')+' step="'+step+'" value="'+escape(value)+'"'+(state.arming?' disabled':'')+' style="width:100%;min-width:0;box-sizing:border-box;background:rgba(9,31,35,.9);color:#f4faf8;border:1px solid #657977;border-radius:7px;padding:7px;font:inherit"></label>';
- const multiplier=[2,3].includes(Number(c.martingaleMultiplier))?Number(c.martingaleMultiplier):2;
+ const input=(key,label,value,step='1')=>'<label style="display:grid;gap:4px;min-width:0">'+label+'<input data-sentinel-executor-setting="'+key+'" type="number" min="0"'+(key==='maxConsecutiveLosses'?' max="50"':'')+' step="'+step+'" value="'+escape(value)+'"'+(state.arming?' disabled':'')+' style="width:100%;min-width:0;box-sizing:border-box;background:rgba(9,31,35,.9);color:#f4faf8;border:1px solid #657977;border-radius:7px;padding:7px;font:inherit"></label>';
  const clicks=({pt:'clique(s)',en:'click(s)',es:'clic(s)',fr:'clic(s)',ar:'نقرة'})[language]||'click(s)';
  const progression=c.martingaleEnabled?'1 '+clicks+' → 2 '+clicks+' (uma vez)':'1 '+clicks;
  const waiting=Number(state.unresolvedDetail?.waitingResult||0)+Number(state.unresolvedDetail?.waitingId||0)+Number(state.unresolvedDetail?.uncertainAttempts||0);
@@ -53,7 +52,6 @@ function executorPanelParts(state,language='pt',options={}){
  '<label style="display:grid;gap:4px">'+l[1]+'<select data-sentinel-executor-setting="directionMode" style="padding:7px;max-width:100%;background:#092025;color:#f4faf8;border:1px solid #657977;border-radius:7px">'+['automatic','call','put'].map((mode,i)=>'<option value="'+mode+'"'+((c.directionMode||'automatic')===mode?' selected':'')+'>'+l[i+2]+'</option>').join('')+'</select></label>'+
  (options.externalMartingale?'':'<label style="display:flex;gap:6px;align-items:center"><input data-sentinel-executor-setting="martingaleEnabled" type="checkbox"'+(c.martingaleEnabled?' checked':'')+(state.arming?' disabled':'')+'>'+l[7]+'</label>')+
  input('stopLoss',l[5],c.stopLoss??0,'0.01')+input('stopWin',l[6],c.stopWin??0,'0.01')+
- input('martingaleLevels',l[8],Math.min(3,c.martingaleLevels??2))+input('martingaleMultiplier',l[9],multiplier)+
  input('maxConsecutiveLosses',l[10],c.maxConsecutiveLosses??0)+'</div><div style="margin-top:7px;opacity:.8">'+progression+'</div><small style="display:block;margin-top:7px;line-height:1.4;opacity:.8">'+l[20]+'</small></details>'+
  '<details data-sentinel-preserve-open="1" style="margin-top:7px"><summary style="cursor:pointer;opacity:.7">'+l[19]+'</summary><div data-sentinel-executor-risk style="margin-top:5px">'+l[22]+': '+Number(state.consecutiveLossBatches||0)+' · '+number(state.riskNetPnl)+'</div></details>';
  return {styles,summary,details,active,status,stopStatus,pnlTone};
