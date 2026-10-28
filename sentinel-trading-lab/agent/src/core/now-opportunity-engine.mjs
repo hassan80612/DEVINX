@@ -27,11 +27,12 @@ export const POST_EXPIRY_REASSESS_MS=3000;
 export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
  // Only the audited 60-second signal horizon is changed. Earlier 30-second\n // reference winners and 5/10/15-second entries are preserved.\n // Price-extreme protection is shared by level and impulse forecasts:
  // a reason label cannot exempt selling the end of an observed decline.
- // Independently qualified breakouts and high-edge reversals remain eligible.
+ // A breakout label alone is not proof; the measured new-low check below
+ // keeps a genuinely verified breakdown eligible.
  const expiry=Number(durationMs??(Number(candidate?.expirySeconds)*1000));
  if(candidate?.ready!==true||candidate.side!=='PUT'||
   expiry!==60000||
-  ['historical-level-breakout','confirmed-fast-level-reversal',
+  ['confirmed-fast-level-reversal',
    'closed-range-extreme-reversal-confirmed'].includes(candidate.reason))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
@@ -161,11 +162,18 @@ function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,
  if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object'||
    candidate.ready!==true||!isSide(candidate.side))return candidate;
  const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
- if(!isSide(state.side)||confirmedReversalCandidate(candidate))return candidate;
- const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
- const fading=['weakening','reversal-testing'].includes(state.phase);
+ if(!isSide(state.side))return candidate;
  const diagnostic={trendPersistence:state,marketPhase:state.phase,
   marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
+ const shallowCountertrendFastReversal=
+  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&
+  state.phase==='reversal-testing'&&Number(state.retracement)<.25;
+ if(shallowCountertrendFastReversal)
+  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};
+ if(confirmedReversalCandidate(candidate))return candidate;
+ const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
+ const fading=['weakening','reversal-testing'].includes(state.phase);
  if(candidate.side===state.side&&continuation&&fading)
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.'};

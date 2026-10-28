@@ -35,7 +35,7 @@ test('completed downward impulse near a prior floor is not blindly chased with P
  assert.equal(lateUnverifiedFloorImpulseRisk(params)?.kind,'unverified-late-put-near-recent-floor');
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,side:'CALL'}}),null);
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,expirySeconds:5}}),null);
- assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,reason:'historical-level-breakout'}}),null);
+ assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,reason:'historical-level-breakout'}})?.kind,'unverified-late-put-near-recent-floor');
  assert.equal(lateUnverifiedFloorImpulseRisk({...params,candidate:{...entry,reason:'closed-range-extreme-reversal-confirmed'}}),null);
 });
 test('a genuine newly established low remains eligible for independent breakout evidence',()=>{
@@ -43,7 +43,7 @@ test('a genuine newly established low remains eligible for independent breakout 
   receivedAt:T-90000+i*1000,price:i<85?1.005-(i*.000005):1.00458-(i-84)*.0001}));
  const spot=rows.at(-1).price;
  assert.equal(lateUnverifiedFloorImpulseRisk({candidate:{ready:true,side:'PUT',
-  reason:'closed-structure-and-live-impulse',observedAt:T,entryPrice:spot,expirySeconds:60},
+  reason:'historical-level-breakout',observedAt:T,entryPrice:spot,expirySeconds:60},
   quoteHistory:rows,quoteAt:T,now:T,price:spot}),null);
 });
 
@@ -53,7 +53,7 @@ test('60s shared decision refuses late-floor PUT across trend and level labels, 
  const spot=rows.at(-1).price;
  for(const durationMs of [30000,60000]){
   for(const reason of ['closed-structure-and-live-impulse','historical-level-rejection',
-    'confirmed-level-structure-reversal','failed-breakout-structure-change',
+    'historical-level-breakout','confirmed-level-structure-reversal','failed-breakout-structure-change',
     'break-retest-continuation']){
    const candidate={ready:true,side:'PUT',reason,observedAt:T,entryPrice:spot,
     expirySeconds:durationMs/1000};
