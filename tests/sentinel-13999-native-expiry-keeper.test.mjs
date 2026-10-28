@@ -2,9 +2,55 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {installBrokerNativeExpiryKeeper,nativeExpiryPermissionForExecutor} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
+import {installBrokerChartPeriodKeeper} from '../sentinel-trading-lab/agent/worker/broker-chart-period-keeper.mjs';
 import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 
 import {browser} from './helpers/broker-expiry-browser.mjs';
+function chartBrowser(initial='30 s',stored=null,className='chart-duration-timeframe'){
+ const key='sentinel-broker-chart-period-preference-v1:iq_option';
+ const storage=new Map(stored==null?[]:[[key,String(stored)]]),listeners={},old={
+  window:globalThis.window,document:globalThis.document,location:globalThis.location,
+  innerHeight:globalThis.innerHeight,innerWidth:globalThis.innerWidth,
+  localStorage:globalThis.localStorage,setInterval:globalThis.setInterval,
+  setTimeout:globalThis.setTimeout,DateNow:Date.now
+ };
+ let open=false,now=100000;
+ const options=['30 s','1 min','5 min'].map(text=>({
+  isConnected:true,_text:text,className:'chart-timeframe-option',
+  get innerText(){return this._text},get textContent(){return this._text},
+  getAttribute(){return null},getBoundingClientRect(){return{width:55,height:22,right:1280,bottom:340,x:1100,y:320,top:318}},
+  matches(selector){return selector.includes('role="option"')||selector.includes('timeframe')},
+  closest(){return null},contains(){return false},
+  click(){control._text=this._text;open=false}
+ }));
+ const menu={contains:el=>options.includes(el)};
+ const control={isConnected:true,className,_text:initial,
+  get innerText(){return this._text},get textContent(){return this._text},
+  getAttribute(name){return name==='aria-controls'?'chart-period-options':null},
+  getBoundingClientRect(){return{width:75,height:30,right:1280,bottom:270,x:1100,y:240,top:240}},
+  matches(selector){return selector.includes('button')||selector.includes('role="button"')},
+  querySelector(){return null},closest(){return null},contains(el){return open&&options.includes(el)},
+  click(){open=!open}
+ };
+ const mock={storage,control,options,listeners,now,
+  interval:null,event(name,target=control){listeners[name]?.({target,isTrusted:true})},
+  step(ms=2500){now+=ms;globalThis.window.__sentinelNativeExpiryPermissionV3.at=now;this.now=now;this.interval()},
+  restore(){Object.assign(globalThis,old);Date.now=old.DateNow}
+ };
+ globalThis.location={hostname:'iqoption.com'};globalThis.innerHeight=900;globalThis.innerWidth=1400;
+ globalThis.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)};
+ globalThis.window={__sentinelNativeExpiryPermissionV3:{allowed:true,provider:'iq_option',at:now},
+  addEventListener(name,fn){listeners['window:'+name]=fn},removeEventListener(name,fn){if(listeners['window:'+name]===fn)delete listeners['window:'+name]}};
+ globalThis.document={visibilityState:'visible',addEventListener(name,fn){listeners[name]=fn},
+  removeEventListener(name,fn){if(listeners[name]===fn)delete listeners[name]},
+  querySelectorAll(selector){
+   if(selector.includes('[class*="chart-duration"')||selector.includes('[class*="chart-period"'))return[control];
+   if(selector.startsWith('[role="option"]')||selector.includes('[class*="timeframe" i]'))return open?options:[];
+   return[];
+  },getElementById:id=>id==='chart-period-options'?menu:null};
+ globalThis.setInterval=fn=>{mock.interval=fn;return 1};globalThis.setTimeout=fn=>{fn();return 1};Date.now=()=>now;
+ return mock;
+}
 test('an option nested inside the native picker is saved as a choice, not a new opener',()=>{
  const m=browser('1 min',60000);
  try{
@@ -56,6 +102,37 @@ test('a chart timeframe option is never clicked to repair native expiry',()=>{
   m.step();m.step();m.step();
   assert.equal(chartClicks,0);
   assert.equal(m.control.innerText,'30 s','unknown native menu must remain untouched');
+ }finally{m.restore()}
+});
+test('the chart timeframe is stored separately and restored after a broker reset to 30s',()=>{
+ const m=chartBrowser('1 min',60);
+ try{
+  installBrokerChartPeriodKeeper({provider:'iq_option'});
+  assert.equal(window.__sentinelBrokerChartPeriodKeeperV1.snapshot().preferredSeconds,60);
+  m.control._text='30 s';m.step();m.step();
+  assert.equal(m.control.innerText,'1 min');
+  assert.equal(Number(m.storage.get('sentinel-broker-chart-period-preference-v1:iq_option')),60);
+  assert.equal(m.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),undefined,
+   'chart recovery must not write the broker order-expiry preference');
+ }finally{m.restore()}
+});
+test('an explicit manual chart selection replaces the saved chart period',()=>{
+ const m=chartBrowser('30 s');
+ try{
+  installBrokerChartPeriodKeeper({provider:'iq_option'});m.step();
+  m.event('pointerdown',m.control);m.control.click();
+  const option=m.options.find(o=>o._text==='5 min');
+  m.event('pointerdown',option);m.event('click',option);option.click();m.step();
+  assert.equal(window.__sentinelBrokerChartPeriodKeeperV1.snapshot().preferredSeconds,300);
+  assert.equal(Number(m.storage.get('sentinel-broker-chart-period-preference-v1:iq_option')),300);
+ }finally{m.restore()}
+});
+test('an unlabelled expiry control is never adopted as the chart timeframe',()=>{
+ const m=chartBrowser('1 min',60,'expiration-input');
+ try{
+  installBrokerChartPeriodKeeper({provider:'iq_option'});m.control._text='30 s';m.step();m.step();
+  assert.equal(window.__sentinelBrokerChartPeriodKeeperV1.snapshot().currentSeconds,null);
+  assert.equal(m.control.innerText,'30 s');
  }finally{m.restore()}
 });
 test('a trusted click in a chart menu cannot authorize learning an automatic native reset',()=>{
@@ -143,13 +220,17 @@ test('all expiry keeper wiring remains outside analysis, candle timeframe and ex
  const base=new URL('../sentinel-trading-lab/',import.meta.url);
  const code=readFileSync(new URL('agent/worker/local-playwright-driver.mjs',base),'utf8');
  const web=readFileSync(new URL('agent/worker/broker-native-expiry-keeper.mjs',base),'utf8');
+ const chart=readFileSync(new URL('agent/worker/broker-chart-period-keeper.mjs',base),'utf8');
  assert.match(code,/installBrokerNativeExpiryKeeper/);
  assert.match(code,/page\.addInitScript\(installBrokerNativeExpiryKeeper/);
  assert.match(code,/frame\.evaluate\(installBrokerNativeExpiryKeeper/);
+ assert.match(code,/page\.addInitScript\(installBrokerChartPeriodKeeper/);
+ assert.match(code,/frame\.evaluate\(installBrokerChartPeriodKeeper/);
  assert.match(code,/nativeExpiryPermissionForExecutor/);
  assert.doesNotMatch(web,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
+ assert.doesNotMatch(chart,/\b(fetch|WebSocket|sendMessage|requestMarketData)\s*\(/);
  const release=JSON.parse(readFileSync(new URL('agent/release.json',base),'utf8'));
- assert.equal(release.version,'13.9.154');
+ assert.equal(release.version,'13.9.155');
 });
 
 test('Exnova native duration field accepts 01:00 and repairs a spontaneous 00:30 reset',()=>{

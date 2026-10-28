@@ -32,5 +32,5 @@ test('only passive broker driver changes; analyst, bot and browser selection rem
  assert.doesNotMatch(src,/if\(st\.mode==='demo'\)await this\.recoverMarket\(provider\)/);
  assert.match(src,/st\.quote==null&&st\.symbol&&!fast&&st\.activeId==null/);
  const p=JSON.parse(readFileSync(new URL('agent/release.json',root),'utf8'));
- assert.equal(p.version,'13.9.154');
+ assert.equal(p.version,'13.9.155');
 });

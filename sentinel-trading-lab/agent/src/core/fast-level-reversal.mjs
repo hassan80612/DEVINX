@@ -7,11 +7,10 @@ const copyLevel=z=>Object.fromEntries(['low','high','level','confirmedPivots','i
 export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
  const expiry=Number(durationMs);
  const shortExpiry=expiry===30000||expiry===60000;
- // Two advancing received quotes confirm a short-horizon rejection. The
- // established level, two independent reactions and minimum rebound remain
- // mandatory, so speed comes from removing dwell, not from accepting noise.
+ // Short entries require three advancing received quotes. Remove the old
+ // 600ms/1.2s dwell so confirmation follows live structure, not a timer.
  // 5m retains its existing two-quote confirmation and movement threshold.
- const confirmationSteps=2;
+ const confirmationSteps=shortExpiry?3:2;
  const minTouchToCurrentMs=0;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),tol=Number(map?.tolerance);
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&tol>0&&at>0&&at<=clock&&
@@ -35,7 +34,7 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
   const touch=rows[touchIndex];
   if(!(Number(map.asOf)<=touch.ts)||clock-touch.ts<minTouchToCurrentMs)continue;
   const approach=rows.slice(1,touchIndex+1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(x=>x>0);
-  const minRejection=Math.max(tol*.75,median(approach)*2);
+   const minRejection=Math.max(tol*(shortExpiry ? .85 : .75),median(approach)*2);
    const minConfirmedMove=shortExpiry?Math.max(tol*.4,median(approach)*1.5):tol*.4;
   for(const zone of map.levels){
    const role=levelRoleEvidence(zone,side);

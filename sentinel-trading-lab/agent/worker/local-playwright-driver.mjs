@@ -18,6 +18,7 @@ import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mj
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
 import {installBrokerNativeExpiryKeeper,updateBrokerNativeExpiryPreference,nativeExpiryPermissionForExecutor} from './broker-native-expiry-keeper.mjs';
+import {installBrokerChartPeriodKeeper} from './broker-chart-period-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
 
@@ -758,8 +759,7 @@ export class LocalPlaywrightDriver{
     return this.launchBackground(provider);
   }
   async installBridge(page,provider=null){
-    // Native broker selection is independent of the chart candle size AND
-    // the Sentinel prediction expiry. Install once per broker page context.
+    // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       // Do not capture a mutable expiry in this one-time script: an old 30s
@@ -770,6 +770,11 @@ export class LocalPlaywrightDriver{
         await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
       }
       await page.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
+      if(!page.__sentinelBrokerChartPeriodInitScript){
+        page.__sentinelBrokerChartPeriodInitScript=true;
+        await page.addInitScript(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
+      }
+      await page.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
     }
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
@@ -842,11 +847,14 @@ export class LocalPlaywrightDriver{
     for(const frame of page.frames()){
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
-      if(provider)await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});
+      if(provider){
+        await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});
+        await frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
+      }
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider)frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{})};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{})}};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
