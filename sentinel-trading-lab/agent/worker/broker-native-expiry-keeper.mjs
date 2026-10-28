@@ -28,31 +28,20 @@ export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
 }
 // Runs on the existing broker page immediately before an actual direction
 // click. Unknown native controls never gate startup or imply a duration.
-export async function inspectNativeExpiryBeforeClick({maxWaitMs=850}={}){
+export function inspectNativeExpiryBeforeClick(){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
  if(keeper?.revision!==8)return {blocked:false};
- const previousPermission=window.__sentinelNativeExpiryPermissionV3||null;
- const budget=Math.min(900,Math.max(0,Number(maxWaitMs)||0));
- const deadline=Date.now()+budget;
- // This call is made by the executor immediately before its validated click.
- // Temporarily permit one bounded repair, then restore the prior permission.
- window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:true};
- try{
-  let s=keeper.snapshot();
-  keeper.poll({urgent:true});
-  while(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs&&Date.now()<deadline){
-   await new Promise(resolve=>setTimeout(resolve,Math.min(45,Math.max(0,deadline-Date.now()))));
-   s=keeper.snapshot();
-   if(s.preferredMs===s.currentMs||!s.currentMs)break;
-   keeper.poll({urgent:true});
-  }
-  s=keeper.snapshot();
-  return {blocked:!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs),
-   reason:s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs?'expiry-not-synchronized':null,
-   preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
- }finally{
-  window.__sentinelNativeExpiryPermissionV3=previousPermission||{provider:keeper.provider,at:0,allowed:false};
- }
+ // Revoke the idle permission immediately before the physical entry. The
+ // check is read-only and never opens or changes the broker expiry control.
+ window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
+ const previous=keeper.snapshot();
+ if(previous.restoring||previous.repairing)return {blocked:true,reason:'expiry-repair-in-progress',
+  preferredMs:previous.preferredMs,currentMs:previous.currentMs,revision:keeper.revision,observedAt:previous.observedAt};
+ keeper.poll();
+ const s=keeper.snapshot();
+ const mismatch=!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs);
+ return {blocked:mismatch,reason:mismatch?'expiry-not-synchronized':null,
+  preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
 }
 export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
  try{
