@@ -52,7 +52,9 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
   if(window.__sentinelNativeExpiryKeeperV3?.revision===8){
-   if(Number.isFinite(Number(requestedMs)))window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
+   const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
+   if(!(current>0)&&Number.isFinite(Number(requestedMs)))
+    window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
    return;
   }
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
@@ -102,7 +104,8 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
    const requested=Number(requestedMs);
-   if(ACCEPT.has(requested/1000)){preferredMs=requested;localStorage.setItem(key,String(requested));}
+   // A saved broker choice is authoritative across page reloads. Runtime input is only a fallback.
+   if(!preferredMs&&ACCEPT.has(requested/1000)){preferredMs=requested;localStorage.setItem(key,String(requested));}
   }catch{}
   const readDuration=el=>{
    const selected=el.matches?.('select')?el.selectedOptions:null;
