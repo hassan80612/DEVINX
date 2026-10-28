@@ -6,8 +6,13 @@ const copyLevel=z=>Object.fromEntries(['low','high','level','confirmedPivots','i
  'supportPivots','resistancePivots','supportRejections','resistanceRejections'].map(k=>[k,z[k]]));
 export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
  const expiry=Number(durationMs);
- const confirmationSteps=expiry===30000||expiry===60000?3:2;
- const minTouchToCurrentMs=expiry===30000?600:expiry===60000?1200:0;
+ const shortExpiry=expiry===30000||expiry===60000;
+ // Two advancing received quotes confirm a short-horizon rejection. The
+ // established level, two independent reactions and minimum rebound remain
+ // mandatory, so speed comes from removing dwell, not from accepting noise.
+ // 5m retains its existing two-quote confirmation and movement threshold.
+ const confirmationSteps=2;
+ const minTouchToCurrentMs=0;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),tol=Number(map?.tolerance);
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&tol>0&&at>0&&at<=clock&&
    clock-at<=1450&&spot>0&&Array.isArray(map.levels)))return null;
@@ -31,6 +36,7 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
   if(!(Number(map.asOf)<=touch.ts)||clock-touch.ts<minTouchToCurrentMs)continue;
   const approach=rows.slice(1,touchIndex+1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(x=>x>0);
   const minRejection=Math.max(tol*.75,median(approach)*2);
+   const minConfirmedMove=shortExpiry?Math.max(tol*.4,median(approach)*1.5):tol*.4;
   for(const zone of map.levels){
    const role=levelRoleEvidence(zone,side);
    if(!(role.known&&role.pivots>=1&&role.rejections>=2&&
@@ -46,7 +52,7 @@ export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quot
      confirmedMove+=move;
     }
     const q=rows[i];
-    return confirmedMove>=tol*.4&&
+    return confirmedMove>=minConfirmedMove&&
      sign*(q.price-touch.price)>=minRejection&&sign*(q.price-boundary)>=tol*.5;
    };
    const first=rows.findIndex((_,i)=>qualifies(i));

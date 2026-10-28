@@ -33,7 +33,7 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
   assert.equal(verifiedFastLevelReversal({...input(f),side:f.side,reversalEvidence:proof}),true);
  }
 });
-test('short expiries reject a two-tick bounce while the 5m rule remains unchanged',()=>{
+test('short expiries accept a strong two-tick reversal without dwell, reject a shallow bounce, and preserve 5m',()=>{
  for(const mirror of [false,true]){
   const f=fixture(mirror),q=f.q.filter(x=>x.ts<=T+1250).map(x=>({...x}));
   for(const row of q){
@@ -41,13 +41,17 @@ test('short expiries reject a two-tick bounce while the 5m rule remains unchange
    if(row.ts===T+1250)row.price=(mirror?200-100.11:100.11);
   }
   const a={...input(f),quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000}),null);
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000}),null);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000})?.side,f.side);
+  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000})?.side,f.side);
   assert.equal(confirmedFastLevelReversal({...a,durationMs:300000})?.side,f.side);
-  const threeSteps=f.q.filter(x=>x.ts<=T+1500).map(x=>({...x}));
-  const b={...a,quoteHistory:threeSteps,quoteAt:threeSteps.at(-1).ts,now:threeSteps.at(-1).ts,price:threeSteps.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...b,durationMs:30000})?.side,f.side);
-  assert.equal(confirmedFastLevelReversal({...b,durationMs:60000}),null,'1m requires 1.2s after the level touch');
+  const shallow=q.map(x=>({...x}));
+  for(const row of shallow){
+   if(row.ts===T+1000)row.price=(mirror?200-100.005:100.005);
+   if(row.ts===T+1250)row.price=(mirror?200-100.02:100.02);
+  }
+  const b={...a,quoteHistory:shallow,quoteAt:shallow.at(-1).ts,now:shallow.at(-1).ts,price:shallow.at(-1).price};
+  assert.equal(confirmedFastLevelReversal({...b,durationMs:30000}),null);
+  assert.equal(confirmedFastLevelReversal({...b,durationMs:60000}),null);
  }
 });
 test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{

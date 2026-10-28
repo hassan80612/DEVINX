@@ -312,7 +312,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
     if(current===preferredMs){mismatchSince=0;notify(current);return}
     if(!mismatchSince)mismatchSince=now;
     const defaultRollback=current===30000&&preferredMs!==30000&&stableCount>=2;
-    if((!urgent&&(now-mismatchSince<(defaultRollback?1000:4000)||now-lastRepairAt<10000))||!permission()){
+    // A broker page refresh commonly resets its picker to 30s. Once two
+    // observations confirm that rollback, restore the saved user choice even
+    // if an unrelated earlier repair is still inside its normal cooldown.
+    if((!urgent&&(now-mismatchSince<(defaultRollback?1000:4000)||
+      (!defaultRollback&&now-lastRepairAt<10000)))||!permission()){
      notify(current);return
     }
     restore(c);

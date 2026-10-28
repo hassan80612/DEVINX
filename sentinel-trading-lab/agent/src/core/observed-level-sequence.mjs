@@ -194,14 +194,28 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // projection below remains scoped to the 30s holding time it measures.
  // A continuation sequence must not prevent evaluation of a verified
  // opposite structural turn on the current quote. Preserve reclaim priority.
- const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:
-  confirmedLevelReversal({map,...input});
+ const currentLevelReversal=confirmedLevelReversal({map,...input});
+ const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:currentLevelReversal;
+ const eventPriority={
+  'failed-breakout-structure-change':5,
+  'confirmed-level-structure-reversal':4,
+  'confirmed-fast-level-reversal':3,
+  'break-retest-continuation':2,
+  'rejection-followthrough-clear-room':1
+ };
+ // For 30s/1m, the newest confirmed event owns the current direction. This
+ // prevents a still-fresh but older reversal/continuation from masking a
+ // later turn, while exact-time ties retain the stronger structural proof.
+ const currentShortEvents=[structureChange,currentLevelReversal,fastReversal,
+  Number(durationMs)===30000?sequence.continuation:null]
+  .filter(e=>e&&Number.isFinite(Number(e.confirmedAt)))
+  .sort((a,b)=>Number(b.confirmedAt)-Number(a.confirmedAt)||
+   Number(eventPriority[b.kind]||0)-Number(eventPriority[a.kind]||0));
  const event=shortHorizon?
-  (structureChange?.kind==='failed-breakout-structure-change'?structureChange:
-   reversal??fastReversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null)):
+  (currentShortEvents[0]??null):
   (fastReversal??reversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null));
  const selectedReversal=event?.kind==='confirmed-fast-level-reversal'?fastReversal:
-  event?.kind==='confirmed-level-structure-reversal'?reversal:null;
+  event?.kind==='confirmed-level-structure-reversal'?(shortHorizon?currentLevelReversal:reversal):null;
  const priceStructure=shortHorizon?
   {...candidate.priceStructure,observedSequence:sequence,
    ...(selectedReversal?{confirmedReversal:selectedReversal}:{})}:
@@ -211,7 +225,14 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
  const independentReclaim=structureChange?.kind==='failed-breakout-structure-change';
- if(!candidate.ready&&!independentReclaim&&!reversal&&!fastReversal)return {...candidate,priceStructure};
+ const independentlyConfirmed=event&&[
+  'failed-breakout-structure-change','confirmed-level-structure-reversal',
+  'confirmed-fast-level-reversal'
+ ].includes(event.kind);
+ if(shortHorizon){
+  if(!candidate.ready&&!independentlyConfirmed)return {...candidate,priceStructure};
+ }else if(!candidate.ready&&!independentReclaim&&!reversal&&!fastReversal)
+  return {...candidate,priceStructure};
  if(event.kind==='break-retest-continuation'&&candidate.side!==event.side)
   return {...candidate,ready:false,side:null,reason:'retest-versus-horizon-direction-conflict',priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),

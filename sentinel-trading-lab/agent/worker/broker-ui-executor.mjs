@@ -279,7 +279,10 @@ export class BrokerUiExecutor{
    if((this.unidentifiedClick?.order?.clicked||this.unidentifiedClick?.order?.dispatchUncertain)&&!this.unidentifiedClick.requestId)
     throw errorBefore('Aguardando identificação de clique anterior; nenhuma entrada repetida.');
    attempt.dispatchStartedAt=Date.now();
-   this.checkContext(provider,order);this.setNativeExpiryPreference(provider,order.durationMs);const c=await this.controls(provider);
+   // The broker-native expiry preference is updated when the user changes the
+   // selected horizon. Rewriting it from an order captured on an earlier page
+   // state here could undo the persisted picker choice after a broker refresh.
+   this.checkContext(provider,order);const c=await this.controls(provider);
    // Native expiry is restored by the background keeper. Do not hold a fresh
    // signal while polling the broker UI; an expiry mismatch is diagnostic only.
    order.nativeExpiryInspection={requiredDurationMs:Number(order.durationMs),validatedSynchronously:false};
