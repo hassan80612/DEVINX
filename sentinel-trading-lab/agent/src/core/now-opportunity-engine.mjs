@@ -155,15 +155,11 @@ function confirmedReversalCandidate(candidate){
  return true;
 }
 function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,durationMs}={}){
- const horizon=Number(durationMs),state=assessDirectionalPersistence({
-  quoteHistory,quoteAt,now,price,durationMs
- });
- if(!candidate||typeof candidate!=='object')return candidate;
- if(horizon===300000)return{...candidate,trendPersistence:state,
-  marketPhase:candidate.fiveMinuteReversalConfirmed===true?'reversal-confirmed':
-   candidate.ready===true?'reversal-review':state.phase,
-  marketPhaseLabel:candidate.fiveMinuteReversalConfirmed===true?'REVERSÃO CONFIRMADA':
-   candidate.ready===true?'EXTREMO EM REVERSÃO':'OBSERVANDO EXTREMO'};
+ const horizon=Number(durationMs);
+ // The new phase review is scoped to the requested 30s and 1m entries.
+ // Other legacy horizons keep their exact previous result shape.
+ if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object')return candidate;
+ const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
  const base={...candidate,trendPersistence:state,marketPhase:state.phase,
   marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
  if(candidate.ready!==true||!isSide(candidate.side)||!isSide(state.side))return base;
