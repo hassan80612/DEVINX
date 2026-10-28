@@ -1204,6 +1204,27 @@ export class LocalPlaywrightDriver{
     }
     throw new Error('broker_account_switch_not_confirmed');
   }
+  async syncVisibleAsset(provider){
+    const st=this.state(provider),page=this.sessions.get(provider)?.page;
+    if(!page||page.isClosed?.())return false;
+    const frames=page.frames?.()||[page];
+    const lists=await Promise.all(frames.map(frame=>frame.evaluate(()=>{
+      const selector='[role="tab"][aria-selected="true"],[aria-selected="true"][data-test*="asset" i],[aria-selected="true"][data-testid*="asset" i],[data-state="active"][role="tab"],[data-state="selected"][role="tab"],[class*="tab" i][class*="active" i],[class*="tab" i][class*="selected" i]';
+      return [...document.querySelectorAll(selector)].slice(0,32).filter(el=>{
+        if(el.closest('#sentinel-trading-overlay-host,[aria-selected="false"]'))return false;
+        const r=el.getBoundingClientRect(),style=getComputedStyle(el);
+        return style.display!=='none'&&style.visibility!=='hidden'&&r.width>=30&&r.height>8&&r.top<320;
+      }).map(el=>String(el.textContent||'').trim().slice(0,65));
+    }).catch(()=>[])));
+    const symbols=uniq(lists.flat().flatMap(label=>assetStrings(label)));
+    if(symbols.length!==1)return false;
+    const symbol=symbols[0],activeId=st.activeMap.get(pairKey(symbol))??null;
+    if(!this.applyActiveSelection(provider,{symbol,activeId,source:'broker-validated'}))return false;
+    if(activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
+    else void Promise.resolve(this.requestBaseData(provider))
+      .then(()=>this.requestMarketData(provider,{force:true})).catch(()=>{});
+    return true;
+  }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
     const st=this.state(provider),aid=n(activeId);let next=symbol?assetStrings(symbol)[0]||null:null;
     if(!next&&symbol)next=[...st.assets].find(x=>pairKey(x)===pairKey(symbol))||null;
