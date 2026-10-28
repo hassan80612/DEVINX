@@ -19,18 +19,38 @@ export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
   return true;
  }catch{return false}
 }
-// Runs on the existing broker page immediately before an actual direction
-// click. Unknown native controls never gate startup or imply a duration.
-export function inspectNativeExpiryBeforeClick(){
+// Synchronize a known broker expiry mismatch before the direction click.
+// The repair window is bounded by the signal's own remaining validity.
+export async function inspectNativeExpiryBeforeClick({maxWaitMs=850}={}){
  const keeper=window.__sentinelNativeExpiryKeeperV3;
  if(keeper?.revision!==7)return {blocked:false};
- window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
- const previous=keeper.snapshot();
- if(previous.restoring||previous.repairing)return {blocked:true,reason:'restoring'};
- keeper.poll();
- const s=keeper.snapshot();
- return {blocked:!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs),
-  preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
+ const rawBudget=Number(maxWaitMs);
+ const waitMs=Math.min(900,Math.max(0,Number.isFinite(rawBudget)?rawBudget:850));
+ const deadline=Date.now()+waitMs;
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ const lease=allowed=>{window.__sentinelNativeExpiryPermissionV3={
+  provider:keeper.provider,at:Date.now(),allowed
+ }};
+ const mismatch=s=>!!(s?.preferredMs&&s?.currentMs&&s.preferredMs!==s.currentMs);
+ try{
+  lease(true);
+  let s=keeper.snapshot();
+  if(mismatch(s)||s.restoring||s.repairing){
+   keeper.poll({urgent:true});
+   while(Date.now()<deadline){
+    await pause(Math.min(40,Math.max(1,deadline-Date.now())));
+    lease(true);
+    keeper.poll({urgent:true});
+    s=keeper.snapshot();
+    if(!s.restoring&&!s.repairing&&!mismatch(s))break;
+   }
+  }
+  s=keeper.snapshot();
+  const blocked=!!(s.restoring||s.repairing||mismatch(s));
+  return {blocked,reason:blocked?(s.restoring||s.repairing?'restoring':'mismatch'):null,
+   preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt,
+   waitedMs:Math.max(0,Date.now()-(deadline-waitMs))};
+ }finally{lease(false)}
 }
 export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
  try{
@@ -251,7 +271,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    };
    setTimeout(choose,200);
   }
-  function poll(){
+  function poll({urgent=false}={}){
    try{
     if(document.visibilityState==='hidden'||repairing)return;
     const c=discover();
@@ -283,7 +303,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
     if(current===preferredMs){mismatchSince=0;notify(current);return}
     if(!mismatchSince)mismatchSince=now;
     const defaultRollback=current===30000&&preferredMs!==30000&&stableCount>=2;
-    if(now-mismatchSince<(defaultRollback?1000:4000)||now-lastRepairAt<10000||!permission()){
+    if((!urgent&&now-mismatchSince<(defaultRollback?1000:4000))||(!urgent&&now-lastRepairAt<10000)||!permission()){
      notify(current);return
     }
     restore(c);
@@ -312,7 +332,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    const ms=Number(value);
    if(!ACCEPT.has(ms/1000))return false;
    save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
-   notify(observedMs);return true;
+   poll({urgent:true});notify(observedMs);return true;
   };
   window.__sentinelNativeExpiryKeeperV3={revision:7,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
