@@ -1086,12 +1086,11 @@ export class DemoTradingRuntime{
       const precision=this.precisionProfile==='reversal-extreme-v47'?
         precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
+      // Keep v47 evidence visible, while the shared market base remains the
+      // sole admission authority. The base already checks quote freshness,
+      // structure, expiry and execution safeguards; v47 is diagnostic only.
       const eligible=precision?.enabled?
-        (structurallyEligible.ready===true&&precision.ready===true?
-          {...structurallyEligible,precision}:
-          {...structurallyEligible,side:null,ready:false,
-            reason:structurallyEligible.ready===true?precision.reason:structurallyEligible.reason,
-            precision}):structurallyEligible;
+        {...structurallyEligible,precision}:structurallyEligible;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
