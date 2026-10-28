@@ -66,6 +66,6 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.equal(JSON.parse(read('package.json')).version,'13.9.148');
  const release=JSON.parse(read('agent/release.json'));
  assert.equal(release.version,'13.9.151');
- assert.equal(release.build,'13.9.151-asset-switch-chart-stability');
+ assert.equal(release.build,'13.9.151-selected-asset-startup-chart-stability');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
