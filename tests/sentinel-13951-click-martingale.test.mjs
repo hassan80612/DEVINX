@@ -78,6 +78,6 @@ test('Stop during dispatch cancels remaining clicks but keeps an accepted order 
  x.driver.execute=async(provider,o)=>{clicks++;o.captureEntry();o.clicked=true;x.bot.stop();return{accepted:true,orderId:'before-stop'};};await x.fire('PUT');assert.equal(clicks,1);assert.equal(x.bot.pending.orders.length,1);assert.equal(x.bot.enabled,false);x.advance(30000);assert.ok(x.bot.settle({provider:'iq_option',orderId:'before-stop',netPnl:-1}));assert.equal(x.bot.pending,null);assert.equal(x.bot.nextClicks(),2);assert.equal(x.bot.net,-2);
 });
 test('one-minute option stays selectable on the floating card and mobile requires the click-count Agent',()=>{
- const card=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');assert.match(card,/expiryChoices=vnext\?\[5,10,15,30,60,120,300\]/);
+ const card=readFileSync(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');assert.match(card,/expiryChoices=vnext\?\[30,60,300\]/);
  const phone=readFileSync(new URL('../sentinel-trading-lab/src/components/BotControl.tsx',import.meta.url),'utf8');assert.match(phone,/brokerExecution\)>=4/);assert.match(phone,/bot.nextClicks/);
 });

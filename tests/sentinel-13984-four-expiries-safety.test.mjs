@@ -35,11 +35,11 @@ for(const ms of [30000,60000,120000,300000]){
   assert.equal(combine66WithProbability(old,{pCall:.30,pPut:.70},{durationMs:ms,proof:record}).side,'CALL');
  });
 }
-test('all 4 selected holding times are accepted by Agent without broker expiry controls',()=>{
+test('the three selected holding times are accepted by Agent without broker expiry controls',()=>{
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  const bot=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-ui-executor.mjs',import.meta.url),'utf8');
- assert.match(worker,/\[5000,10000,15000,30000,60000,120000,300000\]/);
+ assert.match(worker,/\[30000,60000,300000\]/);
  assert.match(driver,/The broker's native expiry selection|user's native expiry selection/i);
  assert.match(bot,/async recoverDigitalAfterClose\(_provider\)\{return false;\}/);
  assert.doesNotMatch(bot,/await hits\[0\]\.frame\.locator\(hits\[0\]\.selector\)\.click/);

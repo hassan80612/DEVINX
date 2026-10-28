@@ -277,9 +277,15 @@ export class SignalExecutor{
  rebaseSessionIfSafe(context,balance,now){
   if(!this.enabled||!this.session||this.pending||this.executing||this.unresolvedExposure()>0)return false;
   const current=balance?.current;
+  // A live account switch must remain a visible safety hold until the user
+  // starts a fresh session; rebasing it silently could carry old P/L targets
+  // into the wrong bankroll. Asset/duration changes without an open order can
+  // still be rebased safely from the current broker balance.
+  const accountChanged=current&&this.session.accountId!=null&&
+    String(this.session.accountId)!==String(current.accountId);
+  if(accountChanged)return false;
   const changed=!this.sameContext(this.session,context)||
-    Number(this.session.durationMs)!==Number(context.durationMs)||
-    (current&&this.session.accountId!=null&&String(this.session.accountId)!==String(current.accountId));
+    Number(this.session.durationMs)!==Number(context.durationMs);
   if(!changed||!current||current.provider!==context.provider||!freshBalance(current,now))return false;
   this.session={provider:context.provider,asset:context.asset,durationMs:context.durationMs,
     engine:context.engine,accountId:String(current.accountId)};
@@ -292,7 +298,7 @@ export class SignalExecutor{
   this.lastSettlementBalanceRevision=0;this.lastBrokerSettlementAt=0;
   this.queuedSignal=null;this.seen.clear();this.lastCadenceDurationMs=null;
   this.nextScheduledAt=now;this.suspensionReason=null;
-  this.message='Ligado · contexto atualizado · aguardando nova confirmação';
+  this.message='Ligado · conta/ativo atualizado · aguardando nova confirmação';
   return true;
  }
  watch(){

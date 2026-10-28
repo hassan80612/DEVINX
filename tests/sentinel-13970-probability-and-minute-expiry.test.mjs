@@ -73,8 +73,8 @@ test('broker duration mismatch is informational and never blocks the analyst',()
  assert.equal(out.analysis.vnext.futureEntryAnchor?.holdingSeconds,60);
  assert.notEqual(out.analysis.vnext.nowObservation.reason,'broker-duration-mismatch');
 });
-test('worker accepts 30s 60s 2m and 5m durations without changing preview horizon',()=>{
+test('worker accepts only 30s 1m and 5m durations without changing preview horizon',()=>{
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
- assert.ok(code.includes('[5000,10000,15000,30000,60000,120000,300000].includes(n)'));
+ assert.ok(code.includes('[30000,60000,300000].includes(n)'));
  assert.match(code,/orderDurationMs:n,forecastHorizonSeconds:30/);
 });

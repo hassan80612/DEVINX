@@ -2251,7 +2251,7 @@ export class LocalPlaywrightDriver{
               </label>
               <label style="display:grid;gap:4px;font-size:9px;font-weight:750;color:${goldSoft}">${tr('Duração')}
                 <select data-sentinel-setting="duration" title="${tr('Prazo da previsão selecionado por você')}" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
-                  ${[5,10,15,30,60,120,300].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v>=60?v/60+' min':v+'s')+'</option>').join('')}
+                  ${[30,60,300].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v>=60?v/60+' min':v+'s')+'</option>').join('')}
                 </select>
               </label>
             </div>
