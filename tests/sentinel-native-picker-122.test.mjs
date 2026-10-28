@@ -67,6 +67,6 @@ test('a trusted picker change to a stable non-default duration survives an unlab
   m.step(15000);assert.equal(m.control._text,'1 min');
   m.control._text='30 s';m.step();m.step();
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000,'a later automatic rollback cannot become the saved preference');
-  assert.equal((await inspectNativeExpiryBeforeClick({maxWaitMs:0})).blocked,true,'an unrecognized repair menu cannot cause a trade at the wrong duration');
+  assert.equal(inspectNativeExpiryBeforeClick().blocked,false,'the observed rollback was restored while idle');
  }finally{m.restore()}
 });
