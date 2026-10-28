@@ -17,7 +17,7 @@ test('disappearing native controls clear the last observation instead of blockin
  const m=browser('30 s',60000);
  try{
   installBrokerNativeExpiryKeeper({provider:'iq_option'});assert.equal(inspectNativeExpiryBeforeClick().blocked,true);
-  m.control.isConnected=false;assert.equal((await inspectNativeExpiryBeforeClick({maxWaitMs:0})).blocked,false);
+  m.control.isConnected=false;assert.equal(inspectNativeExpiryBeforeClick().blocked,false);
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs,null);
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
  }finally{m.restore()}
