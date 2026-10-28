@@ -2252,12 +2252,12 @@ export class LocalPlaywrightDriver{
             </div>
             <div data-sentinel-command-dock data-analysis-state="${runtime}">
             ${d.executorMonitorHtml||''}
-            <div data-sentinel-command-buttons><div data-sentinel-analysis-actions style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
+            <div data-sentinel-command-buttons style="width:100%;overflow-x:auto;margin-top:8px"><div style="display:grid;grid-template-columns:repeat(6,minmax(82px,1fr));gap:5px;min-width:525px"><div data-sentinel-analysis-actions style="display:contents">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:#3167a8;font-size:11px;font-weight:900;color:#f2f6ff;cursor:pointer">${tr('▶ Iniciar análise')}</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
               <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
             </div>
-            ${d.executorActionsHtml||''}</div>
+            ${d.executorActionsHtml||''}</div></div>
             <div data-sentinel-control-msg role="status" style="font-size:10px;line-height:13px;opacity:.85"></div>
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:auto auto minmax(74px,auto) auto;gap:5px;margin-top:7px;padding:8px 10px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
@@ -2344,13 +2344,17 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" title="${tr('↻ Leitura')}" style="border:1px solid ${panelBorder};border-radius:8px;height:29px;padding:0 8px;background:${uiTheme==='light'?'linear-gradient(180deg,#fff,#f4eee2)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:900 9.5px/1 inherit;cursor:pointer;white-space:nowrap">${tr('↻ LEITURA')}</button>
                 <button data-sentinel-scroll title="${tr('Descer / voltar ao topo')}" style="border:1px solid ${panelBorder};border-radius:8px;width:29px;height:29px;background:${uiTheme==='light'?'#fff':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:700 15px/1 inherit;cursor:pointer;display:grid;place-items:center">↓</button>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:5px;width:100%;max-width:310px">
-                <button data-sentinel-action="start" style="height:31px;border:1px solid rgba(215,182,93,.56);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,#f2dc9a,#cda646)':'linear-gradient(180deg,rgba(215,182,93,.18),rgba(215,182,93,.06))'};color:${runtime==='running'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('● INICIAR')}</button>
-                <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('Ⅱ PAUSAR')}</button>
-                <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:700 9.5px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">${tr('■ PARAR')}</button>
+              <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
+            </div>
+          </div>
+          <div data-sentinel-command-buttons style="width:100%;overflow-x:auto;margin-top:8px">
+            <div style="display:grid;grid-template-columns:repeat(6,minmax(82px,1fr));gap:5px;min-width:525px">
+              <div data-sentinel-analysis-actions style="display:contents">
+                <button data-sentinel-action="start" title="Iniciar análise" style="height:34px;min-width:0;border:1px solid ${panelBorder};border-radius:8px;background:#3167a8;color:#f2f6ff;font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap">${tr('▶ Iniciar análise')}</button>
+                <button data-sentinel-action="pause" title="Pausar análise" style="height:34px;min-width:0;border:1px solid ${panelBorder};border-radius:8px;background:${fieldBg};color:${ink};font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap">${tr('Ⅱ Pausar')}</button>
+                <button data-sentinel-action="stop" title="Parar análise" style="height:34px;min-width:0;border:1px solid ${panelBorder};border-radius:8px;background:${fieldBg};color:${ink};font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap">${tr('■ Parar')}</button>
               </div>
               ${d.executorActionsHtml||''}
-              <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>
           <div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:${uiTheme==='light'?'linear-gradient(90deg,rgba(8,112,82,.12),rgba(201,166,91,.08))':'linear-gradient(90deg,rgba(124,233,193,.11),rgba(215,182,93,.07))'};border:1px solid ${uiTheme==='light'?'rgba(8,112,82,.34)':'rgba(124,233,193,.36)'};box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 10px rgba(124,233,193,.07);font-size:9.5px;line-height:1.34;color:${uiTheme==='light'?'#111318':'#ffffff'};font-weight:700">
