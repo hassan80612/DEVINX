@@ -622,7 +622,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
- constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
@@ -849,6 +849,12 @@ export class LocalPlaywrightDriver{
       const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider)frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{})};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
+    }
+    const pendingExpiryMs=provider?this.nativeExpiryPendingApply.get(provider):null;
+    if(Number.isFinite(Number(pendingExpiryMs))&&Number(pendingExpiryMs)>0){
+      const payload={provider,preferredMs:Number(pendingExpiryMs)};
+      for(const frame of page.frames())void frame.evaluate(updateBrokerNativeExpiryPreference,payload).catch(()=>{});
+      this.nativeExpiryPendingApply.delete(provider);
     }
   }
   ingest(provider,payload,direction='in'){
@@ -1299,15 +1305,31 @@ export class LocalPlaywrightDriver{
     const p=Number(period);
     if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
   }
-  setNativeExpiryPreference(provider,preferredMs){
+  async setNativeExpiryPreference(provider,preferredMs,options={}){
     if(!['iq_option','exnova'].includes(provider))return false;
-    const ms=Number(preferredMs),accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
-    if(!accepted.has(ms/1000))return false;
-    this.nativeExpiryPreferences.set(provider,ms);
+    const accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
+    const requested=Number(preferredMs);
+    if(!accepted.has(requested/1000))return false;
+    const preserveExisting=options.preserveExisting??!this.nativeExpiryPreferences.has(provider);
     const page=this.sessions.get(provider)?.page;
-    if(!page||page.isClosed?.())return true;
+    let ms=requested;
+    if(preserveExisting&&page&&!page.isClosed?.()){
+      const key='sentinel-broker-native-expiration-preference-v3:'+provider;
+      for(const frame of page.frames()){
+        const stored=Number(await frame.evaluate(k=>{
+          try{return localStorage.getItem(k)||localStorage.getItem(k.replace('-v3:','-v2:'))||localStorage.getItem(k.replace('-v3:','-v1:'))}catch{return null}
+        },key).catch(()=>null));
+        if(accepted.has(stored/1000)){ms=stored;break}
+      }
+    }
+    this.nativeExpiryPreferences.set(provider,ms);
+    if(!page||page.isClosed?.()){
+      if(!preserveExisting)this.nativeExpiryPendingApply.set(provider,ms);
+      return true;
+    }
     const payload={provider,preferredMs:ms};
     for(const frame of page.frames())void frame.evaluate(updateBrokerNativeExpiryPreference,payload).catch(()=>{});
+    this.nativeExpiryPendingApply.delete(provider);
     return true;
   }
   async refreshPredictionHistory(provider,now=Date.now()){
