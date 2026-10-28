@@ -76,7 +76,7 @@ jobs:
             'zipSha256':hashlib.sha256(payload).hexdigest()
           }
           (root/'public/downloads/agent-update.json').write_text(
-            json.dumps(manifest,separators=(',',':'))+'\\n'
+            json.dumps(manifest,separators=(',',':'))+chr(10)
           )
           print('Update package prepared:',manifest['version'],len(payload),manifest['zipSha256'])
           PY
