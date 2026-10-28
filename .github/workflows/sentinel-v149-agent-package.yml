@@ -1,0 +1,101 @@
+name: Sentinel 13.9.149 agent package
+on:
+  push:
+    branches:
+      - codex/sentinel-v149-button-fit-20261028
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-v149-agent-package
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate agent sources and release versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const release=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/release.json','utf8'));
+          const pkg=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/package.json','utf8'));
+          if(release.version!=='13.9.149'||pkg.version!==release.version) throw new Error('agent version mismatch');
+          if(release.runtime.precisionProfile!=='horizon-balanced-v148') throw new Error('wrong entry profile');
+          NODE
+      - name: Build checksum manifest and Agent ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const release=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
+          const zip=fs.readFileSync('public/downloads/agent_payload_v88.zip');
+          const manifest={format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256:crypto.createHash('sha256').update(zip).digest('hex')};
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify(manifest)+'\\n');
+          NODE
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-13.9.149.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-13.9.149.exe public/downloads/Sentinel-Agent-Windows.exe
+          cp public/downloads/Sentinel-Agent-13.9.149.exe public/downloads/sentinel-agent-windows.exe
+          tmp="$(mktemp -d)"
+          cp public/downloads/agent_payload_v88.zip "$tmp/"
+          cp public/downloads/install-agent-v88.ps1 "$tmp/"
+          (cd "$tmp" && zip -qr "$GITHUB_WORKSPACE/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.149-Alternativo.zip" .)
+          file public/downloads/Sentinel-Agent-13.9.149.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-13.9.149.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+      - name: Validate packaged payload and installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path('sentinel-trading-lab')
+          dl=root/'public/downloads'
+          release=json.loads((root/'agent/release.json').read_text())
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          payload=(dl/'agent_payload_v88.zip').read_bytes()
+          exe=(dl/'Sentinel-Agent-13.9.149.exe').read_bytes()
+          assert manifest['version']==release['version'] and manifest['build']==release['build']
+          assert manifest['zipSha256']==hashlib.sha256(payload).hexdigest()
+          assert exe[:2]==b'MZ' and payload in exe
+          assert exe==(dl/'Sentinel-Agent-Windows.exe').read_bytes()
+          assert exe==(dl/'sentinel-agent-windows.exe').read_bytes()
+          with zipfile.ZipFile(dl/'agent_payload_v88.zip') as z:
+            assert z.testzip() is None
+            assert json.loads(z.read('release.json'))==release
+          with zipfile.ZipFile(dl/'Sentinel-Agent-13.9.149-Alternativo.zip') as z:
+            assert z.testzip() is None
+            assert z.read('agent_payload_v88.zip')==payload
+            assert z.read('install-agent-v88.ps1')==(dl/'install-agent-v88.ps1').read_bytes()
+          PY
+      - name: Commit version 13.9.149 downloads to candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.149.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.149-Alternativo.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          git commit -m 'build(sentinel): package Agent 13.9.149'
+          git push origin HEAD:codex/sentinel-v149-button-fit-20261028
