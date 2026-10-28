@@ -1292,8 +1292,10 @@ export class DemoTradingRuntime{
           side:eligible.side,provisionalSide:eligible.side||eligible.provisionalSide||null,
           rawSide:observation.side,rawReason:observation.reason,
           ready:eligible.ready,reason:eligible.reason,
-          marketPhase:eligible.marketPhase||observation.marketPhase||null,
-          marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||'OBSERVANDO',
+          marketPhase:eligible.marketPhase||observation.marketPhase||
+            (Number(settings.orderDurationMs)===300000?(eligible.ready?'reversal-confirmed':'reversal-review'):null),
+          marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||
+            (Number(settings.orderDurationMs)===300000?(eligible.ready?'REVERSÃO CONFIRMADA':'OBSERVANDO EXTREMO'):'OBSERVANDO'),
           marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||null,
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||null,
           observedAt:eligible.observedAt,strength:eligible.strength,
