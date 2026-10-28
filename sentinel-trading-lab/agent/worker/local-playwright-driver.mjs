@@ -1626,7 +1626,7 @@ export class LocalPlaywrightDriver{
           el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.9.12';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
-            width:'480px',height:'min(640px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
+            width:'440px',height:'min(640px, calc(100vh - 24px))',minWidth:'320px',maxWidth:'min(500px, calc(100vw - 18px))',
             minHeight:'300px',maxHeight:'calc(100vh - 18px)',resize:'both',
             overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',scrollbarGutter:'stable',
             background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
@@ -1647,7 +1647,7 @@ export class LocalPlaywrightDriver{
             }
             const savedSize=JSON.parse(localStorage.getItem('sentinel-overlay-size-v13r2')||'null');
             if(savedSize&&Number.isFinite(savedSize.w)&&Number.isFinite(savedSize.h)){
-              el.style.width=Math.max(420,Math.min(window.innerWidth-18,savedSize.w))+'px';
+              el.style.width=Math.max(320,Math.min(480,window.innerWidth-18,savedSize.w))+'px';
               el.style.height=Math.max(300,Math.min(window.innerHeight-18,savedSize.h))+'px'
             }
           }catch{}
@@ -2252,7 +2252,7 @@ export class LocalPlaywrightDriver{
             </div>
             <div data-sentinel-command-dock data-analysis-state="${runtime}">
             ${d.executorMonitorHtml||''}
-            <div data-sentinel-command-buttons style="width:100%;overflow-x:auto;margin-top:8px"><div style="display:grid;grid-template-columns:repeat(6,minmax(82px,1fr));gap:5px;min-width:525px"><div data-sentinel-analysis-actions style="display:contents">
+            <div data-sentinel-command-buttons style="width:100%;min-width:0;max-width:100%;overflow-x:hidden;margin-top:8px"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0;width:100%"><div data-sentinel-analysis-actions style="display:contents">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:#3167a8;font-size:11px;font-weight:900;color:#f2f6ff;cursor:pointer">${tr('▶ Iniciar análise')}</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('Ⅱ Pausar')}</button>
               <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">${tr('■ Parar')}</button>
@@ -2347,8 +2347,8 @@ export class LocalPlaywrightDriver{
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:9.5px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>
-          <div data-sentinel-command-buttons style="width:100%;overflow-x:auto;margin-top:8px">
-            <div style="display:grid;grid-template-columns:repeat(6,minmax(82px,1fr));gap:5px;min-width:525px">
+          <div data-sentinel-command-buttons style="width:100%;min-width:0;max-width:100%;overflow-x:hidden;margin-top:8px">
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0;width:100%">
               <div data-sentinel-analysis-actions style="display:contents">
                 <button data-sentinel-action="start" title="Iniciar análise" style="height:34px;min-width:0;border:1px solid ${panelBorder};border-radius:8px;background:#3167a8;color:#f2f6ff;font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap">${tr('▶ Iniciar análise')}</button>
                 <button data-sentinel-action="pause" title="Pausar análise" style="height:34px;min-width:0;border:1px solid ${panelBorder};border-radius:8px;background:${fieldBg};color:${ink};font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap">${tr('Ⅱ Pausar')}</button>
@@ -2652,7 +2652,7 @@ export class LocalPlaywrightDriver{
           if(el.dataset.geometryClamped!=='1'){
             el.dataset.geometryClamped='1';
             const r=el.getBoundingClientRect();
-            if(r.width>window.innerWidth-16)el.style.width=Math.max(450,window.innerWidth-16)+'px';
+            if(r.width>window.innerWidth-16)el.style.width=Math.max(320,window.innerWidth-16)+'px';
             if(r.height>window.innerHeight-16)el.style.height=Math.max(320,window.innerHeight-16)+'px';
             const rr=el.getBoundingClientRect();
             if(rr.right>window.innerWidth-8){el.style.left=Math.max(8,window.innerWidth-rr.width-8)+'px';el.style.right='auto'}
