@@ -27,7 +27,7 @@ export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
   const overlapping=unique.some((id,i)=>families[i]!=='aggregate'&&families.indexOf(families[i])!==i);
   const aggregateMixed=unique.length>1&&unique.includes('smart_confluence');
   const current=selected.map(x=>({id:x.id,card:cards.find(c=>Number(c.slot)===x.slot)}));
-  const directional=current.filter(x=>x.card&&!x.card.paused&&validSide(x.card.side)&&Number(x.card.evidence)>=.35);
+  const directional=current.filter(x=>x.card&&!x.card.paused&&validSide(x.card.side)&&(x.card.ready===true||Number(x.card.evidence)>=.35));
   const sides=[...new Set(directional.map(x=>validSide(x.card.side)))];
   const divergence=sides.length>1;
   const count=selected.length;

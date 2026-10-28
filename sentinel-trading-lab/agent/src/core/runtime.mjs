@@ -38,6 +38,7 @@ import {CausalProbabilityReview} from './causal-probability-review.mjs';
 import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 import {precisionEntryGate} from './precision-entry-policy.mjs';
+import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -170,6 +171,59 @@ export class DemoTradingRuntime{
     const state={callPct:smoothCall,putPct:smoothPut,side:stableSide,candidate,candidateCount:count,count,at:now,bias:String(bias||'NEUTRO')};
     this.forecastStability[key]=state;
     return{callPct:Math.round(smoothCall),putPct:Math.round(smoothPut),side:stableSide,alpha,candidate,cycles:count}
+  }
+  _currentStrategyEvidence(snap,durationMs,now=Date.now()){
+    const ids=[String(this.settings.strategy||'smart_confluence'),
+      String(this.settings.strategy2||'none'),String(this.settings.strategy3||'none')];
+    if(!ids.some(id=>STRATEGY_LABELS[id]&&id!=='automatic')){
+      const engine=String(this.settings.engine||'');
+      if(STRATEGY_LABELS[engine]&&engine!=='automatic')ids[0]=engine;
+    }
+    const paused=this.settings.pausedReadings||{};
+    const last=snap.quoteHistory?.at(-1)||{};
+    const key=JSON.stringify([ids,paused,Number(durationMs),snap.quoteTs,snap.price,
+      snap.quoteHistory?.length,last.ts,last.price]);
+    if(this._currentStrategyEvidenceCache?.key===key)return this._currentStrategyEvidenceCache.value;
+    const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory.slice(-3000):[];
+    const observations=new Map();
+    const cards=ids.map((strategy,index)=>{
+      const slot=index+1,pauseKey='strategy_'+slot,isPaused=paused[pauseKey]===true;
+      const label=STRATEGY_LABELS[strategy]||'Estratégia não selecionada';
+      if(strategy==='none'||!STRATEGY_LABELS[strategy])return{slot,strategy:'none',label,
+        active:false,paused:isPaused,pauseKey,side:'NEUTRO',evidence:0,ready:false,reasons:[]};
+      if(isPaused)return{slot,strategy,label,active:true,paused:true,pauseKey,
+        side:'NEUTRO',evidence:0,ready:false,reasons:['Leitura pausada pelo usuário.']};
+      let result=observations.get(strategy);
+      if(!result){
+        result=currentStrategyEvidence({quotes,price:Number(snap.price),quoteAt:Number(snap.quoteTs),
+          engineId:strategy});
+        observations.set(strategy,result);
+      }
+      const ready=result?.ready===true&&['CALL','PUT'].includes(result.side);
+      return{slot,strategy,label,active:true,paused:false,pauseKey,
+        side:ready?result.side:'NEUTRO',evidence:0,ready,
+        reasons:[String(result?.reason||'sem gatilho atual')],
+        evidenceKind:ready?'current-quote-setup':'no-current-setup',
+        calibratedAccuracy:false};
+    });
+    const active=cards.filter(card=>card.active&&!card.paused);
+    const directional=active.filter(card=>card.ready&&['CALL','PUT'].includes(card.side));
+    const callVotes=directional.filter(card=>card.side==='CALL').length;
+    const putVotes=directional.filter(card=>card.side==='PUT').length;
+    const side=callVotes>putVotes?'CALL':putVotes>callVotes?'PUT':'NEUTRO';
+    const status=!directional.length?'no-current-setup':
+      callVotes&&putVotes?'mixed-current-setups':'current-setups-aligned';
+    const confluence={side,status,callVotes,putVotes,activeCount:active.length,
+      directionalCount:directional.length,horizonSeconds:Number(durationMs)/1000,
+      calibratedAccuracy:false,blocksEntry:false};
+    const detail=active.map(card=>card.label+': '+
+      (card.ready?card.side:'sem gatilho')).join(' · ');
+    const summary='Gatilhos técnicos atuais (não são probabilidade nem bloqueio): '+
+      (detail||'nenhuma estratégia técnica selecionada');
+    const guidance=strategySelectionGuidance({ids,paused,cards});
+    const value={cards,confluence,guidance,summary};
+    this._currentStrategyEvidenceCache={key,at:now,value};
+    return value;
   }
   _strategyPanel(snap,now=Date.now(),{candidateModel=false}={}){
     const labels=STRATEGY_LABELS;
@@ -1107,7 +1161,7 @@ export class DemoTradingRuntime{
         !entryQuoteFresh?
         {...reviewedObservation,side:null,ready:false,reason:'late-quote-no-entry'}:
         reviewedObservation;
-      const precision=this.precisionProfile==='reversal-extreme-v47'?
+      const precision=this.precisionProfile==='horizon-balanced-v148'?
         precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
       const eligible=precision?.enabled?
@@ -1274,6 +1328,7 @@ export class DemoTradingRuntime{
           activeStrategy:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000
         }
       };
+      const strategySnapshot=this._currentStrategyEvidence(snap,settings.orderDurationMs,now);
       const analysisResult={...analysis,asset:settings.asset,engineId:settings.engine,
         vnext,side:'WAIT',confidence:0,
         operationalSignal:{
@@ -1283,11 +1338,12 @@ export class DemoTradingRuntime{
           strength:observation.strength??0,
           activeUntil:active?next.exitAt:null
         },
-        strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
+        strategyCards:strategySnapshot.cards,strategyConfluence:strategySnapshot.confluence,
+        strategyGuidance:strategySnapshot.guidance,generalConsensus:null,
+        entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
 
           reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
-          'Analisando o mercado atual para a próxima entrada.',eligible.reason]
+          'Analisando o mercado atual para a próxima entrada.',eligible.reason,strategySnapshot.summary]
       };
       return{allowed:false,analysis:analysisResult,reasons:analysisResult.reasons};
     }
@@ -1449,6 +1505,7 @@ export class DemoTradingRuntime{
       if(current&&!duplicate)rest.push(current);
       this.vnextPending=rest.slice(-1200);
       this.vnextOutcomes=outcomes.slice(-300);
+      const strategySnapshot=this._currentStrategyEvidence(snap,settings.orderDurationMs,now);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
@@ -1470,10 +1527,10 @@ export class DemoTradingRuntime{
           defaultHorizonSeconds:model.expirySeconds,
           horizons:model.plan?{[String(model.expirySeconds)]:model.plan}:{}},
         operationalSignal:model.operational,
-        strategyCards:[],strategyConfluence:null,strategyGuidance:null,
-        generalConsensus:null,
+        strategyCards:strategySnapshot.cards,strategyConfluence:strategySnapshot.confluence,
+        strategyGuidance:strategySnapshot.guidance,generalConsensus:null,
         side:'WAIT',confidence:0,
-        reasons:[model.reason,'O resultado desta previsão ainda não constitui taxa de acerto medida.']
+        reasons:[model.reason,'O resultado desta previsão ainda não constitui taxa de acerto medida.',strategySnapshot.summary]
       };
       return{allowed:false,analysis:result,reasons:[model.reason]};
     }
