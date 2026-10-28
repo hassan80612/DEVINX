@@ -119,7 +119,9 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const continuation=!reversal&&!!(localSetup||forecastSetup||firstRangeBreak)&&bar.length>=2;
     const kind=reversal?'reversal':short.retest?.side===(call?'BUY':'SELL')?'breakout':'continuation';
     const rawScore=Number(call?short.callScore:short.putScore),reversalScore=Number(call?short.reversalCallScore:short.reversalPutScore);
-    const score=Math.min(100,Math.max(Number.isFinite(rawScore)?rawScore:0,reversal&&Number.isFinite(reversalScore)?reversalScore:0)+(mapped.qualified?10:0));
+    const persistenceFading=!reversal&&continuation&&(call?short.weakeningUp===true:short.weakeningDown===true);
+    const persistencePenalty=persistenceFading?(Number(durationMs)<=60000?8:Number(durationMs)<=300000?4:0):0;
+    const score=Math.max(0,Math.min(100,Math.max(Number.isFinite(rawScore)?rawScore:0,reversal&&Number.isFinite(reversalScore)?reversalScore:0)+(mapped.qualified?10:0)-persistencePenalty));
     let trigger=null,invalidation=null,reaction=null,sourceAt=closedBucket;
     const expectedMove=Math.max(Math.abs(Number(forecast.expectedMove||0)),Math.abs(Number(micro.expected30||0)),Math.abs(price)*.000002);
     const width=recent.length?Math.max(...recent.map(q=>q.price))-Math.min(...recent.map(q=>q.price)):0;
@@ -149,8 +151,8 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
       reaction={...reaction,trigger,structuralBreak:reversalEvidence};
     }
     const allowed=fresh&&short.ready===true&&flow&&structure&&room&&!adverse&&!exhausted&&(reversal||continuation)&&score>=minPoints&&timingValid&&(!reversalEvidence||reversalEvidence.allowed);
-    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?'score':!timingValid?'quotes':reversalEvidence?.blockedBy??null;
-    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.','structure-history':'Reação curta sem estrutura anterior identificável.','structure-break':'Reação curta ainda não rompeu a estrutura anterior.','expiration-room':'Reversão sem espaço conhecido para o movimento da expiração.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
+    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?(persistenceFading?'persistence-fading':'score'):!timingValid?'quotes':reversalEvidence?.blockedBy??null;
+    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.','persistence-fading':'Continuação enfraquecendo; sinal suavizado sem inverter a direção.',quotes:'Aguardando cotações independentes do ponto.','structure-history':'Reação curta sem estrutura anterior identificável.','structure-break':'Reação curta ainda não rompeu a estrutura anterior.','expiration-room':'Reversão sem espaço conhecido para o movimento da expiração.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
     // A technical setup score is a ranking, NOT an empirically validated
     // probability of a win. Preserve the real forecast as a separate estimate.
     const forecastCall=forecast.outlookReady===true&&forecast.callProbability!=null&&
@@ -162,13 +164,13 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const forecastSidePct=rawSideEstimate!=null&&Number.isFinite(Number(rawSideEstimate))
       ? Math.max(0,Math.min(100,Number(rawSideEstimate))) : null;
     const plan={...forecast,technicalScore:score,entryForecastProbability:forecastSidePct,
-      probabilityValidated:false,probabilitySource:forecastCall==null?'unavailable':'unverified-forecast-estimate',rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
+      probabilityValidated:false,probabilitySource:forecastCall==null?'unavailable':'unverified-forecast-estimate',rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,continuationFading:persistenceFading,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
     // Never turn an 85-point technical setup into a fictional "85% win"
     // prediction. A missing forecast is neutral/unknown, not an invented edge.
     plan.callProbability=forecastCall??50;
     plan.putProbability=100-plan.callProbability;
-    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,level:mapped.mapped?mapped.level:null,levelSource:mapped.source||null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
+    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,persistenceFading,persistencePenalty,level:mapped.mapped?mapped.level:null,levelSource:mapped.source||null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
 
