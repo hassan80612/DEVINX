@@ -35,9 +35,9 @@ export const PREMIUM_OVERLAY_CSS=`
 [data-sentinel-executor-state][data-bot-state="off"]{color:#ed9ca8;background:rgba(190,75,95,.13);display:inline-block;padding:3px 6px;border-radius:5px}
 [data-sentinel-executor-state][data-bot-state="scanning"],[data-sentinel-executor-state][data-bot-state="trading"]{color:#72ddb1;background:rgba(60,179,128,.13);display:inline-block;padding:3px 6px;border-radius:5px}
 [data-sentinel-executor-state][data-bot-state="arming"],[data-sentinel-executor-state][data-bot-state="waiting"]{color:#efc66f;background:rgba(192,143,57,.14);display:inline-block;padding:3px 6px;border-radius:5px}
-[data-sentinel-command-buttons]{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:8px;min-width:0;width:100%}
+[data-sentinel-command-buttons]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px;min-width:0;width:100%}
 [data-sentinel-command-buttons] [data-sentinel-analysis-actions],[data-sentinel-command-buttons] [data-sentinel-bot-actions]{display:contents!important}
-[data-sentinel-command-buttons] button{height:33px!important;min-height:33px!important;min-width:0!important;width:100%;padding:4px!important;font-size:10px!important;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-sentinel-command-buttons] button{height:auto!important;min-height:40px!important;min-width:0!important;width:100%;padding:5px 4px!important;font-size:10px!important;line-height:1.15;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere}
 [data-sentinel-command-dock] [data-sentinel-executor-balance]{font-size:19px!important;letter-spacing:-.3px}
 [data-sentinel-command-dock] [data-sentinel-executor-broker-balance]{font-size:10px;opacity:.78}
 [data-sentinel-command-dock] [data-sentinel-executor-message]{max-height:28px;overflow:auto;font-size:10px}
