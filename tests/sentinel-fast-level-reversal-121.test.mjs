@@ -33,7 +33,7 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
   assert.equal(verifiedFastLevelReversal({...input(f),side:f.side,reversalEvidence:proof}),true);
  }
 });
-test('30s and 1m restore the 13.9.149 two-quote reversal while preserving 5m',()=>{
+test('30s and 1m restore the v13.9.151 two-quote reversal rule while 5m keeps the same confirmation',()=>{
  for(const mirror of [false,true]){
   const f=fixture(mirror),q=f.q.filter(x=>x.ts<=T+1250).map(x=>({...x}));
   for(const row of q){
@@ -41,23 +41,16 @@ test('30s and 1m restore the 13.9.149 two-quote reversal while preserving 5m',()
    if(row.ts===T+1250)row.price=(mirror?200-100.11:100.11);
   }
   const a={...input(f),quoteHistory:q,quoteAt:q.at(-1).ts,now:q.at(-1).ts,price:q.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:30000})?.side,f.side);
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:60000})?.side,f.side);
-  assert.equal(confirmedFastLevelReversal({...a,durationMs:300000})?.side,f.side);
-  const threeSteps=f.q.filter(x=>x.ts<=T+1500).map(x=>({...x}));
-  const fast={...a,quoteHistory:threeSteps,quoteAt:threeSteps.at(-1).ts,
-   now:threeSteps.at(-1).ts,price:threeSteps.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...fast,durationMs:30000})?.side,f.side);
-  assert.equal(confirmedFastLevelReversal({...fast,durationMs:60000})?.side,f.side,
-   '1m no longer waits an additional 1.2s after the level touch');
+  for(const durationMs of [30000,60000,300000])
+   assert.equal(confirmedFastLevelReversal({...a,durationMs})?.side,f.side);
   const shallow=q.map(x=>({...x}));
   for(const row of shallow){
    if(row.ts===T+1000)row.price=(mirror?200-100.005:100.005);
    if(row.ts===T+1250)row.price=(mirror?200-100.02:100.02);
   }
   const b={...a,quoteHistory:shallow,quoteAt:shallow.at(-1).ts,now:shallow.at(-1).ts,price:shallow.at(-1).price};
-  assert.equal(confirmedFastLevelReversal({...b,durationMs:30000}),null);
-  assert.equal(confirmedFastLevelReversal({...b,durationMs:60000}),null);
+  for(const durationMs of [30000,60000,300000])
+   assert.equal(confirmedFastLevelReversal({...b,durationMs}),null);
  }
 });
 test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{

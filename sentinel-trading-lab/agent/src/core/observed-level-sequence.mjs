@@ -184,24 +184,20 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
- const shortHorizon=Number(durationMs)===30000||Number(durationMs)===60000;
- const fastReversal=confirmedFastLevelReversal({map,...input,durationMs});
+ const fastReversal=confirmedFastLevelReversal({map,...input});
  const structureChange=sequence.structureChange&&
   (sequence.structureChange.kind!=='failed-breakout-structure-change'||
    Number(input.now??input.quoteAt)-sequence.structureChange.confirmedAt<=1450)?
   sequence.structureChange:null;
- // 30s/1m restore 13.9.149 event priority: confirmed fast turn, mapped
- // reversal, reclaim, then the 30s follow-through candidate.
+ // Reclaim + break/retest geometry is independent of expiry. The distance
+ // projection below remains scoped to the 30s holding time it measures.
+ // A continuation sequence must not prevent evaluation of a verified
+ // opposite structural turn on the current quote. Preserve reclaim priority.
  const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:
   confirmedLevelReversal({map,...input});
  const event=fastReversal??reversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null);
- const selectedReversal=event?.kind==='confirmed-fast-level-reversal'?fastReversal:
-  event?.kind==='confirmed-level-structure-reversal'?reversal:null;
- const priceStructure=shortHorizon?
-  {...candidate.priceStructure,observedSequence:sequence,
-   ...(selectedReversal?{confirmedReversal:selectedReversal}:{})}:
-  {...candidate.priceStructure,observedSequence:sequence,
-   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
+ const priceStructure={...candidate.priceStructure,observedSequence:sequence,
+  ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};
  if(!event)return {...candidate,priceStructure};
  // Keep existing admission for continuation; structural reclaim can release
  // an actually confirmed reversal. Issued windows remain owned by runtime.
