@@ -10,14 +10,15 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
  if(![30,60,120,300].includes(h))return wait('unsupported-probability-horizon');
  const t=Number(quoteAt),p=Number(price);
  if(!Number.isFinite(t)||t>now||now-t>1500||!(p>0))return wait('stale-or-invalid-quote');
- // Each horizon uses only already-received quotes. The 5m estimate uses a
- // full observed expiry window, but remains advisory and never delays admission.
+ // Use a full 5m quote window when it is already available. Otherwise use
+ // the existing 180s anchor; this auxiliary estimate never waits for more data.
  const lookback=h>=300?320:h>=120?100:h>=60?90:66;
- const minObserved=h>=300?300:h>=120?90:h>=60?45:30;
+ const minObserved=h>=300?180:h>=120?90:h>=60?45:30;
  const rows=observedQuoteWindow({history:quoteHistory,at:t,now,windowMs:lookback*1000,maxQuotes:6000});
  if(rows.length<8||rows.at(-1).ts!==t||Math.abs(rows.at(-1).price-p)>p*.0000001)return wait('insufficient-observed-quotes');
  const earliest=rows[0].ts;
  if(t-earliest<minObserved*1000)return wait('collecting-horizon-history',{historySeconds:Math.floor((t-earliest)/1000)});
+ const fullFiveMinuteEvidence=h>=300&&t-earliest>=300000;
  function observedAt(target){
   let lo=0,hi=rows.length;
   while(lo<hi){const mid=(lo+hi)>>1;if(rows[mid].ts<target)lo=mid+1;else hi=mid}
@@ -27,7 +28,7 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
   return before.price+(after.price-before.price)*(target-before.ts)/(after.ts-before.ts);
  }
  const logs=[],weights=[];
- const scales=h>=300?[[3,.02],[5,.03],[10,.04],[15,.04],[30,.08],[60,.10],[90,.10],[180,.24],[300,.35]]:
+ const scales=h>=300?(fullFiveMinuteEvidence?[[3,.02],[5,.03],[10,.04],[15,.04],[30,.08],[60,.10],[90,.10],[180,.24],[300,.35]]:[[3,.02],[5,.03],[10,.05],[15,.05],[30,.10],[60,.15],[90,.20],[180,.40]]):
   h>=120?[[3,.04],[5,.06],[10,.10],[15,.10],[30,.15],[60,.20],[90,.35]]:
   h>=60?[[3,.07],[5,.09],[10,.12],[15,.13],[30,.18],[45,.18],[60,.23]]:
   [[3,.10],[5,.15],[10,.18],[15,.17],[30,.30],[60,.10]];
@@ -35,10 +36,10 @@ export function shortProbability({quoteHistory=[],quoteAt,price,durationMs=30000
   const previous=observedAt(t-seconds*1000);
   if(previous>0){logs.push({seconds,value:Math.log(p/previous),weight});weights.push(weight)}
  }
- const horizonReferenceSeconds=h>=300?300:h>=120?90:h>=60?60:30;
+ const horizonReferenceSeconds=h>=300?(fullFiveMinuteEvidence?300:180):h>=120?90:h>=60?60:30;
  if(!logs.some(x=>x.seconds===horizonReferenceSeconds))return wait('missing-horizon-price-evidence');
  const size=weights.reduce((a,b)=>a+b,0),driftPerSecond=logs.reduce((a,x)=>a+x.weight*x.value/x.seconds,0)/size;
- const earliestVarianceMs=Math.max(t-(h>=300?300000:h>=120?90000:60000),earliest);
+ const earliestVarianceMs=Math.max(t-(h>=300?(fullFiveMinuteEvidence?300000:180000):h>=120?90000:60000),earliest);
  const recent=rows.filter(x=>x.ts>=earliestVarianceMs);
  let quadratic=0,span=0,gaps=0;
  for(let i=1;i<recent.length;i++){
