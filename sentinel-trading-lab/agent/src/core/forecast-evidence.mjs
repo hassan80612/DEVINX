@@ -29,12 +29,15 @@ export function fuseForecastEvidence(features=[]){
 }
 // Exhaustion is evidence that the move may weaken. It cannot manufacture an
 // opposite forecast merely by subtracting more than the original signal.
-export function attenuateForecast(signal,{overextended=false,turning=false,flowConflict=false,accelerationConflict=false,seconds=60}={}){
+export function attenuateForecast(signal,{overextended=false,turning=false,flowConflict=false,accelerationConflict=false,persistenceWeakening=false,seconds=60}={}){
   let retain=1;
   if(overextended)retain*=.52;
   if(turning)retain*=seconds<=60?.65:.80;
   if(flowConflict)retain*=.70;
   if(accelerationConflict)retain*=.82;
+  // A slowdown without a confirmed turn softens continuation only. It never flips the forecast.
+  if(persistenceWeakening&&!overextended&&!turning&&!flowConflict&&!accelerationConflict)
+    retain*=seconds<=60?.86:seconds<=300?.94:1;
   return signal*retain;
 }
 export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),periodSeconds=null,requireFresh=false}={}){
