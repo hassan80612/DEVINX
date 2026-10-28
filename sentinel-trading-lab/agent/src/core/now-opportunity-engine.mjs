@@ -80,7 +80,7 @@ const CONTINUATION_SETUP=/continuation|followthrough|breakout|trend|impulse|cycl
 const CONFIRMED_REVERSAL_SET=new Set([
  'closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
  'confirmed-fast-level-reversal','failed-breakout-structure-change',
- 'multiscale-candle-rejection','historical-level-rejection'
+ 'multiscale-candle-rejection','historical-level-rejection','observed-multi-interval-trend-correction','rejection-followthrough-clear-room'
 ]);
 const phaseLabel=phase=>({
  continuing:'CONTINUIDADE',
@@ -106,7 +106,7 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  const rows=[];
  for(let i=quoteHistory.length-1;i>=0;i--){
   const q=quoteHistory[i],ts=Number(q?.ts),p=Number(q?.price);
-  if(ts<at-windowMs)break;
+  if(ts<at-windowMs-2500)break;
   if(ts>at||Number(q?.receivedAt??ts)>clock||!(p>0))continue;
   rows.push({ts,price:p});
  }
@@ -144,6 +144,11 @@ function confirmedReversalCandidate(candidate){
  if(!candidate?.ready||!isSide(candidate.side)||!CONFIRMED_REVERSAL_SET.has(reason))return false;
  if(reason==='closed-range-extreme-reversal-confirmed')
   return candidate.regime==='observed-range-turn';
+ if(reason==='rejection-followthrough-clear-room'){
+  const event=candidate.priceStructure?.observedSequence?.continuation;
+  return event?.kind===reason&&event?.side===candidate.side&&
+   Number(event.confirmedAt)>0&&Number(event.confirmedAt)<=Number(candidate.observedAt);
+ }
  if(reason==='historical-level-rejection')
   return candidate.priceStructure?.reactionProof?.confirmed===true||
    candidate.priceStructure?.confirmedReversal?.side===candidate.side;
