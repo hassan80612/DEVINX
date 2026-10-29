@@ -76,11 +76,13 @@ test('missing candles cannot fabricate a historical rejection from nonconsecutiv
  const z=m.levels.find(l=>l.level===100);
  assert.equal(z.confirmedPivots,0);assert.equal(z.independentRejections,0);
 });
-test('a confirmed three-candle wick structure works without waiting for an EMA20 or 100 new candles',()=>{
+test('a three-candle wick rejection is observed but is not an eligible 30s priority setup',()=>{
  const bars=candles().slice(-3);bars[0].low=103;bars[1].low=100;bars[2].low=103;
  const rows=quotes([104,103,102,100,100.2,100.4,101]);
  const args={...input(rows),candles:bars,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
- const r=analyzeNowOpportunity(args);assert.equal(r.ready,true);assert.equal(r.side,'CALL');
+ const r=analyzeNowOpportunity(args);assert.equal(r.ready,false);assert.equal(r.side,null);
+ assert.equal(r.reason,'short-horizon-setup-not-eligible');
+ assert.equal(r.excludedSetupReason,'multiscale-candle-rejection');
  assert.equal(r.contextStrategy,'support_resistance');
  assert.equal(r.priceStructure.candleRoute.windows.find(w=>w.size===3).available,true);
  assert.equal(r.priceStructure.candleRoute.windows.find(w=>w.size===100).available,false);
@@ -98,7 +100,7 @@ test('a gap in live prices cannot fabricate a current rejection',()=>{
  assert.equal(r.side,'PUT');assert.equal(r.priceStructure.candleRoute.event,null);
 });
 test('the currently issued signal remains immutable even after a new structural rejection',()=>{
- const first=advanceNowOpportunity({candidate:{ready:true,side:'PUT',entryPrice:104,observedAt:T-10000},now:T-10000,quoteAt:T-10000,asset:'EUR',durationMs:30000});
+ const first=advanceNowOpportunity({candidate:{ready:true,side:'PUT',reason:'break-retest-continuation',entryPrice:104,observedAt:T-10000},now:T-10000,quoteAt:T-10000,asset:'EUR',durationMs:30000});
  const r=applyCandleLevelRoute({candidate,map:map(),...input(rebound)});
  const held=advanceNowOpportunity({previous:first,candidate:r,now:T,quoteAt:T,asset:'EUR',durationMs:30000});
  assert.equal(held.side,'PUT');assert.equal(held.exitAt,T+20000);assert.equal(held.entryReadyNow,false);
@@ -113,7 +115,7 @@ test('candle corrections and context changes invalidate the multiscale map cache
 test('other holding durations are unchanged by the new 30-second rejection candidate',()=>{
  assert.equal(applyCandleLevelRoute({candidate,map:map(),...input(rebound),durationMs:5000}),candidate);
 });
-test('actual runtime can issue the three-candle rejection on the current quote, preserving the full expiry',async()=>{
+test('actual runtime does not issue a three-candle level rejection as a 30s priority setup',async()=>{
  const bars=candles().slice(-3);bars[0].low=103;bars[1].low=100;bars[2].low=103;
  const rows=quotes([...Array(8).fill(104),104,103,102,100,100.2,100.4,101]);
  const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
@@ -123,6 +125,7 @@ test('actual runtime can issue the three-candle rejection on the current quote, 
   quoteFeedValidated:true,analysisFeedValidated:true,assetValidated:true});
  await runtime.tick(T,{skipStatus:true});
  const signal=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(signal.side,'CALL');assert.equal(signal.entryAt,T);assert.equal(signal.exitAt,T+30000);
+ assert.notEqual(signal?.side,'CALL');
+ assert.equal(runtime.lastResult.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
  assert.equal(runtime.lastResult.order,undefined);
 });
