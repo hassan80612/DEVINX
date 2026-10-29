@@ -58,8 +58,8 @@ test('initial fit selection is scale-invariant and mirrors direction under recip
   assert.equal(selected.side,transform(2)>transform(1)?original.side:original.side==='CALL'?'PUT':'CALL');
  }
 });
-test('bootstrap and observed turns still enter now for the full duration and cannot reverse a held call',()=>{
- const candidate=observe(new CompletedExpiryDirection());
+test('an eligible priority setup enters for the full duration and cannot reverse a held call',()=>{
+ const candidate={...observe(new CompletedExpiryDirection()),reason:'break-retest-continuation'};
  const first=advanceNowOpportunity({candidate,now:args.now,quoteAt:args.quoteAt,asset:'EUR',durationMs:30000});
  assert.equal(first.side,'PUT');assert.equal(first.entryAt,args.now);assert.equal(first.exitAt,args.now+30000);
  const next=advanceNowOpportunity({previous:first,candidate:{...candidate,side:'CALL',observedAt:args.now+500},
