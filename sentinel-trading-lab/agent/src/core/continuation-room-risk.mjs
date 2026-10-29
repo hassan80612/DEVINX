@@ -13,10 +13,10 @@ const qualifyingReasons=new Set([
  'locally-verified-opposite-direction'
 ]);
 export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
- const oneMinuteNearWallEntry=Number(durationMs)===60000&&
+ const shortHorizonNearWallEntry=[30000,60000].includes(Number(durationMs))&&
   ['confirmed-level-structure-reversal','break-retest-continuation'].includes(candidate?.reason);
  if(candidate?.ready!==true||
-   (!qualifyingReasons.has(candidate.reason)&&!oneMinuteNearWallEntry)||
+   (!qualifyingReasons.has(candidate.reason)&&!shortHorizonNearWallEntry)||
    !['CALL','PUT'].includes(candidate.side))return null;
  // The final reason owns this check. Inherited reversal metadata cannot
  // exempt a proposal. Only the two explicit one-minute cases above add an
@@ -48,11 +48,11 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  const earlier=observed(at-6000),recent=observed(at-2000);
  if(earlier==null||recent==null)return null;
  const first=sign*(recent-earlier),last=sign*(spot-recent),total=sign*(spot-earlier);
- // A one-minute structural entry may not buy/sell directly into a verified
+ // A short-horizon structural entry may not buy/sell directly into a verified
  // opposing wall with too little room; it must first clear the wall.
  const fadingApproach=first>=tol*.8&&total>=tol*.4&&last<=first*.35;
- const oneMinuteDirectionalApproach=total>=tol*.4&&last>0;
- if(!fadingApproach&&!(oneMinuteNearWallEntry&&oneMinuteDirectionalApproach))return null;
+ const shortHorizonDirectionalApproach=total>=tol*.4&&last>0;
+ if(!fadingApproach&&!(shortHorizonNearWallEntry&&shortHorizonDirectionalApproach))return null;
  const roomNeeded=Math.max(tol*1.25,total*.6);
  const barriers=map.levels.filter(z=>{
    const opposite=levelRoleEvidence(z,sign===1?'PUT':'CALL');
@@ -67,8 +67,8 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  const wall=barriers[0];if(!wall)return null;
  const gap=sign===1?Number(wall.low)-spot:spot-Number(wall.high);
  const role=levelRoleEvidence(wall,sign===1?'PUT':'CALL');
- if(oneMinuteNearWallEntry&&gap>=0&&gap<=roomNeeded)
-  return {kind:'one-minute-entry-without-clearance-to-opposing-wall',
+ if(shortHorizonNearWallEntry&&gap>=0&&gap<=roomNeeded)
+  return {kind:'short-horizon-entry-without-clearance-to-opposing-wall',
    level:Number(wall.level),gap,roomNeeded,
    historicalPivots:role.pivots,historicalRejections:role.rejections};
  if(!fadingApproach)return null;
