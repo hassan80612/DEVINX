@@ -19,14 +19,19 @@ function oneMinuteFixture(f){
  for(const [i,price] of raw.entries())quoteHistory.push({ts:T+1750+i*250,price});
  const last=quoteHistory.at(-1);return {...f,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price};
 }
-test('rapid V at known support and resistance reaches full runtime for every strategy and expiry without another candle',()=>{
+test('rapid V at a level is not a 30s/1m priority setup; strict 5m reversal path remains',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [30000,60000,300000]){
   const base=fixture(mirror),f=durationMs===60000?oneMinuteFixture(base):base,
    rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
   rt.patchSettings({engine,asset:'EUR/USD',orderDurationMs:durationMs},'test');
   rt.structureCache={get:()=>({candles:100,asOf:f.map.asOf,tolerance:.07,atr:.7,averages:[],zones:f.map.levels,candleLevelMap:f.map})};
   const out=rt._signalValidationGate({analysis:{},settings:rt.settings,now:f.now,snap:{provider:'exnova',price:f.price,quoteTs:f.quoteAt,quoteHistory:f.quoteHistory,candles:[],historicalCandlesVerified:true}});
-  assert.equal(out.analysis.vnext.futureEntryAnchor?.side,f.side,`${engine} ${durationMs} ${f.side}`);
+  const anchor=out.analysis.vnext.futureEntryAnchor;
+  if(durationMs===300000)assert.equal(anchor?.side,f.side,engine+' '+durationMs+' '+f.side);
+  else{
+   assert.notEqual(anchor?.side,f.side,engine+' '+durationMs+' '+f.side);
+   assert.equal(out.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
+  }
  }
 });
 test('future prices and receipt times never confirm or revise the current reversal',()=>{
