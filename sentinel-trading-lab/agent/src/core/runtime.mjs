@@ -1321,7 +1321,7 @@ export class DemoTradingRuntime{
             trendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
             candidate:eligible,observation,quoteAt:snap.quoteTs,now}),
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
-          observedAt:eligible.observedAt,strength:eligible.strength,
+          observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           // Calibration flag reflects actual independent quote outcomes, not
