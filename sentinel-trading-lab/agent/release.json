@@ -1,6 +1,6 @@
 {
-  "version": "13.9.174",
-  "build": "13.9.174-base-173-persist-native-chart-and-expiry-selections",
+  "version": "13.9.175",
+  "build": "13.9.175-base-174-expiry-aligned-price-entry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.174"
+  "publicVersion": "13.9.175"
 }
