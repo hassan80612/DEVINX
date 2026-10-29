@@ -48,6 +48,11 @@ function dayKey(ts,timeZone='UTC'){
 }
 const AUTO_STOP_REASONS=new Set(['horário final atingido','perda diária máxima atingida','meta diária atingida','drawdown máximo atingido','limite de perdas consecutivas','limite diário de operações','limite da sessão de operações']);
 const CALIBRATION_EPOCH='feed-v4-context-confirmed-quotes';
+const CONFIRMED_REVERSAL_PHASES=new Set([
+  'closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
+  'confirmed-fast-level-reversal','failed-breakout-structure-change',
+  'historical-level-rejection'
+]);
 function signalPlan({analysis,settings,price,now=Date.now()}={}){
   const operational=analysis?.operationalSignal||null;
   const rawSide=String(analysis?.side||'WAIT').toUpperCase();
@@ -1278,11 +1283,8 @@ export class DemoTradingRuntime{
           now,price:snap.price,durationMs:persistenceDuration}):null;
       const phaseCandidate=eligible.ready===true?eligible:observation;
       const phaseReason=String(phaseCandidate?.reason||'');
-      const confirmedReversalPhases=new Set(['closed-range-extreme-reversal-confirmed',
-        'confirmed-level-structure-reversal','confirmed-fast-level-reversal',
-        'failed-breakout-structure-change','historical-level-rejection']);
       const confirmedPhase=eligible.setupClass==='reversal'||
-        (eligible.setupClass!=='continuation'&&confirmedReversalPhases.has(phaseReason));
+        (eligible.setupClass!=='continuation'&&CONFIRMED_REVERSAL_PHASES.has(phaseReason));
       const fadingPhase=['weakening','reversal-testing'].includes(trendPersistence?.phase);
       const derivedPhase=eligible.setupClass==='continuation'?'continuing':
         eligible.setupClass==='reversal'?'reversal-confirmed':
