@@ -1,0 +1,27 @@
+name: Sentinel 168 surgical reversal regression
+on:
+  push:
+    branches:
+      - fix/sentinel-168-confirmed-fast-reversal-20261029
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Focused reversal and expiry regression
+        run: |
+          node --test tests/sentinel-168-verified-fast-reversal-20261029.test.mjs tests/sentinel-168-rebuilt-160.test.mjs tests/sentinel-fast-level-reversal-121.test.mjs tests/sentinel-166-expiry-reload.test.mjs tests/sentinel-167-expiry-preference.test.mjs tests/sentinel-139146-reversals-only-5m.test.mjs
+      - name: Full unit regression
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
