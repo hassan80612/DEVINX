@@ -13,6 +13,7 @@ import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 import {continuationRoomRisk} from './continuation-room-risk.mjs';
 import {liveEntryContradiction} from './live-entry-contradiction.mjs';
+import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 
@@ -181,9 +182,14 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  const shallowCountertrendFastReversal=
   candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&
   state.phase==='reversal-testing'&&Number(state.retracement)<.25;
- if(shallowCountertrendFastReversal)
+ const ownVerifiedFastReversal=shallowCountertrendFastReversal&&
+  verifiedFastLevelReversal({
+   reversalEvidence:candidate.priceStructure?.confirmedReversal,
+   quoteHistory,quoteAt,now,price,side:candidate.side
+  });
+ if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)
   return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};
+   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};
  if(confirmedReversalCandidate(candidate))return candidate;
  const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
  const fading=['weakening','reversal-testing'].includes(state.phase);
