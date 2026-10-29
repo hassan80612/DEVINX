@@ -21,11 +21,13 @@ function priorityCandidate(side='CALL',now=T){
  const base=fresh(side,now);
  return {ready:true,side,reason:'break-retest-continuation',observedAt:now,entryPrice:base.price};
 }
-test('causal current signal uses past completed bars and a real fresh quote, not projected prices',()=>{
+test('generic closed-structure trend remains visible but cannot enter without a priority setup',()=>{
  for(const side of ['CALL','PUT']){
   const r=analyzeNowOpportunity(fresh(side));
-  assert.equal(r.ready,true,JSON.stringify(r));
-  assert.equal(r.side,side);
+  assert.equal(r.ready,false,JSON.stringify(r));
+  assert.equal(r.side,null);
+  assert.equal(r.reason,'short-horizon-setup-not-eligible');
+  assert.equal(r.provisionalSide,side);
   assert.equal(r.entryPrice,fresh(side).price);
   assert.equal(Object.hasOwn(r,'projectedExitPrice'),false);
  }
@@ -54,12 +56,12 @@ test('an eligible continuation holds one CALL window without repeated or opposit
  }
 });
 test('after expiry reassess and release only a fresh approved setup',()=>{
- const original=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
+ const original=advanceNowOpportunity({candidate:priorityCandidate('CALL',T),now:T,quoteAt:T,
   asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  const stale=advanceNowOpportunity({previous:original,candidate:priorityCandidate('CALL',T+29900),
   now:T+30050,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(stale.phase,'scanning');
- const stillStale=advanceNowOpportunity({previous:stale,candidate:analyzeNowOpportunity(fresh('CALL',T+29900)),
+ const stillStale=advanceNowOpportunity({previous:stale,candidate:priorityCandidate('CALL',T+29900),
   now:T+30200,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(stillStale.phase,'scanning','cannot reissue pre-expiry information');
  const next=advanceNowOpportunity({previous:stillStale,candidate:priorityCandidate('PUT',T+30500),
@@ -74,12 +76,12 @@ test('after expiry reassess and release only a fresh approved setup',()=>{
  const oldTick=advanceNowOpportunity({previous:next,candidate:priorityCandidate('PUT',T+32999),
   now:T+33500,quoteAt:T+32999,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(oldTick.phase,'scanning','wall clock alone cannot release a quote captured during reassessment');
- const oldCandidate=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+32999)),
+ const oldCandidate=advanceNowOpportunity({previous:next,candidate:priorityCandidate('PUT',T+32999),
   now:T+33500,quoteAt:T+33500,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(oldCandidate.phase,'scanning','signals observed during the pause are never queued');
 });
 test('duration reset and instrument change do not keep an eligible entry locked',()=>{
- const a=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
+ const a=advanceNowOpportunity({candidate:priorityCandidate('CALL',T),now:T,quoteAt:T,
   asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  const b=advanceNowOpportunity({previous:a,candidate:priorityCandidate('PUT',T+1000),
   now:T+1000,quoteAt:T+1000,asset:'GBP/USD',engineId:'automatic',durationMs:30000});
@@ -112,7 +114,7 @@ test('compact phone broadcast preserves NOW mode without inventing an ineligible
  const wire=analystSnapshot(snapshot,{symbol:'EUR/USD',validatedSymbol:'EUR/USD',
    assetValidated:true,analysisFeedValidated:true,lastQuoteAt:T,quote:c.price});
  assert.equal(wire.lastResult.analysis.vnext.mode,'now');
- assert.equal(wire.lastResult.analysis.vnext.futureEntryAnchor,null);
+ assert.equal(wire.lastResult.analysis.vnext.futureEntryAnchor??null,null);
  assert.ok(fitAnalystFrame(wire,2920));
 });
 
