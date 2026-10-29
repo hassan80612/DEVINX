@@ -13,12 +13,12 @@ function scenario(durationMs=60000,mirror=false,{stall=true}={}){
  const rows=Array.from({length:Math.round(duration*2.5)+1},(_,i)=>{
   const t=i-Math.round(duration*2.5);
   let p;
-  if(t<=-duration*.5)p=100+(t+duration*2.5)*.0008;
+  if(t<=-duration*.5)p=100+(t+duration*2.5)*.006;
   else{
-   const v=100+(duration*2)*.0008;
+   const v=100+(duration*2)*.006;
    const elapsed=t+duration*.5;
-   p=v+elapsed*(stall?.012:.009);
-   if(stall&&t>=-2)p=v+(duration*.5-2)*.012;
+   p=v+elapsed*(stall?.009:.008);
+   if(stall&&t>=-2)p=v+(duration*.5-2)*.009;
   }
   return {ts:T+t*1000,receivedAt:T+t*1000,price:mirror?200-p:p};
  });
