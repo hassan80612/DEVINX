@@ -41,8 +41,10 @@ export function stretchedImpulse({quoteHistory=[],quoteAt,now=quoteAt,price,side
  const burst=d*(spot-recent.price),leg=d*(spot-base.price);
  const local=rows.filter(q=>q.ts>=base.ts);
  const peak=local.reduce((a,b)=>d*(b.price-a.price)>0?b:a);
- // Ordinary sustained trends and isolated oscillations are unaffected.
- if(burst<typical*3||leg<typical*6||d*(peak.price-spot)>typical*.5)return null;
+ // Review the accumulated extension, even when the final five seconds
+ // have already slowed. Requiring another fresh burst here missed the
+ // late end of an otherwise unusually large observed twenty-second leg.
+ if(leg<typical*6||d*(peak.price-spot)>typical*.5)return null;
  return {kind:'extended-current-impulse',side,startedAt:base.ts,
   originPrice:base.price,peakPrice:peak.price,typicalMove:typical,burst,leg};
 }

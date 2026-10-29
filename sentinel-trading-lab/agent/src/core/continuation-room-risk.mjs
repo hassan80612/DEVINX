@@ -40,6 +40,33 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  q.reverse();
  if(q.length<4||q.at(-1).ts!==at||q.at(-1).price!==spot||
    q.some((p,i)=>i&&(p.ts<=q[i-1].ts||p.ts-q[i-1].ts>2500)))return null;
+ // A recent rejection from the OUTER edge remains relevant while the
+ // proposed continuation is back INSIDE that confirmed opposing zone.
+ // Keep a first accelerating approach and an actually cleared breakout
+ // eligible; neither has this completed touch/retreat/retry sequence.
+ if([30000,60000].includes(Number(durationMs))){
+  for(const zone of map.levels){
+   const opposing=levelRoleEvidence(zone,sign===1?'PUT':'CALL');
+   const same=levelRoleEvidence(zone,candidate.side);
+   const low=Number(zone.low),high=Number(zone.high);
+   if(!opposing.known||!opposing.confirmed||same.confirmed||
+    !(usable(low)&&usable(high)&&spot>=low&&spot<=high))continue;
+   const outer=sign===1?high:low;
+   let touched=null,retreat=0,retreatAt=null;
+   for(const point of q){
+    if(point.ts>=at)break;
+    if(sign*(point.price-outer)>=0){touched=point;retreat=0;retreatAt=null;}
+    else if(touched&&sign*(touched.price-point.price)>retreat){
+     retreat=sign*(touched.price-point.price);retreatAt=point.ts;
+    }
+   }
+   if(touched&&retreatAt>touched.ts&&retreatAt<at&&
+    retreat>=Math.max(tol*.5,(high-low)*.25))
+    return {kind:'continuation-retrying-inside-rejected-opposing-zone',
+     level:Number(zone.level),low,high,touchAt:touched.ts,retreatAt,retreat,
+     historicalPivots:opposing.pivots,historicalRejections:opposing.rejections};
+  }
+ }
  const observed=(target)=>{
    for(let i=q.length-1;i>=0;i--)if(q[i].ts<=target)
      return target-q[i].ts<=1600?q[i].price:null;

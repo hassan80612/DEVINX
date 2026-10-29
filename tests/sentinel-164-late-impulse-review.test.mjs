@@ -33,6 +33,17 @@ test('ordinary trend, early breakout, and a different candle second do not acqui
  const p=input(fixture().slice(0,-4));
  assert.equal(new LateImpulseReview().review(p),p.candidate);
 });
+test('an already extended leg remains a timing risk after its final burst has slowed',()=>{
+ for(const mirror of [false,true]){
+  const rows=Array.from({length:71},(_,i)=>{
+   const p=100+i*.02+Math.min(15,Math.max(0,i-50))*.07+Math.max(0,i-65)*.002;
+   return {ts:T-70000+i*1000,price:mirror?200-p:p};
+  });
+  const p=input(rows,mirror?'PUT':'CALL',60000),risk=stretchedImpulse({...p,side:p.candidate.side});
+  assert.ok(risk);assert.ok(risk.burst<risk.typicalMove*3);
+  assert.equal(new LateImpulseReview().review(p).ready,false);
+ }
+});
 test('a real retest and fresh local pivot break releases without waiting for a candle or deadline',()=>{
  for(const mirror of [false,true])for(const duration of [30000,60000]){
   const side=mirror?'PUT':'CALL',review=new LateImpulseReview(),rows=fixture(mirror);
