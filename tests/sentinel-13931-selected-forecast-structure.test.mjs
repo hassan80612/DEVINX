@@ -30,11 +30,12 @@ test('historical rejection cannot override the selected wide projection using th
  assert.equal(result.ready,false);assert.equal(result.side,null);
  assert.equal(result.reason,'historical-level-versus-expiry-conflict');
 });
-test('a reaction agreeing with the selected wide projection is not vetoed by the discarded narrow one',()=>{
+test('a generic historical rejection stays out of 30s without an approved priority setup',()=>{
  // Preserved 30s reference: the audited 60s extreme protection must
  // never change this independently observed short-expiry entry.
  const result=scenario(952,.842955);
  assert.equal(result.priceStructure.reaction.side,'PUT');
- assert.equal(result.ready,true);assert.equal(result.side,'PUT');
- assert.equal(result.reason,'historical-level-rejection');
+ assert.equal(result.ready,false);assert.equal(result.side,null);
+ assert.equal(result.reason,'short-horizon-setup-not-eligible');
+ assert.equal(result.excludedSetupReason,'historical-level-rejection');
 });
