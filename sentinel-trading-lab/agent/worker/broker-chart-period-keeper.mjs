@@ -6,15 +6,18 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   const host=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
-  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===2)return;
+  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===3)return;
   try{window.__sentinelBrokerChartPeriodKeeperV1?.dispose?.()}catch{}
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900,1800,3600]);
   const key='sentinel-broker-chart-period-preference-v1:'+provider;
   const SELECTORS=[
    '[class*="chart-duration" i]','[class*="chart-timeframe" i]',
-   '[class*="chart-period" i]','[data-testid*="chart-timeframe" i]',
-   '[data-testid*="chart-period" i]','[data-test*="timeframe" i]',
-   '[aria-label*="chart timeframe" i]','[title*="chart timeframe" i]'
+   '[class*="chart-period" i]','[class*="chart-interval" i]',
+   '[class*="timeframe" i]','[data-testid*="chart-timeframe" i]',
+   '[data-testid*="chart-period" i]','[data-testid*="chart-interval" i]',
+   '[data-test*="timeframe" i]','[data-test*="chart-period" i]',
+   '[aria-label*="chart timeframe" i]','[title*="chart timeframe" i]',
+   '[aria-label*="timeframe" i]','[title*="timeframe" i]'
   ].join(',');
   const chartMarker=/chart|timeframe|time[- ]?frame|candle[- ]?(period|time)|grafico|gr[aá]fico/i;
   const unrelated=/expir|order|trade|option|countdown|remaining|restante/i;
@@ -95,7 +98,15 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   };
   const pickedOption=target=>{
    const control=manualControl||discover()?.el;
-   if(!control||!inChartMenu(target,control))return null;
+   if(!control)return null;
+   // Some broker skins portal the options outside the chart toolbar.
+   // Only a trusted click while THIS chart picker is open can nominate such
+   // an option, and the selected chart field must confirm it before saving.
+   const inside=inChartMenu(target,control);
+   const portalOption=target.closest?.('[role="option"],[role="menuitem"],li');
+   if(!inside&&(!manualOpenedAt||Date.now()-manualOpenedAt>=12000||
+      !portalOption||!visible(portalOption)||
+      target.closest?.('[class*="expir" i],[class*="order-time" i],[class*="duration" i],#sentinel-trading-overlay-host')))return null;
    // Opening a timeframe button is not choosing its current value. A
    // class such as chart-period also matches the option-name selectors.
    const opener=control.matches?.('button,[role="button"],input,select')?control:
@@ -120,7 +131,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   // while the executor temporarily revokes permission around order clicks.
   const notify=()=>{window.__sentinelBrokerChartPeriodStatusV1={
    provider,preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,
-   repairing,revision:2
+   repairing,revision:3
   }};
   function restore(control){
    const now=Date.now();
@@ -167,8 +178,11 @@ export function installBrokerChartPeriodKeeper({provider}={}){
     else{observedSeconds=control.value;stableCount=1;}
     if(manualOpenedAt&&now-manualOpenedAt<12000){
      const confirmed=chosenSeconds!=null&&control.value===chosenSeconds;
+     // A real broker rerender often replaces the entire dropdown element
+     // after a choice. Its object identity is NOT proof that the person did
+     // not select the new value; require the trusted opener and stable value.
      const changedManually=chosenSeconds==null&&openingSeconds!=null&&
-      control.value!==openingSeconds&&stableCount>=2&&manualControl===control.el;
+      control.value!==openingSeconds&&control.value!==30&&stableCount>=2;
      if(confirmed||changedManually){save(control.value);manualOpenedAt=0;openingSeconds=null;
       manualControl=null;chosenSeconds=null;chosenTarget=null;}
      notify();return;
@@ -187,8 +201,12 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    for(const delay of [0,120,500])setTimeout(()=>{if(!disposed)poll()},delay);
   };
   const persistBeforeLeave=()=>{
-   if(disposed||repairing||!manualOpenedAt||chosenSeconds==null)return;
-   if(discover()?.value===chosenSeconds)save(chosenSeconds);
+   if(disposed||repairing||!manualOpenedAt)return;
+   const actual=discover()?.value;
+   const confirmed=chosenSeconds!=null&&actual===chosenSeconds;
+   const changedNonDefault=chosenSeconds==null&&openingSeconds!=null&&
+    actual!==30&&actual!==openingSeconds;
+   if(confirmed||changedNonDefault)save(actual);
   };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
@@ -203,7 +221,14 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target))){verifySoon();return;}
    const option=manualOpenedAt?pickedOption(ev.target):null;
    if(option){chosenSeconds=option;chosenTarget=ev.target;lastUserActivityAt=Date.now();verifySoon();return;}
-   const control=discover();if(!control||!belongsToControl(ev.target,control.el))return;
+   const control=discover();
+   if(manualOpenedAt&&Date.now()-manualOpenedAt<12000&&
+      !ev.target?.closest?.('#sentinel-trading-overlay-host')){
+    // A portal click may not be identifiable as an option until after the
+    // broker updates its selected field. Check quickly, never guess its value.
+    verifySoon();
+   }
+   if(!control||!belongsToControl(ev.target,control.el))return;
    manualOpenedAt=Date.now();openingSeconds=control.value;manualControl=control.el;
    chosenSeconds=null;chosenTarget=null;lastUserActivityAt=manualOpenedAt;
   };
@@ -223,7 +248,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   window.addEventListener?.('focus',onWake);
   window.addEventListener?.('pagehide',persistBeforeLeave);
   window.addEventListener?.('beforeunload',persistBeforeLeave);
-  window.__sentinelBrokerChartPeriodKeeperV1={revision:2,provider,poll,
+  window.__sentinelBrokerChartPeriodKeeperV1={revision:3,provider,poll,
    snapshot:()=>({preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,repairing}),
    dispose:()=>{
     disposed=true;
