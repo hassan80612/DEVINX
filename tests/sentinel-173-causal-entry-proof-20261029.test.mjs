@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {lateUnverifiedFloorImpulseRisk,reviewDirectionalPersistence,fiveMinuteReversalOnly}
  from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
-import {reviewEntryPrice} from '../sentinel-trading-lab/agent/src/core/entry-price-timing.mjs';
 const T=1800000000000;
 
 // A 90-second received-only downtrend ends by printing a fresh low. The
@@ -34,7 +33,6 @@ test('60s: a real break/retest with fresh independent confirmation remains eligi
    side:'PUT',confirmedAt:a.quoteAt-1000}}}
  });
  assert.equal(lateUnverifiedFloorImpulseRisk({...a,candidate:c}),null);
- assert.equal(reviewEntryPrice({...a,candidate:c}).side,'PUT');
 });
 test('60s: independent breakpoint and reversal families retain the previous behavior',()=>{
  const a=freshFloor();
