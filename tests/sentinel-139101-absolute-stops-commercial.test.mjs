@@ -13,8 +13,8 @@ function settle(bot,id,pnl){
    source:'unresolved',sessionId:bot.sessionId,amount:1});
  bot.settle({provider:'exnova',orderId:id,accountId:'demo',source:'broker',netPnl:pnl});
 }
-test('BRL 170 / USD 35 are prepaid 30-day purchases',()=>{
- assert.equal(SENTINEL_PLANS.BR.amount,170);assert.equal(SENTINEL_PLANS.INTL.amount,35);
+test('BRL 289 / USD 60 are prepaid 30-day purchases',()=>{
+ assert.equal(SENTINEL_PLANS.BR.amount,289);assert.equal(SENTINEL_PLANS.INTL.amount,60);
  assert.equal(SENTINEL_PLANS.BR.billing,'prepaid_30_days');
 });
 test('bankroll 50, Stop Win target 60',async()=>{
