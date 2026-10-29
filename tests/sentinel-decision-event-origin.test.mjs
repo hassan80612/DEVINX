@@ -76,7 +76,7 @@ test('the existing quote freshness limit is measured from the proof, with no add
   assert.equal(out.ready,delay<=1450);
  }
 });
-test('the full decision gate admits the current reclaim and rejects its late replay for both directions, all five strategies and all seven expiries',()=>{
+test('the short-horizon gate blocks generic reclaims while other expiries retain the existing event behavior',()=>{
  for(const mirror of [false,true]){
   const f=fixture([102,100.6,101.3,99.4,100.2,99.9,101.8],mirror),first=firstEvent(f);
   for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of expiries)for(const fresh of [true,false]){
@@ -85,8 +85,13 @@ test('the full decision gate admits the current reclaim and rejects its late rep
    rt.structureCache={get:()=>({candles:100,asOf:f.map.asOf,tolerance:f.map.tolerance,atr:1.5,averages:[],zones:f.map.levels,candleLevelMap:f.map})};
    const out=rt._signalValidationGate({analysis:{},settings:rt.settings,now:a.now,snap:{provider:'exnova',price:a.price,quoteTs:a.quoteAt,quoteHistory:a.quoteHistory,candles:[],historicalCandlesVerified:true}});
    const v=out.analysis.vnext,label=[mirror,engine,durationMs,fresh].join('|');
-   if(fresh){assert.equal(v.futureEntryAnchor?.side,mirror?'PUT':'CALL',label);assert.equal(v.nowObservation.reason,'failed-breakout-structure-change',label);}
-   else {
+   if(fresh&&(durationMs===30000||durationMs===60000)){
+    assert.equal(v.futureEntryAnchor,null,label);
+    assert.equal(v.nowObservation.reason,'short-horizon-setup-not-eligible',label);
+   }else if(fresh){
+    assert.equal(v.futureEntryAnchor?.side,mirror?'PUT':'CALL',label);
+    assert.equal(v.nowObservation.reason,'failed-breakout-structure-change',label);
+   }else {
     assert.notEqual(v.nowObservation.reason,'failed-breakout-structure-change',label);
     if(engine==='automatic'&&durationMs===60000)assert.equal(v.futureEntryAnchor,null,label);
     // An independently ready strategy may still enter on current evidence.
