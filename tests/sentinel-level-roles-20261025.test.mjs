@@ -90,7 +90,8 @@ test('recorded resistance-only zone no longer authorizes the CALL as support; ne
  const input={quoteHistory:prefix,candles:fixture.candles,price:q.price,quoteAt:q.ts,now:q.ts,
   durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
  const old=analyzeNowOpportunity({...input,structureCache:{get:()=>legacy}});
- assert.equal(old.ready,true);assert.equal(old.side,'CALL');
+ assert.equal(old.ready,false);assert.equal(old.side,null);assert.equal(old.provisionalSide,'CALL');
+ assert.equal(old.reason,'short-horizon-setup-not-eligible');
  const zone=structure.candleLevelMap.levels.find(z=>z.level===old.priceStructure.candleRoute.event.zone.level);
  assert.equal(zone.supportPivots,0);assert.equal(zone.supportRejections,0);
  assert.equal(zone.resistancePivots,1);assert.equal(zone.resistanceRejections,2);
