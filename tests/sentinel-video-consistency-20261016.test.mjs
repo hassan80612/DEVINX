@@ -39,7 +39,7 @@ test('favorable generic PUT evidence remains visible but does not qualify as a 1
   const input=at(time),a=analyzeNowOpportunity({...input,qualityPolicy:'adaptive-market-v1'});
   assert.equal(a.ready,false);assert.equal(a.side,null);
   assert.equal(a.reason,'short-horizon-setup-not-eligible');assert.equal(a.provisionalSide,'PUT');
-  assert.equal(a.excludedSetupReason,'closed-structure-and-live-impulse');
+  assert.equal(a.excludedSetupReason,'causal-expiry-analogue');
   assert.equal(a.observedAt,input.quoteAt);assert.equal(a.entryPrice,input.price);
   assert.ok(rows.find(q=>q.ts===input.now+30000).price<input.price);
  }
