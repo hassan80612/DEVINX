@@ -12,8 +12,11 @@ const qualifyingReasons=new Set([
  'observed-multi-interval-trend-correction',
  'locally-verified-opposite-direction'
 ]);
-export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
- if(candidate?.ready!==true||!qualifyingReasons.has(candidate.reason)||
+export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+ const oneMinuteNearWallEntry=Number(durationMs)===60000&&
+  ['confirmed-level-structure-reversal','break-retest-continuation'].includes(candidate?.reason);
+ if(candidate?.ready!==true||
+   (!qualifyingReasons.has(candidate.reason)&&!oneMinuteNearWallEntry)||
    !['CALL','PUT'].includes(candidate.side))return null;
  // The final reason owns this check. Inherited reversal metadata must not
  // exempt a proposal that has since become a continuation. Actual reversal
@@ -45,9 +48,11 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  const earlier=observed(at-6000),recent=observed(at-2000);
  if(earlier==null||recent==null)return null;
  const first=sign*(recent-earlier),last=sign*(spot-recent),total=sign*(spot-earlier);
- // A positive but fading approach can no longer be treated as a healthy
- // continuation merely because earlier closed bars were directional.
- if(!(first>=tol*.8&&total>=tol*.4&&last<=first*.35))return null;
+ // A one-minute structural entry may not buy/sell directly into a verified
+ // opposing wall with too little room; it must first clear the wall.
+ const directionalApproach=total>=tol*.4&&last>0;
+ const fadingApproach=first>=tol*.8&&directionalApproach&&last<=first*.35;
+ if(!fadingApproach&&!(oneMinuteNearWallEntry&&directionalApproach))return null;
  const roomNeeded=Math.max(tol*1.25,total*.6);
  const barriers=map.levels.filter(z=>{
    const opposite=levelRoleEvidence(z,sign===1?'PUT':'CALL');
@@ -60,9 +65,14 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
    return gap>=-tol*.35&&gap<=roomNeeded;
  }).sort((a,b)=>Math.abs(Number(a.level)-spot)-Math.abs(Number(b.level)-spot));
  const wall=barriers[0];if(!wall)return null;
+ const gap=sign===1?Number(wall.low)-spot:spot-Number(wall.high);
+ const role=levelRoleEvidence(wall,sign===1?'PUT':'CALL');
+ if(oneMinuteNearWallEntry&&gap>=0&&gap<=roomNeeded)
+  return {kind:'one-minute-entry-without-clearance-to-opposing-wall',
+   level:Number(wall.level),gap,roomNeeded,
+   historicalPivots:role.pivots,historicalRejections:role.rejections};
+ if(!fadingApproach)return null;
  return {kind:'fading-continuation-into-opposing-wall',
-   level:Number(wall.level),gap:sign===1?Number(wall.low)-spot:spot-Number(wall.high),
-   initialMove:first,finalMove:last,roomNeeded,
-   historicalPivots:levelRoleEvidence(wall,sign===1?'PUT':'CALL').pivots,
-   historicalRejections:levelRoleEvidence(wall,sign===1?'PUT':'CALL').rejections};
+   level:Number(wall.level),gap,initialMove:first,finalMove:last,roomNeeded,
+   historicalPivots:role.pivots,historicalRejections:role.rejections};
 }
