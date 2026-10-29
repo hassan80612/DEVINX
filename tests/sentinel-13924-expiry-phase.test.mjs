@@ -57,9 +57,18 @@ test('the candidate reports the earlier known adverse entry honestly, including 
  console.log('sentinel-13959-known-adverse-setup',JSON.stringify({old:'PUT',candidate:current.side,ready:current.ready,reason:current.reason,actual:'PUT'}));
  if(current.ready)assert.equal(current.entryPrice,input.price);
 });
-test('5s, 10s, 15s and 60s decisions remain byte-for-byte identical to 13.9.23',()=>{
+test('5s/10s/15s remain identical; only unproven fresh-floor 60s PUT may now be declined',()=>{
  for(const durationMs of [5000,10000,15000,60000])for(const i of [200,400,650,950]){
-  const input=inputFor(fine,i,{durationMs});assert.deepEqual(after(input),before(input));
+  const input=inputFor(fine,i,{durationMs}),original=before(input),current=after(input);
+  if(durationMs===60000&&original.ready===true&&original.side==='PUT'&&
+    current.reason==='shared-base-unverified-floor-impulse'){
+   assert.equal(original.reason,'closed-structure-and-live-impulse');
+   assert.equal(current.ready,false);
+   assert.equal(current.side,null);
+   assert.equal(current.entryRisk?.kind,'unverified-late-put-near-recent-floor');
+   continue;
+  }
+  assert.deepEqual(current,original,'all unrelated expiry decisions must stay identical');
  }
 });
 test('future prices and observations received after the decision cannot alter it',()=>{
