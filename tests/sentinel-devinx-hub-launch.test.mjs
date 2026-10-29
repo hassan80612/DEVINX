@@ -23,3 +23,15 @@ test('Portal card supports all DevinX locales and routes independently',()=>{
  assert.match(css,/\.sentinelProduct/);
  assert.match(css,/\.sentinelJump/);
 });
+
+test('DevinX Sentinel card shows the new prices in all six available locales',()=>{ 
+ const s=read('src/components/HomeHub.tsx');
+ assert.ok(s.includes("intl?'US$ 60':'R$ 289'"));
+ assert.doesNotMatch(s,/intl\?'US\$ 35':'R\$ 170'/);
+ for(const cycle of ['30 dias de acesso · renovação manual',
+  '30 days of access · renew manually','30 días de acceso · renovación manual',
+  '30 jours d’accès · renouvellement manuel','30 Tage Zugang · manuell verlängern',
+  'وصول لمدة 30 يوماً · تجديد يدوي'])assert.ok(s.includes(cycle),cycle);
+ assert.ok(s.includes('https://trading.devinx.com.br/api/checkout?market='),
+  'keeps the approved Kiwify handoff on the Sentinel site');
+});
