@@ -33,12 +33,11 @@ function evaluate(source,holdingMs){
  return {signals,evaluated:signals.filter(x=>x.result!==null),
   wins:signals.filter(x=>x.result===true).length};
 }
-test('sustained rising and falling markets keep immediate opportunities',()=>{
+test('pure rising and falling trends do not bypass the priority setup policy',()=>{
  for(const side of ['up','down']){
   const out=evaluate(quotes(side),30000);
-  assert.ok(out.evaluated.length>=14,side);
-  assert.equal(out.wins,out.evaluated.length,side);
-  assert.ok(out.signals.every(s=>s.side===(side==='up'?'CALL':'PUT')));
+  assert.equal(out.evaluated.length,0,side);
+  assert.equal(out.signals.length,0,side);
  }
 });
 test('confirmed upper/lower range turns are not momentum-following calls at extremes',()=>{
@@ -73,9 +72,9 @@ test('oscillating market only releases actually confirmed turns, never a phantom
  assert.ok(out.signals.length>0);
  assert.ok(out.signals.every(s=>s.origin==='closed-range-extreme-reversal-confirmed'));
 });
-test('previously recorded descending broker quotes remain causal and unblocked',()=>{
+test('previously recorded descending quotes do not enter without an approved setup',()=>{
  const out=evaluate(recorded,30000);
- assert.equal(out.evaluated.length,3);
- assert.equal(out.wins,3);
- assert.equal(out.signals.length,4);
+ assert.equal(out.evaluated.length,0);
+ assert.equal(out.wins,0);
+ assert.equal(out.signals.length,0);
 });
