@@ -41,7 +41,8 @@ const COPY={
     sentinelText:"Análise em tempo real, estrutura de velas, tendências, retrações e cenários CALL/PUT. Um painel profissional para acompanhar IQ Option e Exnova com clareza; as operações são manuais.",
     sentinelPrimary:"Conhecer o analista",
     sentinelLogin:"Já tenho acesso · Entrar",
-    sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE"
+    sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE",
+    sentinelPriceCycle:"por 30 dias de acesso · renovação manual"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -76,7 +77,8 @@ const COPY={
     sentinelText:"Live prices, completed candle structure, trends, retracements and CALL/PUT scenarios for IQ Option and Exnova. You remain in control of every trade.",
     sentinelPrimary:"Explore Sentinel",
     sentinelLogin:"I have access · Sign in",
-    sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS"
+    sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS",
+    sentinelPriceCycle:"per 30 days of access · renew manually"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -111,7 +113,8 @@ const COPY={
     sentinelText:"Sigue escenarios CALL/PUT, cambios de precio y alertas. El análisis es informativo; operas manualmente.",
     sentinelPrimary:"Conocer Sentinel",
     sentinelLogin:"Ya tengo acceso · Entrar",
-    sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS"
+    sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS",
+    sentinelPriceCycle:"por 30 días de acceso · renovación manual"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -146,7 +149,8 @@ const COPY={
     sentinelText:"Suivez les scénarios CALL/PUT, les variations de prix et les alertes. Analyse informative ; ordres manuels.",
     sentinelPrimary:"Découvrir Sentinel",
     sentinelLogin:"J'ai un accès · Connexion",
-    sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS"
+    sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS",
+    sentinelPriceCycle:"pour 30 jours d’accès · renouvellement manuel"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -181,7 +185,8 @@ const COPY={
     sentinelText:"Verfolgen Sie CALL/PUT-Szenarien, Kursbewegungen und Warnungen. Nur informative Analyse; Trades bleiben manuell.",
     sentinelPrimary:"Sentinel entdecken",
     sentinelLogin:"Zugang vorhanden · Anmelden",
-    sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN"
+    sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN",
+    sentinelPriceCycle:"für 30 Tage Zugang · manuell verlängern"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -216,7 +221,8 @@ const COPY={
     sentinelText:"تابع سيناريوهات CALL و PUT وتحركات الأسعار وتنبيهات السوق. التحليل معلوماتي والصفقات تتم يدوياً.",
     sentinelPrimary:"تعرف على Sentinel",
     sentinelLogin:"لدي حساب · دخول",
-    sentinelFeaturesTitle:"SENTINEL · المزايا"
+    sentinelFeaturesTitle:"SENTINEL · المزايا",
+    sentinelPriceCycle:"مقابل 30 يومًا من الوصول · تجديد يدوي"
   }
 } as const;
 
@@ -394,6 +400,10 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
         <span className={styles.tag}><i/>{c.sentinelTag}</span>
         <h2>{c.sentinelLine1}</h2>
         <p>{c.sentinelText}</p>
+        <div className={styles.sentinelPrice} data-testid="devinx-sentinel-price" data-currency={activeLocale==="pt-BR"?"BRL":"USD"}>
+          <strong>{activeLocale==="pt-BR"?"R$ 289":"US$ 60"}</strong>
+          <span>{c.sentinelPriceCycle}</span>
+        </div>
         <div className={styles.sentinelBrokerBrands} aria-label="IQ Option e Exnova">
           <span className={styles.sentinelIq}>IQ <b>OPTION</b></span>
           <span className={styles.sentinelExnova}>EXNOVA</span>
