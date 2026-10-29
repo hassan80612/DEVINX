@@ -1,6 +1,6 @@
 {
-  "version": "13.9.168",
-  "build": "13.9.168-rebuilt-160-current-price-analysis-no-review-loops",
+  "version": "13.9.171",
+  "build": "13.9.171-from-168-verified-fast-reversal-preserve-native-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.168"
+  "publicVersion": "13.9.171"
 }
