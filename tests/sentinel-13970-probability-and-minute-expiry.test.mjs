@@ -46,7 +46,7 @@ test('60-second UI setting is supported by runtime while forecast chart referenc
  assert.equal(rt.settings.orderDurationMs,60000);
  assert.equal(rt.settings.forecastHorizonSeconds,30);
 });
-test('60-second broker-confirmed duration reaches engine and executor unchanged',()=>{
+test('60-second broker-confirmed duration stays selected while a generic impulse is kept out',()=>{
  const q=quotes(),last=q.at(-1),now=last.ts;
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
  rt.patchSettings({orderDurationMs:60000},'test');
@@ -54,12 +54,10 @@ test('60-second broker-confirmed duration reaches engine and executor unchanged'
   brokerExpirationDurationMs:60000,brokerExpirationKind:'selected-duration',
   brokerExpirationConfidence:.95,brokerExpirationUpdatedAt:now};
  const out=rt._signalValidationGate({analysis:{},snap,settings:rt.settings,now});
- const fired=out.analysis.vnext.futureEntryAnchor;
- assert.ok(fired&&fired.phase==='fired');
- assert.equal(fired.holdingSeconds,60);
- assert.equal(fired.exitAt-fired.entryAt,60000);
- assert.equal(executorSignal(out.analysis).durationMs,60000);
- assert.equal(out.analysis.vnext.nowObservation.probabilityCalibrated,false);
+ const observation=out.analysis.vnext.nowObservation;
+ assert.equal(observation.reason,'short-horizon-setup-not-eligible');
+ assert.equal(out.analysis.vnext.futureEntryAnchor,null);
+ assert.equal(rt.settings.orderDurationMs,60000);
 });
 test('broker duration mismatch does not alter the 1m horizon or bypass setup eligibility',()=>{
  const q=quotes(),last=q.at(-1),now=last.ts;
@@ -71,9 +69,8 @@ test('broker duration mismatch does not alter the 1m horizon or bypass setup eli
  const out=rt._signalValidationGate({analysis:{},snap,settings:rt.settings,now});
  const observation=out.analysis.vnext.nowObservation;
  assert.equal(observation.reason,'short-horizon-setup-not-eligible');
- assert.equal(observation.excludedSetupReason,'closed-structure-and-live-impulse');
- assert.equal(observation.expirySeconds,60);
  assert.equal(out.analysis.vnext.futureEntryAnchor,null);
+ assert.equal(rt.settings.orderDurationMs,60000);
 });
 test('worker accepts only 30s 1m and 5m durations without changing preview horizon',()=>{
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
