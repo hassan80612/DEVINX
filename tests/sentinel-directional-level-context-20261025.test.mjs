@@ -60,7 +60,7 @@ test('a received support rejection, higher low and CURRENT high break issues CAL
   assert.equal(confirmedLevelReversal({...a,quoteHistory:late,quoteAt:late.at(-1).ts,now:late.at(-1).ts,price:late.at(-1).price}),null,'do not re-issue a reversal after price has already travelled');
  }
 });
-test('the complete runtime emits the confirmed contrary signal through probability, expiry review and one-shot lifecycle at all seven expiries',()=>{
+test('ordinary level reversals are gated on 30s/1m while 5m keeps its existing one-shot path',()=>{
  const vertices=[103,101,102,100,101,100.5,101.5],q=[];
  for(let k=0;k<vertices.length-1;k++)for(let j=0;j<5;j++)q.push({ts:T+q.length*1000,price:vertices[k]+(vertices[k+1]-vertices[k])*j/5});
  q.push({ts:T+q.length*1000,price:101.5});
@@ -73,9 +73,15 @@ test('the complete runtime emits the confirmed contrary signal through probabili
    candleLevelMap:{observedCandles:50,asOf:T-1000,tolerance:.1,levels:[z],windows:[]}})};
   const out=r._signalValidationGate({analysis:{},settings:r.settings,now:last.ts,
    snap:{provider:'iq_option',price:last.price,quoteTs:last.ts,quoteHistory:quotes,candles:[],historicalCandlesVerified:true,payout:null}});
-  assert.equal(out.analysis.vnext.futureEntryAnchor.side,mirror?'PUT':'CALL');
-  assert.equal(out.analysis.vnext.futureEntryAnchor.exitAt,last.ts+durationMs);
-  assert.equal(out.analysis.vnext.nowObservation.reason,'confirmed-level-structure-reversal');
+  const v=out.analysis.vnext;
+  if(durationMs===300000){
+   assert.equal(v.futureEntryAnchor?.side,mirror?'PUT':'CALL');
+   assert.equal(v.futureEntryAnchor.exitAt,last.ts+durationMs);
+   assert.equal(v.nowObservation.reason,'confirmed-level-structure-reversal');
+  }else{
+   assert.equal(v.futureEntryAnchor,null);
+   assert.equal(v.nowObservation.reason,'short-horizon-setup-not-eligible');
+  }
  }
 });
 
