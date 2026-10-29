@@ -18,9 +18,9 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  if(candidate?.ready!==true||
    (!qualifyingReasons.has(candidate.reason)&&!oneMinuteNearWallEntry)||
    !['CALL','PUT'].includes(candidate.side))return null;
- // The final reason owns this check. Inherited reversal metadata must not
- // exempt a proposal that has since become a continuation. Actual reversal
- // reasons are already excluded by qualifyingReasons above.
+ // The final reason owns this check. Inherited reversal metadata cannot
+ // exempt a proposal. Only the two explicit one-minute cases above add an
+ // opposing-wall screen; unrelated reversal families stay unchanged.
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),sign=candidate.side==='CALL'?1:-1;
  if(!(usable(spot)&&at>0&&at<=clock&&clock-at<=1450&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
@@ -50,9 +50,9 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  const first=sign*(recent-earlier),last=sign*(spot-recent),total=sign*(spot-earlier);
  // A one-minute structural entry may not buy/sell directly into a verified
  // opposing wall with too little room; it must first clear the wall.
- const directionalApproach=total>=tol*.4&&last>0;
- const fadingApproach=first>=tol*.8&&directionalApproach&&last<=first*.35;
- if(!fadingApproach&&!(oneMinuteNearWallEntry&&directionalApproach))return null;
+ const fadingApproach=first>=tol*.8&&total>=tol*.4&&last<=first*.35;
+ const oneMinuteDirectionalApproach=total>=tol*.4&&last>0;
+ if(!fadingApproach&&!(oneMinuteNearWallEntry&&oneMinuteDirectionalApproach))return null;
  const roomNeeded=Math.max(tol*1.25,total*.6);
  const barriers=map.levels.filter(z=>{
    const opposite=levelRoleEvidence(z,sign===1?'PUT':'CALL');
