@@ -1277,16 +1277,14 @@ export class DemoTradingRuntime{
         });
       }
       const persistenceDuration=Number(settings.orderDurationMs);
-      const trendPersistence=[30000,60000].includes(persistenceDuration)?
+      const trendPersistence=[30000,60000,300000].includes(persistenceDuration)?
         assessDirectionalPersistence({quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
           now,price:snap.price,durationMs:persistenceDuration}):null;
       const phaseCandidate=eligible.ready===true?eligible:observation;
       const phaseReason=String(phaseCandidate?.reason||'');
       const confirmedPhase=/reversal|rejection|failed-breakout|structure-change|range-extreme/i.test(phaseReason);
       const fadingPhase=['weakening','reversal-testing'].includes(trendPersistence?.phase);
-      const derivedPhase=persistenceDuration===300000?
-        (eligible.ready===true?'reversal-confirmed':'reversal-review'):
-        eligible.ready===true&&confirmedPhase?'reversal-confirmed':
+      const derivedPhase=eligible.ready===true&&(confirmedPhase||persistenceDuration===300000)?'reversal-confirmed':
         eligible.ready===true&&trendPersistence?.side&&eligible.side!==trendPersistence.side&&fadingPhase?
           'reversal-forming':trendPersistence?.phase||'insufficient';
       const phaseLabels={continuing:'CONTINUIDADE',weakening:'CONTINUIDADE PERDENDO FORÇA',
@@ -1321,7 +1319,7 @@ export class DemoTradingRuntime{
             trendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
             candidate:eligible,observation,quoteAt:snap.quoteTs,now}),
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
-          observedAt:eligible.observedAt,strength:eligible.strength,
+          observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
           probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
           // Calibration flag reflects actual independent quote outcomes, not

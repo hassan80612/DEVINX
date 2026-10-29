@@ -1,6 +1,7 @@
 import {PREMIUM_OVERLAY_CSS} from './premium-overlay-controls.mjs';
 import {patchCurrentQuote} from './current-quote-readout.mjs';
 import {patchMarketTotals} from './market-totals-readout.mjs';
+import {marketDataStatus} from '../src/core/market-reading.mjs';
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
@@ -574,7 +575,8 @@ function protocolScan(data,st,direction='in'){
       if(st.activeId==null||aid==null||Number(aid)!==Number(st.activeId)){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;continue}
       const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
-      const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
+      const rawTs=row.quote_time??row.time??row.timestamp??row.at??row.created_at;
+      const ts=rawTs==null?Date.now():epochMs(rawTs);if(ts==null)continue;
       // Do not roll the live price backward on a delayed feed frame.
       // A delayed packet may be useful for history, but cannot roll the live
       // price/forecast clock back even by 500ms and create a false reversal.
@@ -1689,6 +1691,8 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
       payload.quoteProvider=provider;
+      payload.marketDataStatus=marketDataStatus({quoteAt:payload.vnext?.nowObservation?.quoteAt||payload.vnext?.nowObservation?.observedAt,
+        evaluatedAt:payload.vnext?.nowObservation?.evaluatedAt,durationMs:payload.durationMs});
       payload.executorPanelHtml=executorPanel(payload.autoExecutor,payload.uiLanguage,{settingsOnly:!!payload.engine,externalMartingale:!!payload.engine});
       payload.executorMonitorHtml=executorMonitor(payload.autoExecutor,payload.uiLanguage);
       payload.premiumControlsCss=PREMIUM_OVERLAY_CSS;
@@ -2365,7 +2369,7 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:auto auto minmax(24px,auto) auto;gap:5px;margin-top:7px;padding:8px 10px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr(runtimeLabel)+' · '+durationText:tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               ${admission?.enabled?'<small data-sentinel-precision-quality data-admission-score="'+Number(admission.ready?100:admission.score||0)+'" style="font-size:9px;font-weight:850;color:'+(admission.ready?'#74e0b5':'#e6c879')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(String(admission.reason||''))+'">FILTRO DE ADMISSÃO · '+admissionRule+' · '+Number(admission.ready?100:admission.score||0)+'/100 · '+admissionReason+'</small>':''}
-              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:block;margin-top:3px;font-size:9px;line-height:12px;color:${muted}">${nowMode?esc(tr(observation?.marketReading||observation?.marketPhaseLabel||'ANALISANDO')):''}</small>
+              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:block;margin-top:3px;font-size:9px;line-height:12px;color:${muted}">${nowMode?esc(tr(entryPlanActive?(observation?.marketReading||'ANALISANDO')+' · '+d.marketDataStatus:d.marketDataStatus)):''}</small>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:${d.autoExecutor?'minmax(95px,.78fr) minmax(78px,.56fr) minmax(145px,1.16fr)':'minmax(85px,.82fr) minmax(0,1.18fr)'};height:auto;min-height:74px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:visible">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-signal-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
                 ${d.autoExecutor?'<div data-sentinel-executor-clock-wl style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;min-width:0;padding-left:8px;border-left:1px solid '+panelBorder+'"><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+callTone+'">WIN: '+Number(d.autoExecutor.sessionWins||0)+'</span><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+putTone+'">LOSS: '+Number(d.autoExecutor.sessionLosses||0)+'</span></div>':''}
@@ -2671,7 +2675,17 @@ export class LocalPlaywrightDriver{
               scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
               'ANALISANDO');
             const phaseText=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-market-phase]');
-            if(nowAnalysisMode&&phaseText)phaseText.textContent=tr(observation?.marketReading||observation?.marketPhaseLabel||'ANALISANDO');
+            if(nowAnalysisMode&&phaseText){
+              const age=nowClock-Number(observation?.quoteAt||observation?.observedAt||0),
+                evaluatedAge=nowClock-Number(observation?.evaluatedAt||0),
+                duration=Number(window.__sentinelLastOverlayData?.durationMs||60000),
+                limit=duration===30000?1450:duration===60000?1950:2500;
+              const technical=!(Number(observation?.quoteAt||observation?.observedAt)>0&&age>=0)?'SEM COTAÇÃO VÁLIDA · ÚLTIMA LEITURA':
+                age>limit?'COTAÇÃO ATRASADA · '+(age/1000).toFixed(1)+'s · ÚLTIMA LEITURA':
+                !(evaluatedAge>=0&&evaluatedAge<=3500)?'LEITURA EM ATUALIZAÇÃO':
+                'COTAÇÃO ATUAL · '+(age/1000).toFixed(1)+'s';
+              phaseText.textContent=tr(active?(observation?.marketReading||'ANALISANDO')+' · '+technical:technical);
+            }
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
               decision.textContent=tr(nowAnalysisMode?scanningLabel:

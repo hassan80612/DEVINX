@@ -16,13 +16,13 @@ try{
  assert.equal(await driver.updateOverlay('exnova',data),true);
  const label=page.locator('[data-sentinel-decision-label]'),phase=page.locator('[data-sentinel-market-phase]');
  assert.equal(await label.textContent(),'CONTINUIDADE · CALL');
- assert.equal(await phase.textContent(),'CONTINUIDADE · CALL');
+ assert.match(await phase.textContent(),/^COTAÇÃO ATUAL/);
  for(const text of [reading('weakening','CONTINUIDADE PERDENDO FORÇA','CALL'),reading('reversal-testing','REVERSÃO EM TESTE','CALL')]){
   await page.evaluate(text=>{
    window.__sentinelLastOverlayData.vnext.nowObservation.marketReading=text;
    document.getElementById('sentinel-trading-overlay-host').shadowRoot.getElementById('sentinel-trading-overlay').__sentinelTargetClockTick();
   },text);
-  assert.equal(await label.textContent(),text);assert.equal(await phase.textContent(),text);
+  assert.equal(await label.textContent(),text);assert.match(await phase.textContent(),/^COTAÇÃO ATUAL/);
   assert.doesNotMatch(await label.textContent(),/COTAÇÃO|AGORA/);
  }
  assert.deepEqual(errors,[]);console.log('phase and direction restored: continuation CALL, weakening CALL, reversal testing PUT; zero page errors');

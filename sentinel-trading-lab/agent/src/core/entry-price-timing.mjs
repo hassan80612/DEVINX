@@ -25,9 +25,10 @@ function atOrBefore(rows,t){
   return t-rows[i].ts<=2000?rows[i]:null;
  return null;
 }
-export function stretchedImpulse({quoteHistory=[],quoteAt,now=quoteAt,price,side}={}){
+export function stretchedImpulse({quoteHistory=[],quoteAt,now=quoteAt,price,side,durationMs=60000}={}){
  const at=Number(quoteAt),spot=Number(price),d=dir(side);
- if(!d||!(at>0&&now>=at&&now-at<=1950&&spot>0))return null;
+ const maxAge=Number(durationMs)===30000?1450:Number(durationMs)===300000?2500:1950;
+ if(!d||!(at>0&&now>=at&&now-at<=maxAge&&spot>0))return null;
  const rows=tape(quoteHistory,at,now,spot);
  if(!rows||rows.length<25)return null;
  const recent=atOrBefore(rows,at-5000),base=atOrBefore(rows,at-20000);
@@ -72,9 +73,9 @@ function ownReversalConfirmation({candidate,rows,proof,risk,side,at,now,spot,quo
 }
 
 export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
- if(![30000,60000].includes(Number(durationMs))||candidate?.ready!==true||!dir(candidate.side))return candidate;
+ if(![30000,60000,300000].includes(Number(durationMs))||candidate?.ready!==true||!dir(candidate.side))return candidate;
  const side=candidate.side,at=Number(quoteAt),spot=Number(price),d=dir(side);
- const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
+ const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side,durationMs});
  if(!risk)return candidate;
  const reaction=candidate.priceStructure?.reaction,levelProof=candidate.priceStructure?.reactionProof;
  if(candidate.reason==='historical-level-rejection'&&reaction?.kind==='rejection'&&reaction.side===side&&
@@ -96,5 +97,5 @@ export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,
  // Decline THIS quote. The next qualified quote is assessed afresh by the
  // common 160 engine, never stored, delayed, expired or automatically rearmed.
  return {...candidate,ready:false,side:null,provisionalSide:side,
-  reason:'extended-move-without-current-entry-confirmation',entryTiming:{kind:'entry-price-already-extended',...risk}};
+  reason:'extended-move-without-current-entry-confirmation',entryTiming:{...risk,kind:'entry-price-already-extended',setup:candidate.reason}};
 }

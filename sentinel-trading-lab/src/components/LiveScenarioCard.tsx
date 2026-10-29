@@ -7,6 +7,7 @@ import {pcClockNow} from '../lib/pc-clock-sync.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '../../agent/src/core/visible-strategy-guide.mjs';
 import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
+import {marketDataStatus} from '../../agent/src/core/market-reading.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
 const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.168';
@@ -65,7 +66,10 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    <strong data-testid="future-entry-decision">
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
-   {nowMode&&running&&observation?.marketReading&&<small style={{display:'block',fontSize:11,marginTop:4}}>{t(observation.marketReading)}</small>}
+   {nowMode&&<small style={{display:'block',fontSize:11,marginTop:4}}>
+    {running&&observation?.marketReading?t(observation.marketReading)+' · ':''}
+    {t(marketDataStatus({quoteAt:observation?.quoteAt||quoteAt,evaluatedAt,now:sourceNow,durationMs:holdingSeconds*1000}))}
+   </small>}
   </div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
    <div><small>{t(signalClock?'ATÉ O VENCIMENTO':nowMode?'ANALISANDO':moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong></div>

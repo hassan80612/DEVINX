@@ -6,7 +6,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   const host=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
-  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===1)return;
+  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===2)return;
   try{window.__sentinelBrokerChartPeriodKeeperV1?.dispose?.()}catch{}
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900,1800,3600]);
   const key='sentinel-broker-chart-period-preference-v1:'+provider;
@@ -48,7 +48,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   let cached=null,observedSeconds=null,preferredSeconds=null,stableCount=0,
    manualOpenedAt=0,openingSeconds=null,manualControl=null,chosenSeconds=null,
    chosenTarget=null,lastUserActivityAt=0,lastRepairAt=0,repairing=false,
-   observedAt=0,lastAttemptAt=0;
+   observedAt=0,lastAttemptAt=0,disposed=false;
   try{
    const v=Number(localStorage.getItem(key));
    if(ACCEPT.has(v)){preferredSeconds=v;}
@@ -96,6 +96,13 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   const pickedOption=target=>{
    const control=manualControl||discover()?.el;
    if(!control||!inChartMenu(target,control))return null;
+   // Opening a timeframe button is not choosing its current value. A
+   // class such as chart-period also matches the option-name selectors.
+   const opener=control.matches?.('button,[role="button"],input,select')?control:
+    control.querySelector?.('button,[role="button"],input,select');
+   const explicitOption=target.matches?.('[role="option"],[role="menuitem"],li')||
+    target.closest?.('[role="option"],[role="menuitem"],li');
+   if(opener&&(target===opener||opener.contains?.(target)&&!explicitOption))return null;
    for(let el=target,depth=0;el&&depth<4;el=el.parentElement,depth++){
     const value=parse(el.innerText||el.textContent||'');
     if(value&&(el.matches?.('[role="option"],[role="menuitem"],li,'+
@@ -113,7 +120,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   // while the executor temporarily revokes permission around order clicks.
   const notify=()=>{window.__sentinelBrokerChartPeriodStatusV1={
    provider,preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,
-   repairing,revision:1
+   repairing,revision:2
   }};
   function restore(control){
    const now=Date.now();
@@ -176,6 +183,13 @@ export function installBrokerChartPeriodKeeper({provider}={}){
     notify();
    }catch{}
   }
+  const verifySoon=()=>{
+   for(const delay of [0,120,500])setTimeout(()=>{if(!disposed)poll()},delay);
+  };
+  const persistBeforeLeave=()=>{
+   if(disposed||repairing||!manualOpenedAt||chosenSeconds==null)return;
+   if(discover()?.value===chosenSeconds)save(chosenSeconds);
+  };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
    const target=ev.target,option=manualOpenedAt?pickedOption(target):null;
@@ -186,9 +200,9 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   };
   const onClick=ev=>{
    if(repairing||!ev.isTrusted)return;
-   if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target)))return;
+   if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target))){verifySoon();return;}
    const option=manualOpenedAt?pickedOption(ev.target):null;
-   if(option){chosenSeconds=option;chosenTarget=ev.target;lastUserActivityAt=Date.now();return;}
+   if(option){chosenSeconds=option;chosenTarget=ev.target;lastUserActivityAt=Date.now();verifySoon();return;}
    const control=discover();if(!control||!belongsToControl(ev.target,control.el))return;
    manualOpenedAt=Date.now();openingSeconds=control.value;manualControl=control.el;
    chosenSeconds=null;chosenTarget=null;lastUserActivityAt=manualOpenedAt;
@@ -207,9 +221,12 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   document.addEventListener('visibilitychange',onWake);
   window.addEventListener?.('pageshow',onWake);
   window.addEventListener?.('focus',onWake);
-  window.__sentinelBrokerChartPeriodKeeperV1={revision:1,provider,poll,
+  window.addEventListener?.('pagehide',persistBeforeLeave);
+  window.addEventListener?.('beforeunload',persistBeforeLeave);
+  window.__sentinelBrokerChartPeriodKeeperV1={revision:2,provider,poll,
    snapshot:()=>({preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,repairing}),
    dispose:()=>{
+    disposed=true;
     try{clearInterval(timer)}catch{}
     document.removeEventListener('pointerdown',onPointerDown,true);
     document.removeEventListener('click',onClick,true);
@@ -217,6 +234,8 @@ export function installBrokerChartPeriodKeeper({provider}={}){
     document.removeEventListener('visibilitychange',onWake);
     window.removeEventListener?.('pageshow',onWake);
     window.removeEventListener?.('focus',onWake);
+    window.removeEventListener?.('pagehide',persistBeforeLeave);
+    window.removeEventListener?.('beforeunload',persistBeforeLeave);
    }};
   poll();
   const timer=setInterval(poll,2500);
