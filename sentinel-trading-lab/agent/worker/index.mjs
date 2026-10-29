@@ -68,6 +68,10 @@ function executionContext(){const st=activeProvider?driver.state?.(activeProvide
 const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
  onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
+// Renew a browser document's expiry-maintenance permission from LIVE state,
+// independently of analysis/card rendering, using the existing local bridge.
+driver.setNativeExpiryPermissionSource?.(provider=>
+ provider===activeProvider&&accessLeaseValid()?executor.status():null);
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
 runtime.onNowOpportunity=(anchor,evidence)=>{

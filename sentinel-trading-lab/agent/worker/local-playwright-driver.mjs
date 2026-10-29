@@ -758,9 +758,22 @@ export class LocalPlaywrightDriver{
     if(manual)return this.launchNormal(provider,{manual:true});
     return this.launchBackground(provider);
   }
+  setNativeExpiryPermissionSource(source){
+    this.nativeExpiryPermissionSource=typeof source==='function'?source:null;
+  }
   async installBridge(page,provider=null){
     // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
+      if(!page.__sentinelExpiryPermissionExposed){
+        await page.exposeFunction('__sentinelRequestNativeExpiryPermission',()=>{
+          try{
+            const state=this.nativeExpiryPermissionSource?.(provider);
+            return state?nativeExpiryPermissionForExecutor({...state,provider},Date.now()):
+              {provider,at:Date.now(),allowed:false};
+          }catch{return {provider,at:Date.now(),allowed:false}}
+        });
+        page.__sentinelExpiryPermissionExposed=true;
+      }
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       // Do not capture a mutable expiry in this one-time script: an old 30s
       // default could overwrite the user's saved duration on a later broker reload.

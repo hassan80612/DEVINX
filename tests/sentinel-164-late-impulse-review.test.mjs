@@ -65,6 +65,28 @@ test('relabeling the same impulse or a succession of newer ticks cannot renew it
  const out=review.review(input(rows,'CALL',30000,'historical-level-breakout'));
  assert.equal(out.ready,false);assert.equal(out.entryTimingReview.phase,'expired');
  assert.equal(out.entryTimingReview.expiresAt,first.entryTimingReview.expiresAt);
+ assert.equal(review.pending.size,0,'expiry must remove the old direction state');
+ assert.equal(review.review(input(rows)).entryTimingReview.phase,'expired','the exact expired quote is not a new candidate');
+});
+test('a valid later candidate in the same direction does not inherit an expired block',()=>{
+ for(const mirror of [false,true])for(const duration of [30000,60000]){
+  const side=mirror?'PUT':'CALL',review=new LateImpulseReview(),rows=fixture(mirror);
+  const first=review.review(input(rows,side,duration)),last=rows.at(-1).price;
+  for(let i=1;i<=40;i++){
+   rows.push({ts:T+i*1000,price:last+(mirror?-1:1)*i*.01});
+   if(rows.at(-1).ts>=first.entryTimingReview.expiresAt&&review.pending.size)
+    assert.equal(review.review(input(rows,side,duration)).entryTimingReview.phase,'expired');
+  }
+  const next=input(rows,side,duration);
+  assert.equal(stretchedImpulse({...next,side}),null,'the current leg is no longer unusually extended');
+  assert.equal(review.review(next),next.candidate);
+  assert.equal(review.pending.size,0);
+ }
+});
+test('old pending candidates also expire while the base analyst is waiting',()=>{
+ const review=new LateImpulseReview(),p=input(fixture());review.review(p);
+ review.review({...p,candidate:{ready:false,side:null},now:T+10000});
+ assert.equal(review.pending.size,0);
 });
 test('missing or future quotes cannot manufacture a confirming retest',()=>{
  const review=new LateImpulseReview(),rows=fixture();review.review(input(rows));

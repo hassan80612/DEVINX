@@ -1,6 +1,6 @@
 {
-  "version": "13.9.165",
-  "build": "13.9.165-accumulated-extension-and-rejected-zone-retry",
+  "version": "13.9.166",
+  "build": "13.9.166-bounded-candidate-state-and-reload-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.165"
+  "publicVersion": "13.9.166"
 }

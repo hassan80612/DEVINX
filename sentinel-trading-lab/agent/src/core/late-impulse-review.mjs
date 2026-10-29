@@ -50,12 +50,30 @@ export function stretchedImpulse({quoteHistory=[],quoteAt,now=quoteAt,price,side
 }
 
 export class LateImpulseReview{
- constructor(){this.context=null;this.pending=new Map();}
+ constructor(){this.context=null;this.pending=new Map();this.expiredQuotes=new Map();}
  review({candidate,context='',quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
-  if(this.context!==context){this.context=context;this.pending.clear();}
+  if(this.context!==context){this.context=context;this.pending.clear();this.expiredQuotes.clear();}
+  // Expiry belongs to a candidate, never to an indefinitely locked side.
+  // Run cleanup even when the analyst currently has no qualified candidate.
+  const expired=new Map();
+  for(const [side,state] of this.pending)if(Number(now)>=state.expiresAt){
+   expired.set(side,state);this.pending.delete(side);
+  }
   if(![30000,60000].includes(Number(durationMs)))return candidate;
   const at=Number(quoteAt),spot=Number(price),side=candidate?.side,d=dir(side);
   if(candidate?.ready!==true||!d)return candidate;
+  const ended=expired.get(side);
+  if(ended){
+   this.expiredQuotes.set(side,at);
+   return {...candidate,ready:false,side:null,provisionalSide:side,
+    reason:'candidato-de-impulso-expirado',entryTimingReview:{...ended,phase:'expired'}};
+  }
+  // Replaying the exact same market observation cannot restart that window.
+  // A newer candidate is evaluated from CURRENT risk with no inherited lock.
+  if(this.expiredQuotes.get(side)===at)return {...candidate,ready:false,side:null,
+   provisionalSide:side,reason:'candidato-de-impulso-expirado',
+   entryTimingReview:{phase:'expired',observedAt:at}};
+  this.expiredQuotes.delete(side);
   const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
   let state=this.pending.get(side);
   // A full return to the pre-impulse price ends that leg, rather than keeping
@@ -74,8 +92,7 @@ export class LateImpulseReview{
   const block=(phase,reason)=>({...candidate,ready:false,side:null,
    provisionalSide:side,reason,entryTimingReview:{...state,phase}});
   if(!rows)return block('waiting-price','impulso-estendido-aguardando-preco-observado');
-  // Never carry a confirming pivot across a feed gap, or revive an expired
-  // proposal. A later, independently formed retest is a NEW price candidate.
+  // Never carry a confirming pivot across a feed gap.
   const after=rows.filter(q=>q.ts>=state.detectedAt);
   const turn=after.reduce((a,b)=>d*(b.price-a.price)<0?b:a,after[0]);
   const last=rows.at(-2),previous=rows.at(-3);
@@ -92,13 +109,6 @@ export class LateImpulseReview{
   const structural=proof&&proof.turnAt>state.detectedAt&&
    proof.pivotAt>=state.detectedAt&&d*(spot-state.peakPrice)>0?proof:null;
   const freshBreak=retest||structural;
-  if(now>state.expiresAt){
-   if(freshBreak&&freshBreak.turnAt>state.expiresAt){
-    this.pending.delete(side);
-    return {...candidate,entryTimingReview:{phase:'new-price-candidate',proof:freshBreak}};
-   }
-   return block('expired','candidato-de-impulso-expirado');
-  }
   if(freshBreak){
    this.pending.delete(side);
    return {...candidate,entryTimingReview:{phase:'price-confirmed',proof:freshBreak}};
