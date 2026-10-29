@@ -1,6 +1,6 @@
 {
-  "version": "13.9.170",
-  "build": "13.9.170-base-168-fine-continuation-and-expiry",
+  "version": "13.9.172",
+  "build": "13.9.172-base-170-plus-171-verified-fast-reversal",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.170"
+  "publicVersion": "13.9.172"
 }
