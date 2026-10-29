@@ -16,7 +16,9 @@ export function expiryPositionRisk({candidate,quoteHistory=[],quoteAt,now=quoteA
     candidate.reason!=='closed-structure-and-live-impulse')return null;
  if(candidate.priceStructure?.confirmedReversal?.side===candidate.side||
     candidate.priceStructure?.reactionProof?.confirmed===true||
-    candidate.priceStructure?.observedSequence?.continuation?.confirmedAt>0)return null;
+    (candidate.priceStructure?.observedSequence?.continuation?.side===candidate.side&&
+     Number(candidate.priceStructure.observedSequence.continuation.confirmedAt)<=Number(quoteAt)&&
+     Number(now)-Number(candidate.priceStructure.observedSequence.continuation.confirmedAt)<=1450))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
     candidate.observedAt===at&&candidate.entryPrice===spot))return null;
