@@ -1,6 +1,6 @@
 # Correções pontuais sobre a 13.9.168 publicada
 
-Preparadas em 29/10/2026. Produção permanece na 168 original até a revisão do usuário. Esta branch não altera versão, instalador, domínios ou configuração do bot.
+Preparadas e revisadas em 29/10/2026. Publicação autorizada pelo usuário como 13.9.169. A 168 original permanece preservada para rollback; a lógica revisada não recebeu alterações adicionais. O incremento numérico permite que o atualizador detecte o pacote corrigido.
 
 ## Ponto de retorno
 
