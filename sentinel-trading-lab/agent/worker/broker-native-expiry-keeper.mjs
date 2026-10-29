@@ -32,7 +32,7 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  if(typeof window==='undefined')return {blocked:false};
  // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(![8,9,10,11].includes(keeper?.revision))return {blocked:false};
+ if(![8,9,10,11,12].includes(keeper?.revision))return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
  // check is read-only and never opens or changes the broker expiry control.
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
@@ -54,7 +54,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===11){
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===12){
    const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
    if(!(current>0)&&Number.isFinite(Number(requestedMs)))
     window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
@@ -202,9 +202,14 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    for(const delay of [0,120,500])setTimeout(()=>{if(!disposed)poll()},delay);
   };
   const persistBeforeLeave=()=>{
-   if(disposed||repairing||!manualOpenedAt||chosenValue==null)return;
+   if(disposed||repairing||!manualOpenedAt)return;
    const actual=discover()?.value;
-   if(actual===chosenValue)save(actual);
+   const confirmed=chosenValue!=null&&actual===chosenValue;
+   // A native picker can replace its element when the person selects 1m/5m.
+   // Save only a changed NON-default value after the trusted opener.
+   const changed=chosenValue==null&&openingValue!=null&&
+    actual!==30000&&actual!==openingValue;
+   if(confirmed||changed)save(actual);
   };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
@@ -338,8 +343,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
      // independent confirmation of the user's selection. Never adopt a
      // 30s rollback this way, nor infer a preference without manual activity.
      const confirmedManualChange=chosenValue==null&&openingValue!=null&&
-      current!==openingValue&&current!==30000&&stableCount>=2&&
-      manualControl===c.el;
+      current!==openingValue&&current!==30000&&stableCount>=2;
      if((chosenValue!=null&&current===chosenValue)||confirmedManualChange){
       save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
      }
@@ -391,7 +395,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
    notify(observedMs);poll({urgent:true});return true;
   };
-  window.__sentinelNativeExpiryKeeperV3={revision:11,provider,poll,setPreferred,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:12,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
