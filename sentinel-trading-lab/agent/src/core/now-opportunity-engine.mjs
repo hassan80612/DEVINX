@@ -442,7 +442,7 @@ export function longHorizonDirection({quotes=[],quoteAt,price,durationMs,noise=0
    side:sideOf(move),significant:magnitude>=Math.max(Number(noise)||0,1e-9)*.65,
    observedNetMove:move};
 }
-export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
+function analyzeNowOpportunityBase({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
@@ -459,7 +459,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // Automatic and every selected specialist. Strategies never open their
   // own bypass around the base's confirmed top/bottom decisions.
   // No additional candle wait, broker request, polling or delayed entry.
-  const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
+  const original=analyzeNowOpportunityBase({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
   const context=automaticChartContext({...input,base:original});
   // Preserve the existing admission and exact entry timestamp. Only the 30s
   // direction can use a projection fitted entirely to observed past prices.
@@ -513,7 +513,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // collection wait is introduced by unified signal ownership.
   const selectedEngine=engineId!=='automatic'&&Number(durationMs)===30000;
   const specialist=selectedEngine&&!located.ready?
-   analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
+   analyzeNowOpportunityBase({...input,engineId,qualityPolicy:'baseline'}):null;
   const levelEvent=located.priceStructure?.candleRoute?.event;
   // A shorter strategy can supply early evidence, but it cannot reuse the
   // SAME unsupported level reaction already rejected by the shared base.
@@ -571,7 +571,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
-  const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
+  const structural=analyzeNowOpportunityBase({...input,engineId:'automatic'});
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
   const contextStrategy=useLearning?'mean_reversion':'trend';
@@ -687,6 +687,31 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    expirySeconds:seconds,barSeconds:barMs/1000,alignedBars:aligned,
    observedNetMove:net,observedImpulse:impulse,noise};
 }
+// Short-horizon entries are restricted to the two setups that led the supplied
+// 1m sample. The gate changes eligibility only; it adds no timers, waits, or reads.
+function applyShortHorizonPriorityPolicy(candidate,durationMs){
+ const horizon=Number(durationMs??30000);
+ if((horizon!==30000&&horizon!==60000)||candidate?.ready!==true)return candidate;
+ const reason=String(candidate.reason||'');
+ const continuation=reason==='break-retest-continuation';
+ const extremeReversal=reason==='closed-range-extreme-reversal-confirmed'&&
+  candidate.regime==='observed-range-turn';
+ if(continuation||extremeReversal)
+  return {...candidate,shortHorizonSetupPolicy:'break-retest-or-extreme-v1'};
+ return {...candidate,ready:false,side:null,
+  provisionalSide:isSide(candidate.side)?candidate.side:(candidate.provisionalSide??null),
+  reason:'short-horizon-setup-not-eligible',
+  excludedSetupReason:reason||'missing-reason',
+  shortHorizonSetupPolicy:'break-retest-or-extreme-v1'};
+}
+
+// Public analysis result and the order lifecycle share the same narrow setup
+// policy, so an ineligible ready candidate cannot reach the click path.
+export function analyzeNowOpportunity(args={}){
+ const candidate=analyzeNowOpportunityBase(args);
+ return applyShortHorizonPriorityPolicy(candidate,args?.durationMs);
+}
+
 // One-shot state machine. No second CALL/PUT during the selected expiry.
 // Analysis can run on every quote while the previous signal is locked.
 // At expiry only a fresh AFTER-expiry quote can authorize the next signal.
@@ -694,6 +719,7 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  quoteAt=null,asset='UNKNOWN',provider=null,engineId='automatic',durationMs=30000}={}){
  const horizon=Number(durationMs);
  if(!(horizon>=5000&&horizon<=3600000))return null;
+ const admittedCandidate=applyShortHorizonPriorityPolicy(candidate,horizon);
  const key=[...(provider==null?[]:[String(provider).toLowerCase()]),String(asset).toUpperCase(),String(engineId),horizon].join('|');
  // Retain the previous expiry when ONLY the strategy changes on the same
  // provider, asset and duration; old CALL/PUT must never be shown as a new
@@ -707,10 +733,10 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
   if(old.context!==key)return{context:key,engineId,asset:String(asset).toUpperCase(),
    phase:'scanning',reason:'strategy-switch-awaiting-previous-expiry',
    side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
-   windowStartedAt:null,windowEndsAt:0,observationSide:candidate?.side||null,
+   windowStartedAt:null,windowEndsAt:0,observationSide:admittedCandidate?.side||null,
    lastObservedAt:Number(quoteAt)||null,lastExpiryAt:Number(old.exitAt),
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000};
-  return {...old,entryReadyNow:false,observationSide:candidate?.side||null,
+  return {...old,entryReadyNow:false,observationSide:admittedCandidate?.side||null,
     lastObservedAt:Number(quoteAt)||null};
  }
  const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
@@ -721,28 +747,28 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  const reassessing=priorExpiry!=null&&
   (now<priorExpiry+POST_EXPIRY_REASSESS_MS||Number(quoteAt)<priorExpiry+POST_EXPIRY_REASSESS_MS);
  const canRelease=fresh&&!reassessing;
- const ready=canRelease&&candidate?.ready===true&&isSide(candidate.side)&&
-   Number(candidate.observedAt)===Number(quoteAt)&&finitePrice(candidate.entryPrice);
+ const ready=canRelease&&admittedCandidate?.ready===true&&isSide(admittedCandidate.side)&&
+   Number(admittedCandidate.observedAt)===Number(quoteAt)&&finitePrice(admittedCandidate.entryPrice);
  if(ready){
   const expiry=now+horizon;
   return {context:key,engineId,asset:String(asset).toUpperCase(),
-   phase:'fired',reason:'present-confirmed',side:candidate.side,
+   phase:'fired',reason:'present-confirmed',side:admittedCandidate.side,
    entryAt:now,entryTriggeredAt:now,plannedEntryAt:now,
-   entryPrice:Number(candidate.entryPrice),confirmedEntryPrice:Number(candidate.entryPrice),
+   entryPrice:Number(admittedCandidate.entryPrice),confirmedEntryPrice:Number(admittedCandidate.entryPrice),
    // A broker quote can precede the worker's Date.now() by milliseconds.
    // Cycle origin MUST be the observed quote clock or both PC and phone
    // incorrectly discard every legitimate real-time analysis as "old".
    exitAt:expiry,windowStartedAt:Number(quoteAt),windowEndsAt:expiry,
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000,
-   issuedAt:now,entryReadyNow:true,observationSide:candidate.side,
+   issuedAt:now,entryReadyNow:true,observationSide:admittedCandidate.side,
    lastObservedAt:Number(quoteAt)};
  }
  return {context:key,engineId,asset:String(asset).toUpperCase(),
-   phase:'scanning',reason:!fresh?'waiting-fresh-quote':reassessing?'reassessing-after-expiry':candidate?.reason||'scanning-now',
+   phase:'scanning',reason:!fresh?'waiting-fresh-quote':reassessing?'reassessing-after-expiry':admittedCandidate?.reason||'scanning-now',
    side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
    // Scanning is not an open signal window. Do not invent a cycle start
    // equal to worker time: quoteAt normally trails the worker by 50-500ms.
-   windowStartedAt:null,windowEndsAt:0,observationSide:candidate?.side||null,
+   windowStartedAt:null,windowEndsAt:0,observationSide:admittedCandidate?.side||null,
    lastObservedAt:Number(quoteAt)||null,lastExpiryAt:priorExpiry,
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000};
 }
