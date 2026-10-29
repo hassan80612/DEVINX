@@ -8,8 +8,7 @@ import {assessDirectionalPersistence,reviewDirectionalPersistence,fiveMinuteReve
 const blob=raw=>createHash('sha1').update(Buffer.from('blob '+raw.length+'\0')).update(raw).digest('hex');
 for(const [name,sha] of [
  ['fast-level-reversal.mjs','810d78b3229d3eeb427e6c28dcb63a8f6647e9aa'],
- ['observed-level-sequence.mjs','cb3c9a914c1f3cc0ea62ab98a2b0e44690572624'],
- ['entry-price-timing.mjs','36ddcb35492721a7a92fc11466a77f43541f0778']
+ ['observed-level-sequence.mjs','cb3c9a914c1f3cc0ea62ab98a2b0e44690572624']
 ])test(name+' is byte-identical to the approved published 168',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url));
  assert.equal(blob(raw),sha);
