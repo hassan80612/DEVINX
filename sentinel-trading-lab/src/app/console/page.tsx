@@ -9,6 +9,7 @@ import {ActiveBrowserSession} from '../../components/ActiveBrowserSession';
 import {LanguageSwitcher,T,useSentinelLocale} from '../../components/SentinelLocale';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 import agentRelease from '../../../agent/release.json';
+import {SENTINEL_PLANS} from '../../lib/commercial';
 import {acceptSignedPcFrame,keepNewerVerifiedQuote,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
@@ -363,7 +364,7 @@ function Panel({name,s,act,busy,agent,agentCommand,account,onNavigate}:{name:str
 function Membership({account}:{account:any}){
  const {language}=useSentinelLocale();
  const intl=language==='en';
- const localizedPrice=intl?'US$ 100':'R$ 549';
+ const localizedPrice=intl?SENTINEL_PLANS.INTL.priceDisplay:SENTINEL_PLANS.BR.priceDisplay;
  const profile=account?.profile||{};
  const active=profile.role==='master'||profile.access_active===true;
  const expiry=profile.access_expires_at?new Date(profile.access_expires_at).toLocaleDateString('pt-BR'):'Aguardando pagamento';
