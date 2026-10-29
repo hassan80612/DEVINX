@@ -9,7 +9,7 @@ import {analystWireV1} from '../sentinel-trading-lab/src/lib/analyst-wire-v1.mjs
 import {liveCardModel} from '../sentinel-trading-lab/src/lib/live-card-model.ts';
 const T=1800000000000;
 const engines=['automatic','price_action','support_resistance','trend','mean_reversion','breakout','trendline_breakout','fibonacci_retest','smart_confluence'];
-test('unchanged high frequency prices retain elapsed history and do not perpetually reset structure',()=>{
+test('high-frequency history remains intact while an unqualified trend stays out',()=>{
  const d=new LocalPlaywrightDriver({dataDir:'ignored'}),st=d.state('exnova');
  Object.assign(st,{symbol:'EUR/USD OTC',uiSymbol:'EUR/USD OTC',activeId:76,quoteHistory:[]});
  const clock=Date.now;
@@ -26,8 +26,9 @@ test('unchanged high frequency prices retain elapsed history and do not perpetua
  const latest=st.quoteHistory.at(-1);
  const result=analyzeNowOpportunity({quoteHistory:st.quoteHistory,price:latest.price,
   quoteAt:latest.ts,now:latest.ts+100,durationMs:30000});
- assert.equal(result.ready,true,JSON.stringify(result));
- assert.equal(result.side,'CALL');
+ assert.equal(result.ready,false,JSON.stringify(result));
+ assert.equal(result.reason,'short-horizon-setup-not-eligible');
+ assert.equal(result.provisionalSide,'CALL');
 });
 test('provisional direction may flip for every strategy without creating a confirmed signal',()=>{
  for(const engineId of engines){
@@ -44,9 +45,9 @@ test('provisional direction may flip for every strategy without creating a confi
  }
 });
 test('confirmed side remains locked while opposite observations run and next signal needs a fresh post-expiry quote',()=>{
- const candidate={ready:true,side:'CALL',entryPrice:1.1,observedAt:T};
+ const candidate={ready:true,side:'CALL',reason:'break-retest-continuation',entryPrice:1.1,observedAt:T};
  const first=advanceNowOpportunity({candidate,now:T+100,quoteAt:T});
- const opposite={ready:true,side:'PUT',entryPrice:1.09,observedAt:T+20000};
+ const opposite={ready:true,side:'PUT',reason:'break-retest-continuation',entryPrice:1.09,observedAt:T+20000};
  const locked=advanceNowOpportunity({previous:first,candidate:opposite,now:T+20100,quoteAt:T+20000});
  assert.equal(locked.side,'CALL');assert.equal(locked.observationSide,'PUT');
  assert.equal(locked.exitAt,first.exitAt);assert.equal(locked.entryReadyNow,false);
