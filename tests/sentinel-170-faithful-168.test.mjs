@@ -14,18 +14,15 @@ for(const [name,sha] of [
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url));
  assert.equal(blob(raw),sha);
 });
-test('the only engine difference from 168 is the specific old closed-bar continuation contradiction',()=>{
+test('172 preserves the 170 engine exactly except the 171 independent fast-reversal check',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
- const patch=` // Four older closed bars cannot turn a finished rebound into continuation.
- // Keep this limited to that setup when the latest move already opposes it.
- if(candidate.reason==='closed-structure-and-live-impulse'&&candidate.side!==state.side&&
-   state.phase==='weakening'&&Number(state.latestMove)>0&&
-   Number(candidate.observedNetMove)*Number(state.netMove)<0)
-  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'older-continuation-against-current-price'};
-`;
- assert.equal(raw.split(patch).length,2);
- assert.equal(blob(Buffer.from(raw.replace(patch,''))),'7692396fc263b6872cc0a0cc284d23a793ccaffc');
+ const addedImport="import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';\\n".replace('\\n','\n');
+ const addedGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n const ownVerifiedFastReversal=shallowCountertrendFastReversal&&\n  verifiedFastLevelReversal({\n   reversalEvidence:candidate.priceStructure?.confirmedReversal,\n   quoteHistory,quoteAt,now,price,side:candidate.side\n  });\n if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};\n";
+ const originalGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n if(shallowCountertrendFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};\n";
+ assert.equal(raw.split(addedImport).length,2,'verified reversal import must occur once');
+ assert.equal(raw.split(addedGuard).length,2,'verified reversal exemption must occur once');
+ const restored=Buffer.from(raw.replace(addedImport,'').replace(addedGuard,originalGuard));
+ assert.equal(blob(restored),'898d1a79204f5ca2e6580dad6e1a49617ce6d2ec','no other 170 engine code may change');
 });
 test('runtime matches published 168 except for its read-only observation quote timestamp',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
