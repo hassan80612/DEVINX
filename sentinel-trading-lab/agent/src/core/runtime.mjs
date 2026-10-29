@@ -29,7 +29,7 @@ import {evolveOpportunity,opportunityContext} from './single-opportunity-window.
 import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
-import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly,assessDirectionalPersistence} from './now-opportunity-engine.mjs';
+import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly,assessDirectionalPersistence,applyShortHorizonPriorityPolicy} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1164,12 +1164,12 @@ export class DemoTradingRuntime{
       const precision=this.precisionProfile==='horizon-balanced-v148'?
         precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
-      const eligible=precision?.enabled?
+      const eligible=applyShortHorizonPriorityPolicy(precision?.enabled?
         (structurallyEligible.ready===true&&precision.ready===true?
           {...structurallyEligible,precision}:
           {...structurallyEligible,side:null,ready:false,
             reason:structurallyEligible.ready===true?precision.reason:structurallyEligible.reason,
-            precision}):structurallyEligible;
+            precision}):structurallyEligible,settings.orderDurationMs);
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1278,10 +1278,16 @@ export class DemoTradingRuntime{
           now,price:snap.price,durationMs:persistenceDuration}):null;
       const phaseCandidate=eligible.ready===true?eligible:observation;
       const phaseReason=String(phaseCandidate?.reason||'');
-      const confirmedPhase=/reversal|rejection|failed-breakout|structure-change|range-extreme/i.test(phaseReason);
+      const confirmedReversalPhases=new Set(['closed-range-extreme-reversal-confirmed',
+        'confirmed-level-structure-reversal','confirmed-fast-level-reversal',
+        'failed-breakout-structure-change','historical-level-rejection']);
+      const confirmedPhase=eligible.setupClass==='reversal'||
+        (eligible.setupClass!=='continuation'&&confirmedReversalPhases.has(phaseReason));
       const fadingPhase=['weakening','reversal-testing'].includes(trendPersistence?.phase);
-      const derivedPhase=persistenceDuration===300000?
-        (eligible.ready===true?'reversal-confirmed':'reversal-review'):
+      const derivedPhase=eligible.setupClass==='continuation'?'continuing':
+        eligible.setupClass==='reversal'?'reversal-confirmed':
+        persistenceDuration===300000?
+          (eligible.ready===true?'reversal-confirmed':'reversal-review'):
         eligible.ready===true&&confirmedPhase?'reversal-confirmed':
         eligible.ready===true&&trendPersistence?.side&&eligible.side!==trendPersistence.side&&fadingPhase?
           'reversal-forming':trendPersistence?.phase||'insufficient';
@@ -1309,6 +1315,8 @@ export class DemoTradingRuntime{
           side:eligible.side,provisionalSide:eligible.side||eligible.provisionalSide||null,
           rawSide:observation.side,rawReason:observation.reason,
           ready:eligible.ready,reason:eligible.reason,
+          setupClass:eligible.setupClass||null,
+          contextStrategy:eligible.contextStrategy||observation.contextStrategy||null,
           marketPhase:eligible.marketPhase||observation.marketPhase||derivedPhase,
           marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase]||'OBSERVANDO',
           marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side||null,
