@@ -106,7 +106,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    const portalOption=target.closest?.('[role="option"],[role="menuitem"],li');
    if(!inside&&(!manualOpenedAt||Date.now()-manualOpenedAt>=12000||
       !portalOption||!visible(portalOption)||
-      target.closest?.('[class*="expir" i],[class*="order-time" i],[class*="duration" i],#sentinel-trading-overlay-host')))return null;
+      target.closest?.('[class*="expir" i],[class*="order-time" i],#sentinel-trading-overlay-host')))return null;
    // Opening a timeframe button is not choosing its current value. A
    // class such as chart-period also matches the option-name selectors.
    const opener=control.matches?.('button,[role="button"],input,select')?control:
