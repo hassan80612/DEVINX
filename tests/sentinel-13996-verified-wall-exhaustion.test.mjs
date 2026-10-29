@@ -66,6 +66,6 @@ test('one synchronous shared-market-base integration only; unchanged 13.9.96 and
  assert.equal(JSON.parse(read('package.json')).version,'13.9.148');
  const release=JSON.parse(read('agent/release.json'));
  assert.equal(release.version,'13.9.160');
- assert.equal(release.build,'13.9.160-surgical-one-minute-loss-corrections');
+ assert.equal(release.build,'13.9.160-short-horizon-surgical-loss-corrections');
  assert.equal(JSON.parse(read('agent/package.json')).version,release.version);
 });
