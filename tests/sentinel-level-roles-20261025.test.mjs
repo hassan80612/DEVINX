@@ -80,7 +80,7 @@ test('missing, unordered or future-received retest prices cannot change a level 
  assert.equal(observedRoleRetest({...input,quoteHistory:q.map((x,i)=>i>=4?{...x,receivedAt:T+1000}:x)}),false);
  assert.equal(observedRoleRetest({...input,quoteHistory:[...q.slice(0,4),q[5],q[4],q[6]]}),false);
 });
-test('recorded resistance-only zone no longer authorizes the CALL as support; next PUT needs no candle wait',()=>{
+test('recorded resistance-only zone cannot authorize an ineligible short-horizon entry',()=>{
  const fixture=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url)));
  const conflictAt=1791385485950,index=fixture.quoteHistory.findIndex(q=>q.ts===conflictAt);
  assert.ok(index>=0);const q=fixture.quoteHistory[index],prefix=fixture.quoteHistory.slice(0,index+1);
@@ -109,9 +109,7 @@ test('recorded resistance-only zone no longer authorizes the CALL as support; ne
   assert.notEqual(anchor?.entryTriggeredAt,conflictAt);
   if(anchor?.entryTriggeredAt>conflictAt){next=anchor;break;}
  }
- assert.ok(next);assert.equal(next.side,'PUT');
- assert.equal(next.entryTriggeredAt-conflictAt,5966);
- assert.equal(next.exitAt-next.entryTriggeredAt,30000);
+ assert.equal(next,null);
 });
 test('support/resistance specialist cannot revive the same rejected historical role',()=>{
  const fixture=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url)));
