@@ -7,7 +7,7 @@ import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime
 import {analystSnapshot} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
 import {liveCardModel} from '../sentinel-trading-lab/src/lib/live-card-model.ts';
 const received=(...args)=>receivedHistoryInput(LocalPlaywrightDriver,...args);
-for(const provider of ['iq_option','exnova'])test(`${provider}: received three-candle structure survives the actual worker-to-runtime path`,async()=>{
+for(const provider of ['iq_option','exnova'])test(`${provider}: received three-candle history is preserved while trend-only evidence cannot enter`,async()=>{
  const {now,live}=received(provider);
  assert.equal(live.candles.length,3);assert.equal(live.quoteFeedValidated,true);
  assert.equal(live.analysisFeedValidated,false,'the legacy fifty-candle readiness remains separate');
@@ -19,20 +19,22 @@ for(const provider of ['iq_option','exnova'])test(`${provider}: received three-c
  await runtime.tick(now,{skipStatus:true});
  assert.ok(runtime.lastResult.analysis?.vnext,JSON.stringify(runtime.lastResult));
  const entry=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(entry?.side,'CALL');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
+ assert.notEqual(entry?.side,'CALL');
+  assert.equal(runtime.lastResult.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
  assert.equal(runtime.lastResult.order,undefined);
  const frame=analystSnapshot({state:'running',settings:runtime.settings,lastEvalMs:now,lastResult:runtime.lastResult},live);
  const mirrored=liveCardModel(frame,now).vnextFutureEntryAnchor;
- assert.equal(mirrored.side,entry.side);assert.equal(mirrored.entryAt,entry.entryAt);assert.equal(mirrored.exitAt,entry.exitAt);
+ assert.notEqual(mirrored?.side,'CALL');
 });
-for(const provider of ['iq_option','exnova'])test(`${provider}: resistance rejection remains symmetric through protocol ingestion`,async()=>{
+for(const provider of ['iq_option','exnova'])test(`${provider}: level-only resistance rejection does not bypass short-horizon setup priority`,async()=>{
  const {now,live}=received(provider,3,true);
  const runtime=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  runtime.stateName='running';runtime.settings.asset='EUR/USD';runtime.settings.engine='automatic';
  runtime.setExternalMarket(runtimeMarketFromLive(provider,live,'EUR/USD'));
  await runtime.tick(now,{skipStatus:true});
  const entry=runtime.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(entry?.side,'PUT');assert.equal(entry.entryAt,now);assert.equal(entry.exitAt,now+30000);
+ assert.notEqual(entry?.side,'PUT');
+  assert.equal(runtime.lastResult.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
  assert.equal(runtime.lastResult.order,undefined);
 });
 test('all actually received window sizes remain available without claiming missing candles',()=>{
