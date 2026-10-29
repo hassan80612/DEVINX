@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {sentinelMarket,sentinelCheckoutUrl,SENTINEL_PLANS} from '../sentinel-trading-lab/src/lib/commercial.ts';
 
 test('Brazil remains BRL and never leaks intl parameter into BR checkout',()=>{
-  assert.equal(SENTINEL_PLANS.BR.amount,280);
+  assert.equal(SENTINEL_PLANS.BR.amount,289);
   assert.equal(SENTINEL_PLANS.BR.currency,'BRL');
   assert.equal(sentinelMarket('br','US','1'),'BR'); // explicit buyer market wins
   const url=new URL(sentinelCheckoutUrl('BR'));
@@ -14,7 +14,7 @@ test('Brazil remains BRL and never leaks intl parameter into BR checkout',()=>{
 });
 
 test('International links always preserve intl=1 and select USD, regardless of browser language',()=>{
-  assert.equal(SENTINEL_PLANS.INTL.amount,50);
+  assert.equal(SENTINEL_PLANS.INTL.amount,60);
   assert.equal(SENTINEL_PLANS.INTL.currency,'USD');
   assert.equal(sentinelMarket(undefined,'BR','1'),'INTL');
   assert.equal(sentinelMarket('intl','BR'),'INTL');
