@@ -162,6 +162,17 @@ function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,
  if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object'||
    candidate.ready!==true||!isSide(candidate.side))return candidate;
  const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
+ // The one-minute failed-breakout case from the review had no confirming
+ // final move while the live state was still a range. Keep this narrowly
+ // tied to that explicit contradiction; other reversal families stay intact.
+ const proof=candidate.priceStructure?.reactionProof;
+ if(horizon===60000&&candidate.reason==='failed-breakout-structure-change'&&
+   state.phase==='range'&&proof?.confirmed===false&&
+   proof.reason==='last-move-not-supporting')
+  return {...candidate,trendPersistence:state,marketPhase:state.phase,
+   marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null,
+   ready:false,side:null,provisionalSide:candidate.side,
+   reason:'Rompimento sem confirmação do último movimento; leitura lateral.'};
  if(!isSide(state.side))return candidate;
  const diagnostic={trendPersistence:state,marketPhase:state.phase,
   marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null};
@@ -215,7 +226,7 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
   reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
  const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
- const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
+ const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price,durationMs}):null;
  const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk?
   lateUnverifiedFloorImpulseRisk({candidate,quoteHistory,quoteAt,now,price,durationMs}):null;
  const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
@@ -530,7 +541,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    candidate:proposed,structure,quoteHistory,quoteAt,now,price
   }):null;
   const roomRisk=!pivotRisk&&!wallRisk&&proposed.ready?continuationRoomRisk({
-   candidate:proposed,structure,quoteHistory,quoteAt,now,price
+   candidate:proposed,structure,quoteHistory,quoteAt,now,price,durationMs
   }):null;
   const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?
    lateUnverifiedFloorImpulseRisk({candidate:proposed,quoteHistory,quoteAt,now,price,durationMs}):null;
