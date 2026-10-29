@@ -59,12 +59,22 @@ test('a market gap resets the sequence rather than bridging a missing reversal',
  const rows=[...rebound.slice(0,-5).map(q=>({...q,ts:q.ts-10000})),...rebound.slice(-5)];
  assert.equal(observedLevelSequence(args(rows)).structureChange,null);
 });
-test('entry uses the current quote and full 30s expiry, and cannot flip a held signal',()=>{
- const selected=applyObservedLevelSequence({candidate,...args(rebound)});
+test('only a break-retest continuation gets the 30s window; a common structural reversal is blocked',()=>{
+ const reversal=applyObservedLevelSequence({candidate,...args(rebound)});
+ const blocked=advanceNowOpportunity({candidate:reversal,now:T,quoteAt:T,asset:'EUR',durationMs:30000});
+ assert.equal(blocked.phase,'scanning');
+ assert.equal(blocked.reason,'short-horizon-setup-not-eligible');
+ const rows=walk([102,100.4,100.9,99,100,99.7,98.6]);
+ const continuationCandidate={ready:true,side:'PUT',observedAt:T,entryPrice:rows.at(-1).price};
+ const selected=applyObservedLevelSequence({candidate:continuationCandidate,...args(rows)});
+ assert.equal(selected.reason,'break-retest-continuation');
+ assert.equal(selected.side,'PUT');
  const issued=advanceNowOpportunity({candidate:selected,now:T,quoteAt:T,asset:'EUR',durationMs:30000});
  assert.equal(issued.entryAt,T);assert.equal(issued.exitAt,T+30000);
- const held=advanceNowOpportunity({previous:issued,candidate:{...candidate,observedAt:T+1000},now:T+1000,quoteAt:T+1000,asset:'EUR',durationMs:30000});
- assert.equal(held.side,'CALL');assert.equal(held.entryReadyNow,false);
+ const held=advanceNowOpportunity({previous:issued,
+  candidate:{...continuationCandidate,side:'CALL',observedAt:T+1000,entryPrice:rows.at(-1).price*.999},
+  now:T+1000,quoteAt:T+1000,asset:'EUR',durationMs:30000});
+ assert.equal(held.side,'PUT');assert.equal(held.entryReadyNow,false);
 });
 test('unavailable history and unsupported durations preserve the existing decision',()=>{
  assert.equal(applyObservedLevelSequence({candidate,...args(rebound),map:null}),candidate);
