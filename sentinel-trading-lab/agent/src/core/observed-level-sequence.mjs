@@ -203,6 +203,12 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // an actually confirmed reversal. Issued windows remain owned by runtime.
  const independentReclaim=structureChange?.kind==='failed-breakout-structure-change';
  if(!candidate.ready&&!independentReclaim&&!reversal&&!fastReversal)return {...candidate,priceStructure};
+ // Keep an already confirmed range-edge turn classified as a reversal when
+ // a same-side breakout/retest is also visible on this quote. A later
+ // continuation must not relabel the turn that currently owns the signal.
+ if(candidate.ready&&candidate.reason==='closed-range-extreme-reversal-confirmed'&&
+   candidate.regime==='observed-range-turn'&&event.kind==='break-retest-continuation'&&
+   candidate.side===event.side)return {...candidate,priceStructure};
  if(event.kind==='break-retest-continuation'&&candidate.side!==event.side)
   return {...candidate,ready:false,side:null,reason:'retest-versus-horizon-direction-conflict',priceStructure};
  return {...candidate,ready:true,side:event.side,observedAt:Number(input.quoteAt),
