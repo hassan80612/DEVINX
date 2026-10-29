@@ -26,7 +26,9 @@ test('rapid V at known support and resistance reaches full runtime for every str
   rt.patchSettings({engine,asset:'EUR/USD',orderDurationMs:durationMs},'test');
   rt.structureCache={get:()=>({candles:100,asOf:f.map.asOf,tolerance:.07,atr:.7,averages:[],zones:f.map.levels,candleLevelMap:f.map})};
   const out=rt._signalValidationGate({analysis:{},settings:rt.settings,now:f.now,snap:{provider:'exnova',price:f.price,quoteTs:f.quoteAt,quoteHistory:f.quoteHistory,candles:[],historicalCandlesVerified:true}});
-  assert.equal(out.analysis.vnext.futureEntryAnchor?.side,f.side,`${engine} ${durationMs} ${f.side}`);
+  if(durationMs===300000){
+   assert.equal(out.analysis.vnext.futureEntryAnchor,null,'a short V needs structural reversal proof for 5m');
+  }else assert.equal(out.analysis.vnext.futureEntryAnchor?.side,f.side,`${engine} ${durationMs} ${f.side}`);
  }
 });
 test('future prices and receipt times never confirm or revise the current reversal',()=>{

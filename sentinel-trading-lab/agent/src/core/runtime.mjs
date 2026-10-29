@@ -38,6 +38,7 @@ import {CausalProbabilityReview} from './causal-probability-review.mjs';
 import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 import {precisionEntryGate} from './precision-entry-policy.mjs';
+import {LateImpulseReview} from './late-impulse-review.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -90,6 +91,7 @@ export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67',precisionProfile='off'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
     this.structureCache=new HistoricalPriceStructureCache();
+    this.lateImpulseReview=new LateImpulseReview();
     this.forecastModel=forecastModel;this.precisionProfile=precisionProfile;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
@@ -1156,11 +1158,18 @@ export class DemoTradingRuntime{
         learnedReview.probability<.48;
       const reviewedObservation=learnedBlocked?
         {...observation,ready:false,side:null,reason:'verified-entry-context-underperforming'}:observation;
-      const structurallyEligible=!duration.allowed?
+      const freshEligible=!duration.allowed?
         {...reviewedObservation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
         {...reviewedObservation,side:null,ready:false,reason:'late-quote-no-entry'}:
         reviewedObservation;
+      const heldWindow=this.vnextWindowState?.phase==='fired'&&
+        now<Number(this.vnextWindowState.exitAt||0);
+      const structurallyEligible=heldWindow?freshEligible:this.lateImpulseReview.review({
+        candidate:freshEligible,context:[snap.provider,settings.asset,settings.orderDurationMs].join('|'),
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        durationMs:settings.orderDurationMs
+      });
       const precision=this.precisionProfile==='horizon-balanced-v148'?
         precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;

@@ -50,7 +50,7 @@ export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,p
  if(!last||!pivot||!prior||last.kind!==(sign>0?'low':'high')||prior.kind!==last.kind)return null;
  if(!(sign*(last.price-prior.price)>0&&sign*(spot-pivot.price)>amplitude&&
    sign*(spot-rows.at(-2).price)>=0))return null;
- return {side,pivotPrice:pivot.price,turnPrice:last.price,turnAt:last.at,
+ return {side,pivotPrice:pivot.price,pivotAt:pivot.at,turnPrice:last.price,turnAt:last.at,
   priorTurnPrice:prior.price,priorTurnAt:prior.at,confirmedAt:ts,amplitude};
 }
 export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
@@ -184,7 +184,9 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
- const fastReversal=confirmedFastLevelReversal({map,...input});
+ // A two-tick V at a level is useful for short expiries. For five minutes,
+ // let the independently observed pivot break/reclaim establish the turn.
+ const fastReversal=Number(durationMs)===300000?null:confirmedFastLevelReversal({map,...input});
  const structureChange=sequence.structureChange&&
   (sequence.structureChange.kind!=='failed-breakout-structure-change'||
    Number(input.now??input.quoteAt)-sequence.structureChange.confirmedAt<=1450)?

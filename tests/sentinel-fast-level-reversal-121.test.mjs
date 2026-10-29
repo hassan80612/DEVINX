@@ -33,7 +33,7 @@ test('a meaningful fast V at a pre-existing respected support/resistance qualifi
   assert.equal(verifiedFastLevelReversal({...input(f),side:f.side,reversalEvidence:proof}),true);
  }
 });
-test('30s and 1m restore the v13.9.151 two-quote reversal rule while 5m keeps the same confirmation',()=>{
+test('the fast V detector remains observational and symmetric across horizons',()=>{
  for(const mirror of [false,true]){
   const f=fixture(mirror),q=f.q.filter(x=>x.ts<=T+1250).map(x=>({...x}));
   for(const row of q){
@@ -57,6 +57,10 @@ test('the actual full runtime keeps the confirmed fast side through probability/
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [30000,60000,300000]){
   const base=fixture(mirror),f=ms===60000?oneMinuteFixture(base):base,
    r=runtime(f,engine,ms),v=gate(r,f.q);
+  if(ms===300000){
+   assert.equal(v.futureEntryAnchor,null,'a fast V alone cannot authorize a five-minute reversal');
+   continue;
+  }
   assert.equal(v.futureEntryAnchor?.side,f.side,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
   assert.equal(v.futureEntryAnchor.exitAt,f.q.at(-1).ts+ms);
   assert.equal(v.nowObservation.reason,'confirmed-fast-level-reversal');

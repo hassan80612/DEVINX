@@ -202,9 +202,13 @@ export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt
  const proof=candidate.priceStructure||{},reason=candidate.reason;
  const current=e=>e&&e.side===candidate.side&&Number(e.confirmedAt)>0&&
   Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=2500;
+ // A short oscillating range cannot by itself justify a five-minute hold.
+ // A mapped structural turn can still qualify immediately through levelTurn
+ // or reclaimed below; no blanket wait for another candle is introduced.
  const rangeTurn=reason==='closed-range-extreme-reversal-confirmed'&&
-  candidate.regime==='observed-range-turn';
- const levelTurn=['confirmed-fast-level-reversal','confirmed-level-structure-reversal'].includes(reason)&&
+  candidate.regime==='observed-range-turn'&&
+  Number(candidate.observedSwingSeconds)*1.35>=Number(durationMs)/1000;
+ const levelTurn=reason==='confirmed-level-structure-reversal'&&
   proof.confirmedReversal?.kind===reason&&current(proof.confirmedReversal);
  const reclaimed=reason==='failed-breakout-structure-change'&&
   proof.observedSequence?.structureChange?.kind===reason&&current(proof.observedSequence.structureChange);
@@ -351,11 +355,10 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
  // A confirmed oscillation retains its range identity even when a short
  // directional leg develops inside it. The October 22 escape caused trend
  // chasing near established extremes before the third-turn reaction.
- // Keep the observed-swing duration screen for shorter holds. For 5m,
- // a confirmed turn at a verified range edge is its own structural evidence;
- // the 135s local tape cannot prove a 5m half-cycle and rejected those turns
- // before their extreme position and current reversal could be evaluated.
- const shortExpirySwingGuard=Number(holdingMs)>=60000&&Number(holdingMs)<300000;
+ // A local oscillation must not authorize a holding period longer than
+ // its observed swing, including five minutes. Independently mapped level
+ // reversals are assessed afterwards and retain their own structural proof.
+ const shortExpirySwingGuard=Number(holdingMs)>=60000;
  if(shortExpirySwingGuard&&pivots.length===2&&Number(holdingMs)/1000>half*1.35)
   return {ready:false,reason:'range-expiry-exceeds-observed-swing'};
  if(shortExpirySwingGuard&&regular&&Number(holdingMs)/1000>half*1.35)

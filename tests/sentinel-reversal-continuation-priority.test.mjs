@@ -36,3 +36,22 @@ test('the full runtime issues the verified reversal through final review for eac
   assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
  }
 });
+
+test('short-horizon price review receives the final candidate and can withhold the immutable entry',()=>{
+ for(const durationMs of [30000,60000])for(const mirror of [false,true]){
+  const a=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
+  rt.patchSettings({engine:'automatic',orderDurationMs:durationMs},'last-mile-review');
+  rt.structureCache={get:()=>({candles:100,asOf:a.map.asOf,tolerance:a.map.tolerance,atr:1.5,averages:[],zones:a.map.levels,candleLevelMap:a.map})};
+  let seen=null;
+  rt.lateImpulseReview.review=input=>{
+   seen=input;
+   return {...input.candidate,ready:false,side:null,reason:'price-review-test'};
+  };
+  const v=rt._signalValidationGate({analysis:{},settings:rt.settings,now:a.now,
+   snap:{provider:'exnova',price:a.price,quoteTs:a.quoteAt,quoteHistory:a.quoteHistory,candles:[],historicalCandlesVerified:true}}).analysis.vnext;
+  assert.equal(seen.candidate.ready,true);
+  assert.equal(seen.candidate.side,mirror?'PUT':'CALL');
+  assert.equal(seen.durationMs,durationMs);
+  assert.equal(v.futureEntryAnchor,null);
+ }
+});
