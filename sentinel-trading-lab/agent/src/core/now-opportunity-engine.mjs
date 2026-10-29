@@ -166,7 +166,7 @@ function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,
  // final move while the live state was still a range. Keep this narrowly
  // tied to that explicit contradiction; other reversal families stay intact.
  const proof=candidate.priceStructure?.reactionProof;
- [30000,60000].includes(horizon)&&candidate.reason==='failed-breakout-structure-change'&&
+ if([30000,60000].includes(horizon)&&candidate.reason==='failed-breakout-structure-change'&&
    state.phase==='range'&&proof?.confirmed===false&&
    proof.reason==='last-move-not-supporting')
   return {...candidate,trendPersistence:state,marketPhase:state.phase,
