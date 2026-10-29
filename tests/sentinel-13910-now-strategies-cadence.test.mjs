@@ -108,17 +108,19 @@ test('specialist setups confirm an observed level turn, mean return, Fibonacci r
    side==='CALL'?'PUT':'CALL',engineId+' inverse setup');
  }
 });
-test('real runtime keeps analyzing through expiry and three-second reassessment without warmup reset',()=>{
+test('real runtime keeps analyzing generic trends through expiry without authorizing entries',()=>{
  for(const engine of ['automatic','trend','smart_confluence','price_action','breakout']){
  const r=make();r.settings.asset='EUR/USD';r.settings.orderDurationMs=30000;
  r.settings.engine=engine;
  const gate=(q,now)=>r._signalValidationGate({analysis:{asset:'EUR/USD'},snap:snap(q),settings:r.settings,now}).analysis;
- const a=gate(quotes,T+100);assert.equal(a.vnext.futureEntryAnchor.entryTriggeredAt,T+100);
+ const a=gate(quotes,T+100);assert.equal(a.vnext.futureEntryAnchor,null);
+ assert.equal(a.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
+ assert.equal(a.vnext.nowObservation.evaluatedAt,T+100);
  const observed=[...quotes];
  for(let i=1;i<=29;i++){
   observed.push({ts:T+i*1000,price:quotes.at(-1).price+i*.000005});
   const a=gate(observed,T+i*1000+100);
-  assert.equal(a.vnext.futureEntryAnchor.entryTriggeredAt,T+100);
+  assert.equal(a.vnext.futureEntryAnchor,null);
   assert.equal(a.vnext.nowObservation.evaluatedAt,T+i*1000+100);
  }
  observed.push({ts:T+30000,price:quotes.at(-1).price+30*.000005});
@@ -129,9 +131,10 @@ test('real runtime keeps analyzing through expiry and three-second reassessment 
  assert.equal(waiting.vnext.nowObservation.evaluatedAt,T+30300);
  observed.push({ts:T+33200,price:quotes.at(-1).price+34*.000005});
  const next=gate(observed,T+33300);
- assert.equal(next.vnext.futureEntryAnchor.entryTriggeredAt,T+33300);
- assert.equal(next.vnext.futureEntryAnchor.exitAt,T+63300);
- assert.equal(r.vnextWindowOutcomes.length,2);
+ assert.equal(next.vnext.futureEntryAnchor,null);
+ assert.equal(next.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
+ assert.equal(next.vnext.nowObservation.evaluatedAt,T+33300);
+ assert.equal(r.vnextWindowOutcomes.length,0);
  }
 });
 test('Windows installer and updater use the existing canonical product domain',()=>{
