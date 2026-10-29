@@ -16,7 +16,7 @@ for(const [name,sha] of [
 });
 test('172 preserves the 170 engine exactly except the 171 independent fast-reversal check',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
- const addedImport="import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';\\n".replace('\\n','\n');
+ const addedImport="import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';\n";
  const addedGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n const ownVerifiedFastReversal=shallowCountertrendFastReversal&&\n  verifiedFastLevelReversal({\n   reversalEvidence:candidate.priceStructure?.confirmedReversal,\n   quoteHistory,quoteAt,now,price,side:candidate.side\n  });\n if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};\n";
  const originalGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n if(shallowCountertrendFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};\n";
  assert.equal(raw.split(addedImport).length,2,'verified reversal import must occur once');
