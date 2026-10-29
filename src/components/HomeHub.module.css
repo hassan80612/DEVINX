@@ -260,6 +260,14 @@
 @media(max-width:390px){.sentinelProduct .featureGrid{grid-template-columns:1fr}}
 
 /* Named compatibility is prominent, without implying official affiliation. */
+.sentinelPrice{
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;
+  margin-top:18px;padding:14px 16px;
+  border:1px solid rgba(225,188,90,.30);border-radius:15px;
+  background:linear-gradient(110deg,rgba(10,27,27,.88),rgba(10,39,34,.48))
+}
+.sentinelPrice strong{font-size:clamp(24px,4vw,32px);font-weight:950;color:#f8df8b;letter-spacing:-.035em}
+.sentinelPrice span{font-size:11px;line-height:1.4;color:#d5dfd9}
 .sentinelBrokerBrands{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:17px 0 7px}
 .sentinelBrokerBrands>span{display:inline-flex;align-items:center;justify-content:center;gap:3px;
   padding:8px 13px;border:1px solid rgba(227,197,109,.48);border-radius:10px;
