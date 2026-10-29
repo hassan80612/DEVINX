@@ -4,6 +4,7 @@
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {proveLevelRejectionAtExpiry} from './causal-level-rejection-proof.mjs';
+import {reviewExpiryEntryPosition} from './expiry-entry-position.mjs';
 const dir=s=>s==='CALL'?1:s==='PUT'?-1:0;
 const median=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]||0;};
 function tape(history,at,now,price){
@@ -75,7 +76,7 @@ export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,
  if(![30000,60000].includes(Number(durationMs))||candidate?.ready!==true||!dir(candidate.side))return candidate;
  const side=candidate.side,at=Number(quoteAt),spot=Number(price),d=dir(side);
  const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
- if(!risk)return candidate;
+ if(!risk)return reviewExpiryEntryPosition({candidate,quoteHistory,quoteAt,now,price,durationMs});
  const reaction=candidate.priceStructure?.reaction,levelProof=candidate.priceStructure?.reactionProof;
  if(candidate.reason==='historical-level-rejection'&&reaction?.kind==='rejection'&&reaction.side===side&&
    levelProof?.confirmed===true&&levelProof.side===side&&levelProof.observedAt===at&&
