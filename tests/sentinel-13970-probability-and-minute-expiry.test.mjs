@@ -61,7 +61,7 @@ test('60-second broker-confirmed duration reaches engine and executor unchanged'
  assert.equal(executorSignal(out.analysis).durationMs,60000);
  assert.equal(out.analysis.vnext.nowObservation.probabilityCalibrated,false);
 });
-test('broker duration mismatch is informational and never blocks the analyst',()=>{
+test('broker duration mismatch does not alter the 1m horizon or bypass setup eligibility',()=>{
  const q=quotes(),last=q.at(-1),now=last.ts;
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
  rt.patchSettings({orderDurationMs:60000},'test');
@@ -69,9 +69,11 @@ test('broker duration mismatch is informational and never blocks the analyst',()
   brokerExpirationDurationMs:30000,brokerExpirationKind:'selected-duration',
   brokerExpirationConfidence:.95,brokerExpirationUpdatedAt:now};
  const out=rt._signalValidationGate({analysis:{},snap,settings:rt.settings,now});
- assert.equal(out.analysis.vnext.futureEntryAnchor?.phase,'fired');
- assert.equal(out.analysis.vnext.futureEntryAnchor?.holdingSeconds,60);
- assert.notEqual(out.analysis.vnext.nowObservation.reason,'broker-duration-mismatch');
+ const observation=out.analysis.vnext.nowObservation;
+ assert.equal(observation.reason,'short-horizon-setup-not-eligible');
+ assert.equal(observation.excludedSetupReason,'closed-structure-and-live-impulse');
+ assert.equal(observation.expirySeconds,60);
+ assert.equal(out.analysis.vnext.futureEntryAnchor,null);
 });
 test('worker accepts only 30s 1m and 5m durations without changing preview horizon',()=>{
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
