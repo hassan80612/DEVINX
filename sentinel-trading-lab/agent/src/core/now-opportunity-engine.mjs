@@ -81,7 +81,7 @@ const CONTINUATION_SETUP=/continuation|followthrough|breakout|trend|impulse|cycl
 const CONFIRMED_REVERSAL_SET=new Set([
  'closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
  'confirmed-fast-level-reversal','failed-breakout-structure-change',
- 'multiscale-candle-rejection','historical-level-rejection','observed-multi-interval-trend-correction','rejection-followthrough-clear-room'
+ 'multiscale-candle-rejection','historical-level-rejection'
 ]);
 const phaseLabel=phase=>({
  continuing:'CONTINUIDADE',
@@ -689,19 +689,30 @@ function analyzeNowOpportunityBase({quoteHistory=[],price=null,quoteAt=null,
 }
 // Short-horizon entries are restricted to the two setups that led the supplied
 // 1m sample. The gate changes eligibility only; it adds no timers, waits, or reads.
-function applyShortHorizonPriorityPolicy(candidate,durationMs){
+export function applyShortHorizonPriorityPolicy(candidate,durationMs){
  const horizon=Number(durationMs??30000);
- if((horizon!==30000&&horizon!==60000)||candidate?.ready!==true)return candidate;
+ if(horizon!==30000&&horizon!==60000)return candidate;
+ if(candidate?.ready!==true){
+  return candidate?.setupClass?{...candidate,setupClass:null}:candidate;
+ }
  const reason=String(candidate.reason||'');
  const continuation=reason==='break-retest-continuation';
  const extremeReversal=reason==='closed-range-extreme-reversal-confirmed'&&
-  candidate.regime==='observed-range-turn';
- if(continuation||extremeReversal)
-  return {...candidate,shortHorizonSetupPolicy:'break-retest-or-extreme-v1'};
+  candidate.regime==='observed-range-turn'&&candidate.rangeExtreme===true;
+ const setupClass=continuation?'continuation':extremeReversal?'reversal':null;
+ if(setupClass){
+  // The automatic context must describe the setup that actually owns this
+  // entry: breakout/retest continuation is trend context; an extreme turn is
+  // support/resistance. Never label one setup as the other.
+  const contextStrategy=candidate.engineId==='automatic'?
+   (setupClass==='continuation'?'trend':'support_resistance'):candidate.contextStrategy;
+  return {...candidate,setupClass,contextStrategy,
+   shortHorizonSetupPolicy:'break-retest-or-extreme-v1'};
+ }
  return {...candidate,ready:false,side:null,
   provisionalSide:isSide(candidate.side)?candidate.side:(candidate.provisionalSide??null),
   reason:'short-horizon-setup-not-eligible',
-  excludedSetupReason:reason||'missing-reason',
+  excludedSetupReason:reason||'missing-reason',setupClass:null,
   shortHorizonSetupPolicy:'break-retest-or-extreme-v1'};
 }
 
