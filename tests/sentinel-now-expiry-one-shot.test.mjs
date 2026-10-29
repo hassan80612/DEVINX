@@ -17,6 +17,10 @@ function fresh(side='CALL',now=T){
  const p=1.1+(side==='CALL'?1:-1)*.000005*141;
  return {quoteHistory:[...quotes,{ts:now,receivedAt:now,price:p}],quoteAt:now,price:p,now,durationMs:30000};
 }
+function priorityCandidate(side='CALL',now=T){
+ const base=fresh(side,now);
+ return {ready:true,side,reason:'break-retest-continuation',observedAt:now,entryPrice:base.price};
+}
 test('causal current signal uses past completed bars and a real fresh quote, not projected prices',()=>{
  for(const side of ['CALL','PUT']){
   const r=analyzeNowOpportunity(fresh(side));
@@ -35,14 +39,13 @@ test('stale quotes, missing market bars, and live adverse retracement cannot emi
   quoteHistory:[...c.quoteHistory.slice(0,-1),{...last,price:last.price-.0004}]};
  assert.equal(analyzeNowOpportunity(adverse).ready,false);
 });
-test('one CALL NOW, no repeated or opposite signal before the exact 30s expiry',()=>{
- const initial=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
+test('an eligible continuation holds one CALL window without repeated or opposite entries',()=>{
+ const initial=advanceNowOpportunity({candidate:priorityCandidate('CALL',T),now:T,quoteAt:T,
   ...{asset:settings.asset,engineId:settings.engine,durationMs:30000}});
  assert.equal(initial.phase,'fired');
  assert.equal(initial.side,'CALL');assert.equal(initial.entryAt,T);assert.equal(initial.exitAt,T+30000);
  for(const after of [200,1000,15500,29999]){
-  const held=advanceNowOpportunity({previous:initial,candidate:{...analyzeNowOpportunity(fresh('PUT',T+after)),
-     side:'PUT',ready:true},now:T+after,quoteAt:T+after,
+  const held=advanceNowOpportunity({previous:initial,candidate:priorityCandidate('PUT',T+after),now:T+after,quoteAt:T+after,
     asset:settings.asset,engineId:settings.engine,durationMs:30000});
   assert.equal(held.phase,'fired');assert.equal(held.side,'CALL');
   assert.equal(held.entryTriggeredAt,T);
@@ -50,39 +53,39 @@ test('one CALL NOW, no repeated or opposite signal before the exact 30s expiry',
   assert.equal(held.exitAt,T+30000);
  }
 });
-test('after expiry reassess for three seconds and release only a current signal',()=>{
+test('after expiry reassess and release only a fresh approved setup',()=>{
  const original=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
   asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- const stale=advanceNowOpportunity({previous:original,candidate:analyzeNowOpportunity(fresh('CALL',T+29900)),
+ const stale=advanceNowOpportunity({previous:original,candidate:priorityCandidate('CALL',T+29900),
   now:T+30050,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(stale.phase,'scanning');
  const stillStale=advanceNowOpportunity({previous:stale,candidate:analyzeNowOpportunity(fresh('CALL',T+29900)),
   now:T+30200,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(stillStale.phase,'scanning','cannot reissue pre-expiry information');
- const next=advanceNowOpportunity({previous:stillStale,candidate:analyzeNowOpportunity(fresh('PUT',T+30500)),
+ const next=advanceNowOpportunity({previous:stillStale,candidate:priorityCandidate('PUT',T+30500),
   now:T+30500,quoteAt:T+30500,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(next.phase,'scanning');assert.equal(next.reason,'reassessing-after-expiry');
  for(const offset of [32999,33000]){
-  const result=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+offset)),
+  const result=advanceNowOpportunity({previous:next,candidate:priorityCandidate('PUT',T+offset),
    now:T+offset,quoteAt:T+offset,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
   assert.equal(result.phase,offset<33000?'scanning':'fired');
   if(offset===33000){assert.equal(result.side,'PUT');assert.equal(result.entryAt,T+33000);assert.equal(result.exitAt,T+63000);}
  }
- const oldTick=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+32999)),
+ const oldTick=advanceNowOpportunity({previous:next,candidate:priorityCandidate('PUT',T+32999),
   now:T+33500,quoteAt:T+32999,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(oldTick.phase,'scanning','wall clock alone cannot release a quote captured during reassessment');
  const oldCandidate=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+32999)),
   now:T+33500,quoteAt:T+33500,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
  assert.equal(oldCandidate.phase,'scanning','signals observed during the pause are never queued');
 });
-test('duration reset and instrument change do not keep an old locked entry',()=>{
+test('duration reset and instrument change do not keep an eligible entry locked',()=>{
  const a=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
   asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- const b=advanceNowOpportunity({previous:a,candidate:analyzeNowOpportunity(fresh('PUT',T+1000)),
+ const b=advanceNowOpportunity({previous:a,candidate:priorityCandidate('PUT',T+1000),
   now:T+1000,quoteAt:T+1000,asset:'GBP/USD',engineId:'automatic',durationMs:30000});
  assert.equal(b.phase,'fired');assert.equal(b.side,'PUT');
 });
-test('runtime now mode does not invoke future path and sends exactly the same PC event',()=>{
+test('runtime NOW mode keeps a generic trend out of the signal and future paths',()=>{
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  const market=fresh();
  const snap={...market,provider:'iq_option',quoteTs:market.quoteAt,
@@ -93,14 +96,14 @@ test('runtime now mode does not invoke future path and sends exactly the same PC
  assert.equal(f.analysis.vnext.receipt,null);
  assert.equal(f.analysis.vnext.futureEntryForecast,null);
  assert.equal(f.analysis.vnext.futureEntryRows.length,0);
- assert.equal(f.analysis.vnext.futureEntryAnchor.entryTriggeredAt,T);
- assert.equal(f.analysis.vnext.futureEntryAnchor.exitAt,T+30000);
+ assert.equal(f.analysis.vnext.futureEntryAnchor,null);
+ assert.equal(f.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
  assert.equal(f.analysis.operationalSignal.actionable,false);
  const next=r._signalValidationGate({analysis:{asset:'EUR/USD'},snap:{...snap,...fresh('PUT',T+14000),quoteTs:T+14000},settings,now:T+14000});
- assert.equal(next.analysis.vnext.futureEntryAnchor.side,'CALL');
- assert.equal(r.vnextWindowOutcomes.length,1);
+ assert.equal(next.analysis.vnext.futureEntryAnchor,null);
+ assert.equal(r.vnextWindowOutcomes.length,0);
 });
-test('compact phone broadcast keeps NOW mode, exact PC signal and expiry',()=>{
+test('compact phone broadcast preserves NOW mode without inventing an ineligible signal',()=>{
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  const c=fresh();
  const result=r._signalValidationGate({analysis:{asset:'EUR/USD'},snap:{...c,quoteTs:T,provider:'iq_option'},settings,now:T});
@@ -109,8 +112,7 @@ test('compact phone broadcast keeps NOW mode, exact PC signal and expiry',()=>{
  const wire=analystSnapshot(snapshot,{symbol:'EUR/USD',validatedSymbol:'EUR/USD',
    assetValidated:true,analysisFeedValidated:true,lastQuoteAt:T,quote:c.price});
  assert.equal(wire.lastResult.analysis.vnext.mode,'now');
- assert.equal(wire.lastResult.analysis.vnext.ea[10],T);
- assert.equal(wire.lastResult.analysis.vnext.ea[7],T+30000);
+ assert.equal(wire.lastResult.analysis.vnext.futureEntryAnchor,null);
  assert.ok(fitAnalystFrame(wire,2920));
 });
 
@@ -134,7 +136,7 @@ test('irregular waves release only observed extreme turns, never phantom trends'
  }
  assert.ok(fired>0,'irregular historical spacing must not veto an actual current extreme turn');
 });
-test('replayed past market quotes do not use future data and never overlap expiries',async()=>{
+test('replayed generic quotes never create a short-horizon entry',async()=>{
  const {readFileSync}=await import('node:fs');
  const raw=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url),'utf8'));
  const rows=raw.quoteHistory;
@@ -169,9 +171,9 @@ test('replayed past market quotes do not use future data and never overlap expir
   verified++;
   if(x.side==='CALL'?exit.price>x.entryPrice:exit.price<x.entryPrice)correct++;
  }
- assert.equal(signals.length,4);
- assert.equal(verified,3);
- assert.equal(correct,3);
+ assert.equal(signals.length,0);
+ assert.equal(verified,0);
+ assert.equal(correct,0);
  // This fixture is 180 seconds in one downtrend. It cannot estimate the
  // market-wide future hit rate or the settlement result at the broker.
 });
