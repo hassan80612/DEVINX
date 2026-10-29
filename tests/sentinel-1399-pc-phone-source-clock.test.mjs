@@ -38,21 +38,21 @@ function mobileState(runtime,q,now){
   feed:{quoteTs:q.at(-1).ts,price:q.at(-1).price}};
  return status;
 }
-test('full broker tick must expose an analysis while the worker clock is 500ms ahead',async()=>{
+test('full broker tick exposes scanning analysis while worker time leads without inventing a window',async()=>{
  const q=priceHistory(),r=makeRuntime(),now=T+500;
  r.setExternalMarket(market(q));
  await r.tick(now,{skipStatus:true});
  assert.equal(r.stateName,'running',JSON.stringify(r.incidents.slice(0,2)));
  const a=r.lastResult.analysis;
  assert.equal(a.vnext.mode,'now');
- assert.equal(a.vnext.opportunityWindow.phase,'fired');
- assert.equal(a.vnext.opportunityWindow.windowStartedAt,T,'window belongs to broker quote, NOT worker processing clock');
+ assert.equal(a.vnext.opportunityWindow.phase,'scanning');
+ assert.ok(!a.vnext.opportunityWindow.windowStartedAt);
  assert.ok(!shouldDiscardVnextFrame({analysis:a,quoteAt:T,now}));
  const mobile=liveCardModel(mobileState(r,q,now),now,60,now);
  assert.equal(mobile.fresh,true);
  assert.equal(mobile.vnextMode,'now');
- assert.equal(mobile.vnextFutureEntryAnchor?.side,'CALL');
- assert.equal(mobile.vnextOpportunityWindow?.phase,'fired');
+ assert.equal(mobile.vnextFutureEntryAnchor??null,null);
+ assert.equal(mobile.vnextOpportunityWindow?.phase,'scanning');
 });
 test('scanning never fabricates a window that hides the entire PC and mobile analysis',async()=>{
  const r=makeRuntime(),q=priceHistory().slice(-5),now=T+350;
@@ -87,7 +87,7 @@ test('do not display a previous fired signal beyond its REAL expiry or for the w
  assert.equal(shouldDiscardVnextFrame({analysis:a,quoteAt:T,now:T+30001}),true);
  assert.equal(shouldDiscardVnextFrame({analysis:a,quoteAt:T,now:T+500,switched:true}),true);
 });
-test('authenticated phone snapshot keeps real NOW analysis and the identical source-clock window',async()=>{
+test('authenticated phone snapshot keeps NOW analysis without inventing a source-clock window',async()=>{
  const q=priceHistory(),r=makeRuntime(),now=T+500;
  r.setExternalMarket(market(q));await r.tick(now,{skipStatus:true});
  const snap=analystSnapshot({
@@ -97,6 +97,6 @@ test('authenticated phone snapshot keeps real NOW analysis and the identical sou
   analysisFeedValidated:true,lastQuoteAt:T,quote:q.at(-1).price
  });
  assert.equal(snap.lastResult.analysis.vnext.mode,'now');
- assert.equal(snap.lastResult.analysis.vnext.ow[1],T);
- assert.equal(snap.lastResult.analysis.vnext.ow[2],now+30000);
+ assert.equal(snap.lastResult.analysis.vnext.ow[1],0);
+ assert.equal(snap.lastResult.analysis.vnext.ow[2],0);
 });
