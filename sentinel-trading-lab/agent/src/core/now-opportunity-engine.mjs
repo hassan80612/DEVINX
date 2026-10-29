@@ -162,11 +162,11 @@ function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,
  if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object'||
    candidate.ready!==true||!isSide(candidate.side))return candidate;
  const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
- // The one-minute failed-breakout case from the review had no confirming
+ // The short-horizon failed-breakout case from the review had no confirming
  // final move while the live state was still a range. Keep this narrowly
  // tied to that explicit contradiction; other reversal families stay intact.
  const proof=candidate.priceStructure?.reactionProof;
- if(horizon===60000&&candidate.reason==='failed-breakout-structure-change'&&
+ [30000,60000].includes(horizon)&&candidate.reason==='failed-breakout-structure-change'&&
    state.phase==='range'&&proof?.confirmed===false&&
    proof.reason==='last-move-not-supporting')
   return {...candidate,trendPersistence:state,marketPhase:state.phase,
