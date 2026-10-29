@@ -68,6 +68,9 @@ function executionContext(){const st=activeProvider?driver.state?.(activeProvide
 const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
  onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
+// Expiry recovery uses live executor state after page reload; independent of market analysis.
+driver.setNativeExpiryPermissionSource?.(provider=>
+ provider===activeProvider&&accessLeaseValid()?executor.status():null);
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
 runtime.onNowOpportunity=(anchor,evidence)=>{
@@ -515,6 +518,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.ready,
+      runtime.lastResult?.analysis?.vnext?.nowObservation?.marketReading,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.marketPhase,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.marketTrendSide,
       // A new future entry is a FIRST-CLASS decision change, not a
@@ -561,6 +565,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
         admission.ready,admission.score,admission.reason,
+        a.vnext?.nowObservation?.marketReading,
         a.vnext?.nowObservation?.marketPhase,a.vnext?.nowObservation?.marketTrendSide,
         a.vnext?.futureEntryAnchor?.issuedAt,
         a.vnext?.futureEntryAnchor?.entryAt,

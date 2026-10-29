@@ -50,7 +50,7 @@ export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,p
  if(!last||!pivot||!prior||last.kind!==(sign>0?'low':'high')||prior.kind!==last.kind)return null;
  if(!(sign*(last.price-prior.price)>0&&sign*(spot-pivot.price)>amplitude&&
    sign*(spot-rows.at(-2).price)>=0))return null;
- return {side,pivotPrice:pivot.price,turnPrice:last.price,turnAt:last.at,
+ return {side,pivotPrice:pivot.price,pivotAt:pivot.at,turnPrice:last.price,turnAt:last.at,
   priorTurnPrice:prior.price,priorTurnAt:prior.at,confirmedAt:ts,amplitude};
 }
 export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
@@ -114,11 +114,19 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
-  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null,reclaimRoleAllowed=null;
+  let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null,breakAmplitude=null,reclaimRoleAllowed=null;
   for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
-   if(!brokenAt&&position===-initial){brokenAt=q.ts;breakExtreme=q.price;continue;}
+   if(!brokenAt&&position===-initial){
+    brokenAt=q.ts;breakExtreme=q.price;
+    // Freeze this break's noise scale at the actual break. Later volatility
+    // must not move its historical first confirmation forward or backward.
+    const prefix=rows.filter(x=>x.ts<=q.ts);
+    const steps=prefix.slice(1).map((x,i)=>Math.abs(x.price-prefix[i].price)).filter(x=>x>0);
+    breakAmplitude=Math.max(q.price*1e-8,median(steps)*2);
+    continue;
+   }
    if(!brokenAt)continue;
    if(!retestAt){
     breakExtreme=initial>0?Math.min(breakExtreme,q.price):Math.max(breakExtreme,q.price);
@@ -148,8 +156,8 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
      recordEvent(['reclaim',z.level,brokenAt].join('|'),{kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
-    -initial*(q.price-breakExtreme)>amplitude)
-    events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+    -initial*(q.price-breakExtreme)>breakAmplitude)
+    recordEvent(['continuation',z.level,brokenAt,retestAt].join('|'),{kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
      level:describe(z),brokenAt,retestAt,pivotPrice:breakExtreme,confirmedAt:q.ts});
   }
  }
@@ -184,9 +192,11 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
  const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
- const fastReversal=confirmedFastLevelReversal({map,...input});
+ // A two-tick V at a level is useful for short expiries. For five minutes,
+ // let the independently observed pivot break/reclaim establish the turn.
+ const fastReversal=Number(durationMs)===300000?null:confirmedFastLevelReversal({map,...input});
  const structureChange=sequence.structureChange&&
-  (sequence.structureChange.kind!=='failed-breakout-structure-change'||
+  (!['failed-breakout-structure-change','break-retest-continuation'].includes(sequence.structureChange.kind)||
    Number(input.now??input.quoteAt)-sequence.structureChange.confirmedAt<=1450)?
   sequence.structureChange:null;
  // Reclaim + break/retest geometry is independent of expiry. The distance

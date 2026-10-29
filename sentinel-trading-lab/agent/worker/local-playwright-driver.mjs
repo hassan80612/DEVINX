@@ -623,7 +623,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
- constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
@@ -758,9 +758,22 @@ export class LocalPlaywrightDriver{
     if(manual)return this.launchNormal(provider,{manual:true});
     return this.launchBackground(provider);
   }
+  setNativeExpiryPermissionSource(source){
+    this.nativeExpiryPermissionSource=typeof source==='function'?source:null;
+  }
   async installBridge(page,provider=null){
     // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
+      if(!page.__sentinelExpiryPermissionExposed){
+        await page.exposeFunction('__sentinelRequestNativeExpiryPermission',()=>{
+          try{
+            const state=this.nativeExpiryPermissionSource?.(provider);
+            return state?nativeExpiryPermissionForExecutor({...state,provider},Date.now()):
+              {provider,at:Date.now(),allowed:false};
+          }catch{return {provider,at:Date.now(),allowed:false}}
+        });
+        page.__sentinelExpiryPermissionExposed=true;
+      }
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       // Do not capture a mutable expiry in this one-time script: an old 30s
       // default could overwrite the user's saved duration on a later broker reload.
@@ -861,8 +874,9 @@ export class LocalPlaywrightDriver{
     const pendingExpiryMs=provider?this.nativeExpiryPendingApply.get(provider):null;
     if(Number.isFinite(Number(pendingExpiryMs))&&Number(pendingExpiryMs)>0){
       const payload={provider,preferredMs:Number(pendingExpiryMs)};
-      for(const frame of page.frames())void frame.evaluate(updateBrokerNativeExpiryPreference,payload).catch(()=>{});
-      this.nativeExpiryPendingApply.delete(provider);
+      const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
+      if(results.some(r=>r.status==='fulfilled'&&r.value===true)&&this.nativeExpiryPendingApply.get(provider)===Number(pendingExpiryMs))
+        this.nativeExpiryPendingApply.delete(provider);
     }
   }
   ingest(provider,payload,direction='in'){
@@ -1318,27 +1332,37 @@ export class LocalPlaywrightDriver{
     const accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
     const requested=Number(preferredMs);
     if(!accepted.has(requested/1000))return false;
-    const preserveExisting=options.preserveExisting??!this.nativeExpiryPreferences.has(provider);
+    // Reconnection repeats the same analyst duration. It must not overwrite
+    // a newer manual native choice with the analyst's old 30s default.
+    const priorRequest=this.nativeExpiryRequestedDurations.get(provider);
+    const preserveExisting=options.preserveExisting??(priorRequest==null||priorRequest===requested);
+    this.nativeExpiryRequestedDurations.set(provider,requested);
+    const revision=Number(this.nativeExpiryPreferenceRevisions.get(provider)||0)+1;
+    this.nativeExpiryPreferenceRevisions.set(provider,revision);
+    const current=()=>this.nativeExpiryPreferenceRevisions.get(provider)===revision;
     const page=this.sessions.get(provider)?.page;
-    let ms=requested;
+    let ms=preserveExisting?(this.nativeExpiryPreferences.get(provider)??requested):requested;
     if(preserveExisting&&page&&!page.isClosed?.()){
       const key='sentinel-broker-native-expiration-preference-v3:'+provider;
       for(const frame of page.frames()){
         const stored=Number(await frame.evaluate(k=>{
           try{return localStorage.getItem(k)||localStorage.getItem(k.replace('-v3:','-v2:'))||localStorage.getItem(k.replace('-v3:','-v1:'))}catch{return null}
         },key).catch(()=>null));
+        if(!current())return false;
         if(accepted.has(stored/1000)){ms=stored;break}
       }
     }
+    if(!current())return false;
     this.nativeExpiryPreferences.set(provider,ms);
     if(!page||page.isClosed?.()){
       if(!preserveExisting)this.nativeExpiryPendingApply.set(provider,ms);
       return true;
     }
     const payload={provider,preferredMs:ms};
-    for(const frame of page.frames())void frame.evaluate(updateBrokerNativeExpiryPreference,payload).catch(()=>{});
-    this.nativeExpiryPendingApply.delete(provider);
-    return true;
+    this.nativeExpiryPendingApply.set(provider,ms);
+    const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
+    if(current()&&results.some(r=>r.status==='fulfilled'&&r.value===true))this.nativeExpiryPendingApply.delete(provider);
+    return current();
   }
   async refreshPredictionHistory(provider,now=Date.now()){
     const st=this.state(provider),size=Number(st.predictionPeriod);
@@ -2284,14 +2308,14 @@ export class LocalPlaywrightDriver{
           'precision-opposite-forecast-required':'PREVISÃO CONTRÁRIA INSUFICIENTE',
           'precision-directional-score-below-100':'AGUARDANDO TODOS OS CRITÉRIOS'
         }[admission?.reason]||(admission?.ready?'ENTRADA LIBERADA':duration===300000?'AGUARDANDO EXTREMO + REVERSÃO':'AGUARDANDO REVERSÃO LOCAL CONFIRMADA');
-        const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+        const scanningLabel=observation?.marketReading|| (scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
           scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
           /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
           /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
           /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
           /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
           scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
-          'ANALISANDO';
+          'ANALISANDO');
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
@@ -2341,7 +2365,7 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:auto auto minmax(24px,auto) auto;gap:5px;margin-top:7px;padding:8px 10px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr(runtimeLabel)+' · '+durationText:tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               ${admission?.enabled?'<small data-sentinel-precision-quality data-admission-score="'+Number(admission.ready?100:admission.score||0)+'" style="font-size:9px;font-weight:850;color:'+(admission.ready?'#74e0b5':'#e6c879')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(String(admission.reason||''))+'">FILTRO DE ADMISSÃO · '+admissionRule+' · '+Number(admission.ready?100:admission.score||0)+'/100 · '+admissionReason+'</small>':''}
-              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:block;margin-top:3px;font-size:9px;line-height:12px;color:${muted}">${nowMode?esc(observation?.marketPhaseLabel||'OBSERVANDO')+(observation?.marketTrendSide?' · '+esc(observation.marketTrendSide):''):''}</small>
+              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:block;margin-top:3px;font-size:9px;line-height:12px;color:${muted}">${nowMode?esc(tr(observation?.marketReading||observation?.marketPhaseLabel||'ANALISANDO')):''}</small>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:${d.autoExecutor?'minmax(95px,.78fr) minmax(78px,.56fr) minmax(145px,1.16fr)':'minmax(85px,.82fr) minmax(0,1.18fr)'};height:auto;min-height:74px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:visible">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-signal-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
                 ${d.autoExecutor?'<div data-sentinel-executor-clock-wl style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;min-width:0;padding-left:8px;border-left:1px solid '+panelBorder+'"><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+callTone+'">WIN: '+Number(d.autoExecutor.sessionWins||0)+'</span><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+putTone+'">LOSS: '+Number(d.autoExecutor.sessionLosses||0)+'</span></div>':''}
@@ -2638,14 +2662,16 @@ export class LocalPlaywrightDriver{
             const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
               (observation?.side||observation?.provisionalSide):null;
             const scanReason=String(observation?.reason||'');
-            const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+            const scanningLabel=observation?.marketReading|| (scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
           scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
               /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
               /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
               /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
               /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
               scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
-              'ANALISANDO';
+              'ANALISANDO');
+            const phaseText=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-market-phase]');
+            if(nowAnalysisMode&&phaseText)phaseText.textContent=tr(observation?.marketReading||observation?.marketPhaseLabel||'ANALISANDO');
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
               decision.textContent=tr(nowAnalysisMode?scanningLabel:

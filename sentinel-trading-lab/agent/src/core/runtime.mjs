@@ -38,6 +38,8 @@ import {CausalProbabilityReview} from './causal-probability-review.mjs';
 import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 import {precisionEntryGate} from './precision-entry-policy.mjs';
+import {reviewEntryPrice} from './entry-price-timing.mjs';
+import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -1161,15 +1163,17 @@ export class DemoTradingRuntime{
         !entryQuoteFresh?
         {...reviewedObservation,side:null,ready:false,reason:'late-quote-no-entry'}:
         reviewedObservation;
+      const pricedEligible=reviewEntryPrice({candidate:structurallyEligible,quoteHistory:snap.quoteHistory,
+        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});
       const precision=this.precisionProfile==='horizon-balanced-v148'?
-        precisionEntryGate({candidate:structurallyEligible,original:original66,preliminary,
+        precisionEntryGate({candidate:pricedEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
       const eligible=precision?.enabled?
-        (structurallyEligible.ready===true&&precision.ready===true?
-          {...structurallyEligible,precision}:
-          {...structurallyEligible,side:null,ready:false,
-            reason:structurallyEligible.ready===true?precision.reason:structurallyEligible.reason,
-            precision}):structurallyEligible;
+        (pricedEligible.ready===true&&precision.ready===true?
+          {...pricedEligible,precision}:
+          {...pricedEligible,side:null,ready:false,
+            reason:pricedEligible.ready===true?precision.reason:pricedEligible.reason,
+            precision}):pricedEligible;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1312,6 +1316,10 @@ export class DemoTradingRuntime{
           marketPhase:eligible.marketPhase||observation.marketPhase||derivedPhase,
           marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase]||'OBSERVANDO',
           marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side||null,
+          marketReading:marketReading({phase:eligible.marketPhase||observation.marketPhase||derivedPhase,
+            label:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase],
+            trendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
+            candidate:eligible,observation,quoteAt:snap.quoteTs,now}),
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
           observedAt:eligible.observedAt,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,

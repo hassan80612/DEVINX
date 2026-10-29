@@ -73,7 +73,8 @@ export function proveLevelRejectionAtExpiry({quoteHistory=[],quoteAt,now=quoteAt
  const validLevel=zoneConfirmed&&Number.isFinite(zLevel)&&
     levelDeparture>=roomNeeded;
  const confirmed=validLevel&&lastDirection&&extended&&sustained;
- return {confirmed,kind:confirmed?'sustained-level-reversal':'provisional-reaction',
+ return {confirmed,observedAt:at,side,tolerance:tol,atr:vol,
+  kind:confirmed?'sustained-level-reversal':'provisional-reaction',
   reason:confirmed?'causal-multihorizon-followthrough':
    !zoneConfirmed?'level-without-independent-pivot':
    !validLevel?'not-away-from-confirmed-level':

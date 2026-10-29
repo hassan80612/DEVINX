@@ -28,11 +28,11 @@ export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
 }
 // Runs on the existing broker page immediately before an actual direction
 // click. Unknown native controls never gate startup or imply a duration.
-export function inspectNativeExpiryBeforeClick(){
+export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  if(typeof window==='undefined')return {blocked:false};
  // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(keeper?.revision!==8)return {blocked:false};
+ if(![8,9,10].includes(keeper?.revision))return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
  // check is read-only and never opens or changes the broker expiry control.
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
@@ -41,9 +41,12 @@ export function inspectNativeExpiryBeforeClick(){
   preferredMs:previous.preferredMs,currentMs:previous.currentMs,revision:keeper.revision,observedAt:previous.observedAt};
  keeper.poll();
  const s=keeper.snapshot();
- const mismatch=!!(s.preferredMs&&s.currentMs&&s.preferredMs!==s.currentMs);
+ const required=Number(requiredDurationMs);
+ const mismatch=!!(s.currentMs&&((s.preferredMs&&s.preferredMs!==s.currentMs)||
+  required>0&&required!==s.currentMs));
  return {blocked:mismatch,reason:mismatch?'expiry-not-synchronized':null,
-  preferredMs:s.preferredMs,currentMs:s.currentMs,revision:keeper.revision,observedAt:s.observedAt};
+  preferredMs:s.preferredMs,currentMs:s.currentMs,requiredDurationMs:required>0?required:null,
+  revision:keeper.revision,observedAt:s.observedAt};
 }
 export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
  try{
@@ -51,7 +54,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===8){
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===10){
    const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
    if(!(current>0)&&Number.isFinite(Number(requestedMs)))
     window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
@@ -99,7 +102,8 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   ].join(',');
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
-   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,manualControl=null,chosenTarget=null,observedAt=0;
+   verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,manualControl=null,chosenTarget=null,observedAt=0,
+   permissionRequest=null,lastPermissionRequestAt=0,disposed=false;
   try{
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
@@ -183,6 +187,16 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    }
    return null;
   };
+  const verifySoon=()=>{
+   // Native click handlers update the selected field AFTER capture listeners.
+   // Verify promptly instead of leaving the choice unsaved until the 2.5s poll.
+   for(const delay of [0,120,500])setTimeout(()=>{if(!disposed)poll()},delay);
+  };
+  const persistBeforeLeave=()=>{
+   if(disposed||repairing||!manualOpenedAt||chosenValue==null)return;
+   const actual=discover()?.value;
+   if(actual===chosenValue)save(actual);
+  };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
    const target=ev.target;
@@ -196,11 +210,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   };
   const onClick=ev=>{
    if(repairing||!ev.isTrusted)return;
-   if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target)))return;
+   if(chosenTarget&&(chosenTarget===ev.target||chosenTarget.contains?.(ev.target))){verifySoon();return;}
    // Options can be INSIDE the picker. Check the actual choice before the
    // opener, otherwise a real selection is mistaken for opening the menu.
    const value=manualOpenedAt&&Date.now()-manualOpenedAt<12000?pickedOption(ev.target):null;
-   if(value){chosenValue=value;lastUserActivityAt=Date.now();}
+   if(value){chosenValue=value;lastUserActivityAt=Date.now();verifySoon();}
    else if(isManualPickerTarget(ev.target)){
     manualOpenedAt=Date.now();openingValue=discover()?.value??null;
     manualControl=discover()?.el??null;chosenTarget=null;
@@ -213,14 +227,34 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    if(!control||!inExpiryMenu(ev.target,control.el))return;
    const selected=ev.target.selectedOptions;
    const value=selected?.length===1?parse(selected[0].textContent||selected[0].label):null;
-   if(value){manualOpenedAt=Date.now();chosenValue=value;lastUserActivityAt=manualOpenedAt;}
+   if(value){manualOpenedAt=Date.now();chosenValue=value;lastUserActivityAt=manualOpenedAt;verifySoon();}
   };
   document.addEventListener('pointerdown',onPointerDown,true);
   document.addEventListener('click',onClick,true);
   document.addEventListener('change',onChange,true);
+  window.addEventListener?.('pagehide',persistBeforeLeave);
+  window.addEventListener?.('beforeunload',persistBeforeLeave);
   const permission=()=>window.__sentinelNativeExpiryPermissionV3?.allowed===true&&
    window.__sentinelNativeExpiryPermissionV3?.provider===provider&&
+   Date.now()-Number(window.__sentinelNativeExpiryPermissionV3?.at||0)>=0&&
    Date.now()-Number(window.__sentinelNativeExpiryPermissionV3?.at||0)<3500;
+  // A reloaded document loses its old JS permission receipt. Renew from the
+  // live Node executor, without waiting for a card repaint or reading broker
+  // data. A failed/missing bridge grants no write permission.
+  const requestPermission=()=>{
+   if(permissionRequest||typeof window.__sentinelRequestNativeExpiryPermission!=='function'||
+    Date.now()-lastPermissionRequestAt<1000)return;
+   const requestedAt=Date.now();lastPermissionRequestAt=requestedAt;
+   permissionRequest=Promise.resolve().then(()=>window.__sentinelRequestNativeExpiryPermission())
+    .then(next=>{
+     const current=window.__sentinelNativeExpiryPermissionV3,now=Date.now();
+     if(next?.provider!==provider||typeof next.allowed!=='boolean'||
+      !Number.isFinite(next.at)||next.at<requestedAt||now-next.at<0||now-next.at>=3500||
+      current&&Number(current.at)>=next.at)return;
+     window.__sentinelNativeExpiryPermissionV3={provider,at:next.at,allowed:next.allowed};
+     if(next.allowed)poll();
+    }).catch(()=>{}).finally(()=>{permissionRequest=null});
+  };
   const save=v=>{preferredMs=v;try{localStorage.setItem(key,String(v))}catch{}};
   const notify=(value)=>{window.__sentinelNativeExpiryStatusV3={
    preferredMs,currentMs:value,changedAt:Date.now(),lastRepairAt,restoring:repairing
@@ -311,6 +345,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
     }
     if(current===preferredMs){mismatchSince=0;notify(current);return}
     if(!mismatchSince)mismatchSince=now;
+    if(!permission())requestPermission();
     const defaultRollback=current===30000&&preferredMs!==30000&&stableCount>=2;
     // A broker page refresh commonly resets its picker to 30s. Once two
     // observations confirm that rollback, restore the saved user choice even
@@ -347,14 +382,17 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
    notify(observedMs);poll({urgent:true});return true;
   };
-  window.__sentinelNativeExpiryKeeperV3={revision:8,provider,poll,setPreferred,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:10,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   poll();
   const timer=setInterval(poll,2500);
   window.__sentinelNativeExpiryKeeperV3.dispose=()=>{
+   disposed=true;
    try{clearInterval(timer)}catch{}
    window.removeEventListener?.('message',onParentPermission);
+   window.removeEventListener?.('pagehide',persistBeforeLeave);
+   window.removeEventListener?.('beforeunload',persistBeforeLeave);
    document.removeEventListener('pointerdown',onPointerDown,true);
    document.removeEventListener('click',onClick,true);
    document.removeEventListener('change',onChange,true);

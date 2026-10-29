@@ -24,7 +24,7 @@ test('five-minute entries never chase continuation, breakout, EMA or a trend cor
 
 test('only current independently proven reversals are admitted on five minutes',()=>{
  for(const side of ['CALL','PUT']){
-  for(const kind of ['confirmed-fast-level-reversal','confirmed-level-structure-reversal']){
+  for(const kind of ['confirmed-level-structure-reversal']){
    const good=value(kind,side,{priceStructure:{confirmedReversal:{kind,side,confirmedAt:T}}});
    const accepted=apply(good);
    assert.equal(accepted.ready,true,kind);
@@ -37,7 +37,11 @@ test('only current independently proven reversals are admitted on five minutes',
     kind:'failed-breakout-structure-change',side,confirmedAt:T}}}});
   assert.equal(apply(breakEvidence).ready,true);
   assert.equal(apply(value('closed-range-extreme-reversal-confirmed',side,{
-   regime:'observed-range-turn'})).ready,true);
+   regime:'observed-range-turn',observedSwingSeconds:240})).ready,true);
+  assert.equal(apply(value('closed-range-extreme-reversal-confirmed',side,{
+   regime:'observed-range-turn',observedSwingSeconds:30})).ready,false);
+  assert.equal(apply(value('confirmed-fast-level-reversal',side,{priceStructure:{
+   confirmedReversal:{kind:'confirmed-fast-level-reversal',side,confirmedAt:T}}})).ready,false);
   assert.equal(apply(value('closed-range-extreme-reversal-confirmed',side)).ready,false);
   const reaction=value('historical-level-rejection',side,{
    priceStructure:{reaction:{kind:'rejection',side},

@@ -40,7 +40,7 @@ export function analystSnapshot(runtimeStatus,live){
   const compactVnext=runtimeStatus?.settings?.engine?{
     ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     ...(vnext.mode==='now'?{nowObservation:take(vnext.nowObservation,
-      ['side','provisionalSide','rawSide','rawReason','ready','reason','observedAt','evaluatedAt','probabilityCall','probabilityPut','probabilityInfluenced','precision'])}:{}),
+      ['side','provisionalSide','rawSide','rawReason','ready','reason','marketReading','marketPhase','marketPhaseLabel','marketTrendSide','observedAt','evaluatedAt','probabilityCall','probabilityPut','probabilityInfluenced','precision'])}:{}),
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
