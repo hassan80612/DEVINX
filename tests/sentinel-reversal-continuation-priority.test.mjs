@@ -33,6 +33,11 @@ test('the full runtime issues the verified reversal through final review for eac
   rt.structureCache={get:()=>({candles:100,asOf:a.map.asOf,tolerance:a.map.tolerance,atr:1.5,averages:[],zones:a.map.levels,candleLevelMap:a.map})};
   const result=rt._signalValidationGate({analysis:{},settings:rt.settings,now:a.now,
    snap:{provider:'exnova',price:a.price,quoteTs:a.quoteAt,quoteHistory:a.quoteHistory,candles:[],historicalCandlesVerified:true}});
-  assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+  const entry=result.analysis.vnext.futureEntryAnchor;
+  if(durationMs===300000)assert.equal(entry?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+  else{
+   assert.notEqual(entry?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+   assert.equal(result.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
+  }
  }
 });
