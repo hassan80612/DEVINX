@@ -1,6 +1,6 @@
 {
   "version": "13.9.160",
-  "build": "13.9.160-surgical-one-minute-loss-corrections",
+  "build": "13.9.160-short-horizon-surgical-loss-corrections",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
