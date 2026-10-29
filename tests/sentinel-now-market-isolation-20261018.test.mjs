@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DemoTradingRuntime as Released} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 const Runtime=Released;
 const T=Date.UTC(2026,9,18,16);
-const history=Array.from({length:181},(_,i)=>({ts:T-(180-i)*1000,receivedAt:T-(180-i)*1000,price:1.1*Math.exp(i*.000002)}));
+const history=Array.from({length:181},(_,i)=>({ts:T-(180-i)*1000,receivedAt:T-(180-i)*1000,price:1.1*Math.exp(.001*Math.sin(2*Math.PI*((i-180+7)/44)-Math.PI/2))}));
 const fresh=()=>new Runtime({enableVNext:true,forecastModel:'now-structural-v1'});
 const gate=(rt,{provider='iq_option',asset='EUR/USD',now=T,quotes=history,price=quotes.at(-1).price}={})=>{
  const settings={...rt.settings,engine:'automatic',asset,orderDurationMs:30000};
