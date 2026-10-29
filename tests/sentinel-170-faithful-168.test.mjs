@@ -14,21 +14,31 @@ for(const [name,sha] of [
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url));
  assert.equal(blob(raw),sha);
 });
-test('172 preserves the 170 engine exactly except the 171 independent fast-reversal check',()=>{
+test('173 preserves the whole 172 engine except the audited fresh-floor review',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
  const addedImport="import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';\n";
  const addedGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n const ownVerifiedFastReversal=shallowCountertrendFastReversal&&\n  verifiedFastLevelReversal({\n   reversalEvidence:candidate.priceStructure?.confirmedReversal,\n   quoteHistory,quoteAt,now,price,side:candidate.side\n  });\n if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};\n";
  const originalGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n if(shallowCountertrendFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};\n";
  assert.equal(raw.split(addedImport).length,2,'verified reversal import must occur once');
  assert.equal(raw.split(addedGuard).length,2,'verified reversal exemption must occur once');
- const restored=Buffer.from(raw.replace(addedImport,'').replace(addedGuard,originalGuard));
+ const newFloor=" // A NEW LOW by itself is not evidence that a 60s continuation\n // still has room. A closed-candle impulse can otherwise authorize PUT at\n // the fresh floor even though no independently observed break/retest exists.\n // Keep already-qualified independent breakouts and structural continuations\n // available; this screen does not turn PUT into CALL or schedule a retest.\n const sequence=candidate.priceStructure?.observedSequence?.continuation;\n const independentlyConfirmedBreak=sequence?.kind==='break-retest-continuation'&&\n  sequence.side==='PUT'&&Number(sequence.confirmedAt)>0&&\n  Number(sequence.confirmedAt)<=at&&clock-Number(sequence.confirmedAt)<=2500;\n const closedBarOnly=candidate.reason==='closed-structure-and-live-impulse'&&\n  !independentlyConfirmedBreak;\n if(priorLow-spot>Math.max(typical*3,width*.1)&&!closedBarOnly)return null;\n return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,\n  priorLow,typicalStep:typical};";
+ const oldFloor=" // A significant NEW verified downward break retains the continuation path.\n // Otherwise wait for the independently assessed current-price reversal;\n // do not reverse a signal merely because the price is low.\n if(priorLow-spot>Math.max(typical*3,width*.1))return null;\n return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,\n  priorLow,typicalStep:typical};";
+ assert.equal(raw.split(newFloor).length,2,'173 floor review occurs exactly once');
+ const restored172=raw.replace(newFloor,oldFloor);
+ assert.equal(blob(Buffer.from(restored172)),'db6123f7bb59823124401c53538335ce895d7619','173 must preserve all 172 engine logic outside the floor review');
+ const restored=Buffer.from(restored172.replace(addedImport,'').replace(addedGuard,originalGuard));
  assert.equal(blob(restored),'898d1a79204f5ca2e6580dad6e1a49617ce6d2ec','no other 170 engine code may change');
 });
 test('runtime matches published 168 except for its read-only observation quote timestamp',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
  const stamp='observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,';
  assert.equal(raw.split(stamp).length,2);
- const restored=Buffer.from(raw.replace(stamp,'observedAt:eligible.observedAt,strength:eligible.strength,'));
+ const newerFresh="      // Every 60s entry uses the same 1450ms freshness limit as its\n      // last-mile market-risk checks. Do not trade on a quote after those\n      // checks have ceased to be applicable; no new timer or wait.\n      const maxEntryQuoteAgeMs=Number(settings.orderDurationMs)<=10000?800:\n        Number(settings.orderDurationMs)<=30000?1450:\n        Number(settings.orderDurationMs)<=60000?1450:2500;";
+ const olderFresh="      const maxEntryQuoteAgeMs=Number(settings.orderDurationMs)<=10000?800:\n        Number(settings.orderDurationMs)<=30000?1450:\n        Number(settings.orderDurationMs)<=60000?1950:2500;";
+ assert.equal(raw.split(newerFresh).length,2,'173 uses one unified quote window');
+ const restored172=raw.replace(newerFresh,olderFresh);
+ assert.equal(blob(Buffer.from(restored172)),'414ec2283a5b874e90e5555a87d74a16a811e6ac','173 preserves the rest of the 172 runtime');
+ const restored=Buffer.from(restored172.replace(stamp,'observedAt:eligible.observedAt,strength:eligible.strength,'));
  assert.equal(blob(restored),'56ed4ab3cb4c147eb68997f9a2154038c53ad2cc');
 });
 for(const durationMs of [30000,60000])for(const direction of [1,-1])test(`${durationMs} ${direction}: keep rapid reversals and new turns; decline only the contradicted older continuation`,()=>{
