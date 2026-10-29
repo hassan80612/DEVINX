@@ -413,7 +413,7 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
           <div className={styles.sentinelOffer}>
             <div>
               <small>{c.sentinelAccess}</small>
-              <strong>{intl?'US$ 35':'R$ 170'}</strong>
+              <strong>{intl?'US$ 60':'R$ 289'}</strong>
             </div>
             <span>{c.sentinelCycle}</span>
           </div>
