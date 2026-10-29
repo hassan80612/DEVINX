@@ -19,7 +19,7 @@ test('every selected strategy survives settings updates and Agent restart',()=>{
   assert.equal(restored.settings.forecastMode,'continuous');
  }
 });
-test('selected strategies use native live setups without legacy candle or confidence prerequisites',()=>{
+test('selected strategies cannot bypass the priority gate with a generic trend',()=>{
  for(const engineId of engines.slice(1)){
   const input={quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId};
   const result=analyzeNowOpportunity(input);
@@ -27,7 +27,11 @@ test('selected strategies use native live setups without legacy candle or confid
   assert.deepEqual(analyzeNowOpportunity({...input,candles:[],minConfidence:100}),result);
   assert.deepEqual(analyzeNowOpportunity({...input,candles,minConfidence:1}),result);
   assert.equal(Object.hasOwn(result,'projectedExitPrice'),false);
-  if(['trend','breakout','price_action','smart_confluence'].includes(engineId))assert.equal(result.side,'CALL',engineId);
+  if(['trend','breakout','price_action','smart_confluence'].includes(engineId)){
+  assert.equal(result.ready,false,engineId);
+  assert.equal(result.side,null,engineId);
+  assert.equal(result.reason,'short-horizon-setup-not-eligible',engineId);
+  }
   if(['mean_reversion','support_resistance','fibonacci_retest'].includes(engineId))assert.equal(result.ready,false,'a trend alone must not invent a '+engineId+' setup');
  }
  const source=readFileSync('sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs','utf8');
@@ -92,7 +96,7 @@ test('a newer history point cannot be mixed with an older quoted entry price',()
    {ts:T+50,price:99},{ts:T+100,price:100}]}),expected,engineId);
  }
 });
-test('specialist setups confirm an observed level turn, mean return, Fibonacci retest and line break',()=>{
+test('generic specialist patterns stay out until one of the two priority setups is confirmed',()=>{
  const wave=Array.from({length:150},(_,i)=>({ts:T+i*1000,
   price:1.1+.0006*Math.sin(i*2*Math.PI/43)+i*.0000005}));
  const lines=Array.from({length:70},(_,i)=>({ts:T+i*1000,
@@ -102,10 +106,13 @@ test('specialist setups confirm an observed level turn, mean return, Fibonacci r
   ['support_resistance',wave,15,'PUT'],['mean_reversion',wave,14,'PUT'],
   ['fibonacci_retest',wave,86,'CALL'],['trendline_breakout',lines,72,'CALL']]){
   const q=history[index],input={quoteHistory:history,price:q.price,quoteAt:q.ts,now:q.ts,engineId};
-  assert.equal(analyzeNowOpportunity(input).side,side,engineId);
+  const result=analyzeNowOpportunity(input);
+  assert.equal(result.ready,false,engineId);
+  assert.equal(result.reason,'short-horizon-setup-not-eligible',engineId);
   const mirrored=history.map(q=>({...q,price:2.2-q.price}));
-  assert.equal(analyzeNowOpportunity({...input,quoteHistory:mirrored,price:mirrored[index].price}).side,
-   side==='CALL'?'PUT':'CALL',engineId+' inverse setup');
+  const inverse=analyzeNowOpportunity({...input,quoteHistory:mirrored,price:mirrored[index].price});
+  assert.equal(inverse.ready,false,engineId+' inverse setup');
+  assert.equal(inverse.reason,'short-horizon-setup-not-eligible',engineId+' inverse setup');
  }
 });
 test('real runtime keeps analyzing generic trends through expiry without authorizing entries',()=>{
