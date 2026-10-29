@@ -32,8 +32,7 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  if(typeof window==='undefined')return {blocked:false};
  // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(![8,9,10,11,12,13].includes(keeper?.revision))return {blocked:Number(requiredDurationMs)>0,
-  reason:Number(requiredDurationMs)>0?'expiry-keeper-not-ready':null};
+ if(![8,9,10,11,12,13,14].includes(keeper?.revision))return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
  // check is read-only and never opens or changes the broker expiry control.
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
@@ -43,10 +42,12 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  keeper.poll();
  const s=keeper.snapshot();
  const required=Number(requiredDurationMs);
- const unverified=required>0&&!s.currentMs;
- const mismatch=unverified||!!(s.currentMs&&((s.preferredMs&&s.preferredMs!==s.currentMs)||
+ // An unreadable picker is unknown, not a proven mismatch. In particular,
+ // the first accepted order may supply the broker's own timing information.
+ // Never require that post-click observation in order to permit the first click.
+ const mismatch=!!(s.currentMs&&((s.preferredMs&&s.preferredMs!==s.currentMs)||
   required>0&&required!==s.currentMs));
- return {blocked:mismatch,reason:unverified?'expiry-value-unverified':mismatch?'expiry-not-synchronized':null,
+ return {blocked:mismatch,reason:mismatch?'expiry-not-synchronized':null,
   preferredMs:s.preferredMs,currentMs:s.currentMs,requiredDurationMs:required>0?required:null,
   revision:keeper.revision,observedAt:s.observedAt};
 }
@@ -56,7 +57,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===13){
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===14){
    const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
    if(!(current>0)&&Number.isFinite(Number(requestedMs)))
     window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
@@ -96,7 +97,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    String(el.getAttribute?.(k)||'')).join(' ')+' '+String(el.className||'')+' '+
    String(el.getAttribute?.('aria-labelledby')||'').split(/\s+/).filter(Boolean)
     .map(id=>document.getElementById?.(id)?.textContent||'').join(' ');
-  const labelRe=/expira|expir|vencim|expiry|dura(?:ç|c)ão|duraci[oó]n|duration|option[- ]time|order[- ]time/i;
+  const labelRe=/expira|expir|vencim|expiry|dura(?:ç|c)ão|duraci[oó]n|duration|option[- ]time|order[- ]time|\btempo\b/i;
   const chartRe=/chart|candle|vela|gr[aá]fico|timeframe|per[ií]odo da vela|countdown|count.down|remaining|restante/i;
   const CONTROL_SELECTORS=[
    '[data-testid*="expir" i]','[data-test*="expir" i]',
@@ -108,6 +109,9 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    '[aria-label*="duration" i]','[title*="duration" i]',
    '[class*="time-control" i]','[class*="deal-time" i]'
   ].join(',');
+  // Generic fields may be discovered through their nearby visible label,
+  // but they never establish ownership of an unrelated popup menu.
+  const DISCOVERY_SELECTORS=CONTROL_SELECTORS+',button,[role="button"],[role="combobox"],input,select';
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
    verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,manualControl=null,chosenTarget=null,observedAt=0,
@@ -140,7 +144,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
     if(found)return {el:cached,value:found};
    }
    const candidates=[];
-   for(const el of document.querySelectorAll(CONTROL_SELECTORS)){
+   for(const el of document.querySelectorAll(DISCOVERY_SELECTORS)){
     if(!visible(el))continue;
     const text=String(el.innerText||el.textContent||el.value||'').trim();
     if(text.length>85)continue;
@@ -421,7 +425,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
    notify(observedMs);poll({urgent:true});return true;
   };
-  window.__sentinelNativeExpiryKeeperV3={revision:13,provider,poll,setPreferred,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:14,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   const onWake=()=>{if(!disposed&&document.visibilityState!=='hidden')poll()};

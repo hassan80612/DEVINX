@@ -10,7 +10,7 @@ import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mj
 import {marketDataStatus} from '../../agent/src/core/market-reading.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.176';
+const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.177';
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -67,7 +67,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    <strong data-testid="future-entry-decision">
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
-   {nowMode&&<small data-testid="market-reading-detail" style={{display:'block',minHeight:32,lineHeight:'16px',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
+   {nowMode&&<small data-testid="market-reading-detail" title={(running&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{display:'block',minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
     {running&&observation?.marketReading?t(observation.marketReading)+(technicalStatus?' · ':''):''}
     {t(technicalStatus)}
    </small>}
