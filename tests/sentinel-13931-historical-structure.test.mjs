@@ -63,38 +63,29 @@ test('candle correction and asset changes invalidate cached levels',()=>{
  const b=cache.get({candles:changed,now:T,context:'exnova|EUR'});assert.notEqual(b,a);
  assert.notEqual(cache.get({candles:changed,now:T,context:'exnova|GBP'}),b);
 });
-test('historical rejection releases on the current quote without four newly closed blocks',()=>{
+test('generic historical rejection stays out; an approved continuation keeps the exact one-shot duration',()=>{
  const args={quoteHistory:reject,candles:candles(),price:reject.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17'};
- const a=analyzeNowOpportunity(args);assert.equal(a.ready,true);assert.equal(a.side,'CALL');assert.equal(a.observedAt,T);
+ const a=analyzeNowOpportunity(args);assert.equal(a.ready,false);assert.equal(a.reason,'short-horizon-setup-not-eligible');assert.equal(a.provisionalSide,'CALL');
  const support=analyzeNowOpportunity({...args,engineId:'support_resistance'});
- assert.equal(support.side,'CALL','the selected S/R specialist uses the observed rejection');
- assert.equal(support.signalOwner,'shared-market-base');
+ assert.equal(support.ready,false);assert.equal(support.reason,'short-horizon-setup-not-eligible');
  for(const engineId of ['trend','fibonacci_retest','smart_confluence']){
   const other=analyzeNowOpportunity({...args,engineId});
-  assert.equal(other.ready,true,'shared base keeps its independently confirmed S/R entry');
-  assert.equal(other.side,'CALL');
-  assert.equal(other.observedAt,T,'the base never waits for extra bars');
-  assert.equal(other.signalOwner,'shared-market-base');
+  assert.equal(other.ready,false,'specialist evidence cannot bypass the short-horizon setup policy');
+  assert.equal(other.reason,'short-horizon-setup-not-eligible');
  }
- const fired=advanceNowOpportunity({candidate:a,now:T,quoteAt:T,asset:'EUR',engineId:'automatic',durationMs:30000});
+ const eligible={...a,ready:true,side:'CALL',reason:'break-retest-continuation',observedAt:T,entryPrice:reject.at(-1).price};
+ const fired=advanceNowOpportunity({candidate:eligible,now:T,quoteAt:T,asset:'EUR',engineId:'automatic',durationMs:30000});
  assert.equal(fired.entryTriggeredAt,T);assert.equal(fired.exitAt,T+30000);
- const held=advanceNowOpportunity({previous:fired,candidate:{...a,side:'PUT',observedAt:T+1000},now:T+1000,quoteAt:T+1000,asset:'EUR',engineId:'automatic',durationMs:30000});
+ const held=advanceNowOpportunity({previous:fired,candidate:{...eligible,side:'PUT',observedAt:T+1000},now:T+1000,quoteAt:T+1000,asset:'EUR',engineId:'automatic',durationMs:30000});
  assert.equal(held.side,'CALL');assert.equal(held.exitAt,fired.exitAt);assert.equal(held.entryReadyNow,false);
 });
-test('saved broker synchronization is retired and no longer affects admission or deadlines',()=>{
+test('saved broker clock state cannot bypass the priority setup policy',()=>{
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  r.restore({settings:{clockMode:'broker',engine:'automatic',orderDurationMs:30000}});
  assert.equal(r.settings.clockMode,undefined);r.patchSettings({clockMode:'broker'});assert.equal(r.settings.clockMode,undefined);
  const v=r._signalValidationGate({analysis:{},snap:{provider:'exnova',candles:candles(),quoteHistory:reject,price:reject.at(-1).price,quoteTs:T},settings:r.settings,now:T}).analysis.vnext;
- assert.equal(v.futureEntryAnchor.side,'CALL');assert.equal(v.futureEntryAnchor.exitAt,T+30000);
- const frame=analystSnapshot({state:'running',settings:r.settings,lastEvalMs:T,lastResult:{asset:r.settings.asset,analysis:{vnext:v}}},{symbol:r.settings.asset,validatedSymbol:r.settings.asset,assetValidated:true,lastQuoteAt:T,quote:reject.at(-1).price});
- frame.lastResult.analysis.vnext.cards=[{id:'x'.repeat(5000)}];
- const fitted=fitAnalystFrame(frame),model=liveCardModel(fitted,T+100),entry=model.vnextFutureEntryAnchor;
- assert.equal(entry.exitAt,T+30000);
- const state={windowStartedAt:model.vnextOpportunityWindow.windowStartedAt,windowEndsAt:entry.exitAt,phase:entry.phase,side:entry.side,entryTriggeredAt:entry.entryTriggeredAt,quoteAt:T};
- assert.equal(pcAuthoritativeWindow({...state,now:T+100}).enterNow,true);
- assert.equal(pcAuthoritativeWindow({...state,now:T+2000}).enterNow,false);
- assert.equal(pcAuthoritativeWindow({...state,now:T+30000}).active,false);
+ assert.equal(v.futureEntryAnchor,null);
+ assert.equal(v.nowObservation.reason,'short-horizon-setup-not-eligible');
 });
 test('retired clock sources, selectors and obsolete zero expiry price are removed',()=>{
  for(const path of ['agent/worker/broker-clock-view.mjs','agent/worker/broker-timing-readonly.mjs','agent/src/core/broker-entry-boundary.mjs','agent/src/core/broker-buy-window-1378.mjs','agent/src/core/broker-fixed-expiry-1376.mjs'])assert.equal(existsSync(new URL('../sentinel-trading-lab/'+path,import.meta.url)),false);
