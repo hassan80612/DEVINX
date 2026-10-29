@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=path=>readFileSync(new URL('../sentinel-trading-lab/'+path,import.meta.url),'utf8');
-test('Prepaid BR 170 and international 35 without changing Kiwify URLs',()=>{
+test('Prepaid BR 289 and international 60 without changing Kiwify URLs',()=>{
  const c=source('src/lib/commercial.ts');
- assert.match(c,/amount:170,currency:'BRL',billing:'prepaid_30_days'/);
- assert.match(c,/amount:35,currency:'USD',billing:'prepaid_30_days'/);
+ assert.match(c,/amount:289,currency:'BRL',billing:'prepaid_30_days'/);
+ assert.match(c,/amount:60,currency:'USD',billing:'prepaid_30_days'/);
  assert.ok(c.includes('pay.kiwify.com.br/SQku9Rd'));
  assert.ok(c.includes('pay.kiwify.com/VNHYsjX'));
 });
