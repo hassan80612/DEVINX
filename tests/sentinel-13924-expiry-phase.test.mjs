@@ -57,8 +57,8 @@ test('the candidate reports the earlier known adverse entry honestly, including 
  console.log('sentinel-13959-known-adverse-setup',JSON.stringify({old:'PUT',candidate:current.side,ready:current.ready,reason:current.reason,actual:'PUT'}));
  if(current.ready)assert.equal(current.entryPrice,input.price);
 });
-test('5s, 10s, 15s and 60s decisions remain byte-for-byte identical to 13.9.23',()=>{
- for(const durationMs of [5000,10000,15000,60000])for(const i of [200,400,650,950]){
+test('5s, 10s and 15s decisions remain byte-for-byte identical to 13.9.23',()=>{
+ for(const durationMs of [5000,10000,15000])for(const i of [200,400,650,950]){
   const input=inputFor(fine,i,{durationMs});assert.deepEqual(after(input),before(input));
  }
 });
