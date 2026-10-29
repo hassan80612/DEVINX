@@ -32,12 +32,14 @@ test('reproduces the two wrong historical overrides in the video and declines in
   assert.equal(next.ready,false);assert.equal(next.side,null);
  }
 });
-test('the retained analogue base preserves favorable PUT evidence before the 13.9.24 expiry projection',()=>{
+test('favorable generic PUT evidence remains visible but does not qualify as a 1m priority setup',()=>{
  for(const time of ['13:53:20','13:54:52']){
   // This checks the unchanged 13.9.23 learner. The final v17 direction now
   // uses the separately tested 30s projection and can override this evidence.
   const input=at(time),a=analyzeNowOpportunity({...input,qualityPolicy:'adaptive-market-v1'});
-  assert.equal(a.side,'PUT');assert.equal(a.ready,true);
+  assert.equal(a.ready,false);assert.equal(a.side,null);
+  assert.equal(a.reason,'short-horizon-setup-not-eligible');assert.equal(a.provisionalSide,'PUT');
+  assert.equal(a.excludedSetupReason,'closed-structure-and-live-impulse');
   assert.equal(a.observedAt,input.quoteAt);assert.equal(a.entryPrice,input.price);
   assert.ok(rows.find(q=>q.ts===input.now+30000).price<input.price);
  }
