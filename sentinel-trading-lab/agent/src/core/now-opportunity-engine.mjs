@@ -68,10 +68,18 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
  if(position>.20)return null;
  steps.sort((a,b)=>a-b);
  const typical=steps[Math.floor(steps.length/2)];
- // A significant NEW verified downward break retains the continuation path.
- // Otherwise wait for the independently assessed current-price reversal;
- // do not reverse a signal merely because the price is low.
- if(priorLow-spot>Math.max(typical*3,width*.1))return null;
+ // A NEW LOW by itself is not evidence that a 60s continuation
+ // still has room. A closed-candle impulse can otherwise authorize PUT at
+ // the fresh floor even though no independently observed break/retest exists.
+ // Keep already-qualified independent breakouts and structural continuations
+ // available; this screen does not turn PUT into CALL or schedule a retest.
+ const sequence=candidate.priceStructure?.observedSequence?.continuation;
+ const independentlyConfirmedBreak=sequence?.kind==='break-retest-continuation'&&
+  sequence.side==='PUT'&&Number(sequence.confirmedAt)>0&&
+  Number(sequence.confirmedAt)<=at&&clock-Number(sequence.confirmedAt)<=2500;
+ const closedBarOnly=candidate.reason==='closed-structure-and-live-impulse'&&
+  !independentlyConfirmedBreak;
+ if(priorLow-spot>Math.max(typical*3,width*.1)&&!closedBarOnly)return null;
  return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,
   priorLow,typicalStep:typical};
 }
