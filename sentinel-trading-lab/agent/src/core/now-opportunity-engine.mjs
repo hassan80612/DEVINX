@@ -193,6 +193,13 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.'};
+ // Four older closed bars cannot turn a finished rebound into continuation.
+ // Keep this limited to that setup when the latest move already opposes it.
+ if(candidate.reason==='closed-structure-and-live-impulse'&&candidate.side!==state.side&&
+   state.phase==='weakening'&&Number(state.latestMove)>0&&
+   Number(candidate.observedNetMove)*Number(state.netMove)<0)
+  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'older-continuation-against-current-price'};
  return candidate;
 }
 

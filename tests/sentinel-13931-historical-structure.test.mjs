@@ -117,11 +117,11 @@ test('the actual PC timer cannot keep ENTRY NOW after its short indication or re
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const begin=source.indexOf('const tickTargetClock=()=>{'),end=source.indexOf('el.__sentinelTargetClockTick=',begin);
  assert.ok(begin>0&&end>begin);
- let now=T+100;const value={textContent:'',style:{}},decision={textContent:''},status={textContent:''};
+ let now=T+100;const value={textContent:'',style:{}},decision={textContent:''},status={textContent:''},phaseText={textContent:'',style:{}};
  const attrs={'data-deadline':T+30000,'data-issued':T,'data-triggered-at':T,'data-entry-ready':'1',
   'data-live-quote':'1','data-mode':'now','data-side':'CALL','data-window-phase':'fired'};
  const action={querySelector:q=>q==='[data-sentinel-decision-label]'?decision:null},pane={getAttribute:k=>String(attrs[k]??''),
-  closest:()=>({querySelector:()=>action}),querySelector:q=>q==='[data-sentinel-vnext-clock-value]'?value:status};
+  closest:()=>({querySelector:q=>q==='[data-sentinel-market-phase]'?phaseText:action}),querySelector:q=>q==='[data-sentinel-vnext-clock-value]'?value:status};
  const context={el:{querySelector:()=>pane},tr:s=>s,Date:{now:()=>now},window:{__sentinelLastOverlayData:{vnext:{mode:'now'}}}};
  vm.createContext(context);vm.runInContext(source.slice(begin,end)+'globalThis.tick=tickTargetClock;',context);
  context.tick();assert.match(decision.textContent,/ENTRADA AGORA/);assert.equal(value.textContent,'00:30');
