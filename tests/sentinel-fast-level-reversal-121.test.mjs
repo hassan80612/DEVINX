@@ -81,11 +81,12 @@ test('unreceived future quotes, unordered ticks, gaps, and old confirmations nev
  assert.equal(confirmedFastLevelReversal({...a,now:a.now+2000}),null);
  assert.equal(verifiedFastLevelReversal({...a,side:'CALL',reversalEvidence:{...proof,confirmedAt:a.now-10000}}),false);
 });
-test('skipped late-floor PUT leaves the way open for a later proven CALL reversal',()=>{
+test('ordinary fast level reversal remains ineligible without the selected extreme setup',()=>{
  const f=oneMinuteFixture(fixture()),r=runtime(f,'automatic',60000),before=f.q.filter(q=>q.ts<=T-10000);
  const first=gate(r,before);
  assert.notEqual(first.futureEntryAnchor?.side,'PUT','do not chase an unverified downside impulse at the floor');
  const second=gate(r,f.q);
- assert.equal(second.nowObservation.side,'CALL');
- assert.equal(second.futureEntryAnchor?.side,'CALL','confirmed fast turn can be acted on');
+ assert.equal(second.nowObservation.reason,'short-horizon-setup-not-eligible');
+ assert.equal(second.nowObservation.provisionalSide,'CALL');
+ assert.notEqual(second.futureEntryAnchor?.side,'CALL');
 });
