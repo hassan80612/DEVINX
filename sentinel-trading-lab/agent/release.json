@@ -1,6 +1,6 @@
 {
-  "version": "13.9.166",
-  "build": "13.9.166-bounded-candidate-state-and-reload-expiry",
+  "version": "13.9.167",
+  "build": "13.9.167-current-reversal-confirmation-and-visible-waits",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.166"
+  "publicVersion": "13.9.167"
 }

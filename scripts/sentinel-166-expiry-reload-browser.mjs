@@ -2,6 +2,7 @@
 // locally; no real broker session, balance, quotation or trading is accessed.
 import assert from 'node:assert/strict';
 import {chromium} from '../sentinel-trading-lab/agent/node_modules/playwright-core/index.mjs';
+import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 import {installBrokerNativeExpiryKeeper,inspectNativeExpiryBeforeClick} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 import {installBrokerChartPeriodKeeper} from '../sentinel-trading-lab/agent/worker/broker-chart-period-keeper.mjs';
 const html=`<!doctype html><html><body>
@@ -44,10 +45,14 @@ try{
    !window.__sentinelNativeExpiryKeeperV3.snapshot().repairing&&
    !window.__sentinelBrokerChartPeriodKeeperV1.snapshot().repairing,[native,chart],{timeout:12000});
   await ready('1 min','5 min');
+  const driver=new LocalPlaywrightDriver();driver.sessions.set(provider,{page});
+  await driver.setNativeExpiryPreference(provider,30000);
   await page.locator('#expiry').click();await page.locator('#expiry-menu').getByRole('option',{name:'5 min',exact:true}).click();
   await page.locator('#chart').click();await page.locator('#chart-menu').getByRole('option',{name:'1 min',exact:true}).click();
   await page.waitForFunction(()=>window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs===300000&&
    window.__sentinelBrokerChartPeriodKeeperV1.snapshot().preferredSeconds===60);
+  await driver.setNativeExpiryPreference(provider,30000);
+  assert.equal(await page.evaluate(()=>window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs),300000,'reconnect cannot replay an old 30s analyst default');
   await page.reload();await ready('5 min','1 min');
   const mismatch=await page.evaluate(inspectNativeExpiryBeforeClick,{requiredDurationMs:60000});
   assert.equal(mismatch.blocked,true);assert.equal(mismatch.currentMs,300000);

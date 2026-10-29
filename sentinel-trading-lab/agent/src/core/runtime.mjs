@@ -39,6 +39,7 @@ import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 import {precisionEntryGate} from './precision-entry-policy.mjs';
 import {LateImpulseReview} from './late-impulse-review.mjs';
+import {entryObservationStatus,entrySetupLabel} from './entry-observation-status.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -1184,6 +1185,7 @@ export class DemoTradingRuntime{
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
       });
       const old=this.vnextWindowState;
+      if(next?.phase==='fired'&&next.entryReadyNow===true)next={...next,entryReason:eligible.reason};
       this.vnextWindowState=next;
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
@@ -1318,6 +1320,8 @@ export class DemoTradingRuntime{
           side:eligible.side,provisionalSide:eligible.side||eligible.provisionalSide||null,
           rawSide:observation.side,rawReason:observation.reason,
           ready:eligible.ready,reason:eligible.reason,
+          ...entryObservationStatus({candidate:eligible,window:next,durationMs:settings.orderDurationMs}),
+          activeEntryLabel:active?entrySetupLabel(next.entryReason):null,
           marketPhase:eligible.marketPhase||observation.marketPhase||derivedPhase,
           marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase]||'OBSERVANDO',
           marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side||null,

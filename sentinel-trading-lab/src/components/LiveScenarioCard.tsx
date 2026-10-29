@@ -9,7 +9,7 @@ import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '.
 import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.166';
+const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.167';
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -46,14 +46,14 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
  const countdown=running&&seconds!=null?pad(Math.floor(seconds/60))+':'+pad(seconds%60):'—:—';
  // Provisional price direction remains internal and cannot be mistaken for a signal.
  const scanReason=String(observation?.reason||'');
- const scanningLabel=scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+ const scanningLabel=observation?.waitLabel|| (scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
           scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
   /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
   /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
   /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
   /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
   scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
-  'ANALISANDO';
+  'ANALISANDO');
  const direction=nowMode?(
   moment?t('ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
   running&&phase==='fired'?t('OPERAÇÃO EM ANDAMENTO · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
@@ -65,6 +65,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    <strong data-testid="future-entry-decision">
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
+   {nowMode&&(running?observation?.activeEntryLabel:observation?.waitDetail)&&<small data-testid="analysis-wait-detail" style={{display:'block',fontSize:11,lineHeight:1.4,marginTop:4}}>{t(running?observation.activeEntryLabel:observation.waitDetail)}</small>}
   </div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
    <div><small>{t(signalClock?'ATÉ O VENCIMENTO':nowMode?'ANALISANDO':moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong></div>

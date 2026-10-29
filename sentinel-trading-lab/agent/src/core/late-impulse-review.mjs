@@ -2,6 +2,7 @@
 // Candle seconds, reason labels and uncalibrated probabilities grant no bypass.
 // All data come from the existing feed; there are no timers or broker reads.
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
+import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 const dir=s=>s==='CALL'?1:s==='PUT'?-1:0;
 const median=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]||0;};
 function tape(history,at,now,price){
@@ -49,6 +50,26 @@ export function stretchedImpulse({quoteHistory=[],quoteAt,now=quoteAt,price,side
   originPrice:base.price,peakPrice:peak.price,typicalMove:typical,burst,leg};
 }
 
+// Reuse a reversal's own CURRENT price confirmation, not its reason label.
+// A structural break must still be close to the first crossing. A large jump
+// beyond that trigger remains late, even if the direction itself is valid.
+function ownReversalConfirmation({candidate,rows,proof,risk,side,at,now,spot,quoteHistory}){
+ if(!risk||!rows)return null;
+ const e=candidate.priceStructure?.confirmedReversal,d=dir(side);
+ if(!e||e.side!==side||e.kind!==candidate.reason||
+   !(e.confirmedAt<=at&&now-e.confirmedAt>=0&&now-e.confirmedAt<=1450))return null;
+ if(e.kind==='confirmed-fast-level-reversal'){
+  if(e.touchAt<=risk.startedAt||d*(spot-e.touchPrice)>risk.typicalMove*3)return null;
+  return verifiedFastLevelReversal({reversalEvidence:e,quoteHistory,quoteAt:at,now,price:spot,side})?e:null;
+ }
+ if(e.kind!=='confirmed-level-structure-reversal'||!proof||
+   proof.turnAt<=risk.startedAt||proof.pivotPrice!==e.pivotPrice||proof.turnPrice!==e.turnPrice)return null;
+ const first=rows.find(q=>q.ts>proof.turnAt&&d*(q.price-proof.pivotPrice)>proof.amplitude);
+ if(first?.ts!==e.confirmedAt||
+   d*(spot-proof.pivotPrice)>proof.amplitude+risk.typicalMove*.5)return null;
+ return {...proof,confirmedAt:first.ts};
+}
+
 export class LateImpulseReview{
  constructor(){this.context=null;this.pending=new Map();this.expiredQuotes=new Map();}
  review({candidate,context='',quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
@@ -62,6 +83,16 @@ export class LateImpulseReview{
   if(![30000,60000].includes(Number(durationMs)))return candidate;
   const at=Number(quoteAt),spot=Number(price),side=candidate?.side,d=dir(side);
   if(candidate?.ready!==true||!d)return candidate;
+  const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
+  let state=this.pending.get(side);
+  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});
+  const rows=tape(quoteHistory,at,now,spot);
+  const ownProof=ownReversalConfirmation({candidate,rows,proof,
+   risk:risk||state||expired.get(side),side,at,now,spot,quoteHistory});
+  if(ownProof){
+   this.pending.delete(side);this.expiredQuotes.delete(side);
+   return {...candidate,entryTimingReview:{phase:'reversal-price-confirmed',proof:ownProof}};
+  }
   const ended=expired.get(side);
   if(ended){
    this.expiredQuotes.set(side,at);
@@ -74,14 +105,10 @@ export class LateImpulseReview{
    provisionalSide:side,reason:'candidato-de-impulso-expirado',
    entryTimingReview:{phase:'expired',observedAt:at}};
   this.expiredQuotes.delete(side);
-  const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
-  let state=this.pending.get(side);
   // A full return to the pre-impulse price ends that leg, rather than keeping
   // its old WAIT alive. A newly qualified candidate gets its own evaluation.
   if(state&&d*(spot-state.originPrice)<=0){this.pending.delete(side);state=null;}
   if(!state&&!risk)return candidate;
-  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});
-  const rows=tape(quoteHistory,at,now,spot);
   const deadline=Number(durationMs)===30000?9000:14000;
   if(!state){
    // Even a genuine pivot break can arrive after a large price jump. An

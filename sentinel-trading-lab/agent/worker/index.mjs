@@ -519,6 +519,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.precision?.ready,
+      runtime.lastResult?.analysis?.vnext?.nowObservation?.waitLabel,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.marketPhase,
       runtime.lastResult?.analysis?.vnext?.nowObservation?.marketTrendSide,
       // A new future entry is a FIRST-CLASS decision change, not a
@@ -565,6 +566,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
         admission.ready,admission.score,admission.reason,
+        a.vnext?.nowObservation?.waitLabel,
         a.vnext?.nowObservation?.marketPhase,a.vnext?.nowObservation?.marketTrendSide,
         a.vnext?.futureEntryAnchor?.issuedAt,
         a.vnext?.futureEntryAnchor?.entryAt,
