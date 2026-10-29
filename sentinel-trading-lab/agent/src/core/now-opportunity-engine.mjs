@@ -98,12 +98,12 @@ const phaseLabel=phase=>({
 // reversal: the opposite side still needs its own ready structural candidate.
 export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
  const horizon=Number(durationMs);
- if(horizon!==30000&&horizon!==60000)return{phase:'insufficient',side:null};
+ if(![30000,60000,300000].includes(horizon))return{phase:'insufficient',side:null};
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(!(at>0&&at<=clock&&spot>0&&clock-at<=2500))return{phase:'insufficient',side:null};
- const windowMs=horizon===30000?12000:20000;
- const middleMs=horizon===30000?4000:7000;
- const recentMs=horizon===30000?1200:1800;
+ const windowMs=horizon===30000?12000:horizon===60000?20000:60000;
+ const middleMs=horizon===30000?4000:horizon===60000?7000:20000;
+ const recentMs=horizon===30000?1200:horizon===60000?1800:5000;
  const rows=[];
  for(let i=quoteHistory.length-1;i>=0;i--){
   const q=quoteHistory[i],ts=Number(q?.ts),p=Number(q?.price);
@@ -157,9 +157,8 @@ function confirmedReversalCandidate(candidate){
 }
 export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now,price,durationMs}={}){
  const horizon=Number(durationMs);
- // Only the requested 30s and 1m continuations are screened. Routine waiting
- // and admitted results retain their established shape.
- if((horizon!==30000&&horizon!==60000)||!candidate||typeof candidate!=='object'||
+ // Five minutes retains its separate reversal-only admission before this review.
+ if(![30000,60000,300000].includes(horizon)||!candidate||typeof candidate!=='object'||
    candidate.ready!==true||!isSide(candidate.side))return candidate;
  const state=assessDirectionalPersistence({quoteHistory,quoteAt,now,price,durationMs});
  // The short-horizon failed-breakout case from the review had no confirming
@@ -190,7 +189,8 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  if(candidate.side===state.side&&continuation&&fading)
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.'};
- if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
+ if(candidate.side!==state.side&&continuation&&
+   ['continuing','weakening','reversal-testing'].includes(state.phase))
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.'};
  return candidate;

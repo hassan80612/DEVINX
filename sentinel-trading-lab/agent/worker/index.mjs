@@ -59,6 +59,7 @@ const quoteReadoutUpdates=new LatestOverlayScheduler((provider,data)=>driver.upd
 const marketTotalsUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateMarketTotals?.(provider,data),{
  minIntervalMs:1000,slowThresholdMs:150,slowCooldownMs:1000
 });
+let lastMarketObservationReadoutKey='';
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
@@ -554,13 +555,20 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
           !(view.liveBroker.analysisFeedValidated===true||view.liveBroker.feedValidated===true))
         :(view.liveBroker.analysisFeedValidated===false||
           (view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false)));
+    const observationReadoutKey=[activeProvider,currentAsset,view.settings?.engine,
+      view.settings?.orderDurationMs,view.settings?.uiLanguage,view.state,
+      a.vnext?.nowObservation?.marketReading].join('|');
+    const urgentObservation=observationReadoutKey!==lastMarketObservationReadoutKey;
+    lastMarketObservationReadoutKey=observationReadoutKey;
     marketTotalsUpdates.publish(activeProvider,{
       asset:currentAsset,engine:view.settings?.engine,durationMs:view.settings?.orderDurationMs||60000,
       language:view.settings?.uiLanguage||'pt',state:view.state,at:marketReadingsAt,quoteAt:liveTs,
       fresh:view.state==='running'&&!analysisStale&&a.vnext?.engineId===view.settings?.engine&&
         view.lastEvalMs>0&&marketReadingsAt-view.lastEvalMs<3500,
-      cards:a.vnext?.cards||[]
-    });
+      cards:a.vnext?.cards||[],observation:a.vnext?.mode==='now'?Object.fromEntries(
+        ['marketReading','marketPhase','marketPhaseLabel','marketTrendSide','observedAt','quoteAt','evaluatedAt']
+         .map(k=>[k,a.vnext.nowObservation?.[k]])):null
+    },{urgent:urgentObservation});
     const op=a.operationalSignal||{},scenario=op.scenario||{},admission=a.vnext?.nowObservation?.precision||{},
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {reviewEntryPrice,stretchedImpulse} from '../sentinel-trading-lab/agent/src/core/entry-price-timing.mjs';
-import {marketReading} from '../sentinel-trading-lab/agent/src/core/market-reading.mjs';
+import {marketReading,marketDataStatus} from '../sentinel-trading-lab/agent/src/core/market-reading.mjs';
 import {observedLevelSequence,applyObservedLevelSequence,confirmedLevelReversal} from '../sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs';
 import {reviewDirectionalPersistence} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
@@ -47,11 +47,11 @@ test('a received current pivot break confirms a genuine reversal without a secon
   assert.equal(reviewEntryPrice(a).ready,true);
  }
 });
-test('changing a setup name cannot bypass an already extended price, and 5m keeps its separate admission',()=>{
+test('changing a setup name cannot bypass an extended price on any supported expiry',()=>{
  const a=input(extended());for(const reason of ['historical-level-breakout','confirmed-level-structure-reversal','failed-breakout-structure-change']){
   assert.equal(reviewEntryPrice({...a,candidate:{...a.candidate,reason}}).ready,false);
  }
- assert.equal(reviewEntryPrice({...a,durationMs:300000}),a.candidate);
+ assert.equal(reviewEntryPrice({...a,durationMs:300000}).ready,false);
 });
 test('a range-turn label cannot contradict an explicit unsupported latest price move',()=>{
  const quoteHistory=Array.from({length:71},(_,i)=>({ts:T-70000+i*1000,price:100+(i%2)*.1}));
@@ -81,7 +81,8 @@ test('the market reading stays about phase and direction, independently of admis
   assert.equal(marketReading({phase:'weakening',label:'CONTINUIDADE PERDENDO FORÇA',trendSide:'CALL',quoteAt:T,now:T+400,candidate:{ready:false,reason}}),'CONTINUIDADE PERDENDO FORÇA · CALL');
  }
  assert.equal(marketReading({phase:'reversal-testing',trendSide:'CALL',quoteAt:T,now:T}),'REVERSÃO EM TESTE · PUT');
- assert.equal(marketReading({phase:'continuing',label:'CONTINUIDADE',trendSide:'PUT',quoteAt:T,now:T+4000}),'COTAÇÃO ATRASADA');
+ assert.equal(marketReading({phase:'continuing',label:'CONTINUIDADE',trendSide:'PUT',quoteAt:T,now:T+4000}),'CONTINUIDADE · PUT');
+ assert.match(marketDataStatus({quoteAt:T,evaluatedAt:T,now:T+4000}),/^COTAÇÃO ATRASADA/);
 });
 test('PC market interpretation survives the mobile broadcast unchanged',()=>{
  const reading='CONTINUIDADE PERDENDO FORÇA · CALL';
@@ -90,6 +91,6 @@ test('PC market interpretation survives the mobile broadcast unchanged',()=>{
 });
 test('expiry code and protections are preserved independently of the rebuilt market engine',()=>{
  const keeper=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs',import.meta.url),'utf8');
- assert.match(keeper,/revision:10/);assert.match(keeper,/beforeunload/);
+ assert.match(keeper,/revision:11/);assert.match(keeper,/beforeunload/);
  assert.doesNotMatch(readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8'),/LateImpulseReview|entryTimingReview/);
 });
