@@ -93,7 +93,7 @@ test('retired clock sources, selectors and obsolete zero expiry price are remove
  assert.doesNotMatch(read('src/components/LiveScenarioCard.tsx'),/brokerClockView|clock-mode-selector|changeClock|brokerTiming/);
  assert.doesNotMatch(read('agent/worker/local-playwright-driver.mjs'),/brokerClockView|data-sentinel-clock-mode|readBrokerTiming|PREÇO AO VENCER/);
 });
-test('actual runtime can issue a historical reaction with 14 seconds of fresh quotes and received history',async()=>{
+test('actual runtime keeps a generic historical reaction out of 30s despite fresh received history',async()=>{
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  r.stateName='running';r.settings.asset='EUR/USD';r.settings.engine='automatic';
  const q=quotes([...Array(8).fill(reject[0].price),...reject.map(x=>x.price)]);
@@ -101,7 +101,8 @@ test('actual runtime can issue a historical reaction with 14 seconds of fresh qu
   quoteTs:T,lastQuoteAt:T,quoteHistory:q,candles:candles(),quoteFeedValidated:true,analysisFeedValidated:true,assetValidated:true});
  await r.tick(T,{skipStatus:true});
  const signal=r.lastResult.analysis.vnext.futureEntryAnchor;
- assert.equal(signal.side,'CALL');assert.equal(signal.entryTriggeredAt,T);assert.equal(signal.exitAt,T+30000);
+ assert.equal(signal,null);
+ assert.equal(r.lastResult.analysis.vnext.nowObservation.reason,'short-horizon-setup-not-eligible');
  assert.equal(r.lastResult.order,undefined);
 });
 test('the actual PC timer cannot keep ENTRY NOW after its short indication or restart an expired signal',()=>{
