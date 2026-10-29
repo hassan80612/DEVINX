@@ -19,11 +19,9 @@ function freshFloor(){
 function candidate(a,reason='closed-structure-and-live-impulse',side='PUT',extra={}){
  return {ready:true,side,reason,observedAt:a.quoteAt,entryPrice:a.price,...extra};
 }
-test('60s: a newly printed floor without independent follow-through is not a verified continuation',()=>{
+test('176 restores the 168 admission of a significant new low without an obligatory retest',()=>{
  const a=freshFloor(),c=candidate(a),risk=lateUnverifiedFloorImpulseRisk({...a,candidate:c});
- assert.equal(risk?.kind,'unverified-late-put-near-recent-floor');
- assert.ok(risk.position<=.20);
- assert.equal(risk.rangeSeconds,90);
+ assert.equal(risk,null);
  // Does not invert side into CALL; no synthetic reversal is manufactured.
  assert.equal(c.side,'PUT');
 });
@@ -45,8 +43,8 @@ test('60s: independent breakpoint and reversal families retain the previous beha
   const c=candidate(a,'closed-structure-and-live-impulse','PUT',{
    priceStructure:{observedSequence:{continuation:proof}}
   });
-  assert.equal(lateUnverifiedFloorImpulseRisk({...a,candidate:c})?.kind,
-   'unverified-late-put-near-recent-floor');
+  assert.equal(lateUnverifiedFloorImpulseRisk({...a,candidate:c}),null,
+   'a new low retains the 168 rule; a forged retest adds no permission');
  }
 });
 test('a valid continuation with room above a prior floor and 30s/5m are untouched',()=>{

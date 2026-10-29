@@ -1,6 +1,9 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "REVERSÃO AINDA SEM QUEBRA": "REVERSAL WITHOUT A STRUCTURAL BREAK YET",
+  "CONTINUIDADE TESTANDO RESISTÊNCIA": "CONTINUATION TESTING RESISTANCE",
+  "CONTINUIDADE TESTANDO SUPORTE": "CONTINUATION TESTING SUPPORT",
   "CONTINUIDADE ESTICADA": "EXTENDED CONTINUATION",
   "REVERSÃO EM ANÁLISE": "REVERSAL UNDER REVIEW",
   "ANALISANDO ESTRUTURA": "ANALYZING STRUCTURE",

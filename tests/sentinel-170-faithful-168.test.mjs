@@ -13,7 +13,7 @@ for(const [name,sha] of [
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url));
  assert.equal(blob(raw),sha);
 });
-test('173 preserves the whole 172 engine except the audited fresh-floor review',()=>{
+test('176 preserves the 172 engine outside the explicit current-context review',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
  const addedImport="import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';\n";
  const addedGuard=" const shallowCountertrendFastReversal=\n  candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&\n  state.phase==='reversal-testing'&&Number(state.retracement)<.25;\n const ownVerifiedFastReversal=shallowCountertrendFastReversal&&\n  verifiedFastLevelReversal({\n   reversalEvidence:candidate.priceStructure?.confirmedReversal,\n   quoteHistory,quoteAt,now,price,side:candidate.side\n  });\n if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)\n  return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,\n   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};\n";
@@ -22,8 +22,11 @@ test('173 preserves the whole 172 engine except the audited fresh-floor review',
  assert.equal(raw.split(addedGuard).length,2,'verified reversal exemption must occur once');
  const newFloor=" // A NEW LOW by itself is not evidence that a 60s continuation\n // still has room. A closed-candle impulse can otherwise authorize PUT at\n // the fresh floor even though no independently observed break/retest exists.\n // Keep already-qualified independent breakouts and structural continuations\n // available; this screen does not turn PUT into CALL or schedule a retest.\n const sequence=candidate.priceStructure?.observedSequence?.continuation;\n const independentlyConfirmedBreak=sequence?.kind==='break-retest-continuation'&&\n  sequence.side==='PUT'&&Number(sequence.confirmedAt)>0&&\n  Number(sequence.confirmedAt)<=at&&clock-Number(sequence.confirmedAt)<=2500;\n const closedBarOnly=candidate.reason==='closed-structure-and-live-impulse'&&\n  !independentlyConfirmedBreak;\n if(priorLow-spot>Math.max(typical*3,width*.1)&&!closedBarOnly)return null;\n return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,\n  priorLow,typicalStep:typical};";
  const oldFloor=" // A significant NEW verified downward break retains the continuation path.\n // Otherwise wait for the independently assessed current-price reversal;\n // do not reverse a signal merely because the price is low.\n if(priorLow-spot>Math.max(typical*3,width*.1))return null;\n return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,\n  priorLow,typicalStep:typical};";
- assert.equal(raw.split(newFloor).length,2,'173 floor review occurs exactly once');
- const restored172=raw.replace(newFloor,oldFloor);
+ const contextImport="import {currentEntryContextRisk} from './current-entry-context.mjs';\n";
+ const contextReview="  const contextRisk=currentEntryContextRisk({candidate:final,structure,quoteHistory,quoteAt,now,price,durationMs});\n  const contextReviewed=contextRisk?{...final,ready:false,side:null,provisionalSide:final.side,\n   reason:contextRisk.kind,entryRisk:contextRisk}:final;\n  const structuralDecision=fiveMinuteReversalOnly({candidate:contextReviewed,durationMs,quoteAt,now,price});";
+ assert.equal(raw.split(oldFloor).length,2,'the 168 floor rule is restored exactly');
+ assert.equal(raw.split(contextImport).length,2);assert.equal(raw.split(contextReview).length,2);
+ const restored172=raw.replace(contextImport,'').replace(contextReview,"  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});");
  assert.equal(blob(Buffer.from(restored172)),'db6123f7bb59823124401c53538335ce895d7619','173 must preserve all 172 engine logic outside the floor review');
  const restored=Buffer.from(restored172.replace(addedImport,'').replace(addedGuard,originalGuard));
  assert.equal(blob(restored),'898d1a79204f5ca2e6580dad6e1a49617ce6d2ec','no other 170 engine code may change');

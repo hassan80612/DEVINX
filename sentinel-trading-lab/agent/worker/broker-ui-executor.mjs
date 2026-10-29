@@ -293,6 +293,8 @@ export class BrokerUiExecutor{
     validatedSynchronously:Number(nativeExpiry?.currentMs)>0};
    if(nativeExpiry?.blocked)throw errorBefore(nativeExpiry.reason==='expiry-repair-in-progress'?
     'Expiração sendo restaurada; este sinal foi descartado sem clique.':
+    /unverified|not-ready/.test(String(nativeExpiry.reason))?
+    'Expiração da corretora ainda não identificada; este sinal foi descartado sem clique.':
     'Expiração da corretora diferente da selecionada; este sinal foi descartado sem clique.');
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes

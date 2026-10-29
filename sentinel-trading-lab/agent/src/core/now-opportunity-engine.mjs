@@ -16,6 +16,7 @@ import {liveEntryContradiction} from './live-entry-contradiction.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
+import {currentEntryContextRisk} from './current-entry-context.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -68,18 +69,10 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
  if(position>.20)return null;
  steps.sort((a,b)=>a-b);
  const typical=steps[Math.floor(steps.length/2)];
- // A NEW LOW by itself is not evidence that a 60s continuation
- // still has room. A closed-candle impulse can otherwise authorize PUT at
- // the fresh floor even though no independently observed break/retest exists.
- // Keep already-qualified independent breakouts and structural continuations
- // available; this screen does not turn PUT into CALL or schedule a retest.
- const sequence=candidate.priceStructure?.observedSequence?.continuation;
- const independentlyConfirmedBreak=sequence?.kind==='break-retest-continuation'&&
-  sequence.side==='PUT'&&Number(sequence.confirmedAt)>0&&
-  Number(sequence.confirmedAt)<=at&&clock-Number(sequence.confirmedAt)<=2500;
- const closedBarOnly=candidate.reason==='closed-structure-and-live-impulse'&&
-  !independentlyConfirmedBreak;
- if(priorLow-spot>Math.max(typical*3,width*.1)&&!closedBarOnly)return null;
+ // A significant NEW verified downward break retains the continuation path.
+ // Otherwise wait for the independently assessed current-price reversal;
+ // do not reverse a signal merely because the price is low.
+ if(priorLow-spot>Math.max(typical*3,width*.1))return null;
  return {kind:'unverified-late-put-near-recent-floor',position,rangeSeconds:90,
   priorLow,typicalStep:typical};
 }
@@ -584,7 +577,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
-  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});
+  const contextRisk=currentEntryContextRisk({candidate:final,structure,quoteHistory,quoteAt,now,price,durationMs});
+  const contextReviewed=contextRisk?{...final,ready:false,side:null,provisionalSide:final.side,
+   reason:contextRisk.kind,entryRisk:contextRisk}:final;
+  const structuralDecision=fiveMinuteReversalOnly({candidate:contextReviewed,durationMs,quoteAt,now,price});
   const persistenceDecision=reviewDirectionalPersistence({
    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
   });

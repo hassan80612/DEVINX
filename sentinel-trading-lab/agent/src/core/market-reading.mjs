@@ -8,6 +8,11 @@ export function marketReading({phase,label,trendSide,candidate={},observation={}
   const reversal=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
    'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection']);
   text=reversal.has(candidate.reason)?'REVERSÃO CONFIRMADA':'CONTINUIDADE';direction=side(candidate.side);
+ }else if(candidate.entryRisk?.kind==='range-turn-inside-persistent-directional-leg'){
+  text='REVERSÃO AINDA SEM QUEBRA';direction=side(candidate.provisionalSide);
+ }else if(candidate.entryRisk?.kind==='continuation-retesting-uncleared-opposing-wall'){
+  direction=side(candidate.provisionalSide);
+  text=direction==='CALL'?'CONTINUIDADE TESTANDO RESISTÊNCIA':'CONTINUIDADE TESTANDO SUPORTE';
  }else if(candidate.entryTiming?.kind==='entry-price-already-extended'){
   text=/reversal|rejection|structure-change/.test(String(candidate.entryTiming?.setup||''))?
    'REVERSÃO JÁ ESTICADA':'CONTINUIDADE ESTICADA';direction=side(candidate.provisionalSide);

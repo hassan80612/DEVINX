@@ -1701,3 +1701,7 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenarioRefined .vnextTargetCountdown{height:auto;min-height:80px;max-height:none;overflow:visible}
 .liveScenarioRefined .vnextTargetCountdown small,
 .liveScenarioRefined .vnextTargetCountdown span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.35}
+
+/* The live secondary reading owns a stable row, including an empty update. */
+.liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
+.app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){height:auto;min-height:64px;max-height:none;align-items:flex-start}
