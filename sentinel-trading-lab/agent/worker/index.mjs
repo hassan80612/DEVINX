@@ -4,6 +4,7 @@ import {SignalExecutor} from './signal-executor.mjs';
 import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
+import {chooseConnectedBrokerForReading} from './broker-start-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {brokerMaintenanceCadenceMs} from './broker-maintenance-cadence.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
@@ -108,20 +109,17 @@ async function executorAction(action,payload={}){
 function remoteExecutorState(){return unpackExecutor(packExecutor({...executor.status(),provider:activeProvider,updatedAt:Date.now()}));}
 
 function chooseLive(){
-  if(activeProvider){
-    const activePeek=driver.peek?.(activeProvider);
-    if(activePeek?.updatedAt&&activePeek.open===false)activeProvider=null
-  }
-  const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];
-  for(const k of order){
-    const b=brokers[k],peek=driver.peek?.(k),m=driver.liveStatus?.(k);
-    if(peek?.updatedAt&&peek.open===false)continue;
-    if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){
-      if(activeProvider!==k)activeProvider=k;
-      return{k,m}
-    }
-  }
-  return null
+ if(activeProvider){
+  const peek=driver.peek?.(activeProvider);
+  if(peek?.updatedAt&&peek.open===false)activeProvider=null;
+ }
+ const selected=chooseConnectedBrokerForReading({
+  preferred:activeProvider,brokers,
+  peek:k=>driver.peek?.(k),
+  liveStatus:k=>driver.liveStatus?.(k)
+ });
+ if(selected&&activeProvider!==selected.k)activeProvider=selected.k;
+ return selected;
 }
 function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordMarketJournal)marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
@@ -218,11 +216,23 @@ async function ensureLocalCockpitBroker(provider){
     await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
     adapter.connected=true;adapter._step?.('session',true,'sessão local conectada pelo card');
   }
-  await driver.maintain?.(provider).catch(()=>{});
-  await primeVisibleMarket(provider);
+  // Never wait for history, broker DOM or a fresh quote to acknowledge START.
+  // Recover the ALREADY open instrument in the background; trading remains
+  // blocked by the engine's verified feed and current-quote requirements.
+  void Promise.resolve().then(async()=>{
+    await primeVisibleMarket(provider);
+    await driver.maintain?.(provider).catch(()=>{});
+    adapter.refreshFromLive?.();
+    if(activeProvider===provider){syncRuntimeMarket();runtime.requestImmediateEvaluation?.();}
+  }).catch(()=>{});
   adapter.refreshFromLive?.();
   const live=syncRuntimeMarket();
-  if(!live)throw new Error('Aguardando leitura do ativo atual.');
+  if(!live&&adapter.connected){
+    runtime.setExternalMarket?.({provider,symbol:runtime.settings.asset,
+      quote:null,quoteTs:0,candles:[],quoteHistory:[],feedValidated:false,
+      quoteFeedValidated:false,analysisFeedValidated:false});
+    runtime.setExecutionBroker?.(adapter);
+  }
   return live
 }
 async function primeVisibleMarket(provider){
@@ -234,7 +244,15 @@ async function primeVisibleMarket(provider){
     if(market?.uiSymbol||market?.validatedSymbol||market?.symbol)
       void Promise.resolve(driver.requestMarketData?.(provider,{force:true})).catch(()=>{});
     else
-      void Promise.resolve(driver.requestBaseData?.(provider)).catch(()=>{});
+      void Promise.resolve().then(async()=>{
+        // The tab was opened BEFORE the Agent connected. Discover the
+        // existing selected instrument once, without clicking a new asset.
+        await driver.domSnapshot?.(provider).catch(()=>{});
+        const selected=driver.liveStatus?.(provider);
+        if(selected?.uiSymbol||selected?.validatedSymbol||selected?.symbol)
+          await driver.requestMarketData?.(provider,{force:true});
+        else await driver.requestBaseData?.(provider);
+      }).catch(()=>{});
     return true
   }catch{return false}
 }
@@ -696,7 +714,15 @@ function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
   assertLicensedAccess();
 }
-async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path.startsWith('/executor/')&&method==='POST'){if(path==='/executor/start'&&(executor.enabled||executor.arming))throw Error('Bot já ligado ou em ativação.');await dispatchExecutor(path,payload,executorAction,executionContext);return status();}if(path==='/diagnostics/market'&&method==='POST')return marketDiagnostic(runtime,runtime.externalMarket||{});if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}await primeVisibleMarket(activeProvider);syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path.startsWith('/executor/')&&method==='POST'){if(path==='/executor/start'&&(executor.enabled||executor.arming))throw Error('Bot já ligado ou em ativação.');await dispatchExecutor(path,payload,executorAction,executionContext);return status();}if(path==='/diagnostics/market'&&method==='POST')return marketDiagnostic(runtime,runtime.externalMarket||{});if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){
+    if(activeProvider&&brokers[activeProvider]?.connected){
+      // Reuse the attached instrument immediately; market recovery is async.
+      void Promise.resolve().then(()=>primeVisibleMarket(activeProvider)).catch(()=>{});
+      brokers[activeProvider].refreshFromLive?.();
+    }
+    syncRuntimeMarket();
+    return runtime.start(payload.actor||'user');
+  };if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
     if(payload?.brokerSwitch===true){
       const provider=String(payload.provider||activeProvider||'');
       if(!['iq_option','exnova'].includes(provider)||!brokers[provider]?.connected)
