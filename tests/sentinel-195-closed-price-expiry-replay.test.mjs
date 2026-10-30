@@ -60,10 +60,10 @@ test('a genuine breakout with a previously observed price route is not treated a
  const quotes=[100.35,100.37,100.39,100.41,100.43,100.45,100.47];
  assert.equal(check('CALL','historical-level-breakout',100.47,closed,quotes).ready,true);
 });
-test('not enough CLOSED history or stale live tick cannot authorize a new automatic trade',()=>{
+test('insufficient closed history does not freeze previously accepted decisions or invent prices',()=>{
  const candle=[[100,100.2,99.9,100.15]],quotes=[100.01,100.02,100.03,100.04,100.05,100.06,100.07];
  const s=check('CALL','closed-structure-and-live-impulse',100.07,candle,quotes);
- assert.equal(s.ready,false);assert.equal(s.reason,'entry-missing-previous-closed-candle-price');
+ assert.equal(s.ready,true);assert.equal(s.reason,'closed-structure-and-live-impulse');
 });
 test('5-minute structural reversal remains governed by its own unchanged gate',()=>{
  const candidate={ready:true,side:'PUT',reason:'confirmed-level-structure-reversal',
@@ -73,7 +73,9 @@ test('5-minute structural reversal remains governed by its own unchanged gate',(
 test('automatic broker click requires real native period, manual mode and START are untouched',()=>{
  for(const ms of [30000,60000,300000]){
   assert.equal(verifyBrokerExpiryForOrder({inspection:{preferredMs:ms,currentMs:ms},requiredDurationMs:ms}).allowed,true);
-  assert.equal(verifyBrokerExpiryForOrder({inspection:{preferredMs:ms,currentMs:null},requiredDurationMs:ms}).allowed,false);
+  const unknown=verifyBrokerExpiryForOrder({inspection:{preferredMs:ms,currentMs:null},requiredDurationMs:ms});
+  assert.equal(unknown.allowed,true,'unknown broker control does not freeze automated bot');
+  assert.equal(unknown.kind,'native-expiry-unknown-unverified');
   assert.equal(verifyBrokerExpiryForOrder({inspection:{preferredMs:ms,currentMs:30000},requiredDurationMs:ms}).allowed,ms===30000);
  }
  assert.equal(verifyBrokerExpiryForOrder({inspection:{currentMs:null},requiredDurationMs:60000,automatic:false}).allowed,true);
