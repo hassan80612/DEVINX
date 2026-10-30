@@ -1,1 +1,1 @@
-{"format":"sentinel-agent-update-v1","version":"13.9.194","build":"13.9.194-recover-existing-asset-and-avoid-exhausted-top","zipSha256":"664cf080d1b609d491778dc0ab5b11303114753e44c468c6eba24efa2e1455c4"}
+{"format":"sentinel-agent-update-v1","version":"13.9.195","build":"13.9.195-mandatory-previous-candle-price-and-native-expiry-proof","zipSha256":"3a9d64204edbf507ca697a1598b62bdbb8b29c1c8f3a4ccfcc9b2a35b3c2797e"}
