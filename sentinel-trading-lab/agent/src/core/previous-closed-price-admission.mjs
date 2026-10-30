@@ -87,8 +87,14 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
   const weakUnreclaimedClose=priorCandleAgainst&&
     d*(spot-last.close)<=atr*.10&&
     (move3<=atr*.13||move6<=atr*.14);
+  // The first 194 LOSS was a CALL just BELOW the preceding closed
+  // candle's upper wick. A green live tick is not a proven break through
+  // that previous ceiling, especially after the closed red body.
+  const nearPreviousWrongWick=dLast<0&&from3<atr*.12&&
+    (d>0?spot>=last.high-atr*.06:spot<=last.low+atr*.06)&&
+    move3<=atr*.30;
   if(contradictedNow||clearlyFailedTurn||
-    unreclaimedPreviousExtreme||weakUnreclaimedClose)
+    unreclaimedPreviousExtreme||weakUnreclaimedClose||nearPreviousWrongWick)
    return veto(candidate,'closed-candle-reversal-not-supported-by-live-price',proof);
   return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
  }
