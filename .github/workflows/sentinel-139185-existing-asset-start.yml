@@ -8,6 +8,7 @@ on:
       - 'sentinel-trading-lab/src/**'
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-185-existing-asset-start.test.mjs'
+      - 'tests/sentinel-13940-manual-bankroll.test.mjs'
       - 'tests/sentinel-166-expiry-reload.test.mjs'
       - '.github/workflows/sentinel-139185-existing-asset-start.yml'
 permissions:
