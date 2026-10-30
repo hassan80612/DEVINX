@@ -20,7 +20,7 @@ test('196: original 189 fast 1m reversal route softened only from 50 to 40 prior
  assert.match(timing,/map\?\.observedCandles>=40/);
  assert.match(timing,/lastTwoConfirm\(rows,event.side\)/);
  assert.match(timing,/proof\.pivots>=1&&zone\?\.independentTests>=2/);
- assert.equal(reviewEarlyDistantReversal({candidate:{ready:false},map:null,durationMs:60000}),undefined);
+ assert.equal(reviewEarlyDistantReversal({candidate:{ready:false},map:null,durationMs:60000}).ready,false);
 });
 test('196: expiry starts from first new genuine quote, without fixed pause, and no duplicate',()=>{
  assert.equal(POST_EXPIRY_REASSESS_MS,0);
