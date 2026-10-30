@@ -1,12 +1,12 @@
 // Persist only the broker's explicitly labelled chart timeframe. This is a
 // separate control from order expiry and never touches market subscriptions.
-export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,requestedAt=0}={}){
+export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,requestedAt=0,allowEmbedded=false}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const host=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
-    (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
-  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===6){
+    (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host)))&&!(allowEmbedded&&window.top!==window))return;
+  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===7){
     if(requestedSeconds!=null)window.__sentinelBrokerChartPeriodKeeperV1.setPreferred?.(requestedSeconds,{selectedAt:requestedAt});
     return;
   }
@@ -66,7 +66,10 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
   // across a rebuilt broker frame, even when that frame has another origin.
   const applyAgentChoice=(seconds,selectedAt)=>{
     const value=Number(seconds),at=Number(selectedAt)||0;
-    if(!ACCEPT.has(value)||at<preferredAt)return false;
+    // Only an equal/newer trusted timestamp can supersede the selection.
+    // A restored broker default with timestamp 0 must NEVER replace one.
+    if(!ACCEPT.has(value)||at<preferredAt||
+       (at===0&&preferredSeconds!=null&&preferredSeconds!==value))return false;
     if(preferredSeconds===value&&at===preferredAt)return true;
     preferredSeconds=value;preferredAt=at;
     try{localStorage.setItem(key,String(value));if(at)localStorage.setItem(key+':selectedAt',String(at));}catch{}
@@ -187,7 +190,7 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
   // while the executor temporarily revokes permission around order clicks.
   const notify=()=>{window.__sentinelBrokerChartPeriodStatusV1={
    provider,preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,
-   repairing,revision:6
+   repairing,revision:7
   }};
   function restore(control){
    const now=Date.now();
@@ -308,7 +311,7 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
   window.addEventListener?.('focus',onWake);
   window.addEventListener?.('pagehide',persistBeforeLeave);
   window.addEventListener?.('beforeunload',persistBeforeLeave);
-  window.__sentinelBrokerChartPeriodKeeperV1={revision:6,provider,poll,
+  window.__sentinelBrokerChartPeriodKeeperV1={revision:7,provider,poll,
    setPreferred:(value,{selectedAt=0}={})=>{
     const changed=applyAgentChoice(value,selectedAt);
     if(changed)poll();
