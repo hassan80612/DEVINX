@@ -154,3 +154,38 @@ test('Exnova compact rail restores saved 5m preference across a new frame',()=>{
   assert.equal(b.current(),'5 min');assert.equal(b.preference(),'300');
  }finally{b.close()}
 });
+
+test('197: broker iframe with a different hostname restores previously chosen 1m',()=>{
+ const b=broker('30 s',60,{compactRail:true});
+ try{
+  globalThis.location.hostname='embedded-candles.example';
+  globalThis.window.top={};
+  globalThis.innerWidth=400;
+  installBrokerChartPeriodKeeper({provider:'exnova'});
+  assert.equal(b.status(),undefined,'an untrusted non-broker top page is not controlled');
+  installBrokerChartPeriodKeeper({provider:'exnova',allowEmbedded:true,requestedSeconds:60,requestedAt:100100});
+  b.tick(13000);b.tick(2500);
+  assert.equal(b.current(),'1 min','embedded chart reset must restore 1m');
+  assert.equal(b.preference(),'60');
+  assert.equal(b.remembered.length,0,'automatic repair must not create fake manual event');
+ }finally{b.close()}
+});
+test('197: user can explicitly choose 30s and it must be remembered as manual',()=>{
+ const b=broker('1 min',60);
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova'});
+  b.openPicker();b.choose('30 s',{rerender:true});b.tick();
+  assert.equal(b.preference(),'30');
+  assert.ok(b.remembered.some(x=>x.value===30));
+  assert.equal(b.current(),'30 s');
+ }finally{b.close()}
+});
+test('197: stale 30s with no manual timestamp does not cancel a saved 1m',()=>{
+ const b=broker('30 s',60,{compactRail:true});
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova',requestedSeconds:30,requestedAt:0});
+  b.tick(13000);b.tick(2500);
+  assert.equal(b.preference(),'60');
+  assert.equal(b.current(),'1 min');
+ }finally{b.close()}
+});
