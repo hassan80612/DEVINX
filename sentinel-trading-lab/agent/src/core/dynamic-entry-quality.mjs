@@ -59,10 +59,22 @@ export function reviewDynamicEntryQuality({candidate,quoteHistory=[],quoteAt,now
  const lateStall=extreme&&first>=typical*4.5&&
   last>=-typical*.25&&last<=Math.max(typical*.6,first*.10)&&
   steps[1]<=typical*.30;
- if(!lateStall)return candidate;
+ // At a previously reached high/low, the final two observed ticks can
+ // turn against the direction before the current price leaves the exact
+ // extreme. The earlier exact-high test missed this common entry trap.
+ // Do not confuse a moving breakout with a rejected, exhausted top.
+ const tip= d>0?Math.max(...prices):Math.min(...prices);
+ const distanceFromTip=d*(tip-spot);
+ const nearTip=distanceFromTip>=0&&distanceFromTip<=typical*1.5;
+ const lateRejection=nearTip&&first>=typical*4.5&&
+  last<=Math.max(typical*1.2,first*.15)&&
+  steps[0]<=typical*.30&&steps[1]<=typical*.30&&
+  (steps[0]<0||steps[1]<0);
+ if(!lateStall&&!lateRejection)return candidate;
  // A genuine level breakthrough needs the existing structural proof; the
  // name "breakout" alone is not permission to chase a stalled impulse.
  return {...candidate,ready:false,side:null,provisionalSide:side,
   reason:'dynamic-extended-impulse-lost-momentum',
-  entryQuality:{kind:'stalled-after-strong-leg',initialMove:first,currentMove:last,observedTypicalMove:typical}};
+  entryQuality:{kind:lateRejection?'rejected-extreme-after-strong-leg':'stalled-after-strong-leg',
+   initialMove:first,currentMove:last,observedTypicalMove:typical}};
 }
