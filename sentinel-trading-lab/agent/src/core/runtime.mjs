@@ -1227,7 +1227,13 @@ export class DemoTradingRuntime{
       // The LAST admission checks the actual entry price against the
       // preceding CLOSED broker candles, multi-window extremes and fresh
       // observed ticks. No independent clock, direction override or waiting.
-      eligible=reviewPreviousClosedCandlePrice({
+      // During an already OPEN option, keep observing verified opposite
+      // reactions for the existing missed-price memory. The new admission
+      // gate applies before an ACTUAL new signal, never erases evidence
+      // accumulated while another one-shot expiry is still in progress.
+      const alreadyInLiveOperation=this.vnextWindowState?.phase==='fired'&&
+        now<Number(this.vnextWindowState.exitAt);
+      if(!alreadyInLiveOperation)eligible=reviewPreviousClosedCandlePrice({
         candidate:eligible,candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
