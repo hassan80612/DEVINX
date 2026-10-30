@@ -1223,7 +1223,7 @@ export class DemoTradingRuntime{
       // No extra quote collection, delay or repeated pending state.
       eligible=reviewOneMinuteRejectionProof({
         candidate:eligible,original:original66,durationMs:settings.orderDurationMs,
-        quoteAt:snap.quoteTs,now,price:snap.price
+        quoteAt:snap.quoteTs,now,price:snap.price,quoteHistory:snap.quoteHistory
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
