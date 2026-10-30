@@ -218,23 +218,14 @@ export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  const valid=Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot&&
   at>0&&at<=clock&&clock-at<=2500&&spot>0&&isSide(candidate.side);
- if(valid&&entryFamily!=='reversal'&&entryFamilyOf(candidate)==='continuation'){
-  const quotes=causalQuotes(quoteHistory,now,300000).filter(q=>q.ts<=at);
-  const noise=observedNoise({quotes,now:at,horizonSeconds:60});
-  const longer=longHorizonDirection({quotes,quoteAt:at,price:spot,durationMs,noise});
-  if(longer.ready&&longer.significant&&longer.side===candidate.side){
-   const map=structure?.candleLevelMap,tol=Number(map?.tolerance||structure?.tolerance),sign=candidate.side==='CALL'?1:-1;
-   const wall=tol>0&&map?.asOf<=now&&map.levels?.find(z=>{
-    const role=levelRoleEvidence(z,sign>0?'PUT':'CALL'),gap=sign>0?Number(z.low)-spot:spot-Number(z.high);
-    return role.pivots>=1&&role.rejections>=2&&gap>=0&&gap<=tol*1.25;
-   });
-   if(wall)return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
-    reason:'five-minute-continuation-without-clearance',entryRisk:{kind:'continuation-retesting-uncleared-opposing-wall',level:wall.level}};
-   return {...candidate,fiveMinuteContextConfirmed:true};
-  }
-
-  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,reason:'five-minute-continuation-without-horizon-context'};
- }
+ // Five-minute orders require independently confirmed reversal evidence.
+ // A strong trend is context only, not automatic trade permission:
+ // continuing an impulse near a distant extreme caused missed real turns.
+ // Preserve the quote, broker expiration and observation pipelines.
+ if(valid&&entryFamilyOf(candidate)==='continuation')
+  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+   reason:'five-minute-reversal-only-awaiting-proof',
+   fiveMinuteReversalConfirmed:false};
  const proof=candidate.priceStructure||{},reason=candidate.reason;
  const current=e=>e&&e.side===candidate.side&&Number(e.confirmedAt)>0&&
   Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=2500;

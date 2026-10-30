@@ -75,14 +75,12 @@ export function reviewLiveExtremeTiming({candidate,original,quoteHistory=[],cand
     pricePosition3:Number(pos3.toFixed(3)),pricePosition50:Number(pos50.toFixed(3)),
     impulseNoise:Number((Math.abs(impulse)/noise).toFixed(3))}};
 }
-// Independently review old tested level rejections for 30s and 1m, even
-// when the impulse continuation proposal is already ready. Two observed
-// successive moves away from that old zone are required; 5m instead
-// retains its separate sustained-level and structural-turn requirements.
+// Restore the missed early 1m rejection route at older tested levels, but only
+// after two consecutive observed price changes AWAY from a genuine zone.
 // All other strategy, expiry, precision and executor guards still apply.
 export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteAt,
  now=quoteAt,price,durationMs}={}){
- if(![30000,60000].includes(Number(durationMs))||!candidate)return candidate;
+ if(Number(durationMs)!==60000||!candidate)return candidate;
  // Judge a VERIFIED level rejection independently of the impulse path.
  // A ready continuation must not short-circuit this opposite-side check;
  // a previously qualified reversal still owns its direction.

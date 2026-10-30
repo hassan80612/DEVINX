@@ -175,15 +175,7 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
   // Equally strong opposing levels are unresolved, not two simultaneous calls.
   const opposed=reactions.find(x=>x.side!==reaction.side&&x.weight>=reaction.weight*.8);
   if(opposed)return {...candidate,ready:false,side:null,reason:'historical-level-reactions-conflict',priceStructure:evidence};
-  // Five-minute reversal proof independently covers 3/10/20 seconds of
-  // real price movement away from a verified closed-candle level. Do not
-  // let an old continuation extrapolation veto that observed turn.
-  const fiveMinuteVerifiedTurn=Number(durationMs)===300000&&reaction.kind==='rejection'&&
-   evidence.reactionProof?.confirmed===true&&
-   evidence.reactionProof?.kind==='sustained-level-reversal'&&
-   Number(evidence.reactionProof.durationMs)===300000;
-  if(candidate.pendingForecast?.ready&&candidate.pendingForecast.side!==reaction.side&&
-     !fiveMinuteVerifiedTurn)
+  if(candidate.pendingForecast?.ready&&candidate.pendingForecast.side!==reaction.side)
    return {...candidate,ready:false,side:null,reason:'historical-level-versus-expiry-conflict',priceStructure:evidence};
   return {...candidate,ready:true,side:reaction.side,observedAt:ts,entryPrice:spot,
    reason:'historical-level-'+reaction.kind,priceStructure:evidence};

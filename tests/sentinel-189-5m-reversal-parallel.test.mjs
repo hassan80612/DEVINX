@@ -29,3 +29,13 @@ test('5m unconfirmed touch is WAIT, not fabricated entry',()=>{
   now:T,price:100,entryFamily:'automatic',quoteHistory:[]});
  assert.equal(result.ready,false);
 });
+
+test('5m automatic cannot authorize an impulse continuation without an actual extreme reversal',()=>{
+ const candidate={ready:true,side:'CALL',observedAt:T,entryPrice:100,
+  reason:'closed-structure-and-live-impulse'};
+ const result=fiveMinuteReversalOnly({candidate,durationMs:300000,quoteAt:T,now:T,
+  price:100,entryFamily:'automatic',quoteHistory:[]});
+ assert.equal(result.ready,false);
+ assert.equal(result.reason,'five-minute-reversal-only-awaiting-proof');
+ assert.equal(result.fiveMinuteReversalConfirmed,false);
+});

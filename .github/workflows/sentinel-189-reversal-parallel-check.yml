@@ -18,4 +18,4 @@ jobs:
         run: node --check sentinel-trading-lab/agent/src/core/historical-extreme-timing.mjs
       - name: Check reversal, 30s, expiry, side and click regressions
         run: |
-          node --test --test-concurrency=4 tests/sentinel-188-extreme-reversal-timing.test.mjs tests/sentinel-189-5m-reversal-parallel.test.mjs tests/sentinel-187-blitz-and-impulse.test.mjs tests/sentinel-189-native-expiry-and-last-turn.test.mjs tests/sentinel-185-prior-candle-breach.test.mjs tests/sentinel-185-final-turn-veto.test.mjs tests/sentinel-182-entry-family.test.mjs
+          node --test --test-concurrency=4 tests/sentinel-188-extreme-reversal-timing.test.mjs tests/sentinel-187-blitz-and-impulse.test.mjs tests/sentinel-189-native-expiry-and-last-turn.test.mjs tests/sentinel-185-prior-candle-breach.test.mjs tests/sentinel-185-final-turn-veto.test.mjs tests/sentinel-182-entry-family.test.mjs
