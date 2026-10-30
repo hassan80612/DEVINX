@@ -59,6 +59,17 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
   preferredMs:s.preferredMs,currentMs:s.currentMs,requiredDurationMs:required>0?required:null,
   revision:keeper.revision,observedAt:s.observedAt};
 }
+// A preference is NOT the native broker's actual selected expiration.
+// Analyst START remains available; automatic physical clicks require proof.
+// This never writes native controls, adds a delay or affects manual buttons.
+export function verifyBrokerExpiryForOrder({inspection,requiredDurationMs,automatic=true}={}){
+ if(!automatic)return {allowed:true,kind:'manual-mode-preserved'};
+ const actual=Number(inspection?.currentMs),required=Number(requiredDurationMs);
+ if(![30000,60000,300000].includes(required))return {allowed:false,kind:'unsupported-duration'};
+ if(!(actual>0))return {allowed:false,kind:'native-expiry-not-verified'};
+ if(actual!==required)return {allowed:false,kind:'native-expiry-mismatch',actual,required};
+ return {allowed:true,kind:'broker-duration-confirmed',actual,required};
+}
 // Execution telemetry is independent of picker recognition. Read the cached
 // snapshot only: no DOM discovery, poll, repair, wait or trade veto.
 export function observeNativeExpiryForClick({provider,requiredDurationMs=null}={}){
@@ -278,6 +289,35 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    }
    candidates.sort((a,b)=>b.score-a.score);
    if(!candidates.length){discoveryReason='field-not-found';discoverySource=null;return null;}
+   // Exnova can render "Expiration" and "1 min" as separate plain
+   // unlabelled nodes in the narrow RIGHT trade sidebar. Inspect one
+   // exact label next to one exact value; never read the chart's 1m,
+   // countdown, the site's overlay, or an arbitrary nearest number.
+   if(!candidates.length){
+    const labels=[...document.querySelectorAll('div,span,p,label,strong,small')].filter(el=>{
+     if(!visible(el)||unsafeField(el))return false;
+     const r=el.getBoundingClientRect?.();if(!r||r.left<innerWidth*.70||r.top>innerHeight*.65)return false;
+     const raw=String(el.innerText||el.textContent||'').trim();
+     return /^(?:expiration|expiry|expira(?:ç|c)ão|vencimento|duraci[oó]n|duration)[:：]?$/i.test(raw);
+    }).filter(el=>![...el.children||[]].some(k=>labelRe.test(String(k.innerText||k.textContent||'').trim())));
+    const scoped=[];
+    for(const label of labels){
+     let parent=label.parentElement;
+     for(let depth=0;parent&&depth<3;parent=parent.parentElement,depth++){
+      if(unsafeField(parent))continue;
+      const r=parent.getBoundingClientRect?.(),lr=label.getBoundingClientRect?.();
+      if(!r||r.width>330||r.height>105||r.left<innerWidth*.67)break;
+      const values=[...new Set([...parent.querySelectorAll?.('button,span,div,input,[role="combobox"]')||[]]
+       .filter(el=>el!==label&&!el.contains(label)&&visible(el)&&!unsafeField(el)&&
+        el.getBoundingClientRect().top>=lr.top-10&&
+        el.getBoundingClientRect().top<=lr.bottom+70)
+       .map(el=>({el,value:readOwn(el)})).filter(x=>x.value)
+       .map(x=>x.value))];
+      if(values.length===1){scoped.push({el:parent,value:values[0],score:16});break;}
+     }
+    }
+    if(scoped.length===1)candidates.push(scoped[0]);
+   }
    // A tie between disjoint native controls is ambiguous: never guess.
    const top=candidates[0],other=candidates.find(z=>
     z!==top&&z.score===top.score&&!top.el.contains(z.el)&&!z.el.contains(top.el));
