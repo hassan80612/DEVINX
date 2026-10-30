@@ -45,6 +45,7 @@ import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
 import {reviewDynamicEntryQuality} from './dynamic-entry-quality.mjs';
 import {arbitrateFinalSide} from './final-side-arbitration.mjs';
+import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
@@ -1222,6 +1223,14 @@ export class DemoTradingRuntime{
       eligible=arbitrateFinalSide({
         candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
         now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // The LAST admission checks the actual entry price against the
+      // preceding CLOSED broker candles, multi-window extremes and fresh
+      // observed ticks. No independent clock, direction override or waiting.
+      eligible=reviewPreviousClosedCandlePrice({
+        candidate:eligible,candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        durationMs:settings.orderDurationMs
       });
       const previousReactionWindow=this.vnextWindowState;
       this.reactionOpportunityMemory.beginOperation(expiryDirectionContext+'|'+normalizeEntryFamily(settings.entryFamily),previousReactionWindow?.entryTriggeredAt||0);
