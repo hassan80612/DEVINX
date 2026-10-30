@@ -45,6 +45,7 @@ import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';
+import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1224,6 +1225,12 @@ export class DemoTradingRuntime{
       eligible=reviewOneMinuteRejectionProof({
         candidate:eligible,original:original66,durationMs:settings.orderDurationMs,
         quoteAt:snap.quoteTs,now,price:snap.price,quoteHistory:snap.quoteHistory
+      });
+      // Review only already-qualified historical level routes against the
+      // price actually available NOW. No quote wait, side inversion or timer.
+      eligible=reviewSetupIntegrity({
+        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+        now,price:snap.price,durationMs:settings.orderDurationMs
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
