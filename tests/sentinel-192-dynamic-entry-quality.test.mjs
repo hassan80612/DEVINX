@@ -28,7 +28,7 @@ test('fresh continuation with real live acceleration remains eligible at 30s and
 test('tiny two-quote reversal is a fresh observation, not a verified order',()=>{
  const prices=[100,100.1,100.2,100.3,100.4,100.5,100.6,100.7,100.8,100.9,101,
  101.1,101.2,101.3,101.4,101.5,101.6,101.61,101.62,101.60,101.595];
- const out=review(prices,'multiscale-candle-rejection','PUT',60000);
+ const out=review(prices,'closed-range-extreme-reversal-confirmed','PUT',60000);
  assert.equal(out.ready,false);assert.equal(out.reason,'dynamic-reversal-below-observed-noise');
 });
 test('actual reversal with enough displacement relative to current noise is immediate',()=>{
@@ -49,4 +49,14 @@ test('5m, already waiting, missing actual history, and original expiry are uncha
  const waiting={...candidate,ready:false};
  assert.equal(reviewDynamicEntryQuality({candidate:waiting,quoteHistory:ticks(prices),
   quoteAt:T,now:T,price:prices.at(-1),durationMs:60000}),waiting);
+});
+
+test('historically confirmed 3-candle rejection is not replaced by a micro-noise veto',()=>{
+ const prices=[100,100.1,100.2,100.3,100.4,100.5,100.6,100.7,100.8,100.9,101,
+ 101.1,101.2,101.3,101.4,101.5,101.6,101.61,101.62,101.60,101.595];
+ const candidate={ready:true,reason:'multiscale-candle-rejection',side:'PUT',observedAt:T,
+  entryPrice:prices.at(-1),priceStructure:{candleRoute:{event:{candleBacked:true,kind:'rejection'}}}};
+ const checked=reviewDynamicEntryQuality({candidate,quoteHistory:ticks(prices),
+  quoteAt:T,now:T,price:prices.at(-1),durationMs:60000});
+ assert.equal(checked,candidate);
 });

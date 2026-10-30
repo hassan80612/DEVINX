@@ -38,9 +38,8 @@ export function reviewDynamicEntryQuality({candidate,quoteHistory=[],quoteAt,now
  const tail=rows.slice(-3);
  const steps=[d*(tail[1].price-tail[0].price),d*(tail[2].price-tail[1].price)];
  const family=entryFamilyOf(candidate);
- if(family==='reversal'&&
-  ['closed-range-extreme-reversal-confirmed','multiscale-candle-rejection'].includes(candidate.reason)){
-  // These two paths can qualify on two tiny last quotes. Compare the
+ if(family==='reversal'&&candidate.reason==='closed-range-extreme-reversal-confirmed'){
+  // A locally classified RANGE turn can qualify on two tiny last quotes. Compare the
   // actual two-move return against the asset's own preceding tick noise.
   // Never infer an opposite trade or wait for a fixed number of seconds.
   const departure=steps[0]+steps[1];
