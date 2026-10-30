@@ -289,9 +289,12 @@ export class BrokerUiExecutor{
    let nativeExpiry=null;
    try{nativeExpiry=await c.frame.evaluate(observeNativeExpiryForClick,
     {provider,requiredDurationMs:Number(order.durationMs)})}catch{}
-   order.nativeExpiryInspection={...nativeExpiry,blocked:false,
+   const knownExpiry=Number(nativeExpiry?.currentMs);
+   const detectedMismatch=Number.isFinite(knownExpiry)&&knownExpiry>0&&knownExpiry!==Number(order.durationMs);
+   order.nativeExpiryInspection={...nativeExpiry,blocked:detectedMismatch,
     requiredDurationMs:Number(order.durationMs),
-    validatedSynchronously:Number(nativeExpiry?.currentMs)>0};
+    validatedSynchronously:knownExpiry>0};
+   if(detectedMismatch)throw errorBefore('Expiração da corretora diferente do prazo selecionado; entrada ignorada.');
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.

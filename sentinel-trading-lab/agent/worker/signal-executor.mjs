@@ -3,6 +3,7 @@
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
+import {liveEntryQuoteReview} from './live-quote-entry-review.mjs';
 // Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
 // A WIN or completed second LOSS resets the next batch to 1 click.
 export const MAX_MARTINGALE_LEVELS=1;
@@ -35,7 +36,8 @@ export function executorSignal(analysis){
  if(a?.phase!=='fired'||!['CALL','PUT'].includes(a.side)||!(Number(a.entryTriggeredAt)>0))return null;
  return{id:[a.context,a.entryTriggeredAt].join('|'),engineId:a.engineId??String(a.context||'').split('|').at(-2)??null,side:a.side,at:Number(a.entryTriggeredAt),exitAt:Number(a.exitAt),entryPrice:Number(a.confirmedEntryPrice??a.entryPrice??a.projectedEntryPrice),durationMs:Number(a.holdingSeconds??a.actualHoldingSeconds)*1000,
   fiveMinuteReversalConfirmed:a.fiveMinuteReversalConfirmed===true,
-  fiveMinuteContextConfirmed:a.fiveMinuteContextConfirmed===true,entryFamily:a.entryFamily||'reversal'};
+  fiveMinuteContextConfirmed:a.fiveMinuteContextConfirmed===true,entryFamily:a.entryFamily||'reversal',
+  observedEntryFamily:a.observedEntryFamily||null,sourceQuoteAt:Number(a.sourceQuoteAt||0)};
 }
 export class SignalExecutor{
  constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
@@ -395,6 +397,8 @@ export class SignalExecutor{
     }
   }
   if(s?.engineId&&s.engineId!==c.engine)return;
+  if(mode==='automatic'&&s&&s.entryFamily&&c.entryFamily&&s.entryFamily!==c.entryFamily)return;
+  if(mode==='automatic'&&s&&s.entryFamily!=='automatic'&&s.observedEntryFamily&&s.observedEntryFamily!==s.entryFamily)return;
   // Last mile: never queue a 5m signal without the current quote's proof.
   if(Number(c.durationMs)===300000&&s&&
      (Number(s.durationMs)!==300000||!(s.fiveMinuteReversalConfirmed===true||c.entryFamily&&c.entryFamily!=='reversal'&&s.fiveMinuteContextConfirmed===true)))return;
@@ -491,12 +495,25 @@ export class SignalExecutor{
   // they can never continue beyond this operation's selected expiry.
   const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
   const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
-  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const currentMarketValid=(clickIndex=0)=>{
+   if(mode!=='automatic'||clickIndex!==0)return true;
+   const current=this.context();
+   if(queued.entryFamily&&current.entryFamily&&queued.entryFamily!==current.entryFamily)return false;
+   if(queued.entryFamily&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return false;
+   return liveEntryQuoteReview({signal:queued,context:current,now:this.clock()}).ok;
+  };
+  const valid=(clickIndex=0)=>currentMarketValid(clickIndex)&&this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   const invalidReason=(clickIndex=0)=>{
    const current=this.context(),at=this.clock(),age=at-Number(queued.at);
    if(!this.enabled||generation!==this.generation)return 'bot desligado ou sessão alterada';
    if(this.pending!==batch)return 'operação pendente mudou antes do clique';
    if(this.config.directionMode!==mode)return 'modo do bot mudou antes do clique';
+   if(mode==='automatic'&&clickIndex===0){
+    if(queued.entryFamily&&current.entryFamily&&queued.entryFamily!==current.entryFamily)return 'tipo de entrada mudou antes do clique';
+    if(queued.entryFamily&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return 'tipo de entrada não corresponde ao sinal';
+    const review=liveEntryQuoteReview({signal:queued,context:current,now:at});
+    if(!review.ok)return 'leitura de preço mudou antes do clique: '+review.reason;
+   }
    if(at<Number(queued.at)||at>=(clickIndex===0?firstClickDeadline:batchClickDeadline)||at>=Number(queued.exitAt))
     return 'sinal venceu na preparação ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms)';
    if(!this.sameContext(this.session,current))return 'corretora ou ativo mudou antes do clique';

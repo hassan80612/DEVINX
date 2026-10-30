@@ -1235,6 +1235,8 @@ export class DemoTradingRuntime{
           observation.fiveMinuteReversalConfirmed===true,
         fiveMinuteContextConfirmed:Number(settings.orderDurationMs)===300000&&observation.fiveMinuteContextConfirmed===true,
         entryFamily:normalizeEntryFamily(settings.entryFamily),
+        observedEntryFamily:entryFamilyOf(eligible),
+        sourceQuoteAt:Number(snap.quoteTs||0),
         entryReadyNow:freshSignal
       }:null;
       this.vnextFutureEntryAnchor=anchor;

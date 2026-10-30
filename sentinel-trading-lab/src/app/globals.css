@@ -1721,3 +1721,19 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
  display:grid;grid-template-rows:minmax(36px,auto) auto;align-content:start;min-width:0;
 }
 .liveScenario .vnextEngineToolbar > label > select{grid-row:2;width:100%;min-width:0}
+
+/* 13.9.184: the signal headline cannot change the card height when
+   "operação em andamento" replaces a shorter scanning label. */
+.liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
+.app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){
+  display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;
+  gap:3px;height:122px!important;min-height:122px!important;max-height:122px!important;
+  box-sizing:border-box;overflow:hidden;
+}
+.liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]) > strong{
+  flex:0 0 72px;height:72px;max-height:72px;min-height:72px;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+}
+.liveScenario .vnextFutureDirection .marketReadingRow{
+  flex:0 0 38px;max-height:38px;min-height:38px;overflow:hidden;
+}
