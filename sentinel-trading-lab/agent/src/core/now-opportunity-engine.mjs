@@ -132,7 +132,12 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  const retracement=range>0?Math.max(0,direction>0?
   Math.log(Math.max(...prices)/spot):Math.log(spot/Math.min(...prices)))/range:0;
  let phase='mixed';
- if(efficiency<.18||Math.abs(net)<=threshold)phase='range';
+ // A real outward leg followed by a meaningful return is not "lateral"
+ // merely because the net displacement nearly cancels. Observe the turn
+ // before applying the low-net-efficiency lateral classification.
+ if(early>threshold*1.5&&late< -threshold*1.5&&
+    fast< -threshold&&retracement>=.25)phase='reversal-testing';
+ else if(efficiency<.18||Math.abs(net)<=threshold)phase='range';
  else if(late< -threshold&&fast< -threshold&&retracement>=.16)phase='reversal-testing';
  else if(early>threshold&&(late<=Math.max(threshold,early*.35)||fast< -threshold))
   phase='weakening';

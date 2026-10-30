@@ -40,3 +40,12 @@ test('unverified/empty tape and 5m do not change old admission policy',()=>{
  assert.equal(reviewDirectionalPersistence({...m,quoteHistory:[],candidate}).ready,true);
  assert.equal(reviewDirectionalPersistence({...m,durationMs:300000,candidate}),candidate);
 });
+
+test('short, alternating noise is not an observed reversal',()=>{
+ const quoteHistory=Array.from({length:101},(_,i)=>({
+  ts:T-25000+i*250,price:100+Math.sin(i*1.8)*0.00002
+ }));
+ const m={quoteHistory,quoteAt:T,now:T,price:quoteHistory.at(-1).price,durationMs:30000};
+ const phase=assessDirectionalPersistence(m).phase;
+ assert.notEqual(phase,'reversal-testing');
+});
