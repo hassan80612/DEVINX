@@ -628,6 +628,19 @@ function recursiveScan(obj,out,hint=''){
 
 export class LocalPlaywrightDriver{
  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map();this.chartPeriodPreferences=new Map();
+   this.nativeExpirySelectedAt=new Map();
+   this.nativeExpiryPrefFile=join(this.dataDir,'native-expiry-preferences.json');
+   this.nativeExpirySaveQueue=Promise.resolve();
+   this.nativeExpiryPreferenceReady=readFile(this.nativeExpiryPrefFile,'utf8').then(raw=>{
+    const saved=JSON.parse(raw);
+    for(const provider of ['iq_option','exnova']){
+     const value=Number(saved?.[provider]?.durationMs),selectedAt=Number(saved?.[provider]?.selectedAt)||0;
+     if([30000,60000,300000].includes(value)){
+      this.nativeExpiryPreferences.set(provider,value);
+      this.nativeExpirySelectedAt.set(provider,selectedAt);
+     }
+    }
+   }).catch(()=>{});
    this.chartPeriodPrefFile=join(this.dataDir,'chart-period-preferences.json');
    this.chartPeriodSaveQueue=Promise.resolve();
    this.chartPeriodPreferenceReady=readFile(this.chartPeriodPrefFile,'utf8').then(raw=>{
@@ -806,7 +819,7 @@ export class LocalPlaywrightDriver{
   async installBridge(page,provider=null){
     // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
-      await this.chartPeriodPreferenceReady;
+      await Promise.all([this.chartPeriodPreferenceReady,this.nativeExpiryPreferenceReady]);
       if(!page.__sentinelExpiryPermissionExposed){
         await page.exposeFunction('__sentinelRequestNativeExpiryPermission',()=>{
           try{
@@ -932,6 +945,10 @@ export class LocalPlaywrightDriver{
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
+    // A persisted native 1m/5m selection must survive a broker frame rebuild
+    // even if the new frame initially advertises its 30s default.
+    if(provider&&this.nativeExpiryPreferences.has(provider))
+      await this.setNativeExpiryPreference(provider,this.nativeExpiryPreferences.get(provider),{preserveExisting:true}).catch(()=>{});
     const pendingExpiryMs=provider?this.nativeExpiryPendingApply.get(provider):null;
     if(Number.isFinite(Number(pendingExpiryMs))&&Number(pendingExpiryMs)>0){
       const payload={provider,preferredMs:Number(pendingExpiryMs),explicit:this.nativeExpiryExplicitPreferences.get(provider)===true};
@@ -1439,6 +1456,7 @@ export class LocalPlaywrightDriver{
     const accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
     const requested=Number(preferredMs);
     if(!accepted.has(requested/1000))return false;
+    await this.nativeExpiryPreferenceReady;
     // Reconnection repeats the same analyst duration. It must not overwrite
     // a newer manual native choice with the analyst's old 30s default.
     const priorRequest=this.nativeExpiryRequestedDurations.get(provider);
@@ -1463,11 +1481,31 @@ export class LocalPlaywrightDriver{
         if(accepted.has(choice.value/1000))choices.push(choice);
       }
       choices.sort((a,b)=>b.selectedAt-a.selectedAt||Number(b.explicitDefault)-Number(a.explicitDefault)||Number(b.value!==30000)-Number(a.value!==30000));
-      if(choices.length)ms=choices[0].value;
+      // A broker's unchosen reset to 30s has no selectedAt receipt.
+      // Never let that default trump the Agent's last manual choice.
+      const best=choices[0],savedAt=Number(this.nativeExpirySelectedAt.get(provider)||0);
+      if(best&&(Number(best.selectedAt||0)>savedAt||
+        (!savedAt&&(!this.nativeExpiryPreferences.has(provider)||best.value!==30000)))){
+        ms=best.value;
+        this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);
+      }
 
     }
     if(!current())return false;
     this.nativeExpiryPreferences.set(provider,ms);
+    if(!preserveExisting){
+      const chosenAt=Date.now();
+      this.nativeExpirySelectedAt.set(provider,chosenAt);
+      this.nativeExpirySaveQueue=this.nativeExpirySaveQueue.catch(()=>{}).then(async()=>{
+        await mkdir(this.dataDir,{recursive:true});
+        const tmp=this.nativeExpiryPrefFile+'.tmp';
+        const records=Object.fromEntries([...this.nativeExpiryPreferences].map(([key,value])=>
+          [key,{durationMs:value,selectedAt:this.nativeExpirySelectedAt.get(key)||0}]));
+        await writeFile(tmp,JSON.stringify(records)+'\n');
+        await rename(tmp,this.nativeExpiryPrefFile);
+      });
+      await this.nativeExpirySaveQueue.catch(()=>{});
+    }
     if(!page||page.isClosed?.()){
       if(!preserveExisting)this.nativeExpiryPendingApply.set(provider,ms);
       return true;
