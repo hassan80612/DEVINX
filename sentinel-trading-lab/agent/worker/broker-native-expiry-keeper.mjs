@@ -66,7 +66,11 @@ export function verifyBrokerExpiryForOrder({inspection,requiredDurationMs,automa
  if(!automatic)return {allowed:true,kind:'manual-mode-preserved'};
  const actual=Number(inspection?.currentMs),required=Number(requiredDurationMs);
  if(![30000,60000,300000].includes(required))return {allowed:false,kind:'unsupported-duration'};
- if(!(actual>0))return {allowed:false,kind:'native-expiry-not-verified'};
+ // An unknown native field must not freeze the first or subsequent
+ // automatic signals. It is not evidence of a mismatch. The worker keeps
+ // recovering/mapping the field asynchronously; the broker's actual
+ // expiration remains marked UNVERIFIED until a real read or ACK.
+ if(!(actual>0))return {allowed:true,kind:'native-expiry-unknown-unverified'};
  if(actual!==required)return {allowed:false,kind:'native-expiry-mismatch',actual,required};
  return {allowed:true,kind:'broker-duration-confirmed',actual,required};
 }
