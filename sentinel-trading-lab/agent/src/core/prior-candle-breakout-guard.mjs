@@ -32,7 +32,9 @@ export function reviewPriorCandleBreakout({candidate,candles=[],quoteHistory=[],
  const tolerance=Math.max(median(changes)*.65,spot*1e-7,range*.003);
  // The crossing must be observed, not merely inferred from the latest wick.
  if(dir*(tape[0].price-edge)>-tolerance)return candidate;
- const first=tape.findIndex(q=>dir*(q.price-edge)>tolerance);
+ // Detect the first actual poke even when its depth is smaller than the
+ // recent noisy tick size. That first poke is NOT proof of acceptance.
+ const first=tape.findIndex(q=>dir*(q.price-edge)>Math.max(spot*1e-7,range*.003));
  if(first<0)return candidate;
  const after=tape.slice(first),extreme=Math.max(...after.map(q=>dir*(q.price-edge)));
  const lastStep=dir*(spot-tape.at(-2).price);
