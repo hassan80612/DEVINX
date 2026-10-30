@@ -36,8 +36,12 @@ export function settlementFromFrame(provider,frame,known){
   if(ids.includes(String(known.orderId))){
    const account=value.user_balance_id??value.balance_id??value.account_id??baseAccount;
    if(account!=null&&known.accountId!=null&&String(account)!==String(known.accountId))return null;
-   const stake=value.amount??value.invest;
-   if(stake!=null&&(!finite(stake)||Math.abs(Number(stake)-Number(known.amount))>0.000001))return null;
+   // A native close with exact ID/account can carry an updated investment.
+   // Only the broker's actual stake and gross return determine net P&L.
+   const stake=value.invest??value.amount;
+   if(stake!=null&&(!finite(stake)||Number(stake)<=0))return null;
+   const actualStake=stake!=null?Number(stake):Number(known.amount);
+   if(!Number.isFinite(actualStake)||actualStake<=0)return null;
    let gross=null;
    // Only known gross-return fields on identified closed option events.
    if(kind==='option'&&finite(value.profit_amount))gross=Number(value.profit_amount);
@@ -46,7 +50,7 @@ export function settlementFromFrame(provider,frame,known){
    if(gross!==null&&gross>=0){
     const opening=value.open_price??value.open_quote,closing=value.close_price??value.close_quote;
     return{provider,accountId:known.accountId??account??null,orderId:known.orderId,
-      netPnl:gross-Number(known.amount),source:'broker',
+      netPnl:gross-actualStake,amount:actualStake,source:'broker',
       ...(finite(opening)&&Number(opening)>0?{entryPrice:Number(opening)}:{}),
       ...(finite(closing)&&Number(closing)>0?{exitPrice:Number(closing)}:{})};
    }

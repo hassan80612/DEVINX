@@ -89,7 +89,9 @@ export class SignalExecutor{
   const c=this.context();
   if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
   const candidate=this.balanceRisk.current?.provider===c.provider?this.balanceRisk.current:null;
-  const broker=candidate&&freshBalance(candidate,this.clock())?candidate:null;
+  // Ignore cached account IDs older than the user's new bot session.
+  const broker=candidate&&freshBalance(candidate,this.clock())&&
+    this.clock()-Number(candidate.receivedAt)<=2500?candidate:null;
   if(c.state!=='running')throw Error('Inicie o analista antes de ligar o bot.');
   if(!c.licensed||!c.provider||!c.asset)throw Error('Conecte a corretora e inicie o analista.');
   if(!(c.durationMs>0))throw Error('Selecione a expiração no analista.');
@@ -136,10 +138,10 @@ export class SignalExecutor{
       confirmed+'/'+suspendedBatch.orders.length+') · sem duplicar entradas';
     return this.status();
    }
-   this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??current.brokerBalance?.accountId??null};
+   this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??null};
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
-   if(current.brokerBalance!==undefined)this.balanceRisk.observe(current.brokerBalance);
-   if(!freshBalance(this.balanceRisk.current,this.clock()))this.balanceRisk.current=null;
+   if(broker)this.balanceRisk.observe(broker);
+   else this.balanceRisk.current=null; // A stale ID must not be the starting account.
    const opening=this.balanceRisk.begin(c.provider);
    this.initialBalance=opening?.amount??null;
    this.sessionId++;this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.net=0;this.sessionWins=0;this.sessionLosses=0;this.executed=0;this.closed=0;this.consecutiveLossBatches=0;this.history=[];this.ledger.clear();
@@ -313,7 +315,12 @@ export class SignalExecutor{
  watch(){
   if(!this.enabled&&!this.pending)return;
   const now=this.clock(),c=this.context(),p=this.pending;
-  if(c.brokerBalance!==undefined)this.balanceRisk.observe(c.brokerBalance);
+  // Quarantine pre-start account readings until the native broker supplies
+  // a fresh observation. Genuine changed accounts remain blocked thereafter.
+  if(c.brokerBalance!==undefined&&
+    (!this.startedAt||Number(c.brokerBalance?.receivedAt)>=this.startedAt||
+     this.session?.accountId!=null&&String(c.brokerBalance?.accountId)===String(this.session.accountId)))
+    this.balanceRisk.observe(c.brokerBalance);
   this.reconcileCompletedBatches();
   let balance=this.balanceRisk.view(now);
   if(this.enabled){
@@ -350,7 +357,9 @@ export class SignalExecutor{
     this.message='Ligado · aguardando sinal; Invest será sincronizado no primeiro clique';
    else if(this.session.engine!==c.engine){this.session.engine=c.engine;this.queuedSignal=null;const old=executorSignal(c.analysis);if(old&&old.engineId!==c.engine)this.seen.add(old.id);this.message='Estratégia atualizada · seguindo os próximos sinais do analista';}
   }
-  if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider)this.session.accountId=String(balance.current.accountId);
+  if(this.enabled&&this.session.accountId==null&&balance.current?.provider===this.session.provider&&
+    Number(balance.current.receivedAt)>=Number(this.startedAt||0))
+    this.session.accountId=String(balance.current.accountId);
   if(this.enabled)this.releaseExpiredBatch(now);
   if(this.enabled&&this.pending&&!this.executing&&now>this.pending.exitAt+1500){
    // A delayed close or click acknowledgement is NOT a bot stop.
@@ -473,7 +482,7 @@ export class SignalExecutor{
    this.queuedSignal=null;
    return;
   }
-  const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??balance.current?.accountId??null,state:'sending',orders:[],dispatchComplete:false,netPnl:0};
+  const batch={...queued,engine:c.engine,provider:c.provider,asset:c.asset,activeId:c.activeId,amount,unitAmount,clickCount,martingaleLevel,martingaleFallback,sessionId:this.sessionId,accountId:this.session.accountId??(Number(balance.current?.receivedAt)>=Number(this.startedAt||0)?balance.current?.accountId:null),state:'sending',orders:[],dispatchComplete:false,netPnl:0};
   // A new physical entry commits a NEW cycle. Historical unresolved
   // settlements update financial PnL but never overwrite its progression.
   for(const previous of this.unresolvedBatches.values()){
@@ -754,6 +763,7 @@ export class SignalExecutor{
   }
   const old=this.ledger.get(key);if((!p&&!old)||!num(event.netPnl)||(event.source&&event.source!=='broker'))return false;
   const trade=p||old;if(event.accountId!=null&&trade.accountId!=null&&String(event.accountId)!==String(trade.accountId))return false;
+  if(num(event.amount)&&Number(event.amount)>0)trade.amount=Number(event.amount);
   if(old?.source==='broker'||trade.sessionId!==undefined&&trade.sessionId!==this.sessionId)return false;
   // Settlement is independent evidence of the effective broker expiry.
   // Never mistake a 30s close for a 60s prediction. Require TWO distinct
