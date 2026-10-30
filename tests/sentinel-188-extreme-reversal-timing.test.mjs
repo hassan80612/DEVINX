@@ -74,46 +74,26 @@ test('reversal path and final extreme timing guard are actually wired to engine 
  assert.match(engine,/const located=reviewEarlyDistantReversal\(\{/);
 });
 
-test('1m evaluates a confirmed historical rejection even if impulse continuation was already ready',()=>{
- const map={observedCandles:30,asOf:T-60000,tolerance:.0003,
-  windows:[{size:20,available:true,observed:20,levels:[100]}],
-  levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
-   resistancePivots:2,resistanceRejections:2,supportPivots:0,supportRejections:0,
-   independentTests:3,resistanceWick:.8,supportWick:0,
-   tests:[{age:25,independent:true,rejectedHigh:true}]}]};
- const continuation={ready:true,side:'CALL',reason:'closed-structure-and-live-impulse'};
- const rejected=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0000,99.9998]);
- const result=reviewEarlyDistantReversal({candidate:continuation,map,quoteHistory:rejected,
-  quoteAt:T,now:T,price:99.9998,durationMs:60000});
- assert.equal(result.ready,true,JSON.stringify(result));
- assert.equal(result.side,'PUT');
- assert.equal(result.reason,'multiscale-candle-rejection');
- assert.equal(result.earlyLevelProof.oppositeContinuationOverruled,true);
- assert.equal(result.priceStructure.candleRoute.side,'PUT');
-});
-test('1m preserves a real breakout and never inverts a continuation on a single countertick',()=>{
- const map={observedCandles:30,asOf:T-60000,tolerance:.0003,
-  windows:[{size:20,available:true,observed:20,levels:[100]}],
-  levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
-   resistancePivots:2,resistanceRejections:2,supportPivots:0,supportRejections:0,
-   independentTests:3,resistanceWick:.8,supportWick:0,
-   tests:[{age:25,independent:true,rejectedHigh:true}]}]};
- const continuation={ready:true,side:'CALL',reason:'historical-level-breakout'};
- const breakout=rows([99.9970,99.9980,99.9990,100.0000,100.0004,100.0005,100.0006,100.0007,100.0008]);
- assert.equal(reviewEarlyDistantReversal({candidate:continuation,map,quoteHistory:breakout,
-  quoteAt:T,now:T,price:100.0008,durationMs:60000}),continuation);
- const oneTick=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0003,99.9998]);
- assert.equal(reviewEarlyDistantReversal({candidate:continuation,map,quoteHistory:oneTick,
-  quoteAt:T,now:T,price:99.9998,durationMs:60000}),continuation);
- assert.equal(reviewEarlyDistantReversal({candidate:continuation,map,quoteHistory:oneTick,
-  quoteAt:T,now:T,price:99.9998,durationMs:300000}),continuation);
- const prequalified={ready:true,side:'PUT',reason:'confirmed-fast-level-reversal'};
- assert.equal(reviewEarlyDistantReversal({candidate:prequalified,map,quoteHistory:oneTick,
-  quoteAt:T,now:T,price:99.9998,durationMs:60000}),prequalified);
-});
 
-test('30s independently evaluates historic level rejection instead of late impulse only',()=>{
- const candidate={ready:true,side:'CALL',reason:'closed-structure-and-live-impulse'};
+test('189 preserved: an opposite historical rejection vetoes a live 1m continuation without flipping it',()=>{
+ const map={observedCandles:30,asOf:T-60000,tolerance:.0003,
+  windows:[{size:20,available:true,observed:20,levels:[100]}],
+  levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
+   resistancePivots:2,resistanceRejections:2,supportPivots:0,supportRejections:0,
+   independentTests:3,resistanceWick:.8,supportWick:0,
+   tests:[{age:25,independent:true,rejectedHigh:true}]}]};
+ const data=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0000,99.9998]);
+ const impulse={ready:true,side:'CALL',reason:'closed-structure-and-live-impulse'};
+ const veto=reviewEarlyDistantReversal({candidate:impulse,map,quoteHistory:data,
+  quoteAt:T,now:T,price:99.9998,durationMs:60000});
+ assert.equal(veto.ready,false);assert.equal(veto.side,null);
+ assert.equal(veto.provisionalSide,'CALL');
+ assert.equal(veto.reason,'verified-historical-rejection-opposes-continuation');
+ const independent=reviewEarlyDistantReversal({candidate:{ready:false,side:null,reason:'observing'},map,
+  quoteHistory:data,quoteAt:T,now:T,price:99.9998,durationMs:60000});
+ assert.equal(independent.ready,true);assert.equal(independent.side,'PUT');
+});
+test('30s reversal from WAIT needs genuine two-move level proof; real breakout and 5m remain separate',()=>{
  const map={observedCandles:30,asOf:T-60000,tolerance:.0003,
   windows:[{size:20,available:true,observed:20,levels:[100]}],
   levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
@@ -121,9 +101,16 @@ test('30s independently evaluates historic level rejection instead of late impul
    independentTests:3,resistanceWick:.8,supportWick:0,
    tests:[{age:25,independent:true,rejectedHigh:true}]}]};
  const tape=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0000,99.9998]);
- const valid=reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:30000});
- assert.equal(valid.ready,true);
- assert.equal(valid.side,'PUT');
- assert.equal(valid.reason,'multiscale-candle-rejection');
- assert.equal(reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:300000}),candidate);
+ const base=(candidate,quoteHistory,durationMs)=>reviewEarlyDistantReversal({candidate,map,quoteHistory,
+  quoteAt:T,now:T,price:quoteHistory.at(-1).price,durationMs});
+ const found=base({ready:false,side:null,reason:'observing'},tape,30000);
+ assert.equal(found.ready,true);assert.equal(found.side,'PUT');
+ const veto=base({ready:true,side:'CALL',reason:'closed-structure-and-live-impulse'},tape,30000);
+ assert.equal(veto.ready,false);assert.equal(veto.side,null);
+ const ongoing={ready:true,side:'CALL',reason:'historical-level-breakout'};
+ const breakout=rows([99.9970,99.9980,99.9990,100.0000,100.0004,100.0005,100.0006,100.0007,100.0008]);
+ assert.equal(base(ongoing,breakout,60000),ongoing);
+ const falseTurn=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0003,99.9998]);
+ assert.equal(base(ongoing,falseTurn,60000),ongoing);
+ assert.equal(base(ongoing,tape,300000),ongoing);
 });
