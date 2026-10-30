@@ -18,12 +18,7 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
    'failed-breakout-structure-change','confirmed-fast-level-reversal','historical-level-rejection'].includes(candidate?.reason);
  const shortHorizonBreakout=[30000,60000].includes(Number(durationMs))&&
   candidate?.reason==='historical-level-breakout';
- // A fresh 30s/1m continuation into a verified opposing historic wall
- // is not an admitted trade until the wall has actually been cleared.
- // True breakouts beyond the wall are not blocked by this check.
- const shortHorizonImpulse=[30000,60000].includes(Number(durationMs))&&
-  qualifyingReasons.has(candidate?.reason);
- const directionalNearWallEntry=shortHorizonNearWallEntry||shortHorizonBreakout||shortHorizonImpulse;
+ const directionalNearWallEntry=shortHorizonNearWallEntry||shortHorizonBreakout;
  if(candidate?.ready!==true||
    (!qualifyingReasons.has(candidate.reason)&&!shortHorizonNearWallEntry)||
    !['CALL','PUT'].includes(candidate.side))return null;

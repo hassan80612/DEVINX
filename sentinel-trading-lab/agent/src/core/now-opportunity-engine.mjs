@@ -548,10 +548,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // when the longer automatic structure is not yet complete: no extra
   // collection wait is introduced by unified signal ownership.
   const selectedEngine=engineId!=='automatic'&&Number(durationMs)===30000;
-  // A specialist cannot resurrect a continuation vetoed by the same
-  // genuinely observed historical rejection.
-  const specialist=selectedEngine&&!located.ready&&
-   located.reason!=='verified-historical-rejection-opposes-continuation'?
+  const specialist=selectedEngine&&!located.ready?
    analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
   const levelEvent=located.priceStructure?.candleRoute?.event;
   // A shorter strategy can supply early evidence, but it cannot reuse the
@@ -755,11 +752,10 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
  // Do not manufacture an instant re-entry from the same tick captured
  // before the previous option actually expired.
- // No fixed post-expiry waiting period. To avoid duplicate/recycled orders,
- // a genuinely new quote must arrive strictly AFTER the previous expiry.
- // The one-shot lock and exact broker expiry remain untouched.
- const reassessing=priorExpiry!=null&&
-  (now<=priorExpiry||Number(quoteAt)<=priorExpiry);
+ // User-requested breathing room between automatic analyst windows. Keep
+ // evaluating real prices throughout; never queue a signal from this pause.
+ // No artificial delay: after settlement require one NEW broker quote.
+ const reassessing=priorExpiry!=null&&(now<=priorExpiry||Number(quoteAt)<=priorExpiry);
  const canRelease=fresh&&!reassessing;
  const ready=canRelease&&candidate?.ready===true&&isSide(candidate.side)&&
    Number(candidate.observedAt)===Number(quoteAt)&&finitePrice(candidate.entryPrice);

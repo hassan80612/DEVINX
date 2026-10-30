@@ -75,20 +75,15 @@ export function reviewLiveExtremeTiming({candidate,original,quoteHistory=[],cand
     pricePosition3:Number(pos3.toFixed(3)),pricePosition50:Number(pos50.toFixed(3)),
     impulseNoise:Number((Math.abs(impulse)/noise).toFixed(3))}};
 }
-// Independently review old tested level rejections for 30s and 1m, even
-// when the impulse continuation proposal is already ready. Two observed
-// successive moves away from that old zone are required; 5m instead
-// retains its separate sustained-level and structural-turn requirements.
+// Preserve the 189 observed 1m reversal route, with a modestly lighter
+// candle sample (40 versus 50). Still require a historical tested level
+// and two consecutive actual price moves. No waiting timer added.
 // All other strategy, expiry, precision and executor guards still apply.
 export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteAt,
  now=quoteAt,price,durationMs}={}){
- if(![30000,60000].includes(Number(durationMs))||!candidate)return candidate;
- // Judge a VERIFIED level rejection independently of the impulse path.
- // A ready continuation must not short-circuit this opposite-side check;
- // a previously qualified reversal still owns its direction.
- if(candidate.ready===true&&entryFamilyOf(candidate)==='reversal')return candidate;
+ if(Number(durationMs)!==60000||!candidate||candidate.ready===true)return candidate;
  const at=Number(quoteAt),time=Number(now),spot=Number(price);
- if(!(at>0&&at<=time&&time-at<=1450&&spot>0&&map?.observedCandles>=20&&
+ if(!(at>0&&at<=time&&time-at<=1450&&spot>0&&map?.observedCandles>=40&&
    map.asOf<=time&&Number(map.tolerance)>0))return candidate;
  const route=assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,
    price:spot,side:candidate.provisionalSide||candidate.side||'CALL'});
@@ -105,21 +100,8 @@ export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteA
  const d=direction(event.side),tol=Number(map.tolerance);
  const departure=d*(spot-Number(zone.level));
  if(!(departure>=-tol&&departure<=tol*3))return candidate;
- // Retain the 189's already qualified direction: an opposing historical
- // rejection may veto a live continuation, NEVER silently flip CALL to PUT.
- const reactionRoute=route.side===event.side?route:
-  assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,price:spot,side:event.side})||route;
- const earlyLevelProof={level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2};
- if(candidate.ready===true){
-  if(candidate.side!==event.side&&entryFamilyOf(candidate)==='continuation')
-   return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
-    reason:'verified-historical-rejection-opposes-continuation',
-    priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},earlyLevelProof};
-  return candidate;
- }
- // A reversal from WAIT requires an independent historical level plus
- // two consecutive, actually observed price moves, with no new timed wait.
  return {...candidate,ready:true,side:event.side,observedAt:at,entryPrice:spot,
   predictedPrice:null,expectedLogMove:null,reason:'multiscale-candle-rejection',
-  priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},earlyLevelProof};
+  priceStructure:{...candidate.priceStructure,candleRoute:route},
+  earlyLevelProof:{level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2}};
 }
