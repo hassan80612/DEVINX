@@ -8,7 +8,8 @@ test('settlement frames use gross returns minus stake, reject foreign account/po
  const k={orderId:'7',accountId:'10',amount:10};
  assert.equal(settlementFromFrame('iq_option',{name:'option-closed',msg:{id:7,amount:10,profit_amount:18}},k).netPnl,8);
  assert.equal(settlementFromFrame('exnova',{name:'position-changed',msg:{body:{external_id:7,status:'closed',invest:10,close_profit:0}}},k).netPnl,-10);
- for(const m of [{id:8,profit_amount:18},{id:7,user_balance_id:20,profit_amount:18},{id:7,amount:20,profit_amount:18},{id:7,profit:18},{id:7,profit_amount:null}])assert.equal(settlementFromFrame('iq_option',{name:'option-closed',msg:m},k),null);
+ assert.equal(settlementFromFrame('iq_option',{name:'option-closed',msg:{id:7,user_balance_id:10,amount:20,profit_amount:18}},k).netPnl,-2,'identified native close uses the actual broker stake');
+ for(const m of [{id:8,profit_amount:18},{id:7,user_balance_id:20,profit_amount:18},{id:7,profit:18},{id:7,profit_amount:null}])assert.equal(settlementFromFrame('iq_option',{name:'option-closed',msg:m},k),null);
 });
 test('outbound click request and matching inbound broker ID must correlate before acceptance',()=>{
  const sent=[],accepted=[],settled=[];const ui=new BrokerUiExecutor({}, {onSent:x=>sent.push(x),onAccepted:x=>accepted.push(x),onSettlement:x=>settled.push(x)});
