@@ -44,6 +44,7 @@ import {reviewEntryPrice} from './entry-price-timing.mjs';
 import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
 import {reviewDynamicEntryQuality} from './dynamic-entry-quality.mjs';
+import {arbitrateFinalSide} from './final-side-arbitration.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
@@ -1212,6 +1213,13 @@ export class DemoTradingRuntime{
       // clean setup can still enter immediately; only visibly weak moves
       // are declined. Broker expiry selection is untouched.
       eligible=reviewDynamicEntryQuality({
+        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+        now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // Final unified side decision compares BOTH continuation and reversal
+      // using one timestamped market tape before any signal is fired.
+      // It may KEEP or WAIT, never manufacture an opposite CALL/PUT.
+      eligible=arbitrateFinalSide({
         candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
         now,price:snap.price,durationMs:settings.orderDurationMs
       });
