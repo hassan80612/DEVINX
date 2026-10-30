@@ -1,6 +1,6 @@
 {
-  "version": "13.9.196",
-  "build": "13.9.196-restore-189-soft-1m-reversal-latest-expiry",
+  "version": "13.9.197",
+  "build": "13.9.197-189-decision-unchanged-durable-chart-and-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.196"
+  "publicVersion": "13.9.197"
 }

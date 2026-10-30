@@ -47,6 +47,6 @@ test('196: broker native expiry remains as in latest correction, no unknown-expi
   assert.equal(verifyBrokerExpiryForOrder({requiredDurationMs,inspection:{currentMs:requiredDurationMs===30000?60000:30000}}).allowed,false);
  }
  assert.match(read('worker/broker-native-expiry-keeper.mjs'),/revision:17/);
- assert.match(read('worker/broker-chart-period-keeper.mjs'),/revision:6/);
+ assert.match(read('worker/broker-chart-period-keeper.mjs'),/revision:7/);
  assert.match(read('worker/index.mjs'),/retryAlreadyOpenMarketIfMissing/);
 });
