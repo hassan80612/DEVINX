@@ -91,6 +91,6 @@ test('PC market interpretation survives the mobile broadcast unchanged',()=>{
 });
 test('expiry code and protections are preserved independently of the rebuilt market engine',()=>{
  const keeper=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs',import.meta.url),'utf8');
- assert.match(keeper,/revision:16/);assert.match(keeper,/beforeunload/);
+ assert.match(keeper,/revision:17/);assert.match(keeper,/beforeunload/);
  assert.doesNotMatch(readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8'),/LateImpulseReview|entryTimingReview/);
 });
