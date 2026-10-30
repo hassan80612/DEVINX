@@ -207,7 +207,11 @@ async function ensureLocalCockpitBroker(provider){
   assertLicensedAccess();
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
   activeProvider=provider;
-  let info=await driver.sessionInfo?.(provider).catch(()=>null);
+  // Existing visible session is already attached. A redundant broker session
+  // probe can exceed the UI command deadline before the analyst starts.
+  const peek=driver.peek?.(provider);
+  let info=adapter.connected===true&&!(peek?.updatedAt&&peek.open===false)?
+    {open:true}:await driver.sessionInfo?.(provider).catch(()=>null);
   if(!info?.open){
     info=await driver.call(provider,'resume-visible',{body:{startup:false}}).catch(()=>null);
     if(!info?.open)throw new Error('Não foi possível abrir a corretora.');
