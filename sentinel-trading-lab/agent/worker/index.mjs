@@ -5,7 +5,7 @@ import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {chooseConnectedBrokerForReading} from './broker-start-market.mjs';
-import {recoverAlreadyOpenMarket} from './broker-initial-market-recovery.mjs';
+import {recoverAlreadyOpenMarket,shouldRetryAlreadyOpenMarket} from './broker-initial-market-recovery.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {brokerMaintenanceCadenceMs} from './broker-maintenance-cadence.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
@@ -240,9 +240,26 @@ async function ensureLocalCockpitBroker(provider){
   }
   return live
 }
+const alreadyOpenMarketRecoveryAt=new Map();
 async function primeVisibleMarket(provider){
-  // Runs AFTER START acknowledgement; never changes tabs or places orders.
+  // The first broker catalog/frame may not yet have arrived when START runs.
+  // Keep this a single-flight, read-only recovery of the SAME visible tab.
+  // Never change candle period, native order expiry, or instrument tabs.
+  alreadyOpenMarketRecoveryAt.set(provider,Date.now());
   return recoverAlreadyOpenMarket({driver,provider,force:true});
+}
+function retryAlreadyOpenMarketIfMissing(now=Date.now()){
+  const provider=activeProvider;
+  if(!provider||runtime.stateName!=='running'||brokers[provider]?.connected!==true)return;
+  const market=driver.liveStatus?.(provider);
+  if(!shouldRetryAlreadyOpenMarket({running:true,connected:true,market,
+    lastAttemptAt:alreadyOpenMarketRecoveryAt.get(provider)||0,now}))return;
+  void primeVisibleMarket(provider).then(()=>{
+    if(activeProvider!==provider||runtime.stateName!=='running')return;
+    brokers[provider]?.refreshFromLive?.();
+    syncRuntimeMarket();
+    runtime.requestImmediateEvaluation?.();
+  }).catch(()=>{});
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
@@ -476,6 +493,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // immediate so newly confirmed CALL/PUT still reaches mobile promptly.
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
+  // If START saw the active tab before Exnova/IQ Option sent its catalog
+  // or candles, automatically recover its existing market feed. No new tab
+  // selection, synthetic quote, order click, or extra waiting for valid trades.
+  retryAlreadyOpenMarketIfMissing(loopNow);
   executor.pulse();
   // Push the post-decision state before optional broker maintenance so a
   // mobile viewer never waits for a DOM recovery pass.
