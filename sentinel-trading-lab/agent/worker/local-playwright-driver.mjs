@@ -23,6 +23,7 @@ import {installBrokerNativeExpiryKeeper,updateBrokerNativeExpiryPreference,nativ
 import {installBrokerChartPeriodKeeper} from './broker-chart-period-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
+import {selectVisibleBrokerTab} from './visible-broker-tab.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -1242,25 +1243,42 @@ export class LocalPlaywrightDriver{
     }
     throw new Error('broker_account_switch_not_confirmed');
   }
-  async syncVisibleAsset(provider){
+  async syncVisibleAsset(provider,{deferMarketFetch=false}={}){
     const st=this.state(provider),page=this.sessions.get(provider)?.page;
     if(!page||page.isClosed?.())return false;
     const frames=page.frames?.()||[page];
+    // Blitz tabs can be visibly selected by an underline, with no aria-selected.
+    // Scan only the tab strip. Never read body.innerText, prices or the chart.
     const lists=await Promise.all(frames.map(frame=>frame.evaluate(()=>{
-      const selector='[role="tab"][aria-selected="true"],[aria-selected="true"][data-test*="asset" i],[aria-selected="true"][data-testid*="asset" i],[data-state="active"][role="tab"],[data-state="selected"][role="tab"],[class*="tab" i][class*="active" i],[class*="tab" i][class*="selected" i]';
-      return [...document.querySelectorAll(selector)].slice(0,32).filter(el=>{
-        if(el.closest('#sentinel-trading-overlay-host,[aria-selected="false"]'))return false;
-        const r=el.getBoundingClientRect(),style=getComputedStyle(el);
-        return style.display!=='none'&&style.visibility!=='hidden'&&r.width>=30&&r.height>8&&r.top<320;
-      }).map(el=>String(el.textContent||'').trim().slice(0,65));
+      const selector='[role="tab"],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[class*="tab" i],[class*="instrument" i],[class*="asset" i]';
+      return [...document.querySelectorAll(selector)].slice(0,140).flatMap(el=>{
+        if(el.closest('#sentinel-trading-overlay-host,[aria-selected="false"]'))return[];
+        const r=el.getBoundingClientRect();
+        if(r.width<40||r.width>540||r.height<10||r.height>130||r.top<0||r.top>345)return[];
+        const style=getComputedStyle(el);
+        if(style.display==='none'||style.visibility==='hidden')return[];
+        const label=String(el.textContent||'').trim().slice(0,80);
+        if(label.length<5||label.length>72)return[];
+        const p=el.parentElement,classes=String(el.className||'')+' '+String(p?.className||'');
+        const selected=el.getAttribute('aria-selected')==='true'||el.getAttribute('aria-current')==='true'||
+          /^(active|selected|current)$/.test(String(el.getAttribute('data-state')||''))||
+          /(?:^|[\\s_-])(active|selected|current)(?:$|[\\s_-])/i.test(classes);
+        return[{label,selected}];
+      });
     }).catch(()=>[])));
-    const symbols=uniq(lists.flat().flatMap(label=>assetStrings(label)));
-    if(symbols.length!==1)return false;
-    const symbol=symbols[0],activeId=st.activeMap.get(pairKey(symbol))??null;
+    const rows=lists.flat().flatMap(row=>{
+      const symbols=assetStrings(row.label);
+      return symbols.length===1?[{symbol:symbols[0],selected:row.selected}]:[];
+    });
+    const symbol=selectVisibleBrokerTab(rows);
+    if(!symbol)return false;
+    const activeId=st.activeMap.get(pairKey(symbol))??null;
     if(!this.applyActiveSelection(provider,{symbol,activeId,source:'broker-validated'}))return false;
-    if(activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
-    else void Promise.resolve(this.requestBaseData(provider))
-      .then(()=>this.requestMarketData(provider,{force:true})).catch(()=>{});
+    if(!deferMarketFetch){
+      if(activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
+      else void Promise.resolve(this.requestBaseData(provider))
+        .then(()=>this.requestMarketData(provider,{force:true})).catch(()=>{});
+    }
     return true;
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
@@ -1407,6 +1425,10 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider),now=Date.now();
     if(st.lastMaintainAt&&now-st.lastMaintainAt<2200)return this.liveStatus(provider);
     st.lastMaintainAt=now;
+    if(st.activeId==null&&(!st.lastTabRecoveryAt||now-st.lastTabRecoveryAt>=12000)){
+      st.lastTabRecoveryAt=now;
+      await this.syncVisibleAsset(provider,{deferMarketFetch:true}).catch(()=>{});
+    }
     await this.refreshSelectedAccount(provider).catch(()=>{});
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
@@ -1422,7 +1444,7 @@ export class LocalPlaywrightDriver{
       st.lastQuoteAt>0&&now-st.lastQuoteAt<=2500&&
       candleFreshForState(st);
     const fullDomEveryMs=passiveStreamHealthy?300000:
-      st.activeId!=null&&st.balance!=null?90000:30000;
+      st.activeId!=null&&st.balance!=null?90000:60000;
     if(!passiveStreamHealthy&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)&&now-Number(st.lastAssetSwitchAt||0)>=12000){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});

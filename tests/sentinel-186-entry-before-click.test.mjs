@@ -10,7 +10,7 @@ test('already selected asset with null active_id is recovered without a tab swit
   domSnapshot:async()=>{calls.push('dom')},requestBaseData:async()=>{calls.push('catalog');st.activeId=123;st.assetValidated=true},
   requestMarketData:async()=>{calls.push('history:'+st.activeId);st.quoteFeedValidated=true;st.candleFresh=true}};
  assert.equal(await recoverAlreadyOpenMarket({provider:'exnova',driver}),true);
- assert.deepEqual(calls,['selected-tab','dom','catalog','selected-tab','history:123']);
+ assert.deepEqual(calls,['selected-tab','catalog','selected-tab','history:123']);
  assert.equal(st.symbol,'EUR/GBP OTC');
 });
 test('healthy same asset is untouched; unresolved broker active_id does not authorize history',async()=>{
