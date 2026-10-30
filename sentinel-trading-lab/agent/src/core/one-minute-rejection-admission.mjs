@@ -71,6 +71,9 @@ export function reviewOneMinuteRejectionProof({
   (matching?original.priceStructure?.reactionProof:null);
  if(proof?.confirmed===false&&Number(proof.durationMs)===ms&&
     REAL_CONTRADICTIONS.has(proof.reason)&&
+    // A 30s V can still be close to its old level at the FIRST valid
+    // break. Spatial proximity alone is not a failed price turn.
+    !(ms===30000&&proof.reason==='not-away-from-confirmed-level')&&
     (candidate.reason==='multiscale-candle-rejection'||
      candidate.reason==='closed-range-extreme-reversal-confirmed'||
      candidate.reason==='historical-level-rejection'))
@@ -89,7 +92,8 @@ export function reviewOneMinuteRejectionProof({
    const checked=proveLevelRejectionAtExpiry({quoteHistory,quoteAt:at,now:clock,
     price:spot,durationMs:ms,side:candidate.side,zone:event.zone,
     tolerance:tol,atr:tol*10});
-   if(checked.confirmed===false&&REAL_CONTRADICTIONS.has(checked.reason))
+   if(checked.confirmed===false&&REAL_CONTRADICTIONS.has(checked.reason)&&
+     checked.reason!=='not-away-from-confirmed-level')
     return veto(candidate,ms,checked.reason,checked);
   }
  }
