@@ -13,9 +13,12 @@ const qualifyingReasons=new Set([
  'locally-verified-opposite-direction'
 ]);
 export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+ // Keep the 168 admission of already-confirmed fast/failed-breakout level
+ // reversals. An unrelated secondary opposing-wall filter must not veto a
+ // valid independent reversal or force another wait. Confirmed price/level
+ // evidence and the 189 shared-base final safety checks still apply.
  const shortHorizonNearWallEntry=[30000,60000].includes(Number(durationMs))&&
-  ['confirmed-level-structure-reversal','break-retest-continuation',
-   'failed-breakout-structure-change','confirmed-fast-level-reversal','historical-level-rejection'].includes(candidate?.reason);
+  ['confirmed-level-structure-reversal','break-retest-continuation'].includes(candidate?.reason);
  const shortHorizonBreakout=[30000,60000].includes(Number(durationMs))&&
   candidate?.reason==='historical-level-breakout';
  const directionalNearWallEntry=shortHorizonNearWallEntry||shortHorizonBreakout;
