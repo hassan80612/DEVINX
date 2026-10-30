@@ -1260,20 +1260,39 @@ export class LocalPlaywrightDriver{
         const label=String(el.textContent||'').trim().slice(0,80);
         if(label.length<5||label.length>72)return[];
         const p=el.parentElement,classes=String(el.className||'')+' '+String(p?.className||'');
-        const selected=el.getAttribute('aria-selected')==='true'||el.getAttribute('aria-current')==='true'||
-          /^(active|selected|current)$/.test(String(el.getAttribute('data-state')||''))||
+        const selected=[el,p].some(node=>node&&(node.getAttribute('aria-selected')==='true'||
+          node.getAttribute('aria-current')==='true'||node.getAttribute('aria-checked')==='true'||
+          node.getAttribute('data-active')==='true'||node.getAttribute('data-selected')==='true'||
+          /^(active|selected|current)$/.test(String(node.getAttribute('data-state')||''))))||
           /(?:^|[\\s_-])(active|selected|current)(?:$|[\\s_-])/i.test(classes);
-        return[{label,selected}];
+        // Exnova/Blitz often uses an underline rather than aria-selected.
+        // Read only the visible tab and its direct parent, never the chart.
+        const markedColor=c=>c&&c!=='transparent'&&
+          c!=='rgba(0, 0, 0, 0)'&&c!=='rgba(0,0,0,0)';
+        const visualSelected=!selected&&[el,p].some(node=>{
+          if(!node)return false;
+          const css=getComputedStyle(node);
+          if(parseFloat(css.borderBottomWidth||'0')>=2&&markedColor(css.borderBottomColor))return true;
+          const after=getComputedStyle(node,'::after');
+          return after.content!=='none'&&after.display!=='none'&&
+            parseFloat(after.height||'0')>=2&&parseFloat(after.height||'0')<=8&&
+            markedColor(after.backgroundColor);
+        });
+        return[{label,selected,visualSelected}];
       });
     }).catch(()=>[])));
     const rows=lists.flat().flatMap(row=>{
       const symbols=assetStrings(row.label);
-      return symbols.length===1?[{symbol:symbols[0],selected:row.selected}]:[];
+      return symbols.length===1?[{symbol:symbols[0],selected:row.selected,visualSelected:row.visualSelected}]:[];
     });
     const symbol=selectVisibleBrokerTab(rows);
-    if(!symbol)return false;
+    if(!symbol){
+      if(!st.symbol){st.marketStatus='syncing';st.marketReason='Identificando a aba ativa da corretora sem trocar de ativo';}
+      return false;
+    }
     const activeId=st.activeMap.get(pairKey(symbol))??null;
     if(!this.applyActiveSelection(provider,{symbol,activeId,source:'broker-validated'}))return false;
+    if(activeId==null){st.marketStatus='syncing';st.marketReason='Ativo '+symbol+' reconhecido; recuperando identificação da corretora';}
     if(!deferMarketFetch){
       if(activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
       else void Promise.resolve(this.requestBaseData(provider))

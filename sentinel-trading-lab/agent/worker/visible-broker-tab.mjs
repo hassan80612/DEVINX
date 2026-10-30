@@ -1,12 +1,18 @@
-// Only a uniquely selected instrument can replace the existing market.
+// A visible broker may contain multiple open instrument tabs. Prefer the
+// one actually selected; never pick an arbitrary first item or an old cache.
+// Distinct explicit signals disagreeing => ambiguous (return null).
 export function selectVisibleBrokerTab(rows=[]){
- const entries=rows.filter(x=>typeof x?.symbol==='string'&&x.symbol.trim());
- if(!entries.length)return null;
- const key=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
- const names=new Map();
- for(const r of entries)names.set(key(r.symbol),r.symbol);
- if(names.size===1)return [...names.values()][0];
- const selected=new Map();
- for(const r of entries)if(r.selected===true)selected.set(key(r.symbol),r.symbol);
- return selected.size===1?[...selected.values()][0]:null;
+ const clean=rows.filter(x=>typeof x?.symbol==='string'&&x.symbol.trim());
+ if(!clean.length)return null;
+ const key=s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const unique=entries=>{
+  const m=new Map();
+  for(const item of entries)m.set(key(item.symbol),item.symbol);
+  return m.size===1?[...m.values()][0]:null;
+ };
+ const explicit=clean.filter(x=>x.selected===true);
+ if(explicit.length)return unique(explicit);
+ const visuallyActive=clean.filter(x=>x.visualSelected===true);
+ if(visuallyActive.length)return unique(visuallyActive);
+ return unique(clean); // A single visible instrument is unambiguous.
 }

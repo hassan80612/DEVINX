@@ -242,7 +242,7 @@ async function ensureLocalCockpitBroker(provider){
 }
 async function primeVisibleMarket(provider){
   // Runs AFTER START acknowledgement; never changes tabs or places orders.
-  return recoverAlreadyOpenMarket({driver,provider});
+  return recoverAlreadyOpenMarket({driver,provider,force:true});
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
