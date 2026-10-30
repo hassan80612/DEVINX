@@ -938,17 +938,31 @@ export class LocalPlaywrightDriver{
           allowEmbedded:true}).catch(()=>{});
         await frame.evaluate(installBrokerChartPeriodKeeper,{provider,
           requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
-          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{});
+          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0,
+          allowEmbedded:true}).catch(()=>{});
       }
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,
-          requestedAt:this.nativeExpirySelectedAt.get(provider)||0,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider,
-          requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
-          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{})}};
+      // Both the ROOT and embedded broker documents may be rebuilt by
+      // Exnova without recreating Playwright's page. Reapply the durable
+      // manual choices to the live documents after every navigation, not
+      // just to child frames. Do not reload, switch assets or select orders.
+      const installFrame=frame=>{
+        if(frame!==page.mainFrame())frame.evaluate(install).catch(()=>{});
+        if(!provider)return;
+        const expiry={provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,
+          requestedAt:this.nativeExpirySelectedAt.get(provider)||0,
+          allowEmbedded:frame!==page.mainFrame()};
+        const chart={provider,requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
+          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0,
+          allowEmbedded:frame!==page.mainFrame()};
+        frame.evaluate(installBrokerNativeExpiryKeeper,expiry).catch(()=>{});
+        frame.evaluate(installBrokerChartPeriodKeeper,chart).catch(()=>{});
+      };
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
+      page.on('domcontentloaded',()=>installFrame(page.mainFrame()));
     }
     // A persisted native 1m/5m selection must survive a broker frame rebuild
     // even if the new frame initially advertises its 30s default.
