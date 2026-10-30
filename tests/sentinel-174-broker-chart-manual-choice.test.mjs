@@ -2,18 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {installBrokerChartPeriodKeeper} from '../sentinel-trading-lab/agent/worker/broker-chart-period-keeper.mjs';
 
-function broker(initial='30 s',stored=null){
+function broker(initial='30 s',stored=null,{compactRail=false}={}){
  const storage=new Map(stored==null?[]:[['sentinel-broker-chart-period-preference-v1:exnova',String(stored)]]);
  const remembered=[];
  const events={};let selected,now=100000,open=false,timer=null;
  let later=[];
  const menu={className:'chart-timeframe-menu',getAttribute:()=>null};
  const makeControl=value=>({
-  isConnected:true,_text:value,className:'chart-period-selector',
+  isConnected:true,_text:value,className:compactRail?'compact-button':'chart-period-selector',
   get innerText(){return this._text},get textContent(){return this._text},
   getAttribute:()=>null,closest:()=>null,contains:()=>false,querySelector:()=>null,
   matches:()=>false,
-  getBoundingClientRect(){return {width:95,height:30,right:1280,bottom:250,top:210,x:1100,y:210}},
+  getBoundingClientRect(){return compactRail?
+   {width:42,height:30,right:82,bottom:505,top:475,left:40,x:40,y:475}:
+   {width:95,height:30,right:1280,bottom:250,top:210,left:1100,x:1100,y:210}},
   click(){open=!open;}
  });
  let control=makeControl(initial);
@@ -31,14 +33,15 @@ function broker(initial='30 s',stored=null){
  const options=['30 s','1 min','5 min'].map(makeOption);
  const old={window:globalThis.window,document:globalThis.document,location:globalThis.location,
   localStorage:globalThis.localStorage,setInterval:globalThis.setInterval,
-  setTimeout:globalThis.setTimeout,innerHeight:globalThis.innerHeight,DateNow:Date.now};
+  setTimeout:globalThis.setTimeout,innerHeight:globalThis.innerHeight,innerWidth:globalThis.innerWidth,DateNow:Date.now};
  globalThis.location={hostname:'exnova.com'};
- globalThis.innerHeight=900;
+ globalThis.innerHeight=900;globalThis.innerWidth=1440;
  globalThis.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,String(v))};
  globalThis.window={addEventListener(){},removeEventListener(){},
   __sentinelRememberBrokerChartPeriodChoice(value,at){remembered.push({value,at});return Promise.resolve(true);}};
  globalThis.document={visibilityState:'visible',
-  querySelectorAll(selector){if(selector.startsWith('[class*="chart-duration"'))return [control];
+  querySelectorAll(selector){if(selector.startsWith('[class*="chart-duration"'))return compactRail?[]:[control];
+   if(selector.startsWith('button,[role="button"]'))return compactRail?[control]:[];
    if(selector.startsWith('[role="option"]'))return open?options:[];return [];},
   addEventListener(name,fn){events[name]=fn},removeEventListener(name,fn){if(events[name]===fn)delete events[name]},
   getElementById(){return null}
@@ -125,5 +128,25 @@ test('broker chart: the last manual preference reaches the Agent; automatic 30s 
   const written=b.remembered.length;
   b.reset();b.tick(13000);b.tick(2500);
   assert.equal(b.current(),'1 min');assert.equal(b.remembered.length,written);
+ }finally{b.close()}
+});
+
+test('Exnova left compact chart rail restores 1m after broker refresh to default 30s',()=>{
+ const b=broker('30 s',null,{compactRail:true});
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova'});
+  b.openPicker();b.choose('1 min',{rerender:true});b.tick();
+  assert.equal(b.preference(),'60');
+  b.reset();b.tick(13000);b.tick(2500);
+  assert.equal(b.current(),'1 min');
+  assert.equal(b.remembered.some(x=>x.value===30),false);
+ }finally{b.close()}
+});
+test('Exnova compact rail restores saved 5m preference across a new frame',()=>{
+ const b=broker('30 s',300,{compactRail:true});
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova'});
+  b.tick(13000);b.tick(2500);
+  assert.equal(b.current(),'5 min');assert.equal(b.preference(),'300');
  }finally{b.close()}
 });
