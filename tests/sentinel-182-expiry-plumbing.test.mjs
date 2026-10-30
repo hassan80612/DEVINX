@@ -1,5 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+const newIsolatedDriver=()=>new LocalPlaywrightDriver({dataDir:mkdtempSync(join(tmpdir(),'sentinel-native-expiry-test-'))});
+
 import {observeNativeExpiryForClick} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 for(const [name,receipts,expected] of [
  ['newest manual choice across frames',[{value:30000,selectedAt:10},{value:60000,selectedAt:20}],60000],
@@ -7,7 +12,7 @@ for(const [name,receipts,expected] of [
  ['inherited default cannot dominate a saved non-default choice',[{value:30000,selectedAt:0},{value:300000,selectedAt:0}],300000]
 ])test(name,async()=>{
  const received=[],frames=receipts.map(receipt=>({evaluate:async(fn,arg)=>{if(fn.name==='updateBrokerNativeExpiryPreference'){received.push(arg);return true;}return receipt;}}));
- const d=new LocalPlaywrightDriver();d.sessions.set('exnova',{page:{frames:()=>frames,isClosed:()=>false}});await d.setNativeExpiryPreference('exnova',60000);
+ const d=newIsolatedDriver();await d.nativeExpiryPreferenceReady;d.sessions.set('exnova',{page:{frames:()=>frames,isClosed:()=>false}});await d.setNativeExpiryPreference('exnova',60000);
  assert.equal(d.nativeExpiryPreferences.get('exnova'),expected);assert.ok(received.every(x=>x.preferredMs===expected));
 });
 test('cached read-only expiry evidence can come from the mapped child frame; conflicting or stale frames never invent a value',()=>{
