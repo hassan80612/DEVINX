@@ -50,6 +50,23 @@ test('early 1m reversal never fabricates order from missing historic level, conf
  assert.equal(reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:60000}),candidate);
  assert.equal(reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:300000}),candidate);
 });
+test('a real confirmed 1m historical resistance reversal is accepted on the SECOND live move, not blind',()=>{
+ const candidate={ready:false,side:null,reason:'observing'};
+ const map={observedCandles:100,asOf:T-60000,tolerance:.0003,
+  windows:[{size:100,available:true,observed:100,levels:[100]}],
+  levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
+   resistancePivots:2,resistanceRejections:2,supportPivots:0,supportRejections:0,
+   independentTests:3,resistanceWick:.8,supportWick:0,
+   tests:[{age:36,independent:true,rejectedHigh:true}]}]};
+ const confirmed=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0000,99.9998]);
+ const good=reviewEarlyDistantReversal({candidate,map,quoteHistory:confirmed,
+  quoteAt:T,now:T,price:99.9998,durationMs:60000});
+ assert.equal(good.ready,true,JSON.stringify(good));
+ assert.equal(good.side,'PUT');assert.equal(good.reason,'multiscale-candle-rejection');
+ const oneTick=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0003,99.9998]);
+ assert.equal(reviewEarlyDistantReversal({candidate,map,quoteHistory:oneTick,
+  quoteAt:T,now:T,price:99.9998,durationMs:60000}),candidate);
+});
 test('reversal path and final extreme timing guard are actually wired to engine before orders',()=>{
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
  const engine=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
