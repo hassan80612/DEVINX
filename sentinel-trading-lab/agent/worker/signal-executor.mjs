@@ -376,11 +376,12 @@ export class SignalExecutor{
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
   if(mode==='automatic'||Number(c.durationMs)===300000){
-    // Five-minute execution follows a horizon-qualified analyst signal, including user-selected continuation.
+    // Five-minute execution requires a genuinely confirmed reversal; horizon
+    // alignment or a continuation alone cannot bypass the 5m structural gate.
     // The original forced cadence remains untouched for 30s and 1m.
     s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
     if(Number(c.durationMs)===300000){
-      if(!(s?.fiveMinuteReversalConfirmed===true||c.entryFamily&&c.entryFamily!=='reversal'&&s?.fiveMinuteContextConfirmed===true)){
+      if(!(s?.fiveMinuteReversalConfirmed===true)){
         s=null;
         if(mode!=='automatic')this.message='Ligado · 5m apenas reversões confirmadas · aguardando';
       }else if(mode!=='automatic'&&s.side!==(mode==='call'?'CALL':'PUT')){
@@ -411,7 +412,7 @@ export class SignalExecutor{
   if(mode==='automatic'&&s?.entryFamilyExplicit&&s.entryFamily!=='automatic'&&s.observedEntryFamily&&s.observedEntryFamily!==s.entryFamily)return;
   // Last mile: never queue a 5m signal without the current quote's proof.
   if(Number(c.durationMs)===300000&&s&&
-     (Number(s.durationMs)!==300000||!(s.fiveMinuteReversalConfirmed===true||c.entryFamily&&c.entryFamily!=='reversal'&&s.fiveMinuteContextConfirmed===true)))return;
+     (Number(s.durationMs)!==300000||!(s.fiveMinuteReversalConfirmed===true)))return;
   // Diagnostic metadata is never part of order acceptance/validation.
   if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){
