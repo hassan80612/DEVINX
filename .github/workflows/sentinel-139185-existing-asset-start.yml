@@ -2,14 +2,14 @@ name: Sentinel 13.9.185 verified Windows candidate
 on:
   push:
     branches:
-      - release/sentinel-13.9.185-verified
+      - release/sentinel-13.9.185-existing-asset-start
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/src/**'
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-185-existing-asset-start.test.mjs'
       - 'tests/sentinel-166-expiry-reload.test.mjs'
-      - '.github/workflows/sentinel-139185-verified-agent.yml'
+      - '.github/workflows/sentinel-139185-existing-asset-start.yml'
 permissions:
   contents: write
 concurrency:
@@ -34,8 +34,8 @@ jobs:
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           node --test --test-concurrency=4 tests/sentinel-185-existing-asset-start.test.mjs tests/sentinel-182-entry-family.test.mjs tests/sentinel-182-expiry-plumbing.test.mjs tests/sentinel-174-broker-chart-manual-choice.test.mjs tests/sentinel-176-expiry-verification.test.mjs
-          # The full legacy suite includes retired feature assertions; the
-          # 184 regression contract is validated above and during prebuild.
+          # The full legacy suite contains retired version-snapshot assertions.
+          # Dedicated current-version regressions and prebuild run below.
       - name: Validate production site build
         working-directory: sentinel-trading-lab
         run: |
@@ -62,7 +62,7 @@ jobs:
       - name: Preserve candidate artifacts in one checked branch
         run: |
           set -euo pipefail
-          branch=release/sentinel-13.9.185-verified
+          branch=release/sentinel-13.9.185-existing-asset-start
           latest="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [[ "$latest" != "$GITHUB_SHA" ]]; then echo "Candidate branch moved. Abort outdated publish."; exit 1; fi
           git config user.name 'github-actions[bot]'
