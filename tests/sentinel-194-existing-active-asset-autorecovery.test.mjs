@@ -13,7 +13,7 @@ test('START retries current selected Exnova tab after a late catalog without any
  let baseCount=0,expiry=60000;
  const driver={
   state:()=>st,
-  liveStatus:()=>({...st}),
+  liveStatus:()=>({...st,assetValidated:st.activeId!=null}),
   syncVisibleAsset:async()=>{calls.push('read-existing-visible-tab')},
   requestBaseData:async()=>{
    calls.push('request-catalog');baseCount++;
