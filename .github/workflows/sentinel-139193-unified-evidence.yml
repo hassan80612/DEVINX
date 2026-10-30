@@ -16,6 +16,7 @@ on:
       - 'tests/sentinel-192-dynamic-entry-quality.test.mjs'
       - 'tests/sentinel-193-final-side-arbitration.test.mjs'
       - 'tests/sentinel-193-expiry-timestamp-reload.test.mjs'
+      - 'tests/sentinel-168-rebuilt-160.test.mjs'
       - 'tests/sentinel-now-expiry-one-shot.test.mjs'
       - 'tests/sentinel-13910-now-strategies-cadence.test.mjs'
       - 'tests/sentinel-180-breakout-clearance.test.mjs'
