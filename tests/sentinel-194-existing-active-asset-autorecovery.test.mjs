@@ -65,6 +65,6 @@ test('valid identity with stale history retries less often and preserves indepen
  assert.doesNotMatch(worker,/await retryAlreadyOpenMarketIfMissing/);
  const chart=readFileSync(new URL('agent/worker/broker-chart-period-keeper.mjs',root),'utf8');
  const expiry=readFileSync(new URL('agent/worker/broker-native-expiry-keeper.mjs',root),'utf8');
- assert.match(chart,/revision:6/);
+ assert.match(chart,/revision:7/);
  assert.match(expiry,/revision:17/);
 });
