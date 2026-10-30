@@ -104,7 +104,9 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
     // right is NEVER touched. Ambiguity fails closed (no guessing).
     const width=Number(typeof innerWidth==='number'?innerWidth:0);
     const height=Number(typeof innerHeight==='number'?innerHeight:0);
-    if(width>500&&height>400){
+    // Embedded broker chart panes can be narrower than 500px even on PC.
+    // The same strict LEFT-side chart-rail test excludes order expiry.
+    if(width>180&&height>180){
      const rail=[...document.querySelectorAll('button,[role="button"],[role="combobox"],select')]
       .filter(el=>{
        if(!visible(el)||read(el)==null||unrelated.test(labelOf(el)))return false;
