@@ -1,3 +1,17 @@
+// Trigger a bounded recovery only while the user's already-open instrument
+// still lacks the broker's own verified identity, current quote or history.
+// This controls market DATA recovery, never order admission or expiry.
+// Subsequent attempts are spaced to avoid flooding the broker with requests.
+export function shouldRetryAlreadyOpenMarket({running=false,connected=false,market=null,lastAttemptAt=0,now=Date.now()}={}){
+ if(!running||!connected||!market||market.marketStatus==='closed'||
+    market.screenCandidateSymbol)return false;
+ if(market.assetValidated===true&&market.quoteFeedValidated===true&&
+    market.analysisFeedValidated===true)return false;
+ const missingIdentity=market.assetValidated!==true||!(Number(market.activeId)>0);
+ const retryMs=missingIdentity?5000:10000;
+ return !(Number(lastAttemptAt)>0)||now-Number(lastAttemptAt)>=retryMs;
+}
+
 // START recovery: single-flight, retryable, and never switches a broker tab.
 // No hidden chart clicks, broker expiry writes, fabricated ID or stale quotes.
 export async function recoverAlreadyOpenMarket({driver,provider,force=false}={}){
