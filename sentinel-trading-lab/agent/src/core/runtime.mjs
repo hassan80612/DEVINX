@@ -41,6 +41,7 @@ import {ContinuousExpiryCalibration} from './continuous-expiry-calibration.mjs';
 import {adjudicateExpiryTrend} from './expiry-trend-adjudicator.mjs';
 import {precisionEntryGate} from './precision-entry-policy.mjs';
 import {reviewEntryPrice} from './entry-price-timing.mjs';
+import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1129,10 +1130,18 @@ export class DemoTradingRuntime{
       });
       // Final adjudication may have retained or changed the direction.
       // Reconcile its side against the current already-received quote history.
-      const observation=reviewDirectionalPersistence({
+      const directionChecked=reviewDirectionalPersistence({
         candidate:initialObservation,quoteHistory:snap.quoteHistory,
         quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
+      });
+      // An isolated breach of the LAST closed candle high/low is not a
+      // continuation. A confirmed sweep is a veto, not an inverted entry.
+      const observation=reviewPriorCandleBreakout({
+        candidate:directionChecked,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,
+        price:snap.price,durationMs:settings.orderDurationMs
       });
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,

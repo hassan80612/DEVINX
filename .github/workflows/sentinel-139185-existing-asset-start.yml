@@ -9,6 +9,7 @@ on:
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-185-existing-asset-start.test.mjs'
       - 'tests/sentinel-185-final-turn-veto.test.mjs'
+      - 'tests/sentinel-185-prior-candle-breach.test.mjs'
       - 'tests/sentinel-13940-manual-bankroll.test.mjs'
       - 'tests/sentinel-166-expiry-reload.test.mjs'
       - '.github/workflows/sentinel-139185-existing-asset-start.yml'
@@ -35,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          node --test --test-concurrency=4 tests/sentinel-185-final-turn-veto.test.mjs tests/sentinel-185-existing-asset-start.test.mjs tests/sentinel-182-entry-family.test.mjs tests/sentinel-182-expiry-plumbing.test.mjs tests/sentinel-174-broker-chart-manual-choice.test.mjs tests/sentinel-176-expiry-verification.test.mjs
+          node --test --test-concurrency=4 tests/sentinel-185-prior-candle-breach.test.mjs tests/sentinel-185-final-turn-veto.test.mjs tests/sentinel-185-existing-asset-start.test.mjs tests/sentinel-182-entry-family.test.mjs tests/sentinel-182-expiry-plumbing.test.mjs tests/sentinel-174-broker-chart-manual-choice.test.mjs tests/sentinel-176-expiry-verification.test.mjs
           # The full legacy suite contains retired version-snapshot assertions.
           # Dedicated current-version regressions and prebuild run below.
       - name: Validate production site build
