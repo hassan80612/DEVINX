@@ -23,7 +23,7 @@ const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
 const isSide=side=>side==='CALL'||side==='PUT';
 const finitePrice=p=>Number.isFinite(Number(p))&&Number(p)>0;
-export const POST_EXPIRY_REASSESS_MS=3000;
+export const POST_EXPIRY_REASSESS_MS=0;
 // Low-price continuation without a verified breakdown is not a valid
 // excuse to chase the final portion of a completed downward impulse.
 // History already buffered by the Agent: zero broker reads, fixed short scan.
@@ -755,10 +755,11 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
  // Do not manufacture an instant re-entry from the same tick captured
  // before the previous option actually expired.
- // User-requested breathing room between automatic analyst windows. Keep
- // evaluating real prices throughout; never queue a signal from this pause.
+ // No fixed post-expiry waiting period. To avoid duplicate/recycled orders,
+ // a genuinely new quote must arrive strictly AFTER the previous expiry.
+ // The one-shot lock and exact broker expiry remain untouched.
  const reassessing=priorExpiry!=null&&
-  (now<priorExpiry+POST_EXPIRY_REASSESS_MS||Number(quoteAt)<priorExpiry+POST_EXPIRY_REASSESS_MS);
+  (now<=priorExpiry||Number(quoteAt)<=priorExpiry);
  const canRelease=fresh&&!reassessing;
  const ready=canRelease&&candidate?.ready===true&&isSide(candidate.side)&&
    Number(candidate.observedAt)===Number(quoteAt)&&finitePrice(candidate.entryPrice);

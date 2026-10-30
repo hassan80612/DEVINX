@@ -43,6 +43,7 @@ import {precisionEntryGate} from './precision-entry-policy.mjs';
 import {reviewEntryPrice} from './entry-price-timing.mjs';
 import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
+import {reviewDynamicEntryQuality} from './dynamic-entry-quality.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
@@ -1206,6 +1207,13 @@ export class DemoTradingRuntime{
         candidate:eligible,original:original66,quoteHistory:snap.quoteHistory,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // Last causal review uses the same already-buffered quotes. A quick
+      // clean setup can still enter immediately; only visibly weak moves
+      // are declined. Broker expiry selection is untouched.
+      eligible=reviewDynamicEntryQuality({
+        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+        now,price:snap.price,durationMs:settings.orderDurationMs
       });
       const previousReactionWindow=this.vnextWindowState;
       this.reactionOpportunityMemory.beginOperation(expiryDirectionContext+'|'+normalizeEntryFamily(settings.entryFamily),previousReactionWindow?.entryTriggeredAt||0);

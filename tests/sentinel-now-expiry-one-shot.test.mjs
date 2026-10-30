@@ -50,30 +50,25 @@ test('one CALL NOW, no repeated or opposite signal before the exact 30s expiry',
   assert.equal(held.exitAt,T+30000);
  }
 });
-test('after expiry reassess for three seconds and release only a current signal',()=>{
+test('post-expiry can enter on the first NEW qualifying quote; never reuse the prior trade or its final quote',()=>{
  const original=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
   asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- const stale=advanceNowOpportunity({previous:original,candidate:analyzeNowOpportunity(fresh('CALL',T+29900)),
-  now:T+30050,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- assert.equal(stale.phase,'scanning');
- const stillStale=advanceNowOpportunity({previous:stale,candidate:analyzeNowOpportunity(fresh('CALL',T+29900)),
-  now:T+30200,quoteAt:T+29900,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- assert.equal(stillStale.phase,'scanning','cannot reissue pre-expiry information');
- const next=advanceNowOpportunity({previous:stillStale,candidate:analyzeNowOpportunity(fresh('PUT',T+30500)),
-  now:T+30500,quoteAt:T+30500,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- assert.equal(next.phase,'scanning');assert.equal(next.reason,'reassessing-after-expiry');
- for(const offset of [32999,33000]){
-  const result=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+offset)),
-   now:T+offset,quoteAt:T+offset,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
-  assert.equal(result.phase,offset<33000?'scanning':'fired');
-  if(offset===33000){assert.equal(result.side,'PUT');assert.equal(result.entryAt,T+33000);assert.equal(result.exitAt,T+63000);}
+ for(const offset of [29900,30000]){
+  const stale=advanceNowOpportunity({previous:original,
+   candidate:analyzeNowOpportunity(fresh('PUT',T+offset)),
+   now:T+30050,quoteAt:T+offset,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
+  assert.equal(stale.phase,'scanning','a pre-expiry or expiry-boundary quote is not new');
  }
- const oldTick=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+32999)),
-  now:T+33500,quoteAt:T+32999,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- assert.equal(oldTick.phase,'scanning','wall clock alone cannot release a quote captured during reassessment');
- const oldCandidate=advanceNowOpportunity({previous:next,candidate:analyzeNowOpportunity(fresh('PUT',T+32999)),
-  now:T+33500,quoteAt:T+33500,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
- assert.equal(oldCandidate.phase,'scanning','signals observed during the pause are never queued');
+ const tick=advanceNowOpportunity({previous:original,
+  candidate:analyzeNowOpportunity(fresh('PUT',T+30050)),
+  now:T+30050,quoteAt:T+30050,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
+ assert.equal(tick.phase,'fired');assert.equal(tick.side,'PUT');
+ assert.equal(tick.entryAt,T+30050);assert.equal(tick.exitAt,T+60050);
+ const held=advanceNowOpportunity({previous:tick,
+  candidate:analyzeNowOpportunity(fresh('CALL',T+30200)),
+  now:T+30200,quoteAt:T+30200,asset:'EUR/USD',engineId:'automatic',durationMs:30000});
+ assert.equal(held.phase,'fired');assert.equal(held.side,'PUT');
+ assert.equal(held.entryReadyNow,false);assert.equal(held.entryTriggeredAt,T+30050);
 });
 test('duration reset and instrument change do not keep an old locked entry',()=>{
  const a=advanceNowOpportunity({candidate:analyzeNowOpportunity(fresh()),now:T,quoteAt:T,
