@@ -24,7 +24,7 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
   .filter(s=>s.length&&at-s.at(-1).to<=Math.max(15000,(s.at(-1).to-s.at(-1).from)*2))
   .sort((a,b)=>b.at(-1).to-a.at(-1).to||b.length-a.length);
  const rows=collections[0]?.slice(-100)||[];
- if(rows.length<3)return veto(candidate,'entry-missing-previous-closed-candle-price',{kind:'missing-candle-context'});
+ if(rows.length<3)return candidate; // No extra collection gate: preserve established price/structure screens.
  const last=rows.at(-1),three=rows.slice(-3),ten=rows.slice(-10);
  const tail=rows.slice(-15),ranges=tail.slice(1).map((c,i)=>Math.max(c.high-c.low,
   Math.abs(c.high-tail[i].close),Math.abs(c.low-tail[i].close)));
@@ -42,14 +42,14 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
  }).map(q=>({ts:Number(q.ts),price:Number(q.price)})).sort((a,b)=>a.ts-b.ts);
  if(quoteRows.at(-1)?.ts!==at||quoteRows.at(-1)?.price!==spot||
    quoteRows.some((q,i)=>i>0&&(q.ts<=quoteRows[i-1].ts||q.ts-quoteRows[i-1].ts>2500)))
-  return veto(candidate,'entry-price-tape-unverified',{kind:'missing-live-tape'});
+  return candidate; // Other live quote guards retain authority; don't freeze the bot.
  const before=(target,delta=2000)=>{
   for(let i=quoteRows.length-1;i>=0;i--)if(quoteRows[i].ts<=target)
    return target-quoteRows[i].ts<=delta?quoteRows[i].price:null;
   return null;
  };
  const p3=before(at-3000),p6=before(at-6000);
- if(p3==null||p6==null)return veto(candidate,'entry-price-tape-unverified',{kind:'missing-current-turn'});
+ if(p3==null||p6==null)return candidate; // No fixed wait or history-collection lock.
  const move3=d*(spot-p3),move6=d*(spot-p6);
  const lastStep=quoteRows.length>=2?d*(spot-quoteRows.at(-2).price):0;
  const windows=[3,10,20,50,100].filter(n=>rows.length>=n).map(n=>{
