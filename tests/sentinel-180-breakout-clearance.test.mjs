@@ -25,14 +25,11 @@ for(const ms of [30000,60000])for(const mirror of [false,true]){
   assert.deepEqual(continuationRoomRisk(a),risk,'identical observations cannot rearm or create a timed state');
  });
 }
-test('the short wall review refuses a new impulsive entry into a proven wall but preserves range reversals',()=>{
+test('the short wall review preserves ordinary impulses and range turns',()=>{
  for(const mirror of [false,true])for(const reason of ['closed-structure-and-live-impulse',
   'closed-range-extreme-reversal-confirmed','multiscale-candle-rejection']){
   const a=scenario(60000,mirror);a.candidate.reason=reason;
-  const risk=continuationRoomRisk(a);
-  if(reason==='closed-structure-and-live-impulse')
-   assert.equal(risk?.kind,'short-horizon-entry-without-clearance-to-opposing-wall',reason);
-  else assert.equal(risk,null,reason);
+  assert.equal(continuationRoomRisk(a),null,reason);
  }
 });
 test('5m keeps its existing policy; the new short breakout review does not run',()=>{
