@@ -75,16 +75,24 @@ export function observeNativeExpiryForClick({provider,requiredDurationMs=null}={
    restorationInProgress:!!(s.repairing||s.restoring)};
  }catch{return {blocked:false,currentMs:null,requiredDurationMs:Number(requiredDurationMs)||null}}
 }
-export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,allowEmbedded=false}={}){
+export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,requestedAt=0,allowEmbedded=false}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h)))&&!(allowEmbedded&&window.top!==window))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===16){
-   const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
-   if(!(current>0)&&Number.isFinite(Number(requestedMs)))
-    window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===17){
+   const keeper=window.__sentinelNativeExpiryKeeperV3;
+   const current=Number(keeper.snapshot?.().preferredMs);
+   const chosen=Number(requestedMs),at=Number(requestedAt)||0;
+   const nativeKey='sentinel-broker-native-expiration-preference-v3:'+provider;
+   const storedAt=Number(localStorage.getItem(nativeKey+':selectedAt')||0);
+   // A running keeper must not discard a newer Agent preference just
+   // because it had already read an older 30s page-local preference.
+   if([30000,60000,300000].includes(chosen)&&
+     (!(current>0)||at>storedAt||
+       (at===0&&storedAt===0&&current===30000&&chosen>30000)))
+    keeper.setPreferred?.(chosen,{selectedAt:at});
    return;
   }
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
@@ -438,10 +446,18 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,allow
     }
    }catch{}
   };
-  const save=(v,source=null)=>{
+  const save=(v,source=null,selectedAt=0)=>{
    preferredMs=v;
-   explicitDefault=v===30000&&(source==='manual'||source==='analyst'||explicitDefault);
-   try{localStorage.setItem(key,String(v));localStorage.setItem(defaultChoiceKey,explicitDefault?'30000':'');if(source==='manual'||source==='analyst'){localStorage.setItem(key+':selectedAt',String(Date.now()));localStorage.setItem(key+':source',source);}}catch{}
+   explicitDefault=v===30000&&(source==='manual'||source==='analyst'||source==='agent'||explicitDefault);
+   try{
+    localStorage.setItem(key,String(v));
+    localStorage.setItem(defaultChoiceKey,explicitDefault?'30000':'');
+    if(source==='manual'||source==='analyst'||source==='agent'){
+     const at=source==='agent'?Number(selectedAt)||0:Date.now();
+     if(at>0)localStorage.setItem(key+':selectedAt',String(at));
+     localStorage.setItem(key+':source',source);
+    }
+   }catch{}
    if(source==='manual'&&typeof window.__sentinelRememberNativeExpiryChoice==='function')try{Promise.resolve(window.__sentinelRememberNativeExpiryChoice(v)).catch(()=>{})}catch{}
   };
   const notify=(value)=>{window.__sentinelNativeExpiryStatusV3={
@@ -578,15 +594,20 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,allow
    }catch{}
   };
   window.addEventListener?.('message',onParentPermission);
-  const setPreferred=(value,{explicit=false}={})=>{
-   const ms=Number(value);
+  const setPreferred=(value,{explicit=false,selectedAt=0}={})=>{
+   const ms=Number(value),at=Number(selectedAt)||0;
    if(!ACCEPT.has(ms/1000))return false;
-   // Reconnection must not replay an old default over a saved manual 1m/5m.
-   if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault)return true;
-   save(ms,explicit?'analyst':null);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
+   const localAt=Number(localStorage.getItem(key+':selectedAt')||0);
+   // Only the timestamped, newer choice from the Agent may reconcile
+   // an existing document. Never roll back a newer trusted manual click.
+   if(!explicit&&at>0&&localAt>at)return true;
+   // Unauthenticated default 30s must never replace the selected 1m/5m.
+   if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault&&!(at>localAt))return true;
+   save(ms,explicit?'analyst':at>0?'agent':null,at);
+   mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
    notify(observedMs);poll({urgent:true});return true;
   };
-  window.__sentinelNativeExpiryKeeperV3={revision:16,provider,poll,setPreferred,
+  window.__sentinelNativeExpiryKeeperV3={revision:17,provider,poll,setPreferred,
    cancelFieldMapping:()=>{mappingArmed=false;mappingCaptured=false;mappingFinishedId=mappingSessionId;try{document.querySelector('[data-sentinel-expiry-mapping-notice]')?.remove()}catch{};notify(observedMs);},
    showFieldMappingStatus:()=>mappingNotice(observedMs?'Expiração lida: '+observedMs/1000+'s · preferência: '+preferredMs/1000+'s.':'Expiração não reconhecida. Use Mapear expiração.'),
    armFieldMapping:(id=Date.now())=>{mappingSessionId=id;mappingFinishedId=0;mappingArmed=true;mappingCaptured=false;mappingNotice('Mapear expiração: clique no prazo da CORRETORA. Nenhuma ordem será enviada por esse clique. Esc cancela.');return true;},
@@ -599,6 +620,12 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,allow
   const onWake=()=>{if(!disposed&&document.visibilityState!=='hidden')poll()};
   window.addEventListener?.('pageshow',onWake);
   document.addEventListener('visibilitychange',onWake);
+  // When the page bootstrap inherited an older 30s value, restore the
+  // Agent's more recent selected state before the first regular poll.
+  const agentAt=Number(requestedAt)||0,storedAt=Number(localStorage.getItem(key+':selectedAt')||0);
+  if(ACCEPT.has(Number(requestedMs)/1000)&&
+    (agentAt>storedAt||(!agentAt&&!storedAt&&preferredMs===30000&&Number(requestedMs)>30000)))
+   setPreferred(Number(requestedMs),{selectedAt:agentAt});
   poll();
   const timer=setInterval(poll,2500);
   window.__sentinelNativeExpiryKeeperV3.dispose=()=>{
