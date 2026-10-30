@@ -79,7 +79,16 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
   const contradictedNow=move3<=-atr*.12&&move6<=-atr*.15&&lastStep<0;
   const clearlyFailedTurn=move3<0&&lastStep<0&&
    (d>0?spot>=hi3-atr*.06:spot<=lo3+atr*.06);
-  if(contradictedNow||clearlyFailedTurn)
+  // A fresh two-tick bounce BELOW the previous closed low is not proof of
+  // a CALL reversal; the matching PUT trap is above the closed high.
+  const priorCandleAgainst=dLast<=-atr*.12;
+  const unreclaimedPreviousExtreme=priorCandleAgainst&&(
+    d>0?spot<last.low-atr*.08:spot>last.high+atr*.08);
+  const weakUnreclaimedClose=priorCandleAgainst&&
+    d*(spot-last.close)<=atr*.10&&
+    (move3<=atr*.13||move6<=atr*.14);
+  if(contradictedNow||clearlyFailedTurn||
+    unreclaimedPreviousExtreme||weakUnreclaimedClose)
    return veto(candidate,'closed-candle-reversal-not-supported-by-live-price',proof);
   return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
  }
