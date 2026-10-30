@@ -80,9 +80,13 @@ export function reviewLiveExtremeTiming({candidate,original,quoteHistory=[],cand
 // All other strategy, expiry, precision and executor guards still apply.
 export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteAt,
  now=quoteAt,price,durationMs}={}){
- if(Number(durationMs)!==60000||!candidate||candidate.ready===true)return candidate;
+ if(Number(durationMs)!==60000||!candidate)return candidate;
+ // Judge a VERIFIED level rejection independently of the impulse path.
+ // A ready continuation must not short-circuit this opposite-side check;
+ // a previously qualified reversal still owns its direction.
+ if(candidate.ready===true&&entryFamilyOf(candidate)==='reversal')return candidate;
  const at=Number(quoteAt),time=Number(now),spot=Number(price);
- if(!(at>0&&at<=time&&time-at<=1450&&spot>0&&map?.observedCandles>=50&&
+ if(!(at>0&&at<=time&&time-at<=1450&&spot>0&&map?.observedCandles>=20&&
    map.asOf<=time&&Number(map.tolerance)>0))return candidate;
  const route=assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,
    price:spot,side:candidate.provisionalSide||candidate.side||'CALL'});
@@ -99,8 +103,14 @@ export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteA
  const d=direction(event.side),tol=Number(map.tolerance);
  const departure=d*(spot-Number(zone.level));
  if(!(departure>=-tol&&departure<=tol*3))return candidate;
+ // A breakout continues unchanged until a separately observed, two-move
+ // rejection wins its own proof. Merely touching an old level never flips it.
+ const reactionRoute=route.side===event.side?route:
+  assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,price:spot,side:event.side})||route;
  return {...candidate,ready:true,side:event.side,observedAt:at,entryPrice:spot,
   predictedPrice:null,expectedLogMove:null,reason:'multiscale-candle-rejection',
-  priceStructure:{...candidate.priceStructure,candleRoute:route},
-  earlyLevelProof:{level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2}};
+  priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},
+  earlyLevelProof:{level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2,
+   previousReason:candidate.ready===true?candidate.reason:null,
+   oppositeContinuationOverruled:candidate.ready===true&&candidate.side!==event.side}};
 }
