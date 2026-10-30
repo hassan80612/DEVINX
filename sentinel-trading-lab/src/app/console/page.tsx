@@ -248,7 +248,7 @@ export default function Page(){
     const previous=s;
     setBusy(true);setErr('');
     if(path==='mode'&&body?.mode)setS((v:Status|null)=>v?{...v,mode:body.mode}:v);
-    if(path==='settings'&&body&&typeof body==='object'){
+    if(path==='settings'&&body&&typeof body==='object'&&!body.nativeExpiryMapping){
       pendingSettingsRef.current={values:{...(pendingSettingsRef.current?.values||{}),...body},until:Date.now()+45000};
       setS((v:Status|null)=>v?{...v,settings:{...(v.settings||{}),...body}}:v);
     }
@@ -261,7 +261,8 @@ export default function Page(){
       const commandTimeout=path==='executor/start'||path.startsWith('brokers/')&&path.endsWith('/login')?30000:2200;
       const data=source==='local'&&agent.worker?await localFetch(path,method,body,commandTimeout):await cloudFetch(path,method,body);
       setS((current:Status|null)=>{const next=reconcileStatus(reconcileCloudPcOpportunity(current,normalizeStatus(data)));return Number(current?.autoExecutor?.updatedAt)>Number(next.autoExecutor?.updatedAt)?{...next,autoExecutor:current.autoExecutor}:next;});setErr('');
-      if(path==='mode')setNotice(body.mode==='demo'?'Conta de prática ativa.':'Modo REAL ativo para análise; execução continua manual.');
+      if(path==='settings'&&body.nativeExpiryMapping)setNotice(data?.expiryMapping?.message||'Confira o campo da corretora no PC.');
+      else if(path==='mode')setNotice(body.mode==='demo'?'Conta de prática ativa.':'Modo REAL ativo para análise; execução continua manual.');
       else if(path==='settings'&&body?.strategy)setNotice('Estratégia aplicada: '+String(body.strategy).replaceAll('_',' ')+'.');
       else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Comando enviado ao Agent. A janela controlada da corretora deve abrir no PC.');
       else setNotice('Comando aplicado.');

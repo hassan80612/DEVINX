@@ -25,9 +25,8 @@ for(const ms of [30000,60000])for(const mirror of [false,true]){
   assert.deepEqual(continuationRoomRisk(a),risk,'identical observations cannot rearm or create a timed state');
  });
 }
-test('the added review is specific to historical breakouts; it does not spread to ordinary impulse or reversal families',()=>{
+test('the short wall review preserves ordinary impulses and range turns',()=>{
  for(const mirror of [false,true])for(const reason of ['closed-structure-and-live-impulse',
-  'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection',
   'closed-range-extreme-reversal-confirmed','multiscale-candle-rejection']){
   const a=scenario(60000,mirror);a.candidate.reason=reason;
   assert.equal(continuationRoomRisk(a),null,reason);

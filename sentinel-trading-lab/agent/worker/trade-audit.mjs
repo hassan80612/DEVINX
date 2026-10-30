@@ -18,7 +18,7 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
  const level=x=>x&&numberOrNull(x.level)!==null?{level:numberOrNull(x.level),touches:numberOrNull(x.touches)}:null;
  return {
   type:'trade_decision',ts:now,provider:short(context?.provider,30),asset:short(context?.asset,45),
-  batchId:short(signal?.id,1024),engine:short(context?.engine,90),
+  batchId:short(signal?.id,1024),engine:short(context?.engine,90),entryFamily:short(context?.entryFamily||'automatic',30),
   directionMode:short(mode,24),independent:signal?.independent===true,
   side:signal?.side==='CALL'?'CALL':signal?.side==='PUT'?'PUT':null,
   durationMs:numberOrNull(signal?.durationMs),signalAt:numberOrNull(signal?.at),
@@ -83,7 +83,10 @@ export function acceptedAudit(event,now=Date.now()){
   brokerReportedExitAt:numberOrNull(event?.brokerReportedExitAt),
   nativeExpiry:event?.nativeExpiry?{preferredMs:numberOrNull(event.nativeExpiry.preferredMs),
    currentMs:numberOrNull(event.nativeExpiry.currentMs),revision:numberOrNull(event.nativeExpiry.revision),
-   blocked:event.nativeExpiry.blocked===true}:null};
+   blocked:event.nativeExpiry.blocked===true,
+   ...(event.nativeExpiry.observedAt!=null?{observedAt:numberOrNull(event.nativeExpiry.observedAt)}:{}),
+   ...(event.nativeExpiry.discoveryReason?{discoveryReason:short(event.nativeExpiry.discoveryReason,60)}:{}),
+   ...(event.nativeExpiry.mappingStatus?{mappingStatus:short(event.nativeExpiry.mappingStatus,60)}:{})}:null};
 }
 export function settlementAudit(event,now=Date.now()){
  if(event?.source&&event.source!=='broker')return null;

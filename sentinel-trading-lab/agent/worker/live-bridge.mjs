@@ -89,7 +89,7 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
-    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
+    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000),entryFamily:runtimeStatus?.settings?.entryFamily||'automatic'},
     liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
@@ -217,7 +217,7 @@ export class LiveBridge{
       // A new motor, expiry or live forecast is meaningful even if no new
       // broker quote arrived. The old dedup ignored all three, so the phone
       // could appear stuck until its next whole-state cloud poll.
-      snapshot.settings?.forecastMode,snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
+      snapshot.settings?.forecastMode,snapshot.settings?.engine,snapshot.settings?.orderDurationMs,snapshot.settings?.entryFamily,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
       snapshot.lastResult?.analysis?.vnext?.ea?.[4],

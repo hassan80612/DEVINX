@@ -8,10 +8,11 @@ import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection
 import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '../../agent/src/core/visible-strategy-guide.mjs';
 import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
 import {marketDataStatus} from '../../agent/src/core/market-reading.mjs';
+import {normalizeEntryFamily,supportsEntryFamilies} from '../../agent/src/core/entry-family.mjs';
 import {marketReadingRowSizingTexts} from '../../agent/worker/market-reading-layout.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.181';
+const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.182';
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -99,6 +100,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // Display cache only. Never reuse expired information as a live signal.
   const lastTotals=useRef<{asset:string,market:number,strategies:number,combined:number,average:number,at:number}|null>(null);
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
+  const[entryFamily,setEntryFamily]=useState(normalizeEntryFamily(s?.settings?.entryFamily));
+  const entryFamilyEditing=useRef(false);
   const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
   const[chosenEngine,setChosenEngine]=useState(String(s?.settings?.engine||'automatic'));
@@ -123,10 +126,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     };
   },[]);
   useEffect(()=>{
+    if(!entryFamilyEditing.current)setEntryFamily(normalizeEntryFamily(s?.settings?.entryFamily));
     if(!settingsEditing.current){setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
-  },[s?.settings?.forecastMode,s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
+  },[s?.settings?.forecastMode,s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3,s?.settings?.entryFamily]);
   const onAverageChange=(raw:string)=>{
     const draft=raw.replace(/\D/g,'').slice(0,2);
     setAverageInput(draft);
@@ -237,6 +241,13 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       if(result===false)setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
     }finally{settingsEditing.current=false;}
   };
+  const supportsEntryChoices=supportsEntryFamilies(s?.agentVersion);
+  const entryFamilyLabels:Record<string,string>={automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'};
+  const changeEntryFamily=async(value:string)=>{
+    entryFamilyEditing.current=true;setEntryFamily(value);
+    try{if(await act('settings',{entryFamily:value})===false)setEntryFamily(normalizeEntryFamily(s?.settings?.entryFamily));}
+    finally{entryFamilyEditing.current=false;}
+  };
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizeUserStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
@@ -250,6 +261,25 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
+    <details className="entryFamilyPicker" data-testid="entry-family-picker" style={{gridColumn:'1 / -1',fontSize:12}}>
+      <summary style={{cursor:'pointer',fontWeight:700}}>{t('Tipos de entrada')} · {t(entryFamilyLabels[entryFamily])}</summary>
+      {!supportsEntryChoices&&<small>{t('Atualize o Agent no PC para usar estas opções.')}</small>}
+      <label style={{display:'grid',gap:6,marginTop:8}}>{t('Entradas permitidas')}
+        <select aria-label={t('Tipos de entrada')} value={entryFamily} disabled={busy||!supportsEntryChoices} onChange={e=>void changeEntryFamily(e.target.value)}>
+          {Object.entries(entryFamilyLabels).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}
+        </select>
+      </label>
+      <small style={{display:'block',marginTop:6}}>{t('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.')}</small>
+    </details>
+    <details data-testid="native-expiry-mapping-picker" style={{gridColumn:'1 / -1',fontSize:12}}>
+      <summary style={{cursor:'pointer',fontWeight:700}}>{t('Expiração da corretora')}</summary>
+      <small style={{display:'block',margin:'8px 0',lineHeight:1.5}}>{t('Pause o bot para mapear. Clique em Mapear expiração e depois no prazo da corretora. O caminho será salvo para as próximas atualizações.')}</small>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <button disabled={busy||!supportsEntryChoices} onClick={()=>void act('settings',{nativeExpiryMapping:'arm'})}>{t('Mapear expiração')}</button>
+        <button disabled={busy||!supportsEntryChoices} onClick={()=>void act('settings',{nativeExpiryMapping:'status'})}>{t('Conferir leitura')}</button>
+      </div>
+      <small style={{display:'block',marginTop:6}}>{t('O clique de indicação é feito no PC. No celular, acompanhe a mesma configuração.')}</small>
+    </details>
   </div>:null;
 
 

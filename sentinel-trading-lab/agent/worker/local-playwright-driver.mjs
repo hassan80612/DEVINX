@@ -19,7 +19,7 @@ import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 import {armNativeInvestRoute,readNativeInvestRoute,clearNativeInvestRoute,inspectNativeInvestTarget,readNativeInvestAmount} from './broker-native-invest-route.mjs';
 import {readBrokerTradeStake} from './broker-trade-stake.mjs';
-import {installBrokerNativeExpiryKeeper,updateBrokerNativeExpiryPreference,nativeExpiryPermissionForExecutor} from './broker-native-expiry-keeper.mjs';
+import {installBrokerNativeExpiryKeeper,updateBrokerNativeExpiryPreference,nativeExpiryPermissionForExecutor,nativeExpiryMappingCommand} from './broker-native-expiry-keeper.mjs';
 import {installBrokerChartPeriodKeeper} from './broker-chart-period-keeper.mjs';
 import {shouldRecoverBrokerHistory} from './broker-history-recovery-budget.mjs';
 import {selectedAccountRow,readSelectedBrokerAccount} from './broker-selected-account.mjs';
@@ -166,7 +166,7 @@ const PC_UI_KEYS=[
  "Estratégia responsável pela previsão"
 ];
 // Use the entire single-source dictionary: the prior short allowlist left dynamic overlay labels untranslated.
-const PC_UI_EN=Object.freeze(Object.fromEntries([...new Set([...PC_UI_KEYS,
+const PC_UI_EN=Object.freeze(Object.fromEntries([...new Set([...PC_UI_KEYS,...Object.keys(translations.en),
   'ENTRADA AGORA · ↑ CALL','ENTRADA AGORA · ↓ PUT',
   'JANELA ABERTA','JANELA SEM ENTRADA','ENTRADA JÁ SINALIZADA',
   'ENTRADA AGORA','● COTAÇÃO AO VIVO','COTAÇÃO AO VIVO',
@@ -777,6 +777,13 @@ export class LocalPlaywrightDriver{
         });
         page.__sentinelExpiryPermissionExposed=true;
       }
+      if(!page.__sentinelNativeExpiryChoiceExposed){
+        await page.exposeFunction('__sentinelRememberNativeExpiryChoice',async value=>{
+          const ms=Number(value);if(![30000,60000,300000].includes(ms))return false;
+          return this.setNativeExpiryPreference(provider,ms,{preserveExisting:false});
+        });
+        page.__sentinelNativeExpiryChoiceExposed=true;
+      }
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       // Do not capture a mutable expiry in this one-time script: an old 30s
       // default could overwrite the user's saved duration on a later broker reload.
@@ -864,13 +871,13 @@ export class LocalPlaywrightDriver{
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
       if(provider){
-        await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});
+        await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});
         await frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
       }
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{})}};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{})}};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }
@@ -1330,6 +1337,16 @@ export class LocalPlaywrightDriver{
     const p=Number(period);
     if(Number.isInteger(p)&&p>0&&p<=3600)this.state(provider).predictionPeriod=p
   }
+  async nativeExpiryMap(provider,{mode='status'}={}){
+    if(!['arm','status','reset','cancel'].includes(mode))throw Error('invalid_expiry_mapping_mode');
+    const session=await this.session(provider);if(!session?.page)throw Error('Abra a corretora no PC.');
+    const mappingId=Date.now();
+    const results=await Promise.allSettled(session.page.frames().map(frame=>frame.evaluate(nativeExpiryMappingCommand,{mode,id:mappingId})));
+    const states=results.filter(r=>r.status==='fulfilled'&&r.value?.ok).map(r=>r.value);
+    if(!states.length)throw Error('Leitura da expiração indisponível. Reconecte o Agent à corretora.');
+    const selected=states.find(s=>s.mapping?.status==='mapped'&&s.currentMs)||states.find(s=>s.currentMs)||states[0];
+    return {...selected,frames:states.length};
+  }
   async setNativeExpiryPreference(provider,preferredMs,options={}){
     if(!['iq_option','exnova'].includes(provider))return false;
     const accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
@@ -1348,13 +1365,19 @@ export class LocalPlaywrightDriver{
     let ms=preserveExisting?(this.nativeExpiryPreferences.get(provider)??requested):requested;
     if(preserveExisting&&page&&!page.isClosed?.()){
       const key='sentinel-broker-native-expiration-preference-v3:'+provider;
+      const choices=[];
       for(const frame of page.frames()){
-        const stored=Number(await frame.evaluate(k=>{
-          try{return localStorage.getItem(k)||localStorage.getItem(k.replace('-v3:','-v2:'))||localStorage.getItem(k.replace('-v3:','-v1:'))}catch{return null}
-        },key).catch(()=>null));
+        const receipt=await frame.evaluate(k=>{
+          try{return {value:Number(localStorage.getItem(k)||localStorage.getItem(k.replace('-v3:','-v2:'))||localStorage.getItem(k.replace('-v3:','-v1:'))),
+            selectedAt:Number(localStorage.getItem(k+':selectedAt')||0),explicitDefault:Number(localStorage.getItem('sentinel-broker-native-explicit-default-v4:'+k.split(':').at(-1)))===30000}}catch{return null}
+        },key).catch(()=>null);
         if(!current())return false;
-        if(accepted.has(stored/1000)){ms=stored;break}
+        const choice=receipt&&typeof receipt==='object'?receipt:{value:Number(receipt),selectedAt:0,explicitDefault:false};
+        if(accepted.has(choice.value/1000))choices.push(choice);
       }
+      choices.sort((a,b)=>b.selectedAt-a.selectedAt||Number(b.explicitDefault)-Number(a.explicitDefault)||Number(b.value!==30000)-Number(a.value!==30000));
+      if(choices.length)ms=choices[0].value;
+
     }
     if(!current())return false;
     this.nativeExpiryPreferences.set(provider,ms);
@@ -2359,6 +2382,23 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
+            <details data-sentinel-entry-family-picker data-sentinel-preserve-open="1" style="margin:6px 0;font-size:11px;color:${ink}">
+              <summary style="cursor:pointer;font-weight:750">${tr('Tipos de entrada')} · ${tr(({automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'})[d.entryFamily]||'Automático · todos os tipos')}</summary>
+              <label style="display:grid;gap:5px;margin-top:7px">${tr('Entradas permitidas')}
+                <select data-sentinel-setting="entryFamily" style="width:100%;height:33px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};padding:0 7px">
+                 ${Object.entries({automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'}).map(([value,label])=>'<option value="'+value+'" '+((d.entryFamily||'automatic')===value?'selected':'')+'>'+esc(tr(label))+'</option>').join('')}
+                </select>
+              </label>
+              <small style="display:block;margin-top:6px;line-height:1.4">${tr('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.')}</small>
+            </details>
+            <details data-sentinel-expiry-mapping-picker data-sentinel-preserve-open="1" style="margin:6px 0;font-size:11px;color:${ink}">
+              <summary style="cursor:pointer;font-weight:750">${tr('Expiração da corretora')}</summary>
+              <small style="display:block;margin:7px 0;line-height:1.45">${tr('Pause o bot para mapear. Clique em Mapear expiração e depois no prazo da corretora. O caminho será salvo para as próximas atualizações.')}</small>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button data-sentinel-action="expiry-map-arm" style="padding:7px;border-radius:7px;border:1px solid ${panelBorder};background:${fieldBg};color:${fieldInk}">${tr('Mapear expiração')}</button>
+                <button data-sentinel-action="expiry-map-status" style="padding:7px;border-radius:7px;border:1px solid ${panelBorder};background:${fieldBg};color:${fieldInk}">${tr('Conferir leitura')}</button>
+              </div>
+            </details>
             <div data-sentinel-command-dock data-analysis-state="${runtime}">
             ${d.executorMonitorHtml||''}
             <div data-sentinel-command-buttons style="display:grid;grid-template-columns:minmax(88px,1.55fr) minmax(72px,1.25fr) repeat(4,minmax(44px,.8fr));gap:5px;margin-top:12px;min-width:0;width:100%;max-width:100%"><div data-sentinel-analysis-actions style="display:contents">

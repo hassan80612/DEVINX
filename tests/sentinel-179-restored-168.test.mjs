@@ -6,11 +6,13 @@ import {fileURLToPath} from 'node:url';
 const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
 const reference=JSON.parse(readFileSync(new URL('./fixtures/sentinel-179-published-168-source.json',import.meta.url)));
 const sha=b=>createHash('sha256').update(b).digest('hex');
+const reviewed182=JSON.parse(readFileSync(new URL('./fixtures/sentinel-182-reviewed-source.json',import.meta.url))).files;
 const presentation=new Set(['src/core/market-reading.mjs','src/core/ui-texts.mjs']);
-test('all published 168 source is preserved except the scoped candidate wall review',()=>{
+test('published 168 source is preserved except the reviewed 182 entry preferences and price review',()=>{
  assert.equal(reference.payloadSha256,'5033d8bbfb1e6f1637da989068ee57deeb565419495f222821a7adee37769224');
  assert.equal(Object.keys(reference.files).length,92);
  for(const [name,expected] of Object.entries(reference.files)){
+  if(reviewed182[name]){assert.equal(sha(readFileSync(new URL(name,root))),reviewed182[name],name);continue;}
   if(presentation.has(name))continue;
   let actual=readFileSync(new URL(name,root));
   if(name==='src/core/continuation-room-risk.mjs'){
@@ -27,11 +29,11 @@ test('all published 168 source is preserved except the scoped candidate wall rev
 test('later candidate modules are removed and the source set contains no replacement decision path',()=>{
  const collect=(url,prefix='')=>readdirSync(url,{withFileTypes:true}).flatMap(e=>e.isDirectory()?
   collect(new URL(e.name+'/',url),prefix+e.name+'/'):[prefix+e.name]);
- assert.deepEqual(collect(new URL('src/',root)).map(x=>'src/'+x).sort(),Object.keys(reference.files).sort());
+ assert.deepEqual(collect(new URL('src/',root)).map(x=>'src/'+x).sort(),[...new Set([...Object.keys(reference.files),...Object.keys(reviewed182)])].sort());
  for(const name of ['current-entry-context','expiry-entry-position','forming-candle-continuation'])
   assert.equal(existsSync(new URL('src/core/'+name+'.mjs',root)),false);
 });
-test('168 quote freshness and 5m reversal-only admission are restored without extra policy',()=>{
+test('168 quote freshness is preserved and explicit 5m family review remains shared',()=>{
  const raw=readFileSync(new URL('src/core/runtime.mjs',root),'utf8');
  assert.match(raw,/Number\(settings\.orderDurationMs\)<=30000\?1450:\s*Number\(settings\.orderDurationMs\)<=60000\?1950:2500/);
  const engine=readFileSync(new URL('src/core/now-opportunity-engine.mjs',root),'utf8');

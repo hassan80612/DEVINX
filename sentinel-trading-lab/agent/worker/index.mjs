@@ -65,7 +65,7 @@ const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
-function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
+function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),entryFamily:runtime.settings.entryFamily||'automatic',engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
 const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
  onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
@@ -86,6 +86,11 @@ driver.setBalanceUpdateHandler?.((provider,balance)=>{
 });
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
+async function expiryMappingAction(provider,mode){
+ assertLicensedAccess();if(provider!==activeProvider)throw Error('Selecione a corretora ativa.');
+ if(mode==='arm'&&(executor.enabled||executor.arming||executor.executing))throw Error('Pause o bot para mapear a expiração. Depois pode ligá-lo normalmente.');
+ return driver.nativeExpiryMap(provider,{mode});
+}
 async function executorAction(action,payload={}){
  if(action==='executor-stop'){const old=executor.pending;const result=executor.stop('Parado por você',{reset:true});if(old)uiExecutor.retireUnidentifiedBatch(old);return{ok:true,message:result.message};}
  assertLicensedAccess();
@@ -96,7 +101,7 @@ async function executorAction(action,payload={}){
   executor.message='CALL/PUT mapeados para '+(activeProvider==='iq_option'?'IQ Option':'Exnova')+' · pronto para ligar';return{ok:true,message:executor.message};
  }
  if(action==='executor-config'){executor.configure(payload.patch||{});const serialized=JSON.stringify(executor.config);executorSettingsWrite=executorSettingsWrite.catch(()=>{}).then(async()=>{await mkdir(dirname(executorSettingsFile),{recursive:true});await writeFile(executorSettingsFile+'.tmp',serialized,{mode:0o600});await rename(executorSettingsFile+'.tmp',executorSettingsFile);});await executorSettingsWrite;return{ok:true,message:'Configuração do bot aplicada'};}
- if(action==='executor-start'){try{if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){throw e;}return{ok:true,message:executor.message};}
+ if(action==='executor-start'){try{await driver.nativeExpiryMap?.(activeProvider,{mode:'cancel'}).catch(()=>{});if(typeof driver.setExecutionObserver!=='function')throw Error('Atualize o Agent local para confirmar as ordens.');driver.setExecutionObserver((provider,frame,direction)=>uiExecutor.observe(provider,frame,direction));await executor.start();}catch(e){throw e;}return{ok:true,message:executor.message};}
  throw Error('Comando do bot inválido.');
 }
 
@@ -141,7 +146,7 @@ async function publishLiveFrame(){
   // The start/end of EVERY PC window is a first-class real-time transition,
   // even when both old and new windows are still in 'scanning' phase.
   // A NEW pinned future-entry clock must bypass routine quote pacing.
-  const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
+  const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,runtime.settings.entryFamily,
     liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
     mobileEntry?.phase,mobileEntry?.entryTriggeredAt,
     pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
@@ -155,7 +160,7 @@ async function publishLiveFrame(){
   // refreshes. Deliver these without a second half-second wait. Everything
   // else retains the original pacing and 3000-byte bound.
   const sourceEventKey=[
-    runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
+    runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,runtime.settings.entryFamily,
     pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
     mobileEntry?.entryTriggeredAt,mobileEntry?.phase
   ].join('|');
@@ -236,6 +241,7 @@ async function primeVisibleMarket(provider){
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
   if(action.startsWith('executor-')){if(action!=='executor-stop'&&provider!==activeProvider)throw Error('Selecione a corretora ativa.');return executorAction(action,payload);}
+  if(action.startsWith('expiry-map-'))return expiryMappingAction(provider,action.slice('expiry-map-'.length));
   if(action==='native-invest-map'){
     assertLicensedAccess();
     if(provider!==activeProvider)throw Error('Selecione a corretora ativa.');
@@ -268,6 +274,8 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       if(!allowed.includes(String(value)))throw new Error('invalid_engine');
       runtime.patchSettings({engine:String(value),strategy2:'none',strategy3:'none'},'overlay');
       runtime.requestImmediateEvaluation?.();
+    }else if(key==='entryFamily'){
+      runtime.patchSettings({entryFamily:String(value)},'overlay');runtime.requestImmediateEvaluation?.();
     }else if(key==='strategy'||key==='strategy2'||key==='strategy3'){
       const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
       const optional=key!=='strategy';
@@ -514,7 +522,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const cycleDeadline=Number(runtime.lastResult?.analysis?.vnext?.opportunityWindow?.windowEndsAt||0);
     const expiredOpportunityFrame=cycleDeadline>0&&Date.now()>=cycleDeadline;
     const overlayFastKey=[
-      activeProvider,runtime.settings.asset,runtime.settings.engine,runtime.settings.forecastMode,runtime.settings.orderDurationMs,
+      activeProvider,runtime.settings.asset,runtime.settings.engine,runtime.settings.forecastMode,runtime.settings.orderDurationMs,runtime.settings.entryFamily,
       pendingScenario.side,pendingScenario.status,pendingScenario.closed,expiredOpportunityFrame,
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil,
@@ -612,7 +620,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
       engine:view.settings?.engine||null,forecastMode:view.settings?.forecastMode||'continuous',
-      uiLanguage:view.settings?.uiLanguage||'pt',
+      uiLanguage:view.settings?.uiLanguage||'pt',entryFamily:view.settings?.entryFamily||'automatic',
        vnext:a.vnext||null,
        strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',
@@ -699,7 +707,7 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path.st
       return status();
     }
     return runtime.setMode(payload.mode,payload.actor||'user')
-  }if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+  }if(path==='/settings'&&method==='PATCH'){if(payload.nativeExpiryMapping){const expiryMapping=await expiryMappingAction(activeProvider,String(payload.nativeExpiryMapping));return {...await status(),expiryMapping};}return runtime.patchSettings(payload,payload.actor||'user');}if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{

@@ -14,7 +14,8 @@ const qualifyingReasons=new Set([
 ]);
 export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
  const shortHorizonNearWallEntry=[30000,60000].includes(Number(durationMs))&&
-  ['confirmed-level-structure-reversal','break-retest-continuation'].includes(candidate?.reason);
+  ['confirmed-level-structure-reversal','break-retest-continuation',
+   'failed-breakout-structure-change','confirmed-fast-level-reversal','historical-level-rejection'].includes(candidate?.reason);
  const shortHorizonBreakout=[30000,60000].includes(Number(durationMs))&&
   candidate?.reason==='historical-level-breakout';
  const directionalNearWallEntry=shortHorizonNearWallEntry||shortHorizonBreakout;
@@ -24,7 +25,7 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  // The final reason owns this check. Inherited reversal metadata cannot
  // exempt a proposal. Short historical breakouts use the same existing
  // opposing-wall evidence without requiring deceleration first. Impulses,
- // other reversal families and five-minute admission keep their old rules.
+ // range reversals and five-minute admission keep their own rules.
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),sign=candidate.side==='CALL'?1:-1;
  if(!(usable(spot)&&at>0&&at<=clock&&clock-at<=1450&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;

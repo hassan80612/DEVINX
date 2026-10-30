@@ -55,7 +55,7 @@ export class SignedLiveBridge extends LiveBridge{
       scenario.side,scenario.status,scenario.closed,scenario.deadline,
       alert.side,alert.trigger,alert.testing,op.subanalyst?.status,
       op.state,op.side,op.ready,op.actionable,op.activeUntil,
-      snapshot?.settings?.forecastMode,snapshot?.settings?.engine,snapshot?.settings?.orderDurationMs,
+      snapshot?.settings?.forecastMode,snapshot?.settings?.engine,snapshot?.settings?.orderDurationMs,snapshot?.settings?.entryFamily,
       a.vnext?.engineId,a.vnext?.receipt?.side,
       // Refresh future-entry countdown urgently when the pinned clock rolls.
       a.vnext?.ea?.[4],a.vnext?.ea?.[0],a.vnext?.ea?.[1],

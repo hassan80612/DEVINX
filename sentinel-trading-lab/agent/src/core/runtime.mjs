@@ -1,3 +1,5 @@
+import {ENTRY_FAMILIES,normalizeEntryFamily,reviewEntryFamily,reactionLevel,entryFamilyOf} from './entry-family.mjs';
+import {ReactionOpportunityMemory} from './reaction-opportunity-memory.mjs';
 import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
@@ -91,7 +93,7 @@ function newPriceStructure(main,side,snap,strict=false){
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67',precisionProfile='off'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
-    this.structureCache=new HistoricalPriceStructureCache();
+    this.structureCache=new HistoricalPriceStructureCache();this.reactionOpportunityMemory=new ReactionOpportunityMemory();
     this.forecastModel=forecastModel;this.precisionProfile=precisionProfile;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
@@ -101,7 +103,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.immediateEvaluationSerial=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',entryFamily:'automatic',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -882,6 +884,7 @@ export class DemoTradingRuntime{
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
   patchSettings(patch={},actor='user'){
     patch={...patch};delete patch.clockMode;
+    if(Object.prototype.hasOwnProperty.call(patch,'entryFamily')&&!ENTRY_FAMILIES.includes(patch.entryFamily))throw Error('invalid_entry_family');
     // Ignore settings from earlier releases with a separate motor selector.
     delete patch.motorVariant;
     if(Object.prototype.hasOwnProperty.call(patch,'uiLanguage')&&
@@ -951,7 +954,7 @@ export class DemoTradingRuntime{
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
-    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings','entryFamily'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
     this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
@@ -1062,7 +1065,7 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
-        qualityPolicy:'adaptive-market-v17',
+        qualityPolicy:'adaptive-market-v17',entryFamily:normalizeEntryFamily(settings.entryFamily),
         expiryDirectionSelector:this.expiryDirectionSelector,directionDisagreement:this.directionDisagreement,expiryDirectionContext
       });
       // Read-only arithmetic on the existing broker feed, never another
@@ -1121,7 +1124,8 @@ export class DemoTradingRuntime{
          previousSide:original66.side,...expiryTrendInput,
          candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
          structureCache:this.structureCache,context:expiryDirectionContext}),
-        durationMs:settings.orderDurationMs,quoteAt:snap.quoteTs,now,price:snap.price
+        durationMs:settings.orderDurationMs,quoteAt:snap.quoteTs,now,price:snap.price,quoteHistory:snap.quoteHistory,entryFamily:normalizeEntryFamily(settings.entryFamily),
+        structure:this.structureCache.get({candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),now,context:expiryDirectionContext})
       });
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,
@@ -1168,12 +1172,23 @@ export class DemoTradingRuntime{
       const precision=this.precisionProfile==='horizon-balanced-v148'?
         precisionEntryGate({candidate:pricedEligible,original:original66,preliminary,
           quoteAt:snap.quoteTs,now,durationMs:settings.orderDurationMs}):null;
-      const eligible=precision?.enabled?
+      let eligible=precision?.enabled?
         (pricedEligible.ready===true&&precision.ready===true?
           {...pricedEligible,precision}:
           {...pricedEligible,side:null,ready:false,
             reason:pricedEligible.ready===true?precision.reason:pricedEligible.reason,
             precision}):pricedEligible;
+      eligible=reviewEntryFamily(eligible,settings.entryFamily);
+      const previousReactionWindow=this.vnextWindowState;
+      this.reactionOpportunityMemory.beginOperation(expiryDirectionContext+'|'+normalizeEntryFamily(settings.entryFamily),previousReactionWindow?.entryTriggeredAt||0);
+      const reactionStructure=this.structureCache.get({candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),now,context:expiryDirectionContext});
+      const reactionRisk=this.reactionOpportunityMemory.observe({
+        candidate:{...eligible,level:reactionLevel(eligible)},quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance,
+        held:previousReactionWindow?.phase==='fired'&&(now<Number(previousReactionWindow.exitAt)+3000||Number(snap.quoteTs)<Number(previousReactionWindow.exitAt)+3000)
+      });
+      if(reactionRisk)eligible={...eligible,ready:false,provisionalSide:eligible.side,side:null,
+        reason:'same-reaction-after-better-missed-price',entryRisk:reactionRisk};
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1218,6 +1233,8 @@ export class DemoTradingRuntime{
         // Explicit evidence gate travels with the immutable one-shot entry.
         fiveMinuteReversalConfirmed:Number(settings.orderDurationMs)===300000&&
           observation.fiveMinuteReversalConfirmed===true,
+        fiveMinuteContextConfirmed:Number(settings.orderDurationMs)===300000&&observation.fiveMinuteContextConfirmed===true,
+        entryFamily:normalizeEntryFamily(settings.entryFamily),
         entryReadyNow:freshSignal
       }:null;
       this.vnextFutureEntryAnchor=anchor;
@@ -1752,6 +1769,7 @@ export class DemoTradingRuntime{
   this.settings.strategy2=normalizeTechnicalStrategy(this.settings.strategy2)||'none';
   this.settings.strategy3=normalizeTechnicalStrategy(this.settings.strategy3)||'none';
   this.settings.forecastMode='continuous';
+  this.settings.entryFamily=normalizeEntryFamily(this.settings.entryFamily);
  }this.settings.demoAutopilot=false;if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses.slice(0,180).map(x=>this._compactAnalysis(x)):[];if(data.signalValidation&&typeof data.signalValidation==='object'){const prefix='micro-v5|'+CALIBRATION_EPOCH+'|';const pending=Array.isArray(data.signalValidation.pending)?data.signalValidation.pending.filter(x=>String(x?.key||'').startsWith(prefix)):[],outcomes=Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes.filter(x=>String(x?.key||'').startsWith(prefix)):[],lastQueued=Object.fromEntries(Object.entries(data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}).filter(([k])=>String(k).startsWith(prefix)));this.signalValidation={pending,outcomes,lastQueued}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
   async status(){
     const balance=this.externalMarket?.balance!=null?Number(this.externalMarket.balance):await this.broker.getBalance(),wins=this.trades.filter(x=>x.won).length,losses=this.trades.filter(x=>x.won===false).length,snap=this._marketSnapshot();

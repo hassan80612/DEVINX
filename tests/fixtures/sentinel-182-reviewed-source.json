@@ -1,0 +1,12 @@
+{
+  "base": "c6619c4d9de9a0a025bfe84a53bd93a88e63f3f6",
+  "files": {
+    "src/core/runtime.mjs": "4d895afefdc5b38d73995fe7b0279aa711cb81f1b3452040c44d199f70b1ecac",
+    "src/core/now-opportunity-engine.mjs": "c12e4f08902ba667d347bf70f5657d3a0f0a9f4c6a3895ee156010d491790e5f",
+    "src/core/continuation-room-risk.mjs": "9c334a902f74aec7ce9f65e28fdcdbc8db4b5d5ab13b1f5e248140125f1e493f",
+    "src/core/market-reading.mjs": "5c57be837ec9ab0759dcf320ccff73671c6a826d0ac72fcb1f3129ec7d243cda",
+    "src/core/ui-texts.mjs": "fe7c475e4105e67279cffda3a5d76bb6ef87ae23867153b4c6f4459e18019997",
+    "src/core/entry-family.mjs": "2f79f3e480df83823d15339ccd826ba93046269e7975e486dc55d4539cb63c3c",
+    "src/core/reaction-opportunity-memory.mjs": "a8ba25d181d799c9765e0f3170f7eb4d93743a5d35b038efe94b14fe2a003350"
+  }
+}

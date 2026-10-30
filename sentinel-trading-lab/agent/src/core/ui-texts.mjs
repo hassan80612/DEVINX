@@ -1,6 +1,21 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Expiração da corretora": "Broker expiry",
+  "Mapear expiração": "Map expiry",
+  "Conferir leitura": "Check reading",
+  "Pause o bot para mapear. Clique em Mapear expiração e depois no prazo da corretora. O caminho será salvo para as próximas atualizações.": "Pause the bot to map. Click Map expiry and then the broker duration field. Its path will be saved for future page reloads.",
+  "O clique de indicação é feito no PC. No celular, acompanhe a mesma configuração.": "Select the field on the PC. The same configuration is available on your phone.",
+
+  "Atualize o Agent no PC para usar estas opções.": "Update the PC Agent to use these options.",
+  "REVERSÃO JÁ AVANÇOU": "REVERSAL ALREADY ADVANCED",
+  "Tipos de entrada": "Entry types",
+  "Entradas permitidas": "Allowed entries",
+  "Automático · todos os tipos": "Automatic · all types",
+  "Só continuidade": "Continuation only",
+  "Só reversões": "Reversals only",
+  "O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.": "The analyst keeps reading the whole market. This choice sets which entry types may be issued across all three durations.",
+
   "REVERSÃO AINDA SEM QUEBRA": "REVERSAL WITHOUT A STRUCTURAL BREAK YET",
   "CONTINUIDADE TESTANDO RESISTÊNCIA": "CONTINUATION TESTING RESISTANCE",
   "CONTINUIDADE TESTANDO SUPORTE": "CONTINUATION TESTING SUPPORT",

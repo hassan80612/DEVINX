@@ -34,7 +34,8 @@ export function executorSignal(analysis){
  const a=analysis?.vnext?.futureEntryAnchor;
  if(a?.phase!=='fired'||!['CALL','PUT'].includes(a.side)||!(Number(a.entryTriggeredAt)>0))return null;
  return{id:[a.context,a.entryTriggeredAt].join('|'),engineId:a.engineId??String(a.context||'').split('|').at(-2)??null,side:a.side,at:Number(a.entryTriggeredAt),exitAt:Number(a.exitAt),entryPrice:Number(a.confirmedEntryPrice??a.entryPrice??a.projectedEntryPrice),durationMs:Number(a.holdingSeconds??a.actualHoldingSeconds)*1000,
-  fiveMinuteReversalConfirmed:a.fiveMinuteReversalConfirmed===true};
+  fiveMinuteReversalConfirmed:a.fiveMinuteReversalConfirmed===true,
+  fiveMinuteContextConfirmed:a.fiveMinuteContextConfirmed===true,entryFamily:a.entryFamily||'reversal'};
 }
 export class SignalExecutor{
  constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
@@ -363,11 +364,11 @@ export class SignalExecutor{
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
   if(mode==='automatic'||Number(c.durationMs)===300000){
-    // For five minutes, reversal-only wins over periodic CALL/PUT settings.
+    // Five-minute execution follows a horizon-qualified analyst signal, including user-selected continuation.
     // The original forced cadence remains untouched for 30s and 1m.
     s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
     if(Number(c.durationMs)===300000){
-      if(s?.fiveMinuteReversalConfirmed!==true){
+      if(!(s?.fiveMinuteReversalConfirmed===true||c.entryFamily&&c.entryFamily!=='reversal'&&s?.fiveMinuteContextConfirmed===true)){
         s=null;
         if(mode!=='automatic')this.message='Ligado · 5m apenas reversões confirmadas · aguardando';
       }else if(mode!=='automatic'&&s.side!==(mode==='call'?'CALL':'PUT')){
@@ -396,7 +397,7 @@ export class SignalExecutor{
   if(s?.engineId&&s.engineId!==c.engine)return;
   // Last mile: never queue a 5m signal without the current quote's proof.
   if(Number(c.durationMs)===300000&&s&&
-     (Number(s.durationMs)!==300000||s.fiveMinuteReversalConfirmed!==true))return;
+     (Number(s.durationMs)!==300000||!(s.fiveMinuteReversalConfirmed===true||c.entryFamily&&c.entryFamily!=='reversal'&&s.fiveMinuteContextConfirmed===true)))return;
   // Diagnostic metadata is never part of order acceptance/validation.
   if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){

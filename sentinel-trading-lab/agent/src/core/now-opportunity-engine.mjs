@@ -1,3 +1,5 @@
+import {levelRoleEvidence} from './level-role-evidence.mjs';
+import {entryFamilyOf} from './entry-family.mjs';
 // Read-only current-entry analysis for the Sentinel Agent. Never sends orders
 // or schedules a future entry. The 30s projection uses observed past prices;
 // the shared lifecycle owns the current entry and immutable holding window.
@@ -196,11 +198,28 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  return candidate;
 }
 
-export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt,price}={}){
+export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt,price,quoteHistory=[],entryFamily='reversal',structure=null}={}){
  if(Number(durationMs)!==300000||candidate?.ready!==true)return candidate;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  const valid=Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot&&
   at>0&&at<=clock&&clock-at<=2500&&spot>0&&isSide(candidate.side);
+ if(valid&&entryFamily!=='reversal'&&entryFamilyOf(candidate)==='continuation'){
+  const quotes=causalQuotes(quoteHistory,now,300000).filter(q=>q.ts<=at);
+  const noise=observedNoise({quotes,now:at,horizonSeconds:60});
+  const longer=longHorizonDirection({quotes,quoteAt:at,price:spot,durationMs,noise});
+  if(longer.ready&&longer.significant&&longer.side===candidate.side){
+   const map=structure?.candleLevelMap,tol=Number(map?.tolerance||structure?.tolerance),sign=candidate.side==='CALL'?1:-1;
+   const wall=tol>0&&map?.asOf<=now&&map.levels?.find(z=>{
+    const role=levelRoleEvidence(z,sign>0?'PUT':'CALL'),gap=sign>0?Number(z.low)-spot:spot-Number(z.high);
+    return role.pivots>=1&&role.rejections>=2&&gap>=0&&gap<=tol*1.25;
+   });
+   if(wall)return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+    reason:'five-minute-continuation-without-clearance',entryRisk:{kind:'continuation-retesting-uncleared-opposing-wall',level:wall.level}};
+   return {...candidate,fiveMinuteContextConfirmed:true};
+  }
+
+  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,reason:'five-minute-continuation-without-horizon-context'};
+ }
  const proof=candidate.priceStructure||{},reason=candidate.reason;
  const current=e=>e&&e.side===candidate.side&&Number(e.confirmedAt)>0&&
   Number(e.confirmedAt)<=at&&at-Number(e.confirmedAt)<=2500;
@@ -219,7 +238,7 @@ export function fiveMinuteReversalOnly({candidate,durationMs,quoteAt,now=quoteAt
   proof.reactionProof?.confirmed===true&&proof.reactionProof?.kind==='sustained-level-reversal'&&
   Number(proof.reactionProof.durationMs)===300000;
  if(valid&&(rangeTurn||levelTurn||reclaimed||rejected))
-  return {...candidate,fiveMinuteReversalConfirmed:true};
+  return {...candidate,fiveMinuteReversalConfirmed:true,fiveMinuteContextConfirmed:true};
  return {...candidate,ready:false,side:null,reason:'five-minute-reversal-only-awaiting-proof',
   fiveMinuteReversalConfirmed:false};
 }
@@ -448,7 +467,7 @@ export function longHorizonDirection({quotes=[],quoteAt,price,durationMs,noise=0
    observedNetMove:move};
 }
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,entryFamily='reversal',expiryDirectionSelector=null,directionDisagreement=null,expiryDirectionContext=null,candles=[],structureCache=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
@@ -459,7 +478,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // override an evaluated 30s/60s direction without validated evidence:
  // randomized-price A/B showed such overrides sharply increased losses.
  if(qualityPolicy==='adaptive-market-v17'&&engineId){
-  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const input={quoteHistory,price,quoteAt,now,durationMs,entryFamily};
   // The SAME market base owns the direction and pivot/reversal checks for
   // Automatic and every selected specialist. Strategies never open their
   // own bypass around the base's confirmed top/bottom decisions.
@@ -563,7 +582,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
-  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});
+  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price,quoteHistory,entryFamily,structure});
   const persistenceDecision=reviewDirectionalPersistence({
    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
   });
@@ -575,7 +594,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
      specialist?.ready?'base-reviewed-evidence':'observational'}:{})};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
-  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const input={quoteHistory,price,quoteAt,now,durationMs,entryFamily};
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
   const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;

@@ -2,12 +2,17 @@
 const side=s=>s==='CALL'||s==='PUT'?s:null;
 const opposite=s=>s==='CALL'?'PUT':s==='PUT'?'CALL':null;
 export function marketReading({phase,label,trendSide,candidate={},observation={},quoteAt,now=quoteAt}={}){
+ // A user entry-family preference changes emission, not the market reading.
+ if(candidate.reason==='entry-family-not-selected'&&observation.ready===true)
+  return marketReading({phase,label,trendSide,candidate:observation,quoteAt,now});
  // Freshness belongs to the technical line, never to order permission.
  let text=label||'ANALISANDO',direction=side(trendSide);
  if(candidate.ready===true){
   const reversal=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
    'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection']);
   text=reversal.has(candidate.reason)?'REVERSÃO CONFIRMADA':'CONTINUIDADE';direction=side(candidate.side);
+ }else if(candidate.entryRisk?.kind==='same-reaction-after-better-missed-price'){
+  text='REVERSÃO JÁ AVANÇOU';direction=side(candidate.provisionalSide);
  }else if(candidate.entryRisk?.kind==='range-turn-inside-persistent-directional-leg'){
   text='REVERSÃO AINDA SEM QUEBRA';direction=side(candidate.provisionalSide);
  }else if(candidate.entryRisk?.kind==='continuation-retesting-uncleared-opposing-wall'){
