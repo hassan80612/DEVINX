@@ -65,7 +65,7 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
 export function verifyBrokerExpiryForOrder({inspection,requiredDurationMs,automatic=true}={}){
  if(!automatic)return {allowed:true,kind:'manual-mode-preserved'};
  const actual=Number(inspection?.currentMs),required=Number(requiredDurationMs);
- if(![30000,60000,300000].includes(required))return {allowed:false,kind:'unsupported-duration'};
+ if(![30000,60000,300000].includes(required))return {allowed:true,kind:'legacy-horizon-unmodified'};
  // An unknown native field must not freeze the first or subsequent
  // automatic signals. It is not evidence of a mismatch. The worker keeps
  // recovering/mapping the field asynchronously; the broker's actual
