@@ -58,16 +58,16 @@ test('the Node renewal bridge reads current executor state after reload rather t
  state={executing:true};assert.equal((await renew()).allowed,false);
  driver.setNativeExpiryPermissionSource(null);assert.equal((await renew()).allowed,false);
 });
-test('178: a detected native mismatch is telemetry and does not gate the requested automatic click',async()=>{
+test('184: a known different broker expiry blocks the click instead of trading the wrong duration',async()=>{
  const m=browser('30 s',60000);let clicks=0;
  try{
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   const ui=new BrokerUiExecutor({state:()=>({activeId:76,symbol:'EUR/USD OTC'})});
   ui.controls=async()=>({frame:{evaluate:async(fn,arg)=>fn(arg),locator:()=>({click:async()=>{clicks++;}})},callSelector:'#call',putSelector:'#put'});
   const order={id:'expiry-test',side:'CALL',durationMs:60000,amount:1,asset:'EUR/USD OTC',activeId:76,isValid:()=>true};
-  const result=await ui.execute('iq_option',order);
-  assert.equal(result.pending,true);assert.equal(clicks,1);assert.equal(order.clicked,true);
-  assert.equal(order.nativeExpiryInspection.detectedMismatch,true);
+  await assert.rejects(ui.execute('iq_option',order),/Expiração da corretora diferente/);
+  assert.equal(clicks,0);assert.notEqual(order.clicked,true);
+  assert.equal(order.nativeExpiryInspection.blocked,true);
   assert.equal(ui.orders.size,0);
  }finally{m.restore();}
 });
