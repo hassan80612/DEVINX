@@ -451,7 +451,6 @@ function scheduleBrokerMaintenance(provider){
   });
 }
 let shuttingDown=false;
-let lastNativeExpiryPreferenceKey='';
 let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   executor.observeBalance(activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null);
   executor.watch();
@@ -461,17 +460,15 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const activePeek=driver.peek?.(activeProvider);
     if(activePeek?.updatedAt&&activePeek.open===false){
       if(brokers[activeProvider])brokers[activeProvider].connected=false;
-      activeProvider=null;lastNativeExpiryPreferenceKey='';lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
+      activeProvider=null;lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
     }
   }
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
-  if(activeProvider){
-    const preferenceKey=activeProvider+'|'+Number(runtime.settings.orderDurationMs||0);
-    if(preferenceKey!==lastNativeExpiryPreferenceKey){
-      lastNativeExpiryPreferenceKey=preferenceKey;
-      driver.setNativeExpiryPreference?.(activeProvider,Number(runtime.settings.orderDurationMs||0));
-    }
-  }else lastNativeExpiryPreferenceKey='';
+  // Never replay an analyst duration into the broker's native expiry on
+  // reconnection, active-asset change or automatic re-evaluation. In particular
+  // a stale 30s setting must NOT replace the user's manually selected 1m/5m.
+  // Only the explicit 'setting: duration' command and a direct broker-picker
+  // user event are allowed to update the native expiry preference.
   // Live broker quote events and the dedicated 220ms signed-feed timer
   // already publish the latest pre-analysis source values. Do not duplicate
   // the expensive mobile snapshot serialization in the critical quote->click
