@@ -1,6 +1,6 @@
 {
   "version": "13.9.197",
-  "build": "13.9.197-189-decision-unchanged-durable-chart-and-expiry",
+  "build": "13.9.197-189-baseline-reversal-30s-1m-5m-and-expiry-persist",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
