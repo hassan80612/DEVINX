@@ -105,14 +105,21 @@ export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteA
  const d=direction(event.side),tol=Number(map.tolerance);
  const departure=d*(spot-Number(zone.level));
  if(!(departure>=-tol&&departure<=tol*3))return candidate;
- // A breakout continues unchanged until a separately observed, two-move
- // rejection wins its own proof. Merely touching an old level never flips it.
+ // Retain the 189's already qualified direction: an opposing historical
+ // rejection may veto a live continuation, NEVER silently flip CALL to PUT.
  const reactionRoute=route.side===event.side?route:
   assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,price:spot,side:event.side})||route;
+ const earlyLevelProof={level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2};
+ if(candidate.ready===true){
+  if(candidate.side!==event.side&&entryFamilyOf(candidate)==='continuation')
+   return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+    reason:'verified-historical-rejection-opposes-continuation',
+    priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},earlyLevelProof};
+  return candidate;
+ }
+ // A reversal from WAIT requires an independent historical level plus
+ // two consecutive, actually observed price moves, with no new timed wait.
  return {...candidate,ready:true,side:event.side,observedAt:at,entryPrice:spot,
   predictedPrice:null,expectedLogMove:null,reason:'multiscale-candle-rejection',
-  priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},
-  earlyLevelProof:{level:Number(zone.level),ageAtLeast20:true,confirmedTicks:2,
-   previousReason:candidate.ready===true?candidate.reason:null,
-   oppositeContinuationOverruled:candidate.ready===true&&candidate.side!==event.side}};
+  priceStructure:{...candidate.priceStructure,candleRoute:reactionRoute},earlyLevelProof};
 }

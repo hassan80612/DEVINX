@@ -548,7 +548,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // when the longer automatic structure is not yet complete: no extra
   // collection wait is introduced by unified signal ownership.
   const selectedEngine=engineId!=='automatic'&&Number(durationMs)===30000;
-  const specialist=selectedEngine&&!located.ready?
+  // A specialist cannot resurrect a continuation vetoed by the same
+  // genuinely observed historical rejection.
+  const specialist=selectedEngine&&!located.ready&&
+   located.reason!=='verified-historical-rejection-opposes-continuation'?
    analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'}):null;
   const levelEvent=located.priceStructure?.candleRoute?.event;
   // A shorter strategy can supply early evidence, but it cannot reuse the
