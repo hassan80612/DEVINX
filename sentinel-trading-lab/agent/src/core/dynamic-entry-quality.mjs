@@ -57,7 +57,7 @@ export function reviewDynamicEntryQuality({candidate,quoteHistory=[],quoteAt,now
  const prices=rows.filter(q=>q.ts>=earlier.ts).map(q=>q.price);
  const extreme=d>0?spot>=Math.max(...prices)-typical*.35:
   spot<=Math.min(...prices)+typical*.35;
- const lateStall=extreme&&first>=typical*5&&
+ const lateStall=extreme&&first>=typical*4.5&&
   last>=-typical*.25&&last<=Math.max(typical*.6,first*.10)&&
   steps[1]<=typical*.30;
  if(!lateStall)return candidate;
