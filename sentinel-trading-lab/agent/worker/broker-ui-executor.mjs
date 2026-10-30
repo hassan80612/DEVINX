@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 import {readBrokerTradeStake,locateBrokerInvestRecovery} from './broker-trade-stake.mjs';
-import {observeNativeExpiryForClick} from './broker-native-expiry-keeper.mjs';
+import {observeNativeExpiryForClick,verifyBrokerExpiryForOrder} from './broker-native-expiry-keeper.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
@@ -293,12 +293,20 @@ export class BrokerUiExecutor{
    let nativeExpiry=null;
    try{nativeExpiry=await c.frame.evaluate(observeNativeExpiryForClick,
     {provider,requiredDurationMs:Number(order.durationMs)})}catch{}
-   const knownExpiry=Number(nativeExpiry?.currentMs);
-   const detectedMismatch=Number.isFinite(knownExpiry)&&knownExpiry>0&&knownExpiry!==Number(order.durationMs);
-   order.nativeExpiryInspection={...nativeExpiry,blocked:detectedMismatch,
+   // Manual/fixed-direction operation path is preserved. Automatic signals
+   // may be analysed without a mapped field, but cannot wager against a
+   // guessed expiration (live audits showed selected 1m, actual ~30s).
+   const durationProof=verifyBrokerExpiryForOrder({
+    inspection:nativeExpiry,requiredDurationMs:Number(order.durationMs),
+    automatic:order.independent!==true
+   });
+   order.nativeExpiryInspection={...nativeExpiry,blocked:!durationProof.allowed,
     requiredDurationMs:Number(order.durationMs),
-    validatedSynchronously:knownExpiry>0};
-   if(detectedMismatch)throw errorBefore('Expiração da corretora diferente do prazo selecionado; entrada ignorada.');
+    validatedSynchronously:durationProof.kind==='broker-duration-confirmed',
+    durationProof:durationProof.kind};
+   if(!durationProof.allowed)throw errorBefore(durationProof.kind==='native-expiry-mismatch'?
+    'Expiração da corretora diferente do prazo escolhido; clique cancelado.':
+    'Prazo real da corretora não identificado; clique automático cancelado com segurança, analista continua ativo.');
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.
