@@ -79,7 +79,7 @@ jobs:
       - name: Preserve candidate artifacts in one checked branch
         run: |
           set -euo pipefail
-          branch=release/sentinel-13.9.191-reversal-expiry-persistence
+          branch=release/sentinel-13.9.191-189-decisions-chart-restore
           latest="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [[ "$latest" != "$GITHUB_SHA" ]]; then echo "Candidate branch moved. Abort outdated publish."; exit 1; fi
           git config user.name 'github-actions[bot]'

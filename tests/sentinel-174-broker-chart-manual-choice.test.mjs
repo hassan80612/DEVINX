@@ -31,6 +31,10 @@ function broker(initial='30 s',stored=null,{compactRail=false}={}){
   click(){control._text=value;open=false;}
  });
  const options=['30 s','1 min','5 min'].map(makeOption);
+ const rangeControl={isConnected:true,className:'compact-range-control',
+  innerText:'15 min',textContent:'15 min',getAttribute:()=>null,
+  closest:()=>null,contains:()=>false,matches:()=>false,
+  getBoundingClientRect(){return {width:45,height:30,right:90,bottom:854,top:824,left:45,x:45,y:824}}};
  const old={window:globalThis.window,document:globalThis.document,location:globalThis.location,
   localStorage:globalThis.localStorage,setInterval:globalThis.setInterval,
   setTimeout:globalThis.setTimeout,innerHeight:globalThis.innerHeight,innerWidth:globalThis.innerWidth,DateNow:Date.now};
@@ -41,7 +45,7 @@ function broker(initial='30 s',stored=null,{compactRail=false}={}){
   __sentinelRememberBrokerChartPeriodChoice(value,at){remembered.push({value,at});return Promise.resolve(true);}};
  globalThis.document={visibilityState:'visible',
   querySelectorAll(selector){if(selector.startsWith('[class*="chart-duration"'))return compactRail?[]:[control];
-   if(selector.startsWith('button,[role="button"]'))return compactRail?[control]:[];
+   if(selector.startsWith('button,[role="button"]'))return compactRail?[control,rangeControl]:[];
    if(selector.startsWith('[role="option"]'))return open?options:[];return [];},
   addEventListener(name,fn){events[name]=fn},removeEventListener(name,fn){if(events[name]===fn)delete events[name]},
   getElementById(){return null}

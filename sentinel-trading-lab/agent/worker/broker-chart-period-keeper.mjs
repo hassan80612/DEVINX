@@ -108,9 +108,17 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
        const r=el.getBoundingClientRect?.(),x=Number(r?.left??r?.x),y=Number(r?.top);
        return Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&
         x<Math.min(width*.20,180)&&
-        y>=height*.27&&y<height*.78&&r.width<=100&&r.height<=55;
-      });
-     if(rail.length===1){cached=rail[0];return {el:cached,value:read(cached),score:0};}
+        y>=height*.27&&y<height*.96&&r.width<=100&&r.height<=55;
+      }).sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top);
+     // The separate lower "15m/30m" visible-range selector can share
+     // this rail. Only select the upper chart timeframe when physically
+     // separated; never guess between adjacent time controls.
+     const first=rail[0],second=rail[1];
+     const separated=rail.length===2&&
+      second.getBoundingClientRect().top-first.getBoundingClientRect().top>=60;
+     if(first&&(rail.length===1||separated)){
+      cached=first;return {el:first,value:read(first),score:0};
+     }
     }
     return null;
    }
