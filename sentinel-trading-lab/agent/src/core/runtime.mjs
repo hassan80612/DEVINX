@@ -31,7 +31,7 @@ import {evolveOpportunity,opportunityContext} from './single-opportunity-window.
 import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
-import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly,assessDirectionalPersistence} from './now-opportunity-engine.mjs';
+import {reviewChangedOpportunitySide,analyzeNowOpportunity,advanceNowOpportunity,fiveMinuteReversalOnly,assessDirectionalPersistence,reviewDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {shortProbability} from './short-probability.mjs';
@@ -1119,13 +1119,20 @@ export class DemoTradingRuntime{
           durationMs:settings.orderDurationMs,proof:probabilityProof,enforceFinalExpiryVote:true
         }),...expiryTrendInput}):
         adjudicateExpiryTrend({candidate:original66,...expiryTrendInput});
-      const observation=fiveMinuteReversalOnly({
+      const initialObservation=fiveMinuteReversalOnly({
         candidate:reviewChangedOpportunitySide({candidate:revisedObservation,
          previousSide:original66.side,...expiryTrendInput,
          candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
          structureCache:this.structureCache,context:expiryDirectionContext}),
         durationMs:settings.orderDurationMs,quoteAt:snap.quoteTs,now,price:snap.price,quoteHistory:snap.quoteHistory,entryFamily:normalizeEntryFamily(settings.entryFamily),
         structure:this.structureCache.get({candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),now,context:expiryDirectionContext})
+      });
+      // Final adjudication may have retained or changed the direction.
+      // Reconcile its side against the current already-received quote history.
+      const observation=reviewDirectionalPersistence({
+        candidate:initialObservation,quoteHistory:snap.quoteHistory,
+        quoteAt:snap.quoteTs,now,price:snap.price,
+        durationMs:settings.orderDurationMs
       });
       // Passive audit of EVERY available expiry forecast, including strong
       // structural signals and confirmed reversals. Never awaits calibration,

@@ -186,8 +186,17 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  if(shallowCountertrendFastReversal)
   return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Reversão rápida ainda rasa contra o fluxo maior.'};
+ // A historical "confirmed" label must not authorize the OLD trend
+ // once the fresh price is moving the opposite way. This never creates
+ // an opposite CALL/PUT; a real reversal needs its own confirmed signal.
+ if(candidate.side===state.side&&
+    ['weakening','reversal-testing'].includes(state.phase)&&
+    Number(state.latestMove)<0)
+  return {...candidate,...diagnostic,ready:false,side:null,
+   provisionalSide:candidate.side,reason:'live-turn-opposes-stale-direction'};
  if(confirmedReversalCandidate(candidate))return candidate;
- const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
+ const continuation=entryFamilyOf(candidate)==='continuation'||
+   CONTINUATION_SETUP.test(String(candidate.reason||''));
  const fading=['weakening','reversal-testing'].includes(state.phase);
  if(candidate.side===state.side&&continuation&&fading)
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
