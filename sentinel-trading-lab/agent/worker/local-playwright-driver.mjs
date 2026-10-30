@@ -851,7 +851,8 @@ export class LocalPlaywrightDriver{
         page.__sentinelNativeExpiryInitScript=true;
         await page.addInitScript(installBrokerNativeExpiryKeeper,{provider}).catch(()=>{});
       }
-      await page.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs}).catch(()=>{});
+      await page.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs,
+        requestedAt:this.nativeExpirySelectedAt.get(provider)||0}).catch(()=>{});
       if(!page.__sentinelBrokerChartPeriodInitScript){
         page.__sentinelBrokerChartPeriodInitScript=true;
         await page.addInitScript(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
@@ -931,7 +932,10 @@ export class LocalPlaywrightDriver{
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
       if(provider){
-        await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});
+        await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,
+          requestedMs:this.nativeExpiryPreferences.get(provider)??null,
+          requestedAt:this.nativeExpirySelectedAt.get(provider)||0,
+          allowEmbedded:true}).catch(()=>{});
         await frame.evaluate(installBrokerChartPeriodKeeper,{provider,
           requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
           requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{});
@@ -939,7 +943,8 @@ export class LocalPlaywrightDriver{
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider,
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,
+          requestedAt:this.nativeExpirySelectedAt.get(provider)||0,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider,
           requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
           requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{})}};
       page.on('frameattached',installFrame);
@@ -951,7 +956,9 @@ export class LocalPlaywrightDriver{
       await this.setNativeExpiryPreference(provider,this.nativeExpiryPreferences.get(provider),{preserveExisting:true}).catch(()=>{});
     const pendingExpiryMs=provider?this.nativeExpiryPendingApply.get(provider):null;
     if(Number.isFinite(Number(pendingExpiryMs))&&Number(pendingExpiryMs)>0){
-      const payload={provider,preferredMs:Number(pendingExpiryMs),explicit:this.nativeExpiryExplicitPreferences.get(provider)===true};
+      const payload={provider,preferredMs:Number(pendingExpiryMs),
+        selectedAt:this.nativeExpirySelectedAt.get(provider)||0,
+        explicit:this.nativeExpiryExplicitPreferences.get(provider)===true};
       const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
       if(results.some(r=>r.status==='fulfilled'&&r.value===true)&&this.nativeExpiryPendingApply.get(provider)===Number(pendingExpiryMs))
         this.nativeExpiryPendingApply.delete(provider);
@@ -1489,13 +1496,17 @@ export class LocalPlaywrightDriver{
         ms=best.value;
         this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);
       }
-
     }
     if(!current())return false;
+    const previouslySaved=this.nativeExpiryPreferences.get(provider);
     this.nativeExpiryPreferences.set(provider,ms);
     if(!preserveExisting){
-      const chosenAt=Date.now();
-      this.nativeExpirySelectedAt.set(provider,chosenAt);
+      this.nativeExpirySelectedAt.set(provider,Date.now());
+    }
+    // A more recent native manual selection discovered after a frame
+    // rebuild must also be durable in the Agent, not only in localStorage.
+    const persistChanged=!preserveExisting||previouslySaved!==ms;
+    if(persistChanged){
       this.nativeExpirySaveQueue=this.nativeExpirySaveQueue.catch(()=>{}).then(async()=>{
         await mkdir(this.dataDir,{recursive:true});
         const tmp=this.nativeExpiryPrefFile+'.tmp';
@@ -1510,7 +1521,8 @@ export class LocalPlaywrightDriver{
       if(!preserveExisting)this.nativeExpiryPendingApply.set(provider,ms);
       return true;
     }
-    const payload={provider,preferredMs:ms,explicit:!preserveExisting};
+    const payload={provider,preferredMs:ms,selectedAt:this.nativeExpirySelectedAt.get(provider)||0,
+      explicit:!preserveExisting};
     this.nativeExpiryPendingApply.set(provider,ms);
     const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
     if(current()&&results.some(r=>r.status==='fulfilled'&&r.value===true))this.nativeExpiryPendingApply.delete(provider);
