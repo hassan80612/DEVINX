@@ -83,7 +83,7 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
    return veto(candidate,'closed-candle-reversal-not-supported-by-live-price',proof);
   return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
  }
- if((near3||outside3)&&(dLast<=0||move3<=atr*.08))
-  return veto(candidate,'unknown-entry-type-at-closed-candle-extreme',proof);
+ // Unknown/specialist entry families remain owned by their existing
+ // shared price/level checks. A new classifier cannot freeze the bot.
  return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
 }
