@@ -13,6 +13,7 @@ on:
       - 'tests/sentinel-187-blitz-and-impulse.test.mjs'
       - 'tests/sentinel-188-extreme-reversal-timing.test.mjs'
       - 'tests/sentinel-191-189-entry-extreme-regression.test.mjs'
+      - 'tests/sentinel-180-breakout-clearance.test.mjs'
       - 'tests/sentinel-174-broker-chart-manual-choice.test.mjs'
       - 'tests/sentinel-189-5m-reversal-parallel.test.mjs'
       - 'tests/sentinel-174-broker-chart-manual-choice.test.mjs'
