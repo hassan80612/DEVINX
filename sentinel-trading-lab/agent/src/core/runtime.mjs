@@ -44,6 +44,7 @@ import {reviewEntryPrice} from './entry-price-timing.mjs';
 import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
+import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1217,6 +1218,13 @@ export class DemoTradingRuntime{
       });
       if(reactionRisk)eligible={...eligible,ready:false,provisionalSide:eligible.side,side:null,
         reason:'same-reaction-after-better-missed-price',entryRisk:reactionRisk};
+      // Run at the FINAL physical admission, not during ongoing analysis.
+      // Only documented false 1m rejection proof vetoes this particular signal.
+      // No extra quote collection, delay or repeated pending state.
+      eligible=reviewOneMinuteRejectionProof({
+        candidate:eligible,original:original66,durationMs:settings.orderDurationMs,
+        quoteAt:snap.quoteTs,now,price:snap.price
+      });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
