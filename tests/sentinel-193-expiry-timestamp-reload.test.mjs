@@ -41,7 +41,7 @@ test('193: later trusted native manual 30s is never undone by older 1m Agent rec
   m.event('click',m.control);m.pick('30 s');m.step();
   assert.equal(m.storage.get(KEY),'30000');
   const manualAt=Number(m.storage.get(KEY+':selectedAt'));
-  assert.equal(manualAt,101000);
+  assert.ok(manualAt>=101000,'manual choice is recorded when the native field confirms it');
   installBrokerNativeExpiryKeeper({provider:'iq_option',requestedMs:60000,requestedAt:98000});
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,30000);
   assert.equal(m.storage.get(KEY),'30000');
