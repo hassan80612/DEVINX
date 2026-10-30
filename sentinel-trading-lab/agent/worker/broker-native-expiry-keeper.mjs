@@ -15,17 +15,22 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // Called from the Node driver when the Sentinel selector changes. It writes a
 // preference only; the keeper still requires its normal permission lease before
 // it can repair a visible native control after a broker refresh.
-export function updateBrokerNativeExpiryPreference({provider,preferredMs,explicit=false}={}){
+export function updateBrokerNativeExpiryPreference({provider,preferredMs,selectedAt=0,explicit=false}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return false;
   const ms=Number(preferredMs),accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
   if(!accepted.has(ms/1000))return false;
   const keeper=window.__sentinelNativeExpiryKeeperV3;
-  if(keeper?.provider===provider&&typeof keeper.setPreferred==='function')return keeper.setPreferred(ms,{explicit});
+  if(keeper?.provider===provider&&typeof keeper.setPreferred==='function')
+   return keeper.setPreferred(ms,{explicit,selectedAt});
   const key='sentinel-broker-native-expiration-preference-v3:'+provider;
-  if(ms===30000&&!explicit&&Number(localStorage.getItem(key))>30000)return true;
+  const at=Number(selectedAt)||0,storedAt=Number(localStorage.getItem(key+':selectedAt')||0);
+  if(!explicit&&storedAt>at&&at>0)return true;
+  if(ms===30000&&!explicit&&Number(localStorage.getItem(key))>30000&&at<=storedAt)return true;
   localStorage.setItem(key,String(ms));
-  if(explicit)localStorage.setItem('sentinel-broker-native-explicit-default-v4:'+provider,ms===30000?'30000':'');
+  if(at>storedAt)localStorage.setItem(key+':selectedAt',String(at));
+  if(explicit||at>storedAt)
+   localStorage.setItem('sentinel-broker-native-explicit-default-v4:'+provider,ms===30000?'30000':'');
   return true;
  }catch{return false}
 }
@@ -35,7 +40,7 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  if(typeof window==='undefined')return {blocked:false};
  // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(![8,9,10,11,12,13,14,15,16].includes(keeper?.revision))return {blocked:false};
+ if(![8,9,10,11,12,13,14,15,16,17].includes(keeper?.revision))return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
  // check is read-only and never opens or changes the broker expiry control.
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
