@@ -114,3 +114,12 @@ test('197: 5m true contradicting level proof vetoes but missing history never fr
    quoteAt:T,now:T+150,price:missing.entryPrice}),missing);
  }
 });
+
+test('197: first valid 30s reversal may remain near its historical level without a second wait',()=>{
+ const c=candidate(['CALL',.830125,'multiscale-candle-rejection','not-away-from-confirmed-level'],30000);
+ assert.equal(reviewOneMinuteRejectionProof({candidate:c,durationMs:30000,
+  quoteAt:T,now:T+200,price:c.entryPrice}),c);
+ const adverse=candidate(['CALL',.830125,'multiscale-candle-rejection','last-move-not-supporting'],30000);
+ assert.equal(reviewOneMinuteRejectionProof({candidate:adverse,durationMs:30000,
+  quoteAt:T,now:T+200,price:adverse.entryPrice}).ready,false);
+});
