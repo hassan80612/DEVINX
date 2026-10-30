@@ -5,6 +5,7 @@ import {BrokerUiExecutor} from './broker-ui-executor.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {chooseConnectedBrokerForReading} from './broker-start-market.mjs';
+import {recoverAlreadyOpenMarket} from './broker-initial-market-recovery.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {brokerMaintenanceCadenceMs} from './broker-maintenance-cadence.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
@@ -240,25 +241,8 @@ async function ensureLocalCockpitBroker(provider){
   return live
 }
 async function primeVisibleMarket(provider){
-  if(!provider)return false;
-  try{
-    const synced=await Promise.resolve(driver.syncVisibleAsset?.(provider)).catch(()=>false);
-    if(synced)return true;
-    const market=driver.liveStatus?.(provider);
-    if(market?.uiSymbol||market?.validatedSymbol||market?.symbol)
-      void Promise.resolve(driver.requestMarketData?.(provider,{force:true})).catch(()=>{});
-    else
-      void Promise.resolve().then(async()=>{
-        // The tab was opened BEFORE the Agent connected. Discover the
-        // existing selected instrument once, without clicking a new asset.
-        await driver.domSnapshot?.(provider).catch(()=>{});
-        const selected=driver.liveStatus?.(provider);
-        if(selected?.uiSymbol||selected?.validatedSymbol||selected?.symbol)
-          await driver.requestMarketData?.(provider,{force:true});
-        else await driver.requestBaseData?.(provider);
-      }).catch(()=>{});
-    return true
-  }catch{return false}
+  // Runs AFTER START acknowledgement; never changes tabs or places orders.
+  return recoverAlreadyOpenMarket({driver,provider});
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');

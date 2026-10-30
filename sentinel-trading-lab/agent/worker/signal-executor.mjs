@@ -4,6 +4,7 @@
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
 import {liveEntryQuoteReview} from './live-quote-entry-review.mjs';
+import {reviewDirectionBeforeClick} from './entry-direction-before-click.mjs';
 // Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
 // A WIN or completed second LOSS resets the next batch to 1 click.
 export const MAX_MARTINGALE_LEVELS=1;
@@ -509,7 +510,9 @@ export class SignalExecutor{
    const current=this.context();
    if(queued.entryFamilyExplicit&&current.entryFamily&&queued.entryFamily!==current.entryFamily)return false;
    if(queued.entryFamilyExplicit&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return false;
-   return Number(queued.sourceQuoteAt)>0?liveEntryQuoteReview({signal:queued,context:current,now:this.clock()}).ok:true;
+   const now=this.clock();
+   if(Number(queued.sourceQuoteAt)>0&&!liveEntryQuoteReview({signal:queued,context:current,now}).ok)return false;
+   return reviewDirectionBeforeClick({signal:queued,context:current,now}).ok;
   };
   const valid=(clickIndex=0)=>currentMarketValid(clickIndex)&&this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   const invalidReason=(clickIndex=0)=>{
@@ -522,6 +525,8 @@ export class SignalExecutor{
     if(queued.entryFamilyExplicit&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return 'tipo de entrada não corresponde ao sinal';
     if(Number(queued.sourceQuoteAt)>0){const review=liveEntryQuoteReview({signal:queued,context:current,now:at});
      if(!review.ok)return 'leitura de preço mudou antes do clique: '+review.reason;}
+    const direction=reviewDirectionBeforeClick({signal:queued,context:current,now:at});
+    if(!direction.ok)return 'continuidade perdeu validade antes do clique: '+direction.reason;
    }
    if(at<Number(queued.at)||at>=(clickIndex===0?firstClickDeadline:batchClickDeadline)||at>=Number(queued.exitAt))
     return 'sinal venceu na preparação ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms)';
