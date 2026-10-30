@@ -7,11 +7,12 @@ mod._compile(ts.transpileModule(readFileSync(url,'utf8'),{compilerOptions:{modul
 const css=readFileSync(new URL('../sentinel-trading-lab/src/app/globals.css',import.meta.url),'utf8'),render=req('react-dom/server').renderToStaticMarkup;
 const b=await chromium.launch({headless:true,executablePath:process.env.SENTINEL_TEST_BROWSER,args:['--no-sandbox']});
 try{const p=await b.newPage();const now=Date.now();
- for(const width of[360,1280])for(const durationMs of[30000,60000,300000]){
+ for(const width of[320,360,393,768,1280])for(const durationMs of[30000,60000,300000]){
   await p.setViewportSize({width,height:1000});let originalTop=null,originalLineHeight=null;
-  for(const text of['','REVERSÃO EM TESTE · PUT','CONTINUIDADE PERDENDO FORÇA · CALL']){
+  for(const text of['','LATERAL · PUT','INCONCLUSIVO · PUT','REVERSÃO EM TESTE · PUT',
+   'REVERSÃO AINDA SEM QUEBRA · CALL','CONTINUIDADE TESTANDO RESISTÊNCIA · CALL','CONTINUIDADE PERDENDO FORÇA · CALL'])for(const age of[0,4000]){
    const s={state:'running',runtimeKind:'remote-agent',remote:{online:true},settings:{engine:'automatic',asset:'EUR/USD OTC',orderDurationMs:durationMs},liveBroker:{symbol:'EUR/USD OTC',assetValidated:true,analysisFeedValidated:true,lastQuoteAt:now,quote:1.1},lastEvalMs:now,
-    lastResult:{asset:'EUR/USD OTC',analysis:{vnext:{mode:'now',engineId:'automatic',expirySeconds:durationMs/1000,nowObservation:{marketReading:text,quoteAt:now,observedAt:now,evaluatedAt:now},
+    lastResult:{asset:'EUR/USD OTC',analysis:{vnext:{mode:'now',engineId:'automatic',expirySeconds:durationMs/1000,nowObservation:{marketReading:text,quoteAt:now-age,observedAt:now,evaluatedAt:now},
      opportunityWindow:{phase:'fired',windowStartedAt:now-3000,windowEndsAt:now+durationMs},futureEntryAnchor:{side:'CALL',delaySeconds:durationMs/1000,holdingSeconds:durationMs/1000,issuedAt:now-3000,entryAt:now-3000,entryTriggeredAt:now-3000,exitAt:now+durationMs,projectedEntryPrice:1.1}}}}};
    const html=render(React.createElement(mod.exports.LiveScenarioCard,{s,busy:false,act:async()=>{},compact:true,onToggleCompact:()=>{}}));
    await p.setContent('<html data-theme="dark"><head><style>'+css+'</style></head><body><div class="app marketWorkspace">'+html+'</div></body></html>');
@@ -22,9 +23,13 @@ try{const p=await b.newPage();const now=Date.now();
    assert.ok(await line.evaluate(el=>el.scrollHeight<=el.clientHeight+1),'secondary text must remain fully visible');
    assert.equal(await line.evaluate(el=>getComputedStyle(el).whiteSpace),'normal');
    if(originalTop==null){originalTop=y;originalLineHeight=lineHeight;}
-   else assert.ok(Math.abs((y-originalTop)-(lineHeight-originalLineHeight))<1,'only the actual wrapped text may add height');
+   else {assert.ok(Math.abs(y-originalTop)<1,'countdown must not move: '+JSON.stringify({width,durationMs,text,age,y,originalTop}));
+    assert.equal(lineHeight,originalLineHeight,'phase row must retain its responsive height');}
+   assert.ok(await line.locator('[data-testid=market-reading-text]').evaluate(el=>el.getBoundingClientRect().width<=el.parentElement.clientWidth+1),'no horizontal overflow');
+   assert.equal(await line.locator('.marketReadingRowSizer').first().evaluate(el=>getComputedStyle(el).visibility),'hidden');
+   if(width===393&&durationMs===60000&&text==='CONTINUIDADE PERDENDO FORÇA · CALL'&&age===4000)await p.screenshot({path:'/tmp/card-video-review/fixed-mobile.png',fullPage:true});
   }
  }
  await p.screenshot({path:'/workspace/scratch/3599ae2f921b/177-mobile-reading-verification.png',fullPage:true});
- console.log(JSON.stringify({mobileActualReactRender:true,widths:[360,1280],allThreeDurations:true,noExtraBlankHeight:true,fullSecondaryTextVisible:true}));
+ console.log(JSON.stringify({mobileActualReactRender:true,widths:[320,360,393,768,1280],allThreeDurations:true,shortAndWrappedStaleMessagesStable:true,fullSecondaryTextVisible:true}));
 }finally{await b.close()}

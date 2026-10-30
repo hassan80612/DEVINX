@@ -1705,3 +1705,6 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 /* The live secondary reading owns a stable row, including an empty update. */
 .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
 .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){height:auto;min-height:48px;max-height:none;align-items:flex-start}
+.vnextFutureDirection .marketReadingRow{display:grid;width:100%;min-width:0}
+.vnextFutureDirection .marketReadingRow>span{grid-area:1/1;min-width:0;max-width:none;margin:0;font:inherit;color:inherit;white-space:inherit;overflow:visible;text-overflow:clip;overflow-wrap:inherit}
+.vnextFutureDirection .marketReadingRow>.marketReadingRowSizer{visibility:hidden;pointer-events:none;user-select:none}

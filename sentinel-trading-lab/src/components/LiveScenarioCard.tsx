@@ -8,9 +8,10 @@ import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection
 import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '../../agent/src/core/visible-strategy-guide.mjs';
 import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
 import {marketDataStatus} from '../../agent/src/core/market-reading.mjs';
+import {marketReadingRowSizingTexts} from '../../agent/worker/market-reading-layout.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.180';
+const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.181';
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -67,9 +68,12 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    <strong data-testid="future-entry-decision">
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
-   {nowMode&&<small data-testid="market-reading-detail" title={(running&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{display:'block',minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
+   {nowMode&&<small className="marketReadingRow" data-testid="market-reading-detail" title={(running&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
+    {marketReadingRowSizingTexts(t).map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
+    <span data-testid="market-reading-text">
     {running&&observation?.marketReading?t(observation.marketReading)+(technicalStatus?' · ':''):''}
     {t(technicalStatus)}
+    </span>
    </small>}
   </div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">

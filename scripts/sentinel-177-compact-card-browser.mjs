@@ -23,19 +23,21 @@ try{
   const height=(await card.boundingBox()).height;if(before!=null)assert.ok(height<=before-10,JSON.stringify({before,height}));
   for(const selector of ['[data-sentinel-vnext-clock-value]','[data-sentinel-executor-clock-wl]','[data-sentinel-entry-price]','[data-sentinel-current-quote]'])assert.ok(await p.locator(selector).isVisible(),selector);
   assert.equal(await phase.evaluate(el=>getComputedStyle(el).fontSize),'11px');
-  for(const text of ['',reading,'REVERSÃO EM TESTE · PUT']){
-   await p.evaluate(text=>{const o=window.__sentinelLastOverlayData.vnext.nowObservation;o.marketReading=text;o.evaluatedAt=o.quoteAt=Date.now();
-    document.getElementById('sentinel-trading-overlay-host').shadowRoot.getElementById('sentinel-trading-overlay').__sentinelTargetClockTick();},text);
-   assert.equal((await card.boundingBox()).height,height);
+  const clockY=(await p.locator('[data-sentinel-vnext-clock-value]').boundingBox()).y;
+  for(const text of ['',reading,'REVERSÃO EM TESTE · PUT','LATERAL · PUT','CONTINUIDADE TESTANDO RESISTÊNCIA · CALL'])for(const age of[0,4000]){
+   await p.evaluate(({text,age})=>{const o=window.__sentinelLastOverlayData.vnext.nowObservation;o.marketReading=text;o.evaluatedAt=Date.now();o.quoteAt=Date.now()-age;
+    document.getElementById('sentinel-trading-overlay-host').shadowRoot.getElementById('sentinel-trading-overlay').__sentinelTargetClockTick();},{text,age});
+   assert.equal((await card.boundingBox()).height,height,'wrapped technical messages must not resize the card');
+   assert.equal((await p.locator('[data-sentinel-vnext-clock-value]').boundingBox()).y,clockY,'countdown must not move');
   }
   const long='REVERSÃO EM TESTE · PUT · COTAÇÃO ATRASADA · ÚLTIMA LEITURA · CONTEXTO DO PREÇO AINDA SENDO ATUALIZADO';
-  await phase.evaluate((el,long)=>el.textContent=long,long);
-  assert.equal(await phase.textContent(),long);
+  await phase.locator('[data-sentinel-market-phase-text]').evaluate((el,long)=>el.textContent=long,long);
+  assert.equal(await phase.locator('[data-sentinel-market-phase-text]').textContent(),long);
   assert.equal(await phase.evaluate(el=>getComputedStyle(el).whiteSpace),'normal');
   assert.ok(await phase.evaluate(el=>el.scrollHeight<=el.clientHeight+1),'all lines must remain visible');
   assert.equal(await phase.evaluate(el=>getComputedStyle(el).overflow),'visible');
-  if(durationMs===60000)await p.screenshot({path:'/workspace/scratch/3599ae2f921b/177-compact-card.png',fullPage:true});
-  console.log(JSON.stringify({durationMs,beforeHeight:before,afterHeight:height,compactWithoutHiddenFields:true,shortReadingStable:true,longReadingFullyVisible:true}));
+  if(durationMs===60000)await p.screenshot({path:'/tmp/card-video-review/fixed-native.png',fullPage:true});
+  console.log(JSON.stringify({durationMs,beforeHeight:before,afterHeight:height,compactWithoutHiddenFields:true,shortAndWrappedStaleReadingStable:true,longReadingFullyVisible:true}));
   await p.close();
  }
 }finally{await b.close()}
