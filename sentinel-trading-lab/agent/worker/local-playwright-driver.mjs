@@ -625,7 +625,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
- constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
@@ -875,7 +875,7 @@ export class LocalPlaywrightDriver{
     }
     const pendingExpiryMs=provider?this.nativeExpiryPendingApply.get(provider):null;
     if(Number.isFinite(Number(pendingExpiryMs))&&Number(pendingExpiryMs)>0){
-      const payload={provider,preferredMs:Number(pendingExpiryMs)};
+      const payload={provider,preferredMs:Number(pendingExpiryMs),explicit:this.nativeExpiryExplicitPreferences.get(provider)===true};
       const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
       if(results.some(r=>r.status==='fulfilled'&&r.value===true)&&this.nativeExpiryPendingApply.get(provider)===Number(pendingExpiryMs))
         this.nativeExpiryPendingApply.delete(provider);
@@ -1339,6 +1339,7 @@ export class LocalPlaywrightDriver{
     const priorRequest=this.nativeExpiryRequestedDurations.get(provider);
     const preserveExisting=options.preserveExisting??(priorRequest==null||priorRequest===requested);
     this.nativeExpiryRequestedDurations.set(provider,requested);
+    this.nativeExpiryExplicitPreferences.set(provider,!preserveExisting);
     const revision=Number(this.nativeExpiryPreferenceRevisions.get(provider)||0)+1;
     this.nativeExpiryPreferenceRevisions.set(provider,revision);
     const current=()=>this.nativeExpiryPreferenceRevisions.get(provider)===revision;
@@ -1360,7 +1361,7 @@ export class LocalPlaywrightDriver{
       if(!preserveExisting)this.nativeExpiryPendingApply.set(provider,ms);
       return true;
     }
-    const payload={provider,preferredMs:ms};
+    const payload={provider,preferredMs:ms,explicit:!preserveExisting};
     this.nativeExpiryPendingApply.set(provider,ms);
     const results=await Promise.allSettled(page.frames().map(frame=>frame.evaluate(updateBrokerNativeExpiryPreference,payload)));
     if(current()&&results.some(r=>r.status==='fulfilled'&&r.value===true))this.nativeExpiryPendingApply.delete(provider);

@@ -13,6 +13,7 @@ for(const provider of ['iq_option','exnova']){
    if(duration===30000)m.control._text='1 min';
    location.hostname=provider==='iq_option'?'iqoption.com':'exnova.com';
    m.storage.set('sentinel-broker-native-expiration-preference-v3:'+provider,String(duration));
+   if(duration===30000)m.storage.set('sentinel-broker-native-explicit-default-v4:'+provider,'30000');
    delete window.__sentinelNativeExpiryPermissionV3;
    window.__sentinelRequestNativeExpiryPermission=async()=>({provider,at:m.now,allowed:(requests++,true)});
    installBrokerNativeExpiryKeeper({provider});await flush();
@@ -57,14 +58,16 @@ test('the Node renewal bridge reads current executor state after reload rather t
  state={executing:true};assert.equal((await renew()).allowed,false);
  driver.setNativeExpiryPermissionSource(null);assert.equal((await renew()).allowed,false);
 });
-test('physical entry is skipped when the native expiry is known to differ from the requested minute',async()=>{
+test('178: a detected native mismatch is telemetry and does not gate the requested automatic click',async()=>{
  const m=browser('30 s',60000);let clicks=0;
  try{
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   const ui=new BrokerUiExecutor({state:()=>({activeId:76,symbol:'EUR/USD OTC'})});
   ui.controls=async()=>({frame:{evaluate:async(fn,arg)=>fn(arg),locator:()=>({click:async()=>{clicks++;}})},callSelector:'#call',putSelector:'#put'});
   const order={id:'expiry-test',side:'CALL',durationMs:60000,amount:1,asset:'EUR/USD OTC',activeId:76,isValid:()=>true};
-  await assert.rejects(()=>ui.execute('iq_option',order),e=>e.beforeClick===true&&/Expiração/.test(e.message));
-  assert.equal(clicks,0);assert.notEqual(order.clicked,true);assert.equal(ui.orders.size,0);
+  const result=await ui.execute('iq_option',order);
+  assert.equal(result.pending,true);assert.equal(clicks,1);assert.equal(order.clicked,true);
+  assert.equal(order.nativeExpiryInspection.detectedMismatch,true);
+  assert.equal(ui.orders.size,0);
  }finally{m.restore();}
 });

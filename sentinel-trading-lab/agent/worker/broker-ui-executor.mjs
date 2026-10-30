@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 import {readBrokerTradeStake,locateBrokerInvestRecovery} from './broker-trade-stake.mjs';
-import {inspectNativeExpiryBeforeClick} from './broker-native-expiry-keeper.mjs';
+import {observeNativeExpiryForClick} from './broker-native-expiry-keeper.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
@@ -284,16 +284,14 @@ export class BrokerUiExecutor{
    // selected horizon. Rewriting it from an order captured on an earlier page
    // state here could undo the persisted picker choice after a broker refresh.
    this.checkContext(provider,order);const c=await this.controls(provider);
-   // Idle maintenance restores the picker. This final read-only check never
-   // changes it or waits for repair: skip this signal if a known duration is
-   // wrong, rather than physically entering with a different holding time.
-   const nativeExpiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick,
-    {requiredDurationMs:Number(order.durationMs)});
-   order.nativeExpiryInspection={...nativeExpiry,requiredDurationMs:Number(order.durationMs),
+   // Picker observations never authorize or veto an order. Suspend idle
+   // maintenance and copy its already cached telemetry, if available.
+   let nativeExpiry=null;
+   try{nativeExpiry=await c.frame.evaluate(observeNativeExpiryForClick,
+    {provider,requiredDurationMs:Number(order.durationMs)})}catch{}
+   order.nativeExpiryInspection={...nativeExpiry,blocked:false,
+    requiredDurationMs:Number(order.durationMs),
     validatedSynchronously:Number(nativeExpiry?.currentMs)>0};
-   if(nativeExpiry?.blocked)throw errorBefore(nativeExpiry.reason==='expiry-repair-in-progress'?
-    'Expiração sendo restaurada; este sinal foi descartado sem clique.':
-    'Expiração da corretora diferente da selecionada; este sinal foi descartado sem clique.');
    this.checkContext(provider,order);if(!order.isValid())throw errorBefore(order.invalidReason?.()||'Sinal expirou ou bot foi parado antes da entrada.');
    // No stake DOM roundtrip on the critical click path. Actual stake changes
    // arrive in the same existing native order packet and update the ledger.

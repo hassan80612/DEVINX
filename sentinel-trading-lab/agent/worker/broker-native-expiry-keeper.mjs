@@ -15,14 +15,17 @@ export function nativeExpiryPermissionForExecutor(state,at=Date.now()){
 // Called from the Node driver when the Sentinel selector changes. It writes a
 // preference only; the keeper still requires its normal permission lease before
 // it can repair a visible native control after a broker refresh.
-export function updateBrokerNativeExpiryPreference({provider,preferredMs}={}){
+export function updateBrokerNativeExpiryPreference({provider,preferredMs,explicit=false}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return false;
   const ms=Number(preferredMs),accepted=new Set([5,10,15,30,60,120,180,300,600,900]);
   if(!accepted.has(ms/1000))return false;
   const keeper=window.__sentinelNativeExpiryKeeperV3;
-  if(keeper?.provider===provider&&typeof keeper.setPreferred==='function')return keeper.setPreferred(ms);
-  localStorage.setItem('sentinel-broker-native-expiration-preference-v3:'+provider,String(ms));
+  if(keeper?.provider===provider&&typeof keeper.setPreferred==='function')return keeper.setPreferred(ms,{explicit});
+  const key='sentinel-broker-native-expiration-preference-v3:'+provider;
+  if(ms===30000&&!explicit&&Number(localStorage.getItem(key))>30000)return true;
+  localStorage.setItem(key,String(ms));
+  if(explicit)localStorage.setItem('sentinel-broker-native-explicit-default-v4:'+provider,ms===30000?'30000':'');
   return true;
  }catch{return false}
 }
@@ -32,7 +35,7 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
  if(typeof window==='undefined')return {blocked:false};
  // Idle maintenance owns repair; the entry path only reads and then revokes its lease.
  const keeper=window.__sentinelNativeExpiryKeeperV3;
- if(![8,9,10,11,12,13,14].includes(keeper?.revision))return {blocked:false};
+ if(![8,9,10,11,12,13,14,15].includes(keeper?.revision))return {blocked:false};
  // Revoke the idle permission immediately before the physical entry. The
  // check is read-only and never opens or changes the broker expiry control.
  window.__sentinelNativeExpiryPermissionV3={provider:keeper.provider,at:Date.now(),allowed:false};
@@ -51,13 +54,28 @@ export function inspectNativeExpiryBeforeClick({requiredDurationMs=null}={}){
   preferredMs:s.preferredMs,currentMs:s.currentMs,requiredDurationMs:required>0?required:null,
   revision:keeper.revision,observedAt:s.observedAt};
 }
+// Execution telemetry is independent of picker recognition. Read the cached
+// snapshot only: no DOM discovery, poll, repair, wait or trade veto.
+export function observeNativeExpiryForClick({provider,requiredDurationMs=null}={}){
+ try{
+  window.__sentinelNativeExpiryPermissionV3={provider,at:Date.now(),allowed:false};
+  const keeper=window.__sentinelNativeExpiryKeeperV3;
+  const s=keeper?.snapshot?.()||window.__sentinelNativeExpiryStatusV3||{};
+  const actual=Number(s.currentMs)>0?Number(s.currentMs):null;
+  const required=Number(requiredDurationMs)>0?Number(requiredDurationMs):null;
+  return {blocked:false,preferredMs:Number(s.preferredMs)>0?Number(s.preferredMs):null,
+   currentMs:actual,requiredDurationMs:required,revision:keeper?.revision??null,
+   observedAt:s.observedAt??null,detectedMismatch:!!(actual&&required&&actual!==required),
+   restorationInProgress:!!(s.repairing||s.restoring)};
+ }catch{return {blocked:false,currentMs:null,requiredDurationMs:Number(requiredDurationMs)||null}}
+}
 export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const h=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(h))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(h))))return;
-  if(window.__sentinelNativeExpiryKeeperV3?.revision===14){
+  if(window.__sentinelNativeExpiryKeeperV3?.revision===15){
    const current=Number(window.__sentinelNativeExpiryKeeperV3.snapshot?.().preferredMs);
    if(!(current>0)&&Number.isFinite(Number(requestedMs)))
     window.__sentinelNativeExpiryKeeperV3.setPreferred?.(Number(requestedMs));
@@ -71,6 +89,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   const oldKey='sentinel-broker-native-expiration-preference-v1:'+provider;
   const v2Key='sentinel-broker-native-expiration-preference-v2:'+provider;
   const key='sentinel-broker-native-expiration-preference-v3:'+provider;
+  const defaultChoiceKey='sentinel-broker-native-explicit-default-v4:'+provider;
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900]);
   const parse=text=>{
    const raw=String(text||'').replace(/\u00a0/g,' ').trim();
@@ -97,7 +116,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    String(el.getAttribute?.(k)||'')).join(' ')+' '+String(el.className||'')+' '+
    String(el.getAttribute?.('aria-labelledby')||'').split(/\s+/).filter(Boolean)
     .map(id=>document.getElementById?.(id)?.textContent||'').join(' ');
-  const labelRe=/expira|expir|vencim|expiry|dura(?:ç|c)ão|duraci[oó]n|duration|option[- ]time|order[- ]time|\btempo\b/i;
+  const labelRe=/expira|expir|vencim|expiry|dura(?:ç|c)ão|duraci[oó]n|duration|option[- ]time|order[- ]time|\btempo(?=\s|[:：]|\d|$)/i;
   const chartRe=/chart|candle|vela|gr[aá]fico|timeframe|per[ií]odo da vela|countdown|count.down|remaining|restante/i;
   const CONTROL_SELECTORS=[
    '[data-testid*="expir" i]','[data-test*="expir" i]',
@@ -115,8 +134,9 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
   let cached=null,observedMs=null,preferredMs=null,manualOpenedAt=0,
    openingValue=null,chosenValue=null,mismatchSince=0,lastRepairAt=0,repairing=false,
    verificationPending=false,lastUserActivityAt=0,lastProbeAt=0,stableCount=0,manualControl=null,chosenTarget=null,observedAt=0,
-   permissionRequest=null,lastPermissionRequestAt=0,disposed=false;
+   permissionRequest=null,lastPermissionRequestAt=0,disposed=false,explicitDefault=false;
   try{
+   explicitDefault=Number(localStorage.getItem(defaultChoiceKey))===30000;
    const v=Number(localStorage.getItem(key)??localStorage.getItem(v2Key)??localStorage.getItem(oldKey));
    if(ACCEPT.has(v/1000)){preferredMs=v;localStorage.setItem(key,String(v));}
    const requested=Number(requestedMs);
@@ -152,7 +172,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
     if(!v)continue;
     const r=el.getBoundingClientRect();
     let label=nativeLabel(el);
-    for(let parent=el.parentElement,depth=0;parent&&depth<2&&!labelRe.test(label);parent=parent.parentElement,depth++){
+    for(let parent=el.parentElement,depth=0;parent&&depth<2&&!['BODY','HTML'].includes(String(parent.tagName))&&!labelRe.test(label);parent=parent.parentElement,depth++){
      const nearby=String(parent.innerText||parent.textContent||'').trim();
      if(nearby.length<=85&&labelRe.test(nearby))label+=' '+nearby;
     }
@@ -235,7 +255,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    // Save only a changed NON-default value after the trusted opener.
    const changed=chosenValue==null&&openingValue!=null&&
     actual!==30000&&actual!==openingValue;
-   if(confirmed||changed)save(actual);
+   if(confirmed||changed)save(actual,'manual');
   };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
@@ -295,7 +315,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
      if(next.allowed)poll();
     }).catch(()=>{}).finally(()=>{permissionRequest=null});
   };
-  const save=v=>{preferredMs=v;try{localStorage.setItem(key,String(v))}catch{}};
+  const save=(v,source=null)=>{
+   preferredMs=v;
+   explicitDefault=v===30000&&(source==='manual'||source==='analyst'||explicitDefault);
+   try{localStorage.setItem(key,String(v));localStorage.setItem(defaultChoiceKey,explicitDefault?'30000':'')}catch{}
+  };
   const notify=(value)=>{window.__sentinelNativeExpiryStatusV3={
    preferredMs,currentMs:value,changedAt:Date.now(),lastRepairAt,restoring:repairing
   }};
@@ -375,11 +399,14 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
      const confirmedManualChange=chosenValue==null&&openingValue!=null&&
       current!==openingValue&&current!==30000&&stableCount>=2;
      if((chosenValue!=null&&current===chosenValue)||confirmedManualChange){
-      save(current);manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
+      save(current,'manual');manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;mismatchSince=0;
      }
      notify(current);return;
     }
     if(manualOpenedAt){manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;}
+    // An inherited/default 30s receipt is not an explicit request to undo
+    // an already selected non-default field. Preserve the visible choice.
+    if(preferredMs===30000&&!explicitDefault&&current!==30000&&stableCount>=2)save(current);
     if(!preferredMs){
      // Bootstrap only a stable non-default selected duration. A fresh
      // default 30s is never silently treated as the user's last preference.
@@ -419,13 +446,15 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null}={}){
    }catch{}
   };
   window.addEventListener?.('message',onParentPermission);
-  const setPreferred=value=>{
+  const setPreferred=(value,{explicit=false}={})=>{
    const ms=Number(value);
    if(!ACCEPT.has(ms/1000))return false;
-   save(ms);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
+   // Reconnection must not replay an old default over a saved manual 1m/5m.
+   if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault)return true;
+   save(ms,explicit?'analyst':null);mismatchSince=0;manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;
    notify(observedMs);poll({urgent:true});return true;
   };
-  window.__sentinelNativeExpiryKeeperV3={revision:14,provider,poll,setPreferred,snapshot:()=>({
+  window.__sentinelNativeExpiryKeeperV3={revision:15,provider,poll,setPreferred,snapshot:()=>({
    preferredMs,currentMs:observedMs,observedAt,mismatchSince,lastRepairAt,repairing
   })};
   const onWake=()=>{if(!disposed&&document.visibilityState!=='hidden')poll()};

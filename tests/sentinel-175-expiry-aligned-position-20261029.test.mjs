@@ -79,12 +79,16 @@ test('no extra broker access, timers or adverse packet lookahead; 5m remains exa
  const code=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-entry-position.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(code,/setTimeout|setInterval|WebSocket|\.click\(|page\.evaluate|setNativeExpiry|patchSettings|requestMarket/);
 });
-test('the old entry-price policy is byte-identical after stripping one import and call',()=>{
+test('178 preserves the old entry-price policy outside the explicit extended-pivot revision',()=>{
  const raw=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/entry-price-timing.mjs',import.meta.url),'utf8');
  const add="import {reviewExpiryEntryPosition} from './expiry-entry-position.mjs';\n";
  const invocation=' if(!risk)return reviewExpiryEntryPosition({candidate,quoteHistory,quoteAt,now,price,durationMs});';
  assert.equal(raw.split(add).length,2);
  assert.equal(raw.split(invocation).length,2);
- const restored=Buffer.from(raw.replace(add,'').replace(invocation,' if(!risk)return candidate;'));
+ const oldPivot=" // A current higher-low/lower-high plus its FIRST pivot break also supplies\n // the price confirmation for an already qualified continuation. A past\n // break or a jump far beyond the trigger is not a new entry opportunity.\n const first=proof&&rows.find(q=>q.ts>proof.turnAt&&d*(q.price-proof.pivotPrice)>proof.amplitude);\n const currentBreak=proof&&proof.turnAt>risk.startedAt&&first&&\n  first.ts<=at&&now-first.ts<=1450&&\n  d*(spot-proof.pivotPrice)<=proof.amplitude+risk.typicalMove*.5?{...proof,confirmedAt:first.ts}:null;\n if(ownProof||currentBreak)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof||currentBreak}};\n";
+ const newPivot=" // A small local pivot break cannot renew a leg that is already extended.\n // Only the independently verified reversal/rejection proof above can\n // authorize this price; do not wait for another break of the same old leg.\n if(ownProof)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof}};\n";
+ assert.equal(raw.split(newPivot).length,2);
+ const normalized=raw.replace(newPivot,oldPivot).replace("entryTiming:{...risk,kind:'entry-price-already-extended',setup:candidate.reason}","entryTiming:{kind:'entry-price-already-extended',...risk}");
+ const restored=Buffer.from(normalized.replace(add,'').replace(invocation,' if(!risk)return candidate;'));
  assert.equal(sha(restored),'36ddcb35492721a7a92fc11466a77f43541f0778');
 });

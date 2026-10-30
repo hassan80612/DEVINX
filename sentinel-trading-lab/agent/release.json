@@ -1,6 +1,6 @@
 {
-  "version": "13.9.177",
-  "build": "13.9.177-expiry-first-click-and-compact-reading",
+  "version": "13.9.178",
+  "build": "13.9.178-forming-continuation-independent-execution",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.177"
+  "publicVersion": "13.9.178"
 }

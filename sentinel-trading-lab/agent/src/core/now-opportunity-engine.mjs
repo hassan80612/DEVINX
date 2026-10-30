@@ -17,6 +17,7 @@ import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 import {currentEntryContextRisk} from './current-entry-context.mjs';
+import {formingCandleContinuation} from './forming-candle-continuation.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -539,9 +540,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const roleConflict=!located.ready&&specialist?.ready===true&&(
    levelEvent?.roleMismatch===true&&levelEvent.side===specialist.side||
    specialistLevelRoleRisk({candidate:specialist,structure,...input}));
+  const forming=!located.ready&&!/conflict|opposing|pressure|countertrend/.test(String(located.reason||''))?
+   formingCandleContinuation({structure,candles,...input}):null;
   const proposed=located.ready?located:roleConflict?{
    ...located,ready:false,side:null,reason:'shared-base-level-role-conflict'
-  }:(specialist?.ready===true?{
+  }:(forming?{...forming,priceStructure:located.priceStructure}:specialist?.ready===true?{
    ...specialist,priceStructure:located.priceStructure??specialist.priceStructure
   }:located);
   // The final shared base checks confirmed historical swing direction for

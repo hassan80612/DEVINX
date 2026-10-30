@@ -86,16 +86,12 @@ export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,
  const rows=tape(quoteHistory,at,now,spot);
  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});
  const ownProof=ownReversalConfirmation({candidate,rows,proof,risk,side,at,now,spot,quoteHistory});
- // A current higher-low/lower-high plus its FIRST pivot break also supplies
- // the price confirmation for an already qualified continuation. A past
- // break or a jump far beyond the trigger is not a new entry opportunity.
- const first=proof&&rows.find(q=>q.ts>proof.turnAt&&d*(q.price-proof.pivotPrice)>proof.amplitude);
- const currentBreak=proof&&proof.turnAt>risk.startedAt&&first&&
-  first.ts<=at&&now-first.ts<=1450&&
-  d*(spot-proof.pivotPrice)<=proof.amplitude+risk.typicalMove*.5?{...proof,confirmedAt:first.ts}:null;
- if(ownProof||currentBreak)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof||currentBreak}};
+ // A small local pivot break cannot renew a leg that is already extended.
+ // Only the independently verified reversal/rejection proof above can
+ // authorize this price; do not wait for another break of the same old leg.
+ if(ownProof)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof}};
  // Decline THIS quote. The next qualified quote is assessed afresh by the
  // common 160 engine, never stored, delayed, expired or automatically rearmed.
  return {...candidate,ready:false,side:null,provisionalSide:side,
-  reason:'extended-move-without-current-entry-confirmation',entryTiming:{kind:'entry-price-already-extended',...risk}};
+  reason:'extended-move-without-current-entry-confirmation',entryTiming:{...risk,kind:'entry-price-already-extended',setup:candidate.reason}};
 }

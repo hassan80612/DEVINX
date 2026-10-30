@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from '../sentinel-trading-lab/agent/node_modules/playwright-core/index.mjs';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
-import {installBrokerNativeExpiryKeeper,inspectNativeExpiryBeforeClick} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
+import {installBrokerNativeExpiryKeeper,observeNativeExpiryForClick} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 import {installBrokerChartPeriodKeeper} from '../sentinel-trading-lab/agent/worker/broker-chart-period-keeper.mjs';
 const html=`<!doctype html><html><body>
  <button id="expiry" class="expiration-input" aria-controls="expiry-menu">30 s</button>
@@ -42,6 +42,7 @@ try{
   await page.goto('https://'+(provider==='iq_option'?'iqoption.com':'exnova.com')+'/isolated-expiry-test');
   const ready=async(native,chart)=>page.waitForFunction(([n,c])=>
    document.getElementById('expiry').textContent===n&&document.getElementById('chart').textContent===c&&
+   window.__sentinelNativeExpiryKeeperV3.snapshot().currentMs===({'30 s':30000,'1 min':60000,'5 min':300000}[n])&&
    !window.__sentinelNativeExpiryKeeperV3.snapshot().repairing&&
    !window.__sentinelBrokerChartPeriodKeeperV1.snapshot().repairing,[native,chart],{timeout:12000});
   await ready('1 min','5 min');
@@ -54,8 +55,8 @@ try{
   await driver.setNativeExpiryPreference(provider,30000);
   assert.equal(await page.evaluate(()=>window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs),300000,'reconnect cannot replay an old 30s analyst default');
   await page.reload();await ready('5 min','1 min');
-  const mismatch=await page.evaluate(inspectNativeExpiryBeforeClick,{requiredDurationMs:60000});
-  assert.equal(mismatch.blocked,true);assert.equal(mismatch.currentMs,300000);
+  const mismatch=await page.evaluate(observeNativeExpiryForClick,{provider,requiredDurationMs:60000});
+  assert.equal(mismatch.blocked,false);assert.equal(mismatch.detectedMismatch,true);assert.equal(mismatch.currentMs,300000);
   busy=true;await page.reload();await page.waitForTimeout(3200);
   assert.equal(await page.locator('#expiry').textContent(),'30 s','busy executor must prevent native repair');
   assert.equal(await page.locator('#chart').textContent(),'1 min','chart preference remains separate');
@@ -74,7 +75,7 @@ try{
     label:document.getElementById('expiry')?.textContent})));throw error;});
   assert.ok(renewals>0);
   console.log(JSON.stringify({provider,reload:true,manualSelection:true,livePermissionRenewals:renewals,
-   busyClickProtected:true,childFrame:true,nativeAndChartIndependent:true,knownMismatchSkipped:true}));
+   busyClickProtected:true,childFrame:true,nativeAndChartIndependent:true,knownMismatchTelemetryOnly:true}));
   await context.close();
  }
 }finally{await browser.close();}

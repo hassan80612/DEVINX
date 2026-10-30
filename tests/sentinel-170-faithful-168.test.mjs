@@ -26,7 +26,11 @@ test('176 preserves the 172 engine outside the explicit current-context review',
  const contextReview="  const contextRisk=currentEntryContextRisk({candidate:final,structure,quoteHistory,quoteAt,now,price,durationMs});\n  const contextReviewed=contextRisk?{...final,ready:false,side:null,provisionalSide:final.side,\n   reason:contextRisk.kind,entryRisk:contextRisk}:final;\n  const structuralDecision=fiveMinuteReversalOnly({candidate:contextReviewed,durationMs,quoteAt,now,price});";
  assert.equal(raw.split(oldFloor).length,2,'the 168 floor rule is restored exactly');
  assert.equal(raw.split(contextImport).length,2);assert.equal(raw.split(contextReview).length,2);
- const restored172=raw.replace(contextImport,'').replace(contextReview,"  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});");
+ const formingImport="import {formingCandleContinuation} from './forming-candle-continuation.mjs';\n";
+ const formingCall="  const forming=!located.ready&&!/conflict|opposing|pressure|countertrend/.test(String(located.reason||''))?\n   formingCandleContinuation({structure,candles,...input}):null;\n";
+ assert.equal(raw.split(formingImport).length,2);assert.equal(raw.split(formingCall).length,2);
+ const normalized=raw.replace(formingImport,'').replace(formingCall,'').replace("}:(forming?{...forming,priceStructure:located.priceStructure}:specialist?.ready===true?{","}:(specialist?.ready===true?{");
+ const restored172=normalized.replace(contextImport,'').replace(contextReview,"  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});");
  assert.equal(blob(Buffer.from(restored172)),'db6123f7bb59823124401c53538335ce895d7619','173 must preserve all 172 engine logic outside the floor review');
  const restored=Buffer.from(restored172.replace(addedImport,'').replace(addedGuard,originalGuard));
  assert.equal(blob(restored),'898d1a79204f5ca2e6580dad6e1a49617ce6d2ec','no other 170 engine code may change');

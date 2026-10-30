@@ -77,7 +77,7 @@ test('migrates v1 preference but revokes the old keeper repair lease',()=>{
   window.__sentinelNativeExpiryKeeperV3={revision:1};
   window.__sentinelNativeExpiryPermission={allowed:true,at:m.now};
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,14);
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.revision,15);
   assert.equal(window.__sentinelNativeExpiryPermission.allowed,false);
   assert.equal(m.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'120000');
   m.step();m.step();m.step();
