@@ -13,11 +13,8 @@ import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
 import {continuationRoomRisk} from './continuation-room-risk.mjs';
 import {liveEntryContradiction} from './live-entry-contradiction.mjs';
-import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
-import {currentEntryContextRisk} from './current-entry-context.mjs';
-import {formingCandleContinuation} from './forming-candle-continuation.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -184,14 +181,9 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  const shallowCountertrendFastReversal=
   candidate.reason==='confirmed-fast-level-reversal'&&candidate.side!==state.side&&
   state.phase==='reversal-testing'&&Number(state.retracement)<.25;
- const ownVerifiedFastReversal=shallowCountertrendFastReversal&&
-  verifiedFastLevelReversal({
-   reversalEvidence:candidate.priceStructure?.confirmedReversal,
-   quoteHistory,quoteAt,now,price,side:candidate.side
-  });
- if(shallowCountertrendFastReversal&&!ownVerifiedFastReversal)
+ if(shallowCountertrendFastReversal)
   return {...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'Reversão rápida ainda sem confirmação própria contra o fluxo maior.'};
+   reason:'Reversão rápida ainda rasa contra o fluxo maior.'};
  if(confirmedReversalCandidate(candidate))return candidate;
  const continuation=CONTINUATION_SETUP.test(String(candidate.reason||''));
  const fading=['weakening','reversal-testing'].includes(state.phase);
@@ -201,13 +193,6 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.'};
- // Four older closed bars cannot turn a finished rebound into continuation.
- // Keep this limited to that setup when the latest move already opposes it.
- if(candidate.reason==='closed-structure-and-live-impulse'&&candidate.side!==state.side&&
-   state.phase==='weakening'&&Number(state.latestMove)>0&&
-   Number(candidate.observedNetMove)*Number(state.netMove)<0)
-  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'older-continuation-against-current-price'};
  return candidate;
 }
 
@@ -540,11 +525,9 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const roleConflict=!located.ready&&specialist?.ready===true&&(
    levelEvent?.roleMismatch===true&&levelEvent.side===specialist.side||
    specialistLevelRoleRisk({candidate:specialist,structure,...input}));
-  const forming=!located.ready&&!/conflict|opposing|pressure|countertrend/.test(String(located.reason||''))?
-   formingCandleContinuation({structure,candles,...input}):null;
   const proposed=located.ready?located:roleConflict?{
    ...located,ready:false,side:null,reason:'shared-base-level-role-conflict'
-  }:(forming?{...forming,priceStructure:located.priceStructure}:specialist?.ready===true?{
+  }:(specialist?.ready===true?{
    ...specialist,priceStructure:located.priceStructure??specialist.priceStructure
   }:located);
   // The final shared base checks confirmed historical swing direction for
@@ -580,10 +563,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
     reason:'shared-base-unverified-floor-impulse',entryRisk:floorRisk}:
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
-  const contextRisk=currentEntryContextRisk({candidate:final,structure,quoteHistory,quoteAt,now,price,durationMs});
-  const contextReviewed=contextRisk?{...final,ready:false,side:null,provisionalSide:final.side,
-   reason:contextRisk.kind,entryRisk:contextRisk}:final;
-  const structuralDecision=fiveMinuteReversalOnly({candidate:contextReviewed,durationMs,quoteAt,now,price});
+  const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price});
   const persistenceDecision=reviewDirectionalPersistence({
    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
   });

@@ -4,7 +4,6 @@
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 const usable=v=>Number.isFinite(Number(v))&&Number(v)>0;
 const qualifyingReasons=new Set([
- 'forming-candle-pullback-continuation',
  'closed-structure-and-live-impulse',
  'historical-level-breakout',
  'historical-trend-and-live-forecast',

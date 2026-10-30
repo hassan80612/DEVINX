@@ -1090,12 +1090,9 @@ export class DemoTradingRuntime{
       // Never display a new entry from a quote that sat in an analysis queue.
       // This is transport freshness, not an added market/strategy veto.
       const quoteAgeMs=now-Number(snap.quoteTs||0);
-      // Every 60s entry uses the same 1450ms freshness limit as its
-      // last-mile market-risk checks. Do not trade on a quote after those
-      // checks have ceased to be applicable; no new timer or wait.
       const maxEntryQuoteAgeMs=Number(settings.orderDurationMs)<=10000?800:
         Number(settings.orderDurationMs)<=30000?1450:
-        Number(settings.orderDurationMs)<=60000?1450:2500;
+        Number(settings.orderDurationMs)<=60000?1950:2500;
       const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs;
       // Collect a real quote-at-expiry shadow comparison on the PC only.
       // It is in-memory, non-overlapping and never waits for a result.

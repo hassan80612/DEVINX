@@ -48,10 +48,10 @@ test('a known different native duration and an active repair still prevent a cli
   assert.equal(inspectNativeExpiryBeforeClick({requiredDurationMs:60000}).reason,'expiry-repair-in-progress');
  }finally{b.restore()}
 });
-test('178 preserves the 176 runtime and price/reversal detectors exactly',()=>{
+test('179 preserves the 168 runtime decisions and reversal detectors exactly',()=>{
  const blob=b=>createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');
  for(const [name,sha] of [
-  ['runtime.mjs','03cee9bb1f7eaad743f1fc49cf78d596e1cec516'],
+  ['runtime.mjs','414ec2283a5b874e90e5555a87d74a16a811e6ac'],
   ['fast-level-reversal.mjs','810d78b3229d3eeb427e6c28dcb63a8f6647e9aa'],
   ['observed-level-sequence.mjs','cb3c9a914c1f3cc0ea62ab98a2b0e44690572624']
  ])assert.equal(blob(readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url))),sha,name);

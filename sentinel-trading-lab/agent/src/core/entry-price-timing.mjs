@@ -4,7 +4,6 @@
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
 import {proveLevelRejectionAtExpiry} from './causal-level-rejection-proof.mjs';
-import {reviewExpiryEntryPosition} from './expiry-entry-position.mjs';
 const dir=s=>s==='CALL'?1:s==='PUT'?-1:0;
 const median=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]||0;};
 function tape(history,at,now,price){
@@ -76,7 +75,7 @@ export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,
  if(![30000,60000].includes(Number(durationMs))||candidate?.ready!==true||!dir(candidate.side))return candidate;
  const side=candidate.side,at=Number(quoteAt),spot=Number(price),d=dir(side);
  const risk=stretchedImpulse({quoteHistory,quoteAt,now,price,side});
- if(!risk)return reviewExpiryEntryPosition({candidate,quoteHistory,quoteAt,now,price,durationMs});
+ if(!risk)return candidate;
  const reaction=candidate.priceStructure?.reaction,levelProof=candidate.priceStructure?.reactionProof;
  if(candidate.reason==='historical-level-rejection'&&reaction?.kind==='rejection'&&reaction.side===side&&
    levelProof?.confirmed===true&&levelProof.side===side&&levelProof.observedAt===at&&
@@ -86,12 +85,16 @@ export function reviewEntryPrice({candidate,quoteHistory=[],quoteAt,now=quoteAt,
  const rows=tape(quoteHistory,at,now,spot);
  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});
  const ownProof=ownReversalConfirmation({candidate,rows,proof,risk,side,at,now,spot,quoteHistory});
- // A small local pivot break cannot renew a leg that is already extended.
- // Only the independently verified reversal/rejection proof above can
- // authorize this price; do not wait for another break of the same old leg.
- if(ownProof)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof}};
+ // A current higher-low/lower-high plus its FIRST pivot break also supplies
+ // the price confirmation for an already qualified continuation. A past
+ // break or a jump far beyond the trigger is not a new entry opportunity.
+ const first=proof&&rows.find(q=>q.ts>proof.turnAt&&d*(q.price-proof.pivotPrice)>proof.amplitude);
+ const currentBreak=proof&&proof.turnAt>risk.startedAt&&first&&
+  first.ts<=at&&now-first.ts<=1450&&
+  d*(spot-proof.pivotPrice)<=proof.amplitude+risk.typicalMove*.5?{...proof,confirmedAt:first.ts}:null;
+ if(ownProof||currentBreak)return {...candidate,entryTiming:{kind:'current-price-confirmed',proof:ownProof||currentBreak}};
  // Decline THIS quote. The next qualified quote is assessed afresh by the
  // common 160 engine, never stored, delayed, expired or automatically rearmed.
  return {...candidate,ready:false,side:null,provisionalSide:side,
-  reason:'extended-move-without-current-entry-confirmation',entryTiming:{...risk,kind:'entry-price-already-extended',setup:candidate.reason}};
+  reason:'extended-move-without-current-entry-confirmation',entryTiming:{kind:'entry-price-already-extended',...risk}};
 }
