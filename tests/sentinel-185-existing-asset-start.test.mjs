@@ -26,7 +26,10 @@ test('manual start does not await a new asset click, history or quote',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.ok(src.includes("void Promise.resolve().then(async()=>{\n    await primeVisibleMarket(provider);"));
  assert.ok(!src.includes("if(!live)throw new Error('Aguardando leitura do ativo atual.')"));
- assert.ok(src.includes("driver.domSnapshot?.(provider)"));
+ const recovery=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-initial-market-recovery.mjs',import.meta.url),'utf8');
+ assert.ok(src.includes('recoverAlreadyOpenMarket({driver,provider})'));
+ assert.ok(recovery.includes('driver.domSnapshot?.(provider)'));
+ assert.ok(recovery.includes('driver.requestBaseData?.(provider)'));
  assert.ok(src.includes("return runtime.start(payload.actor||'user')"));
 });
 
