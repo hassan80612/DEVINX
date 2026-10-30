@@ -26,7 +26,7 @@ on:
       - 'tests/sentinel-185-prior-candle-breach.test.mjs'
       - 'tests/sentinel-13940-manual-bankroll.test.mjs'
       - 'tests/sentinel-166-expiry-reload.test.mjs'
-      - '.github/workflows/sentinel-139191-reversal-expiry.yml'
+      - '.github/workflows/sentinel-139191-189-reversal-chart.yml'
 permissions:
   contents: write
 concurrency:
