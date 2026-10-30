@@ -10,7 +10,12 @@ const read=p=>readFileSync(new URL(p,root),'utf8');
 test('196: restores the IDENTICAL 189 runtime and continuation-room admission modules',()=>{
  const runtime=read('src/core/runtime.mjs'),room=read('src/core/continuation-room-risk.mjs');
  const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
- assert.equal(gitSha(runtime),'16e6e789ae68ba2a54669e526edae13e090b1dcd');
+ // Prove that removing exactly the single added 1m pre-click veto leaves
+ // the original 189 runtime byte-for-byte unchanged.
+ const originalRuntime=runtime.replace(
+  "import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';\\n".replace('\\n','\n'),'')
+  .replace(/      \/\/ Run at the FINAL physical admission,[\s\S]*?      eligible=reviewOneMinuteRejectionProof\(\{[\s\S]*?\}\);\n/,'');
+ assert.equal(gitSha(originalRuntime),'16e6e789ae68ba2a54669e526edae13e090b1dcd');
  assert.equal(gitSha(room),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
  assert.doesNotMatch(runtime,/reviewDynamicEntryQuality|arbitrateFinalSide|reviewPreviousClosedCandlePrice/);
 });
