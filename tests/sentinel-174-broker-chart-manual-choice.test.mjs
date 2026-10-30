@@ -4,6 +4,7 @@ import {installBrokerChartPeriodKeeper} from '../sentinel-trading-lab/agent/work
 
 function broker(initial='30 s',stored=null){
  const storage=new Map(stored==null?[]:[['sentinel-broker-chart-period-preference-v1:exnova',String(stored)]]);
+ const remembered=[];
  const events={};let selected,now=100000,open=false,timer=null;
  let later=[];
  const menu={className:'chart-timeframe-menu',getAttribute:()=>null};
@@ -34,7 +35,8 @@ function broker(initial='30 s',stored=null){
  globalThis.location={hostname:'exnova.com'};
  globalThis.innerHeight=900;
  globalThis.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,String(v))};
- globalThis.window={addEventListener(){},removeEventListener(){}};
+ globalThis.window={addEventListener(){},removeEventListener(){},
+  __sentinelRememberBrokerChartPeriodChoice(value,at){remembered.push({value,at});return Promise.resolve(true);}};
  globalThis.document={visibilityState:'visible',
   querySelectorAll(selector){if(selector.startsWith('[class*="chart-duration"'))return [control];
    if(selector.startsWith('[role="option"]'))return open?options:[];return [];},
@@ -47,7 +49,7 @@ function broker(initial='30 s',stored=null){
  const flush=()=>{let n=0;while(later.length&&n++<30)later.shift()();assert.ok(n<30,'bounded timers')};
  const event=(name,target)=>events[name]?.({target,isTrusted:true});
  const api={
-  storage,
+  storage,remembered,
   event,
   openPicker(){event('click',control);control.click();},
   choose(value,{rerender=false,portal=true}={}){
@@ -101,5 +103,27 @@ test('broker chart: a spontaneous 30s reset cannot overwrite saved 1m when no ma
   assert.equal(b.preference(),'60');
   assert.equal(b.current(),'1 min');
   assert.equal(b.status().preferredSeconds,60);
+ }finally{b.close()}
+});
+
+test('broker chart: remembered Agent 5m preference repairs a new 30s frame without a saved browser key',()=>{
+ const b=broker('30 s');
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova',requestedSeconds:300,requestedAt:100000});
+  b.tick();b.tick(14000);b.tick(2500);
+  assert.equal(b.current(),'5 min');
+  assert.equal(b.preference(),'300');
+  assert.equal(b.remembered.length,0,'automatic restoration is not a manual selection');
+ }finally{b.close()}
+});
+test('broker chart: the last manual preference reaches the Agent; automatic 30s rollback does not overwrite it',()=>{
+ const b=broker('30 s');
+ try{
+  installBrokerChartPeriodKeeper({provider:'exnova'});
+  b.openPicker();b.choose('1 min',{rerender:true});b.tick();
+  assert.ok(b.remembered.some(x=>x.value===60));
+  const written=b.remembered.length;
+  b.reset();b.tick(13000);b.tick(2500);
+  assert.equal(b.current(),'1 min');assert.equal(b.remembered.length,written);
  }finally{b.close()}
 });

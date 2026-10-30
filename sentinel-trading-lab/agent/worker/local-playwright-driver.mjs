@@ -627,7 +627,18 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
- constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map();this.chartPeriodPreferences=new Map();
+   this.chartPeriodPrefFile=join(this.dataDir,'chart-period-preferences.json');
+   this.chartPeriodSaveQueue=Promise.resolve();
+   this.chartPeriodPreferenceReady=readFile(this.chartPeriodPrefFile,'utf8').then(raw=>{
+    const saved=JSON.parse(raw);
+    for(const provider of ['iq_option','exnova']){
+     const record=saved?.[provider],value=Number(record?.seconds),selectedAt=Number(record?.selectedAt)||0;
+     if([5,10,15,30,60,120,180,300,600,900,1800,3600].includes(value))
+      this.chartPeriodPreferences.set(provider,{seconds:value,selectedAt});
+    }
+   }).catch(()=>{});
+  }
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setExecutionObserver(handler){this.executionObserver=typeof handler==='function'?handler:null;return this}
   observeExecution(provider,frame,direction){if(this.executionObserver)try{this.executionObserver(provider,frame,direction)}catch{}}
@@ -762,12 +773,40 @@ export class LocalPlaywrightDriver{
     if(manual)return this.launchNormal(provider,{manual:true});
     return this.launchBackground(provider);
   }
+  async rememberChartPeriodChoice(provider,seconds,selectedAt=Date.now()){
+    if(!['iq_option','exnova'].includes(provider))return false;
+    const value=Number(seconds),at=Number(selectedAt);
+    if(![5,10,15,30,60,120,180,300,600,900,1800,3600].includes(value)||
+       !Number.isFinite(at)||at<=0)return false;
+    await this.chartPeriodPreferenceReady;
+    const prior=this.chartPeriodPreferences.get(provider);
+    if(prior&&at<Number(prior.selectedAt||0))return false;
+    this.chartPeriodPreferences.set(provider,{seconds:value,selectedAt:at});
+    // Serial durable write. A broker refresh or asset switch cannot
+    // revert the previous explicit choice before the next Agent startup.
+    this.chartPeriodSaveQueue=this.chartPeriodSaveQueue.catch(()=>{}).then(async()=>{
+      await mkdir(this.dataDir,{recursive:true});
+      const tmp=this.chartPeriodPrefFile+'.tmp';
+      await writeFile(tmp,JSON.stringify(Object.fromEntries(this.chartPeriodPreferences))+'\n');
+      await rename(tmp,this.chartPeriodPrefFile);
+    });
+    await this.chartPeriodSaveQueue.catch(()=>{});
+    const page=this.sessions.get(provider)?.page;
+    if(page&&!page.isClosed?.()){
+      const choice={provider,requestedSeconds:value,requestedAt:at};
+      await Promise.allSettled(page.frames().map(frame=>
+        frame.evaluate(({requestedSeconds,requestedAt})=>
+          window.__sentinelBrokerChartPeriodKeeperV1?.setPreferred?.(requestedSeconds,{selectedAt:requestedAt}),choice)));
+    }
+    return true;
+  }
   setNativeExpiryPermissionSource(source){
     this.nativeExpiryPermissionSource=typeof source==='function'?source:null;
   }
   async installBridge(page,provider=null){
     // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
+      await this.chartPeriodPreferenceReady;
       if(!page.__sentinelExpiryPermissionExposed){
         await page.exposeFunction('__sentinelRequestNativeExpiryPermission',()=>{
           try{
@@ -785,6 +824,12 @@ export class LocalPlaywrightDriver{
         });
         page.__sentinelNativeExpiryChoiceExposed=true;
       }
+      if(!page.__sentinelChartPeriodChoiceExposed){
+        await page.exposeFunction('__sentinelRememberBrokerChartPeriodChoice',
+         (seconds,selectedAt)=>this.rememberChartPeriodChoice(provider,seconds,selectedAt));
+        page.__sentinelChartPeriodChoiceExposed=true;
+      }
+      const chartChoice=this.chartPeriodPreferences.get(provider)||null;
       const requestedMs=this.nativeExpiryPreferences.get(provider)??null;
       // Do not capture a mutable expiry in this one-time script: an old 30s
       // default could overwrite the user's saved duration on a later broker reload.
@@ -798,7 +843,8 @@ export class LocalPlaywrightDriver{
         page.__sentinelBrokerChartPeriodInitScript=true;
         await page.addInitScript(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
       }
-      await page.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
+      await page.evaluate(installBrokerChartPeriodKeeper,{provider,
+        requestedSeconds:chartChoice?.seconds??null,requestedAt:chartChoice?.selectedAt??0}).catch(()=>{});
     }
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}));
@@ -873,12 +919,16 @@ export class LocalPlaywrightDriver{
       await frame.evaluate(install).catch(()=>{});
       if(provider){
         await frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});
-        await frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{});
+        await frame.evaluate(installBrokerChartPeriodKeeper,{provider,
+          requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
+          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{});
       }
     }
     if(!page.__sentinelFrameBridgeHooks){
       page.__sentinelFrameBridgeHooks=true;
-      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider}).catch(()=>{})}};
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{});if(provider){frame.evaluate(installBrokerNativeExpiryKeeper,{provider,requestedMs:this.nativeExpiryPreferences.get(provider)??null,allowEmbedded:true}).catch(()=>{});frame.evaluate(installBrokerChartPeriodKeeper,{provider,
+          requestedSeconds:this.chartPeriodPreferences.get(provider)?.seconds??null,
+          requestedAt:this.chartPeriodPreferences.get(provider)?.selectedAt??0}).catch(()=>{})}};
       page.on('frameattached',installFrame);
       page.on('framenavigated',installFrame);
     }

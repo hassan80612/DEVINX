@@ -1,12 +1,15 @@
 // Persist only the broker's explicitly labelled chart timeframe. This is a
 // separate control from order expiry and never touches market subscriptions.
-export function installBrokerChartPeriodKeeper({provider}={}){
+export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,requestedAt=0}={}){
  try{
   if(!['iq_option','exnova'].includes(provider))return;
   const host=String(location.hostname||'').toLowerCase();
   if(!((provider==='iq_option'&&/(^|\.)iqoption\.com$/.test(host))||
     (provider==='exnova'&&/(^|\.)exnova\.com$/.test(host))))return;
-  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===5)return;
+  if(window.__sentinelBrokerChartPeriodKeeperV1?.revision===6){
+    if(requestedSeconds!=null)window.__sentinelBrokerChartPeriodKeeperV1.setPreferred?.(requestedSeconds,{selectedAt:requestedAt});
+    return;
+  }
   try{window.__sentinelBrokerChartPeriodKeeperV1?.dispose?.()}catch{}
   const ACCEPT=new Set([5,10,15,30,60,120,180,300,600,900,1800,3600]);
   const key='sentinel-broker-chart-period-preference-v1:'+provider;
@@ -51,14 +54,25 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    }
    return null;
   };
-  let cached=null,observedSeconds=null,preferredSeconds=null,stableCount=0,
+  let cached=null,observedSeconds=null,preferredSeconds=null,preferredAt=0,stableCount=0,
    manualOpenedAt=0,openingSeconds=null,manualControl=null,chosenSeconds=null,
    chosenTarget=null,lastUserActivityAt=0,lastRepairAt=0,repairing=false,
    observedAt=0,lastAttemptAt=0,disposed=false;
   try{
    const v=Number(localStorage.getItem(key));
-   if(ACCEPT.has(v)){preferredSeconds=v;}
+   if(ACCEPT.has(v)){preferredSeconds=v;preferredAt=Number(localStorage.getItem(key+':selectedAt')||0);}
   }catch{}
+  // An explicit manual choice remembered by the local Agent is shared
+  // across a rebuilt broker frame, even when that frame has another origin.
+  const applyAgentChoice=(seconds,selectedAt)=>{
+    const value=Number(seconds),at=Number(selectedAt)||0;
+    if(!ACCEPT.has(value)||at<preferredAt)return false;
+    if(preferredSeconds===value&&at===preferredAt)return true;
+    preferredSeconds=value;preferredAt=at;
+    try{localStorage.setItem(key,String(value));if(at)localStorage.setItem(key+':selectedAt',String(at));}catch{}
+    return true;
+  };
+  if(requestedSeconds!=null)applyAgentChoice(requestedSeconds,requestedAt);
   function discover(){
    if(cached&&visible(cached)){
     const value=read(cached);if(value)return{el:cached,value};
@@ -132,15 +146,22 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    }
    return null;
   };
-  const save=value=>{
+  const save=(value,manual=false)=>{
    if(!ACCEPT.has(Number(value)))return;
-   preferredSeconds=Number(value);try{localStorage.setItem(key,String(preferredSeconds))}catch{}
+   preferredSeconds=Number(value);
+   if(manual)preferredAt=Date.now();
+   try{localStorage.setItem(key,String(preferredSeconds));
+    if(manual)localStorage.setItem(key+':selectedAt',String(preferredAt));}catch{}
+   // Only actual trusted broker-picker choices are persisted in the Agent.
+   // Automatic re-detection and page-repair events never become preferences.
+   if(manual&&typeof window.__sentinelRememberBrokerChartPeriodChoice==='function')
+    try{Promise.resolve(window.__sentinelRememberBrokerChartPeriodChoice(preferredSeconds,preferredAt)).catch(()=>{})}catch{}
   };
   // Chart interval is independent of order expiry and remains recoverable
   // while the executor temporarily revokes permission around order clicks.
   const notify=()=>{window.__sentinelBrokerChartPeriodStatusV1={
    provider,preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,
-   repairing,revision:5
+   repairing,revision:6
   }};
   function restore(control){
    const now=Date.now();
@@ -196,7 +217,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
      // not select the new value; require the trusted opener and stable value.
      const changedManually=chosenSeconds==null&&openingSeconds!=null&&
       control.value!==openingSeconds&&control.value!==30&&stableCount>=2;
-     if(confirmed||changedManually){save(control.value);manualOpenedAt=0;openingSeconds=null;
+     if(confirmed||changedManually){save(control.value,true);manualOpenedAt=0;openingSeconds=null;
       manualControl=null;chosenSeconds=null;chosenTarget=null;}
      notify();return;
     }
@@ -219,7 +240,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    const confirmed=chosenSeconds!=null&&actual===chosenSeconds;
    const changedNonDefault=chosenSeconds==null&&openingSeconds!=null&&
     actual!==30&&actual!==openingSeconds;
-   if(confirmed||changedNonDefault)save(actual);
+   if(confirmed||changedNonDefault)save(actual,true);
   };
   const onPointerDown=ev=>{
    if(repairing||!ev.isTrusted)return;
@@ -250,7 +271,7 @@ export function installBrokerChartPeriodKeeper({provider}={}){
    const control=discover();if(!control||!inChartMenu(ev.target,control.el))return;
    const options=ev.target.selectedOptions;
    const value=options?.length===1?parse(options[0].textContent||options[0].label):null;
-   if(value){save(value);lastUserActivityAt=Date.now();}
+   if(value){save(value,true);lastUserActivityAt=Date.now();}
   };
   const onWake=()=>{if(document.visibilityState!=='hidden')poll();};
   document.addEventListener('pointerdown',onPointerDown,true);
@@ -261,7 +282,12 @@ export function installBrokerChartPeriodKeeper({provider}={}){
   window.addEventListener?.('focus',onWake);
   window.addEventListener?.('pagehide',persistBeforeLeave);
   window.addEventListener?.('beforeunload',persistBeforeLeave);
-  window.__sentinelBrokerChartPeriodKeeperV1={revision:5,provider,poll,
+  window.__sentinelBrokerChartPeriodKeeperV1={revision:6,provider,poll,
+   setPreferred:(value,{selectedAt=0}={})=>{
+    const changed=applyAgentChoice(value,selectedAt);
+    if(changed)poll();
+    return changed;
+   },
    snapshot:()=>({preferredSeconds,currentSeconds:observedSeconds,observedAt,lastRepairAt,repairing}),
    dispose:()=>{
     disposed=true;
