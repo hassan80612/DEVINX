@@ -53,5 +53,5 @@ test('worker start still async and the 188 strategy/expiry rules are unchanged',
  const release=JSON.parse(readFileSync(new URL('agent/release.json',root),'utf8'));
  assert.match(worker,/return recoverAlreadyOpenMarket\(\{driver,provider,force:true\}\)/);
  assert.match(driver,/return\[\{label,selected,visualSelected\}\]/);
- assert.equal(release.version,'13.9.189');
+ assert.equal(release.version,'13.9.190');
 });
