@@ -1,6 +1,6 @@
 {
-  "version": "13.9.189",
-  "build": "13.9.189-existing-tab-start-only",
+  "version": "13.9.190",
+  "build": "13.9.190-reversal-arbitration-chart-expiry-persistence",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.189"
+  "publicVersion": "13.9.190"
 }
