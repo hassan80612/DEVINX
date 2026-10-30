@@ -46,13 +46,16 @@ const recorded194=[
 ];
 test('real 194 audit price-before-click replay: at least seven of eight known trades fail price qualification',()=>{
  let blockedLoss=0,blockedWin=0;
+ const decisions=[];
  for(const [side,reason,price,candles,quotes,result] of recorded194){
   const checked=check(side,reason,price,candles,quotes);
+  decisions.push({result,side,reason,price,ready:checked.ready,
+   verdict:checked.reason,proof:checked.previousPriceProof?.decision??null});
   assert.notEqual(checked.side,side==='CALL'?'PUT':'CALL','a veto never manufactures opposite order');
   if(!checked.ready&&result==='loss')blockedLoss++;
   if(!checked.ready&&result==='win')blockedWin++;
  }
- assert.ok(blockedLoss>=7,'should reject recorded 194 loss contexts where entry price contradicted past candles');
+ assert.ok(blockedLoss>=7,'blockedLoss='+blockedLoss+',blockedWin='+blockedWin+',cases='+JSON.stringify(decisions));
  assert.ok(blockedWin<=1,'reference 194 batch contained exactly one completed WIN');
 });
 test('a genuine breakout with a previously observed price route is not treated as mere wick',()=>{
