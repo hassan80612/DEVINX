@@ -72,10 +72,14 @@ export function reviewPreviousClosedCandlePrice({candidate,candles=[],quoteHisto
   return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
  }
  if(family==='reversal'){
-  const observedTurn=move3>=atr*.14&&move6>=atr*.19&&lastStep>=0;
-  const againstPrevious=dLast<0&&d*(spot-last.close)<atr*.24;
-  const chasingWrongEdge=(d>0?spot>=hi3-atr*.16:spot<=lo3+atr*.16)&&dLast<0;
-  if(!observedTurn||againstPrevious||chasingWrongEdge)
+  // A real historical/candle-backed level reversal often begins while the
+  // previous CLOSED candle is still against the new side. Do not demand
+  // an arbitrary size or a second candle: only a measured live contradiction
+  // may veto a reversal already qualified by the structural base.
+  const contradictedNow=move3<=-atr*.12&&move6<=-atr*.15&&lastStep<0;
+  const clearlyFailedTurn=move3<0&&lastStep<0&&
+   (d>0?spot>=hi3-atr*.06:spot<=lo3+atr*.06);
+  if(contradictedNow||clearlyFailedTurn)
    return veto(candidate,'closed-candle-reversal-not-supported-by-live-price',proof);
   return {...candidate,previousPriceProof:{...proof,decision:'KEEP'}};
  }
