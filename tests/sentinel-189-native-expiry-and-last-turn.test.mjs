@@ -37,7 +37,8 @@ test('the automatic runtime NEVER rewrites broker expiry while evaluating or rec
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  const loop=worker.slice(worker.indexOf('let busy=false;async function loop()'),worker.indexOf('  // Live broker quote events and the dedicated 220ms signed-feed timer'));
  assert.ok(!loop.includes('setNativeExpiryPreference'), 'loop must not restore a stale analyst expiry');
- assert.match(worker,/key==='duration'[\\s\\S]*?setNativeExpiryPreference\\?\\.\\(activeProvider,n,\\{preserveExisting:false\\}\\)/);
+ assert.ok(worker.includes("key==='duration'"));
+ assert.ok(worker.includes('await driver.setNativeExpiryPreference?.(activeProvider,n,{preserveExisting:false})'));
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.match(driver,/__sentinelRememberNativeExpiryChoice/);
 });
