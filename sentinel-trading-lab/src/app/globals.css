@@ -1650,6 +1650,8 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
     gap:5px;
     padding:8px;
   }
+  .vnextEngineToolbar > [data-testid="current-strategy-when"],
+  .vnextEngineToolbar > [data-testid="automatic-chart-context"],
   .app.marketWorkspace .liveScenario .vnextEngineToolbar label:first-child > small,
   .app.compactAnalyst .liveScenarioCompact .vnextEngineToolbar label:first-child > small{
     display:none!important;
@@ -1662,14 +1664,12 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 
 .botControl{margin-top:16px;min-width:0}.botControlFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.botControlFields label{display:grid;gap:6px;min-width:0;font-size:13px}.botControlFields input{width:100%;min-width:0;box-sizing:border-box;min-height:44px;font-size:16px}.botControlActions{display:flex;gap:8px;flex-wrap:wrap}.botControlActions button{min-height:44px;flex:1;white-space:nowrap}.botControl p{overflow-wrap:anywhere}
 
-/* 13.9.96 mobile-only alignment: exactly two controls, same vertical
-   baseline. The first label's existing help text remains untouched.
-   No changes to PC layout, options, Agent or analyst. */
+/* Keep strategy, entry type and duration on the same mobile baseline. */
 @media (max-width:900px){
  .liveScenario .vnextEngineToolbar,
  .app.marketWorkspace .liveScenario > .vnextEngineToolbar,
  .app.compactAnalyst .liveScenarioCompact > .vnextEngineToolbar{
-  grid-template-columns:minmax(0,1.3fr) minmax(96px,.85fr);
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,.72fr);
   align-items:start;
  }
  .liveScenario .vnextEngineToolbar > label{
@@ -1706,5 +1706,18 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
 .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){height:auto;min-height:48px;max-height:none;align-items:flex-start}
 .vnextFutureDirection .marketReadingRow{display:grid;width:100%;min-width:0}
-.vnextFutureDirection .marketReadingRow>span{grid-area:1/1;min-width:0;max-width:none;margin:0;font:inherit;color:inherit;white-space:inherit;overflow:visible;text-overflow:clip;overflow-wrap:inherit}
-.vnextFutureDirection .marketReadingRow>.marketReadingRowSizer{visibility:hidden;pointer-events:none;user-select:none}
+/* Market interpretation and feed diagnostics own separate stable rows. */
+.vnextFutureDirection .marketReadingRow>.marketReadingSlot{grid-area:auto;display:grid;min-width:0;max-width:none;margin:0;font:inherit;color:inherit;white-space:inherit;overflow:visible;overflow-wrap:inherit}
+.vnextFutureDirection .marketReadingSlot>span{grid-area:1/1;min-width:0;max-width:none;margin:0;font:inherit;color:inherit;white-space:inherit;overflow:visible;text-overflow:clip;overflow-wrap:inherit}
+.vnextFutureDirection .marketReadingSlot>.marketReadingRowSizer{visibility:hidden;pointer-events:none;user-select:none}
+/* One shared selector row also fits compact cards on desktop. */
+.liveScenario .vnextEngineToolbar,
+.app.marketWorkspace:not(.compactAnalyst) .vnextEngineToolbar,
+.app.compactAnalyst .liveScenarioCompact > .vnextEngineToolbar{
+ grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,.72fr);
+ align-items:start;
+}
+.liveScenario .vnextEngineToolbar > label{
+ display:grid;grid-template-rows:minmax(36px,auto) auto;align-content:start;min-width:0;
+}
+.liveScenario .vnextEngineToolbar > label > select{grid-row:2;width:100%;min-width:0}

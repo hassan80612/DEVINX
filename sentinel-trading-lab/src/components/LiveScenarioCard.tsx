@@ -12,7 +12,7 @@ import {normalizeEntryFamily,supportsEntryFamilies} from '../../agent/src/core/e
 import {marketReadingRowSizingTexts} from '../../agent/worker/market-reading-layout.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.182';
+const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id)); const SENTINEL_RELEASE_VERSION='13.9.183';
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -70,10 +70,13 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
    {nowMode&&<small className="marketReadingRow" data-testid="market-reading-detail" title={(running&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
-    {marketReadingRowSizingTexts(t).map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
-    <span data-testid="market-reading-text">
-    {running&&observation?.marketReading?t(observation.marketReading)+(technicalStatus?' · ':''):''}
-    {t(technicalStatus)}
+    <span className="marketReadingSlot">
+      {marketReadingRowSizingTexts(t,'market').map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
+      <span data-testid="market-reading-text">{running&&observation?.marketReading?t(observation.marketReading):''}</span>
+    </span>
+    <span className="marketReadingSlot">
+      {marketReadingRowSizingTexts(t,'technical').map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
+      <span data-testid="market-technical-text">{t(technicalStatus)}</span>
     </span>
    </small>}
   </div>
@@ -253,33 +256,20 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizeUserStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {VISIBLE_STRATEGIES.map(e=><option key={e.id} value={e.id}>{t(e.name)} · {t(e.short)}</option>)}
       </select>
-      <small style={{display:'block',fontSize:11,opacity:.88,marginTop:5}} data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
-      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
-       <small data-testid="automatic-chart-context" style={{display:'block',fontSize:11,opacity:.85,marginTop:4}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
+    </label>
+    <label data-testid="entry-family-picker" title={t('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.')}>
+      {t('Tipos de entrada')}{" "}<select aria-label={t('Tipos de entrada')} value={entryFamily} disabled={busy||!supportsEntryChoices} onChange={e=>void changeEntryFamily(e.target.value)}>
+        {Object.entries(entryFamilyLabels).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}
+      </select>
+      {!supportsEntryChoices&&<small>{t('Atualize o Agent no PC para usar estas opções.')}</small>}
     </label>
     <label>{t(nowMode?"Duração da operação":"Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
-    <details className="entryFamilyPicker" data-testid="entry-family-picker" style={{gridColumn:'1 / -1',fontSize:12}}>
-      <summary style={{cursor:'pointer',fontWeight:700}}>{t('Tipos de entrada')} · {t(entryFamilyLabels[entryFamily])}</summary>
-      {!supportsEntryChoices&&<small>{t('Atualize o Agent no PC para usar estas opções.')}</small>}
-      <label style={{display:'grid',gap:6,marginTop:8}}>{t('Entradas permitidas')}
-        <select aria-label={t('Tipos de entrada')} value={entryFamily} disabled={busy||!supportsEntryChoices} onChange={e=>void changeEntryFamily(e.target.value)}>
-          {Object.entries(entryFamilyLabels).map(([value,label])=><option key={value} value={value}>{t(label)}</option>)}
-        </select>
-      </label>
-      <small style={{display:'block',marginTop:6}}>{t('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.')}</small>
-    </details>
-    <details data-testid="native-expiry-mapping-picker" style={{gridColumn:'1 / -1',fontSize:12}}>
-      <summary style={{cursor:'pointer',fontWeight:700}}>{t('Expiração da corretora')}</summary>
-      <small style={{display:'block',margin:'8px 0',lineHeight:1.5}}>{t('Pause o bot para mapear. Clique em Mapear expiração e depois no prazo da corretora. O caminho será salvo para as próximas atualizações.')}</small>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        <button disabled={busy||!supportsEntryChoices} onClick={()=>void act('settings',{nativeExpiryMapping:'arm'})}>{t('Mapear expiração')}</button>
-        <button disabled={busy||!supportsEntryChoices} onClick={()=>void act('settings',{nativeExpiryMapping:'status'})}>{t('Conferir leitura')}</button>
-      </div>
-      <small style={{display:'block',marginTop:6}}>{t('O clique de indicação é feito no PC. No celular, acompanhe a mesma configuração.')}</small>
-    </details>
+      <small style={{display:'block',gridColumn:'1 / -1',fontSize:11,opacity:.88,marginTop:2}} data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
+      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
+       <small data-testid="automatic-chart-context" style={{display:'block',gridColumn:'1 / -1',fontSize:11,opacity:.85,marginTop:2}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
   </div>:null;
 
 

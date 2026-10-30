@@ -1725,7 +1725,9 @@ export class LocalPlaywrightDriver{
       // Stable presentation slots only: no broker analysis, caching or extra timer.
       payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
-      payload.marketReadingRowSizers=marketReadingRowSizingTexts(text=>payload.uiLanguage==='en'?(PC_UI_EN[text]||text):text);
+      const readingText=text=>payload.uiLanguage==='en'?(PC_UI_EN[text]||text):text;
+      payload.marketReadingRowSizers=marketReadingRowSizingTexts(readingText,'market');
+      payload.marketTechnicalRowSizers=marketReadingRowSizingTexts(readingText,'technical');
       payload.visibleStrategies=VISIBLE_STRATEGIES;
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
@@ -2369,11 +2371,16 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
 
-            <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:8px;align-items:end;padding:7px 9px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
+            <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.75fr) minmax(72px,.38fr);gap:8px;align-items:end;padding:7px 9px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:4px;font-size:9px;font-weight:750;color:${goldSoft}">${tr('Estratégia')}
                 <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
 
                   ${((d.visibleStrategies||[]).map(e=>'<option value="'+esc(e.id)+'" '+(d.engine===e.id?'selected':'')+'>'+esc(tr(e.name))+' · '+esc(tr(e.short))+'</option>')).join('')}
+                </select>
+              </label>
+              <label data-sentinel-entry-family-picker title="${esc(tr('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.'))}" style="display:grid;gap:4px;min-width:0;font-size:9px;font-weight:750;color:${goldSoft}">${tr('Tipos de entrada')}
+                <select data-sentinel-setting="entryFamily" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+                  ${Object.entries({automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'}).map(([value,label])=>'<option value="'+value+'" '+((d.entryFamily||'automatic')===value?'selected':'')+'>'+esc(tr(label))+'</option>').join('')}
                 </select>
               </label>
               <label style="display:grid;gap:4px;font-size:9px;font-weight:750;color:${goldSoft}">${tr('Duração')}
@@ -2382,23 +2389,6 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
-            <details data-sentinel-entry-family-picker data-sentinel-preserve-open="1" style="margin:6px 0;font-size:11px;color:${ink}">
-              <summary style="cursor:pointer;font-weight:750">${tr('Tipos de entrada')} · ${tr(({automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'})[d.entryFamily]||'Automático · todos os tipos')}</summary>
-              <label style="display:grid;gap:5px;margin-top:7px">${tr('Entradas permitidas')}
-                <select data-sentinel-setting="entryFamily" style="width:100%;height:33px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};padding:0 7px">
-                 ${Object.entries({automatic:'Automático · todos os tipos',continuation:'Só continuidade',reversal:'Só reversões'}).map(([value,label])=>'<option value="'+value+'" '+((d.entryFamily||'automatic')===value?'selected':'')+'>'+esc(tr(label))+'</option>').join('')}
-                </select>
-              </label>
-              <small style="display:block;margin-top:6px;line-height:1.4">${tr('O analista continua lendo todo o mercado. A escolha define quais tipos de entrada podem ser emitidos, nos três prazos.')}</small>
-            </details>
-            <details data-sentinel-expiry-mapping-picker data-sentinel-preserve-open="1" style="margin:6px 0;font-size:11px;color:${ink}">
-              <summary style="cursor:pointer;font-weight:750">${tr('Expiração da corretora')}</summary>
-              <small style="display:block;margin:7px 0;line-height:1.45">${tr('Pause o bot para mapear. Clique em Mapear expiração e depois no prazo da corretora. O caminho será salvo para as próximas atualizações.')}</small>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button data-sentinel-action="expiry-map-arm" style="padding:7px;border-radius:7px;border:1px solid ${panelBorder};background:${fieldBg};color:${fieldInk}">${tr('Mapear expiração')}</button>
-                <button data-sentinel-action="expiry-map-status" style="padding:7px;border-radius:7px;border:1px solid ${panelBorder};background:${fieldBg};color:${fieldInk}">${tr('Conferir leitura')}</button>
-              </div>
-            </details>
             <div data-sentinel-command-dock data-analysis-state="${runtime}">
             ${d.executorMonitorHtml||''}
             <div data-sentinel-command-buttons style="display:grid;grid-template-columns:minmax(88px,1.55fr) minmax(72px,1.25fr) repeat(4,minmax(44px,.8fr));gap:5px;margin-top:12px;min-width:0;width:100%;max-width:100%"><div data-sentinel-analysis-actions style="display:contents">
@@ -2412,7 +2402,7 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:auto auto minmax(15px,auto) auto;gap:4px;margin-top:5px;padding:7px 10px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr(runtimeLabel)+' · '+durationText:tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               ${admission?.enabled?'<small data-sentinel-precision-quality data-admission-score="'+Number(admission.ready?100:admission.score||0)+'" style="font-size:9px;font-weight:850;color:'+(admission.ready?'#74e0b5':'#e6c879')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(String(admission.reason||''))+'">FILTRO DE ADMISSÃO · '+admissionRule+' · '+Number(admission.ready?100:admission.score||0)+'/100 · '+admissionReason+'</small>':''}
-              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:grid;min-height:15px;margin-top:3px;font-size:11px;font-weight:600;line-height:15px;white-space:normal;overflow-wrap:anywhere;color:${uiTheme==='light'?'#075985':'#7dd3fc'}">${(d.marketReadingRowSizers||[]).map(text=>`<span aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;user-select:none">${esc(text)}</span>`).join('')}<span data-sentinel-market-phase-text style="grid-area:1/1;min-width:0">${nowMode?esc(tr(entryPlanActive?(observation?.marketReading||'ANALISANDO')+(d.marketDataStatus?' · '+d.marketDataStatus:''):d.marketDataStatus)):''}</span></small>
+              <div data-sentinel-scenario-action style="min-height:24px;line-height:24px;font-size:16px;font-weight:750;white-space:normal;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div><small data-sentinel-market-phase style="display:grid;min-height:30px;margin-top:3px;font-size:11px;font-weight:600;line-height:15px;white-space:normal;overflow-wrap:anywhere;color:${uiTheme==='light'?'#075985':'#7dd3fc'}"><span style="display:grid;min-width:0">${(d.marketReadingRowSizers||[]).map(text=>`<span aria-hidden="true" style="grid-area:1/1;min-width:0;visibility:hidden;pointer-events:none;user-select:none">${esc(text)}</span>`).join('')}<span data-sentinel-market-phase-text style="grid-area:1/1;min-width:0">${nowMode&&entryPlanActive?esc(tr(observation?.marketReading||'ANALISANDO')):''}</span></span><span style="display:grid;min-width:0">${(d.marketTechnicalRowSizers||[]).map(text=>`<span aria-hidden="true" style="grid-area:1/1;min-width:0;visibility:hidden;pointer-events:none;user-select:none">${esc(text)}</span>`).join('')}<span data-sentinel-market-technical-text style="grid-area:1/1;min-width:0">${nowMode?esc(tr(d.marketDataStatus||'')):''}</span></span></small>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:${d.autoExecutor?'minmax(95px,.78fr) minmax(78px,.56fr) minmax(145px,1.16fr)':'minmax(85px,.82fr) minmax(0,1.18fr)'};height:auto;min-height:64px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:visible">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-signal-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
                 ${d.autoExecutor?'<div data-sentinel-executor-clock-wl style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;min-width:0;padding-left:8px;border-left:1px solid '+panelBorder+'"><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+callTone+'">WIN: '+Number(d.autoExecutor.sessionWins||0)+'</span><span style="font-size:11px;line-height:13px;font-weight:900;white-space:nowrap;color:'+putTone+'">LOSS: '+Number(d.autoExecutor.sessionLosses||0)+'</span></div>':''}
@@ -2728,8 +2718,10 @@ export class LocalPlaywrightDriver{
                 !(evaluatedAge>=0&&evaluatedAge<=3500)?'LEITURA EM ATUALIZAÇÃO':
                 '';
               const phaseValue=phaseText.querySelector?.('[data-sentinel-market-phase-text]')||phaseText;
-              phaseValue.textContent=tr(active?(observation?.marketReading||'ANALISANDO')+(technical?' · '+technical:''):technical);
-              phaseText.title=phaseValue?.textContent||'';
+              phaseValue.textContent=active?tr(observation?.marketReading||'ANALISANDO'):'';
+              const technicalValue=phaseText.querySelector?.('[data-sentinel-market-technical-text]');
+              if(technicalValue)technicalValue.textContent=tr(technical);
+              phaseText.title=[phaseValue?.textContent,technicalValue?.textContent].filter(Boolean).join(' · ');
             }
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
