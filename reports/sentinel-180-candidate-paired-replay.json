@@ -1,0 +1,233 @@
+{
+  "baselineCommit": "e29275eb4a30039b02817fe0985985aca3c92f24",
+  "candidatePolicy": "direct clearance for historical-level-breakout on 30s/1m; existing wall evidence and constants",
+  "decisionInstants": 247,
+  "removedRecordedWins": 3,
+  "removedRecordedLosses": 7,
+  "latestUploadVersionBreakdown": {
+    "13.9.177": {
+      "loss": 1
+    },
+    "13.9.178": {
+      "win": 1
+    },
+    "13.9.179": {
+      "loss": 5,
+      "win": 1
+    }
+  },
+  "limitations": [
+    "all files previously inspected; not a blind holdout",
+    "same decision instants only; no simulated replacement entries",
+    "recordings are 1m; 30s/5m checked by behavior tests",
+    "no demonstrated live profitability"
+  ],
+  "files": [
+    {
+      "file": "../trades-177-179-upload.json",
+      "decisions": 137,
+      "baselineMatches": 137,
+      "keptWins": 61,
+      "withheldWins": 2,
+      "withheldLosses": 6,
+      "changes": [
+        {
+          "n": 12,
+          "recordedSide": "CALL",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 36,
+          "recordedSide": "CALL",
+          "result": "win",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 52,
+          "recordedSide": "CALL",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 84,
+          "recordedSide": "PUT",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 101,
+          "recordedSide": "PUT",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 124,
+          "recordedSide": "CALL",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 125,
+          "recordedSide": "CALL",
+          "result": "win",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 133,
+          "recordedSide": "CALL",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        }
+      ]
+    },
+    {
+      "file": "../trades-160.json",
+      "decisions": 75,
+      "baselineMatches": 70,
+      "keptWins": 39,
+      "withheldWins": 1,
+      "withheldLosses": 1,
+      "changes": [
+        {
+          "n": 20,
+          "recordedSide": "PUT",
+          "result": "win",
+          "before": {
+            "ready": true,
+            "side": "PUT",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        },
+        {
+          "n": 26,
+          "recordedSide": "CALL",
+          "result": "loss",
+          "before": {
+            "ready": true,
+            "side": "CALL",
+            "reason": "historical-level-breakout"
+          },
+          "after": {
+            "ready": false,
+            "side": null,
+            "reason": "shared-base-continuation-wall-pressure"
+          }
+        }
+      ]
+    },
+    {
+      "file": "../trades-164-new.json",
+      "decisions": 3,
+      "baselineMatches": 1,
+      "keptWins": 1,
+      "withheldWins": 0,
+      "withheldLosses": 0,
+      "changes": []
+    },
+    {
+      "file": "../trades-167-new.json",
+      "decisions": 3,
+      "baselineMatches": 2,
+      "keptWins": 1,
+      "withheldWins": 0,
+      "withheldLosses": 0,
+      "changes": []
+    },
+    {
+      "file": "../trades-168-latest.json",
+      "decisions": 14,
+      "baselineMatches": 14,
+      "keptWins": 8,
+      "withheldWins": 0,
+      "withheldLosses": 0,
+      "changes": []
+    },
+    {
+      "file": "../trades-reversal-new.json",
+      "decisions": 15,
+      "baselineMatches": 15,
+      "keptWins": 8,
+      "withheldWins": 0,
+      "withheldLosses": 0,
+      "changes": []
+    }
+  ]
+}

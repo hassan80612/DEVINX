@@ -7,12 +7,15 @@ const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
 const reference=JSON.parse(readFileSync(new URL('./fixtures/sentinel-179-published-168-source.json',import.meta.url)));
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const presentation=new Set(['src/core/market-reading.mjs','src/core/ui-texts.mjs']);
-test('all 92 published 168 source files preserve their decision code exactly',()=>{
+test('all published 168 source is preserved except the scoped candidate wall review',()=>{
  assert.equal(reference.payloadSha256,'5033d8bbfb1e6f1637da989068ee57deeb565419495f222821a7adee37769224');
  assert.equal(Object.keys(reference.files).length,92);
  for(const [name,expected] of Object.entries(reference.files)){
   if(presentation.has(name))continue;
   let actual=readFileSync(new URL(name,root));
+  if(name==='src/core/continuation-room-risk.mjs'){
+   assert.equal(sha(actual),'2c6166c786247bf8880207e412bad0188028081c78b06f6676a7403e63194ef2','only the reviewed candidate file is allowed');continue;
+  }
   if(name==='src/core/runtime.mjs'){
    const text=actual.toString(),stamp='observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,';
    assert.equal(text.split(stamp).length,2,'only one presentation quote timestamp is added');
