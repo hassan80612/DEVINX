@@ -14,6 +14,8 @@ on:
       - 'tests/sentinel-188-extreme-reversal-timing.test.mjs'
       - 'tests/sentinel-189-5m-reversal-parallel.test.mjs'
       - 'tests/sentinel-174-broker-chart-manual-choice.test.mjs'
+      - 'tests/sentinel-167-expiry-preference.test.mjs'
+      - 'tests/sentinel-182-expiry-plumbing.test.mjs'
       - 'tests/sentinel-190-native-expiry-persistence.test.mjs'
       - 'tests/sentinel-189-start-multi-tab.test.mjs'
       - 'tests/sentinel-189-native-expiry-and-last-turn.test.mjs'
