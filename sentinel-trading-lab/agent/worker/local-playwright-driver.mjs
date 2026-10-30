@@ -1264,7 +1264,7 @@ export class LocalPlaywrightDriver{
           node.getAttribute('aria-current')==='true'||node.getAttribute('aria-checked')==='true'||
           node.getAttribute('data-active')==='true'||node.getAttribute('data-selected')==='true'||
           /^(active|selected|current)$/.test(String(node.getAttribute('data-state')||''))))||
-          /(?:^|[\\s_-])(active|selected|current)(?:$|[\\s_-])/i.test(classes);
+          /(?:^|[\s_-])(active|selected|current)(?:$|[\s_-])/i.test(classes);
         // Exnova/Blitz often uses an underline rather than aria-selected.
         // Read only the visible tab and its direct parent, never the chart.
         const markedColor=c=>c&&c!=='transparent'&&
