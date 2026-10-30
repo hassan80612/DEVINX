@@ -1,0 +1,78 @@
+name: Sentinel 13.9.188 verified Windows candidate
+on:
+  push:
+    branches:
+      - release/sentinel-13.9.188-extreme-reversal-timing
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/src/**'
+      - 'sentinel-trading-lab/package.json'
+      - 'tests/sentinel-185-existing-asset-start.test.mjs'
+      - 'tests/sentinel-186-entry-before-click.test.mjs'
+      - 'tests/sentinel-187-blitz-and-impulse.test.mjs'
+      - 'tests/sentinel-188-extreme-reversal-timing.test.mjs'
+      - 'tests/sentinel-185-final-turn-veto.test.mjs'
+      - 'tests/sentinel-185-prior-candle-breach.test.mjs'
+      - 'tests/sentinel-13940-manual-bankroll.test.mjs'
+      - 'tests/sentinel-166-expiry-reload.test.mjs'
+      - '.github/workflows/sentinel-139188-extreme-reversal.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-139188-verified
+  cancel-in-progress: true
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Verify source and entry-family/timing regressions
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test --test-concurrency=4 tests/sentinel-185-prior-candle-breach.test.mjs tests/sentinel-185-final-turn-veto.test.mjs tests/sentinel-185-existing-asset-start.test.mjs tests/sentinel-186-entry-before-click.test.mjs tests/sentinel-187-blitz-and-impulse.test.mjs tests/sentinel-188-extreme-reversal-timing.test.mjs tests/sentinel-182-entry-family.test.mjs tests/sentinel-182-expiry-plumbing.test.mjs tests/sentinel-174-broker-chart-manual-choice.test.mjs tests/sentinel-176-expiry-verification.test.mjs
+          # The full legacy suite contains retired version-snapshot assertions.
+          # Dedicated current-version regressions and prebuild run below.
+      - name: Validate production site build
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Generate matching Windows Agent and manifest
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          test "$(node -p "require('./agent/package.json').version")" = "$(node -p "require('./agent/release.json').version")"
+          zip -qr public/downloads/agent_payload_v88.zip agent/ -x 'agent/node_modules/*' 'agent/worker/data/*' '*.log' '.DS_Store'
+          # The installer expects the payload files at ZIP root.
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          sha="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          SHA="$sha" node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';const r=JSON.parse(readFileSync('agent/release.json','utf8'));writeFileSync('public/downloads/agent-update.json',JSON.stringify({format:'sentinel-agent-update-v1',version:r.version,build:r.build,zipSha256:process.env.SHA})+'\\n');"
+          cp public/downloads/agent_payload_v88.zip public/downloads/Sentinel-Agent-13.9.188-Alternativo.zip
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/Sentinel-Agent-13.9.188.exe
+      - name: Preserve candidate artifacts in one checked branch
+        run: |
+          set -euo pipefail
+          branch=release/sentinel-13.9.188-extreme-reversal-timing
+          latest="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [[ "$latest" != "$GITHUB_SHA" ]]; then echo "Candidate branch moved. Abort outdated publish."; exit 1; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.188.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.188-Alternativo.zip
+          git commit -m 'build(sentinel): verified 13.9.188 Windows package and matching manifest'
+          git push origin "HEAD:$branch"

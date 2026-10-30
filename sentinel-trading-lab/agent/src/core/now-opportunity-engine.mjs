@@ -10,6 +10,7 @@ import {causalPatternDirection} from './causal-pattern-direction.mjs';
 import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 import {historicalPriceStructure,applyHistoricalPriceStructure} from './historical-price-structure.mjs';
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
+import {reviewEarlyDistantReversal} from './historical-extreme-timing.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
@@ -538,7 +539,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    forecast?.ready&&decision.ready?decision:forecast;
   const historical=applyHistoricalPriceStructure({candidate:{...annotated,pendingForecast:selectedForecast},structure,...input});
   const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
-  const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
+  const locatedBase=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
+  // An earlier 1m reversal is admitted only by a confirmed old level,
+  // an observed rejection and two actual supporting price moves.
+  // No countertrend guess, no extra waiting, no change to 30s/5m flows.
+  const located=reviewEarlyDistantReversal({
+    candidate:locatedBase,map:structure.candleLevelMap,...input
+  });
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
   const levelReaction=located.priceStructure?.confirmedReversal??(['failed-breakout-structure-change','break-retest-continuation','rejection-followthrough-clear-room'].includes(located.reason)?

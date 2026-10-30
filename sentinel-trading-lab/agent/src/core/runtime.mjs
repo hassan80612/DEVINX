@@ -43,6 +43,7 @@ import {precisionEntryGate} from './precision-entry-policy.mjs';
 import {reviewEntryPrice} from './entry-price-timing.mjs';
 import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
+import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1199,6 +1200,13 @@ export class DemoTradingRuntime{
       // Avoid buying a terminal impulse at the very tip. No artificial delay.
       eligible=reviewLateImpulseEntry({candidate:eligible,quoteHistory:snap.quoteHistory,
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});
+      // A peak reached after a spent 50-bar climb is not a fresh start.
+      // An isolated one-tick reversal at a range extreme isn't proof either.
+      eligible=reviewLiveExtremeTiming({
+        candidate:eligible,original:original66,quoteHistory:snap.quoteHistory,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
+      });
       const previousReactionWindow=this.vnextWindowState;
       this.reactionOpportunityMemory.beginOperation(expiryDirectionContext+'|'+normalizeEntryFamily(settings.entryFamily),previousReactionWindow?.entryTriggeredAt||0);
       const reactionStructure=this.structureCache.get({candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),now,context:expiryDirectionContext});
