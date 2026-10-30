@@ -111,3 +111,19 @@ test('1m preserves a real breakout and never inverts a continuation on a single 
  assert.equal(reviewEarlyDistantReversal({candidate:prequalified,map,quoteHistory:oneTick,
   quoteAt:T,now:T,price:99.9998,durationMs:60000}),prequalified);
 });
+
+test('30s independently evaluates historic level rejection instead of late impulse only',()=>{
+ const candidate={ready:true,side:'CALL',reason:'closed-structure-and-live-impulse'};
+ const map={observedCandles:30,asOf:T-60000,tolerance:.0003,
+  windows:[{size:20,available:true,observed:20,levels:[100]}],
+  levels:[{level:100,low:99.9998,high:100.0002,confirmedPivots:2,
+   resistancePivots:2,resistanceRejections:2,supportPivots:0,supportRejections:0,
+   independentTests:3,resistanceWick:.8,supportWick:0,
+   tests:[{age:25,independent:true,rejectedHigh:true}]}]};
+ const tape=rows([99.9970,99.9980,99.9990,100.0000,100.0003,100.0003,100.0002,100.0000,99.9998]);
+ const valid=reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:30000});
+ assert.equal(valid.ready,true);
+ assert.equal(valid.side,'PUT');
+ assert.equal(valid.reason,'multiscale-candle-rejection');
+ assert.equal(reviewEarlyDistantReversal({candidate,map,quoteHistory:tape,quoteAt:T,now:T,price:99.9998,durationMs:300000}),candidate);
+});
