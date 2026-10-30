@@ -95,7 +95,25 @@ export function installBrokerChartPeriodKeeper({provider,requestedSeconds=null,r
   const candidates=all.filter(x=>!all.some(other=>other!==x&&
    x.el.contains?.(other.el)&&x.value===other.value));
    candidates.sort((a,b)=>b.score-a.score);
-   if(!candidates.length)return null;
+   if(!candidates.length){
+    // Exnova's compact chart rail sometimes has an unlabeled 1m button.
+    // Only the left chart rail is eligible; the expiry picker on the
+    // right is NEVER touched. Ambiguity fails closed (no guessing).
+    const width=Number(typeof innerWidth==='number'?innerWidth:0);
+    const height=Number(typeof innerHeight==='number'?innerHeight:0);
+    if(width>500&&height>400){
+     const rail=[...document.querySelectorAll('button,[role="button"],[role="combobox"],select')]
+      .filter(el=>{
+       if(!visible(el)||read(el)==null||unrelated.test(labelOf(el)))return false;
+       const r=el.getBoundingClientRect?.(),x=Number(r?.left??r?.x),y=Number(r?.top);
+       return Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&
+        x<Math.min(width*.20,180)&&
+        y>=height*.27&&y<height*.78&&r.width<=100&&r.height<=55;
+      });
+     if(rail.length===1){cached=rail[0];return {el:cached,value:read(cached),score:0};}
+    }
+    return null;
+   }
    const top=candidates[0],ambiguous=candidates.some((x,i)=>i>0&&x.score===top.score&&
     !top.el.contains?.(x.el)&&!x.el.contains?.(top.el));
    if(ambiguous)return null;
