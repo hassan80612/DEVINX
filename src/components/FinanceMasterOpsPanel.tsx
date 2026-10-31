@@ -209,7 +209,6 @@ export function FinanceMasterOpsPanel({
         <div className={styles.moduleGrid}>
           <article><small>MOVIMENTOS</small><b>{usage.transactions}</b><span>lançamentos registrados</span></article>
           <article><small>JORNADAS</small><b>{usage.work}</b><span>sessões de trabalho</span></article>
-          <article><small>CARTÕES</small><b>{usage.cards}</b><span>cartões cadastrados</span></article>
           <article><small>CONTAS</small><b>{usage.bills}</b><span>contas recorrentes</span></article>
           <article><small>DÍVIDAS</small><b>{usage.debts}</b><span>dívidas acompanhadas</span></article>
           <article><small>ATIVOS 30D</small><b>{usage.active30d}</b><span>{usage.active7d} com atividade em 7 dias</span></article>

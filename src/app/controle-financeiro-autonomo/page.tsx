@@ -5,7 +5,7 @@ import {SeoLanding} from '@/components/SeoLanding';
 
 export const metadata:Metadata={
   title:'Controle financeiro para autônomo',
-  description:'Controle entradas, gastos, contas, cartões, reservas e metas de renda como autônomo. Organize sua rotina financeira no DevinX.',
+  description:'Controle entradas, gastos, contas mensais, reservas e metas de renda como autônomo. Organize sua rotina financeira no DevinX.',
   alternates:{canonical:'/controle-financeiro-autonomo'},
   openGraph:{
     title:'Controle financeiro para autônomo | DevinX',
@@ -22,7 +22,7 @@ export default function ControleFinanceiroAutonomo(){
     intro="Quem trabalha por conta própria precisa acompanhar dinheiro que entra em dias diferentes, contas com vencimentos fixos e metas que mudam junto com a rotina. O DevinX organiza tudo isso em um único lugar."
     cards={[
       {title:'Entradas e gastos organizados',text:'Registre movimentações, use categorias próprias e consulte o histórico para entender melhor seu dinheiro.'},
-      {title:'Contas, parcelas e cartões',text:'Acompanhe vencimentos, pagamentos parciais, compras parceladas, fechamento e vencimento dos cartões.'},
+      {title:'Contas mensais e parcelas',text:'Acompanhe vencimentos, pagamentos parciais e parcelas recorrentes, com controle do que já foi pago e do que falta pagar.'},
       {title:'Metas ligadas à realidade',text:'Use seus compromissos financeiros para enxergar quanto ainda precisa produzir e acompanhar objetivos de renda.'}
     ]}
     sections={[
@@ -32,7 +32,7 @@ export default function ControleFinanceiroAutonomo(){
     ]}
     faq={[
       {question:'O DevinX funciona para quem não tem salário fixo?',answer:'Sim. Ele permite registrar diferentes tipos de entrada e organizar contas e metas mesmo quando a renda varia ao longo do mês.'},
-      {question:'Posso controlar cartão de crédito?',answer:'Sim. O DevinX permite acompanhar limite, fechamento, vencimento e compras parceladas dos cartões cadastrados.'},
+      {question:'Posso acompanhar contas parceladas?',answer:'Sim. O DevinX permite cadastrar contas mensais, acompanhar parcelas e registrar pagamentos parciais ou quitações.'},
       {question:'Existe teste grátis?',answer:'Sim. Novos usuários podem testar o DevinX por 3 dias sem cartão e sem cobrança automática.'}
     ]}
     related={[

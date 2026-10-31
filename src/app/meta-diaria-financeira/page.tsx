@@ -28,7 +28,7 @@ export default function MetaDiariaFinanceira(){
     sections={[
       {title:'Por que uma meta fixa costuma falhar',text:'Definir um valor diário sem olhar saldo, gastos e datas de vencimento pode criar uma meta que não acompanha a realidade. Uma conta inesperada ou um recebimento muda o cenário e deveria mudar também o planejamento.'},
       {title:'Do valor total para uma ação de hoje',text:'Ao organizar o que está disponível e o que vence nos próximos dias, fica mais fácil enxergar a diferença que precisa ser coberta e transformá-la em uma referência diária de produção.'},
-      {title:'A meta é parte do controle financeiro',text:'No DevinX, a meta diária convive com contas, cartões, reservas, entradas, gastos e histórico. Isso evita separar o planejamento do restante da sua vida financeira.'}
+      {title:'A meta é parte do controle financeiro',text:'No DevinX, a meta diária convive com contas mensais, reservas, entradas, gastos e histórico. Isso evita separar o planejamento do restante da sua vida financeira.'}
     ]}
     faq={[
       {question:'Como saber quanto preciso ganhar por dia?',answer:'Você precisa comparar o valor disponível com os compromissos que precisam ser pagos e considerar quantos dias restam até os vencimentos. O DevinX organiza esses dados e apresenta uma meta diária baseada na situação registrada.'},

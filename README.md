@@ -9,7 +9,7 @@ Controle financeiro pessoal e de trabalho, mobile-first.
 - Categorias e regras usam IDs estáveis, nunca textos traduzidos.
 - Módulos financeiros separados e consolidados no dashboard.
 - Custos operacionais de trabalho separados de despesas pessoais.
-- Cartões/faturas sem dupla contagem de despesas.
+- Contas mensais e pagamentos parciais sem dupla contagem de despesas.
 - Histórico padrão de 12 meses configurável.
 - Segurança por usuário via Supabase Auth + RLS.
 - Mobile-first e lançamentos rápidos.
@@ -24,7 +24,7 @@ Controle financeiro pessoal e de trabalho, mobile-first.
 - Despesas pessoais
 - Gastos evitáveis
 - Contas recorrentes
-- Cartões, faturas e parcelas
+- Contas mensais, parcelas e pagamentos parciais
 - Dívidas
 - Metas diária/semanal/mensal
 - Relatórios consolidados e por atividade
