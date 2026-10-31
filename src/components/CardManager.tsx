@@ -1,11 +1,11 @@
 'use client';
 
-import {FormEvent,useEffect,useMemo,useState} from 'react';
+import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
-import {reconcileCardInstallments} from '@/domain/card-installments';
+import {reconcileCardInstallments,summarizeCardOutstanding} from '@/domain/card-installments';
 import {useI18n} from '@/i18n/provider';
 
 type Card={id:string;name:string;limit_minor:number|null;closing_day:number|null;due_day:number|null};
@@ -52,10 +52,12 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   const[payTarget,setPayTarget]=useState<{card:Card;installment:OpenInst;dueDate:string}|null>(null);const[payDate,setPayDate]=useState(localDateISO());const[payAmount,setPayAmount]=useState('');const[payMode,setPayMode]=useState<'partial'|'settle'>('partial');const[saving,setSaving]=useState(false);const[expandedCards,setExpandedCards]=useState<Set<string>>(new Set());const[editingCard,setEditingCard]=useState<Card|null>(null);const[eCardName,setECardName]=useState('');const[eCardLimit,setECardLimit]=useState('');const[eCardClosing,setECardClosing]=useState('');const[eCardDue,setECardDue]=useState('');
   const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());const[bulkOpen,setBulkOpen]=useState(false);const[bulkTotal,setBulkTotal]=useState('');const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());const[expandedPurchases,setExpandedPurchases]=useState<Set<string>>(new Set());
   const categories=categoryOptions('expense',custom,t);
+  const lastLoad=useRef(0);
   function toggleCard(id:string){setExpandedCards(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next})}
   function toggleAll(){setExpandedCards(prev=>prev.size===cards.length?new Set():new Set(cards.map(card=>card.id)))}
 
   async function load(){
+    const requestId=++lastLoad.current;
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
     const[c,i,p,ct]=await Promise.all([
       s.from('credit_cards').select('id,name,limit_minor,closing_day,due_day').eq('user_id',user.id).eq('is_active',true).order('created_at'),
@@ -63,6 +65,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       s.from('transactions').select('id,amount_minor,occurred_on,source_id').eq('user_id',user.id).eq('source_type','card_installment_payment').order('occurred_on'),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind','expense').order('created_at')
     ]);
+    if(requestId!==lastLoad.current)return;
     if(c.error||i.error||p.error){setNotice(t('common.errorSave'));return}
     const cc=(c.data||[]) as Card[];setCards(cc);setInst((i.data||[]) as unknown as Inst[]);setItemPays((p.data||[]) as ItemPay[]);setCustom((ct.data||[]) as CustomCategory[]);if(cc[0]&&!cc.some(card=>card.id===cardId))setCardId(cc[0].id);if(cc.length===0)setCardId('');
   }
@@ -70,23 +73,6 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
 
   const current=localMonthStartISO();
   const cardBalances=useMemo(()=>reconcileCardInstallments(inst,itemPays),[inst,itemPays]);
-  const stats=useMemo(()=>Object.fromEntries(cards.map(card=>{
-    const rows=inst.filter(i=>i.card_purchases?.card_id===card.id).map(i=>({
-      ...i,...cardBalances.get(i.id)!
-    }) as OpenInst);
-    const unpaid=rows.filter(i=>i.remaining>0);
-    const rowMonth=(i:Inst)=>(i.due_date||i.billing_month).slice(0,7)+'-01';
-    const today=localDateISO();
-    const overdue=unpaid.filter(i=>(i.due_date||statementDueDate(i.billing_month,card.due_day))<today).reduce((a,b)=>a+b.remaining,0);
-    const now=unpaid.filter(i=>rowMonth(i)===current&&(i.due_date||statementDueDate(i.billing_month,card.due_day))>=today).reduce((a,b)=>a+b.remaining,0);
-    const future=unpaid.filter(i=>rowMonth(i)>current).reduce((a,b)=>a+b.remaining,0);
-    const statements=[...new Set(unpaid.map(i=>i.billing_month))].sort().map(month=>{
-      const monthRows=unpaid.filter(i=>i.billing_month===month);
-      return{month,amount:monthRows.reduce((a,b)=>a+b.remaining,0),dueDate:monthRows.find(i=>i.due_date)?.due_date||statementDueDate(month,card.due_day),rows:monthRows};
-    });
-    return[card.id,{overdue,now,future,total:unpaid.reduce((a,b)=>a+b.remaining,0),statements}];
-  })),[cards,inst,cardBalances,current]);
-
   const openInstallments=useMemo(()=>{
     return inst.flatMap(i=>{
       const card=cards.find(item=>item.id===i.card_purchases?.card_id);
@@ -117,6 +103,17 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       return{...group,rows,openRows,remaining,resolved:Math.max(0,group.original-remaining),next:openRows[0]||null};
     }).sort((a,b)=>b.purchasedOn.localeCompare(a.purchasedOn)||a.description.localeCompare(b.description));
   },[cards,inst,cardBalances]);
+
+  // One authoritative set of rows is shared by the expanded purchases,
+  // collapsed card totals and statements; paid rows always contribute zero.
+  const stats=useMemo(()=>Object.fromEntries(cards.map(card=>{
+    const rows=purchaseSummaries
+      .filter(purchase=>purchase.card.id===card.id)
+      .flatMap(purchase=>purchase.rows.map(row=>({
+        ...row.installment,dueDate:row.dueDate
+      })));
+    return[card.id,summarizeCardOutstanding(rows,current,localDateISO())];
+  })),[cards,purchaseSummaries,current]);
 
   function toggleInstallmentSelection(id:string){
     setSelectedInstallments(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
@@ -167,7 +164,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     const{error}=await s.rpc('register_card_installment_batch',{p_items:items,p_paid_on:bulkPaidOn});
     setSaving(false);
     if(error){setNotice(t('common.errorSave'));return}
-    setBulkOpen(false);setSelectedInstallments(new Set());setBulkTotal('');setNotice(t('payment.bulkSaved'));notifyFinanceUpdated();await load();
+    setBulkOpen(false);setSelectedInstallments(new Set());setBulkTotal('');setNotice(t('payment.bulkSaved'));await load();notifyFinanceUpdated();
   }
 
   async function addCard(e:FormEvent){
@@ -218,8 +215,8 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       const willFinish=payMode==='settle'||installment.paid+value>=Number(installment.amount_minor);
       setNotice(payMode==='settle'&&installment.paid+value<Number(installment.amount_minor)?t('payment.discountSettled'):willFinish?t('cards.itemPaid'):t('cards.partialPaid'));
       setPayTarget(null);setPayAmount('');setPayMode('partial');
-      notifyFinanceUpdated();
       await load();
+      notifyFinanceUpdated();
     }finally{setSaving(false)}
   }
 
