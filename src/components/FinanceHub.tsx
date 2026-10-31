@@ -12,7 +12,7 @@ import {BrandLogo} from './BrandLogo';
 import {ProCalculator} from './CalculatorPro';
 import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
 import {settleAutomaticFutureIncome} from '@/lib/auto-future-income';
-import {notifyFinanceUpdated} from '@/lib/finance-events';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,FINANCE_SYNC_STORAGE_KEY} from '@/lib/finance-events';
 import {FINANCE_THEME_EVENT,isFinanceTheme,readFinanceTheme,type FinanceTheme} from '@/lib/finance-theme';
 
 function LazySectionFallback(){return <section className="panel dashboardLoading"><span className="loader"/></section>}
@@ -109,6 +109,34 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
     const onPreferences=()=>run();
     window.addEventListener('devinx:preferences-updated',onPreferences);
     return()=>{mounted=false;window.clearInterval(timer);window.removeEventListener('devinx:preferences-updated',onPreferences)};
+  },[access?.allowed]);
+
+  // Refresh server truth when returning from a different browser or installed app.
+  // Same-browser tabs also receive a lightweight storage change token.
+  useEffect(()=>{
+    if(!access?.allowed)return;
+    let scheduled:number|null=null;
+    const refreshExternalChanges=()=>{
+      if(document.visibilityState!=='visible')return;
+      if(scheduled!==null)window.clearTimeout(scheduled);
+      scheduled=window.setTimeout(()=>{
+        scheduled=null;
+        window.dispatchEvent(new CustomEvent(FINANCE_UPDATED_EVENT));
+      },150);
+    };
+    const onVisibilityChange=()=>{if(document.visibilityState==='visible')refreshExternalChanges()};
+    const onStorage=(event:StorageEvent)=>{
+      if(event.key===FINANCE_SYNC_STORAGE_KEY)refreshExternalChanges();
+    };
+    window.addEventListener('focus',refreshExternalChanges);
+    document.addEventListener('visibilitychange',onVisibilityChange);
+    window.addEventListener('storage',onStorage);
+    return()=>{
+      window.removeEventListener('focus',refreshExternalChanges);
+      document.removeEventListener('visibilitychange',onVisibilityChange);
+      window.removeEventListener('storage',onStorage);
+      if(scheduled!==null)window.clearTimeout(scheduled);
+    };
   },[access?.allowed]);
 
   const month=date(new Date(),{month:'long',year:'numeric'});

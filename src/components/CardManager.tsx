@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
+import {reconcileCardInstallments} from '@/domain/card-installments';
 import {useI18n} from '@/i18n/provider';
 
 type Card={id:string;name:string;limit_minor:number|null;closing_day:number|null;due_day:number|null};
@@ -62,19 +63,17 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       s.from('transactions').select('id,amount_minor,occurred_on,source_id').eq('user_id',user.id).eq('source_type','card_installment_payment').order('occurred_on'),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind','expense').order('created_at')
     ]);
+    if(c.error||i.error||p.error){setNotice(t('common.errorSave'));return}
     const cc=(c.data||[]) as Card[];setCards(cc);setInst((i.data||[]) as unknown as Inst[]);setItemPays((p.data||[]) as ItemPay[]);setCustom((ct.data||[]) as CustomCategory[]);if(cc[0]&&!cc.some(card=>card.id===cardId))setCardId(cc[0].id);if(cc.length===0)setCardId('');
   }
   useEffect(()=>{load();const refresh=()=>load();window.addEventListener(FINANCE_UPDATED_EVENT,refresh);window.addEventListener('devinx:categories-updated',refresh);return()=>{window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);window.removeEventListener('devinx:categories-updated',refresh)}},[]);
 
   const current=localMonthStartISO();
+  const cardBalances=useMemo(()=>reconcileCardInstallments(inst,itemPays),[inst,itemPays]);
   const stats=useMemo(()=>Object.fromEntries(cards.map(card=>{
-    const paidMap=new Map<string,number>();
-    itemPays.forEach(p=>{if(p.source_id)paidMap.set(p.source_id,(paidMap.get(p.source_id)||0)+Number(p.amount_minor))});
-    const rows=inst.filter(i=>i.card_purchases?.card_id===card.id).map(i=>{
-      const linkedPaid=paidMap.get(i.id)||0;
-      const paid=i.paid_at?Number(i.amount_minor):Math.min(Number(i.amount_minor),linkedPaid);
-      return{...i,paid,remaining:Math.max(0,Number(i.amount_minor)-paid)} as OpenInst;
-    });
+    const rows=inst.filter(i=>i.card_purchases?.card_id===card.id).map(i=>({
+      ...i,...cardBalances.get(i.id)!
+    }) as OpenInst);
     const unpaid=rows.filter(i=>i.remaining>0);
     const rowMonth=(i:Inst)=>(i.due_date||i.billing_month).slice(0,7)+'-01';
     const today=localDateISO();
@@ -86,35 +85,27 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       return{month,amount:monthRows.reduce((a,b)=>a+b.remaining,0),dueDate:monthRows.find(i=>i.due_date)?.due_date||statementDueDate(month,card.due_day),rows:monthRows};
     });
     return[card.id,{overdue,now,future,total:unpaid.reduce((a,b)=>a+b.remaining,0),statements}];
-  })),[cards,inst,itemPays,current]);
+  })),[cards,inst,cardBalances,current]);
 
   const openInstallments=useMemo(()=>{
-    const paidMap=new Map<string,number>();
-    itemPays.forEach(p=>{if(p.source_id)paidMap.set(p.source_id,(paidMap.get(p.source_id)||0)+Number(p.amount_minor))});
     return inst.flatMap(i=>{
       const card=cards.find(item=>item.id===i.card_purchases?.card_id);
-      if(!card||i.paid_at)return[];
-      const paid=Math.min(Number(i.amount_minor),paidMap.get(i.id)||0);
-      const remaining=Math.max(0,Number(i.amount_minor)-paid);
-      if(remaining<=0)return[];
-      const installment={...i,paid,remaining} as OpenInst;
+      if(!card)return[];
+      const balance=cardBalances.get(i.id)!;
+      if(balance.remaining<=0)return[];
+      const installment={...i,...balance} as OpenInst;
       return[{id:i.id,card,installment,dueDate:i.due_date||statementDueDate(i.billing_month,card.due_day)}];
     }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.card.name.localeCompare(b.card.name));
-  },[cards,inst,itemPays]);
+  },[cards,inst,cardBalances]);
   const selectedRows=useMemo(()=>openInstallments.filter(row=>selectedInstallments.has(row.id)),[openInstallments,selectedInstallments]);
   const selectedOpenTotal=useMemo(()=>selectedRows.reduce((sum,row)=>sum+row.installment.remaining,0),[selectedRows]);
   const purchaseSummaries=useMemo(()=>{
-    const paidMap=new Map<string,number>();
-    itemPays.forEach(p=>{if(p.source_id)paidMap.set(p.source_id,(paidMap.get(p.source_id)||0)+Number(p.amount_minor))});
     const groups=new Map<string,{id:string;card:Card;description:string;original:number;purchasedOn:string;installmentCount:number;rows:{id:string;installment:OpenInst;dueDate:string}[]}>();
     inst.forEach(i=>{
       const purchase=i.card_purchases;
       const card=cards.find(item=>item.id===purchase?.card_id);
       if(!purchase||!card)return;
-      const linked=Math.min(Number(i.amount_minor),paidMap.get(i.id)||0);
-      const paid=i.paid_at?Number(i.amount_minor):linked;
-      const remaining=i.paid_at?0:Math.max(0,Number(i.amount_minor)-linked);
-      const installment={...i,paid,remaining} as OpenInst;
+      const installment={...i,...cardBalances.get(i.id)!} as OpenInst;
       const current=groups.get(purchase.id)||{id:purchase.id,card,description:purchase.description||card.name,original:Number(purchase.total_minor),purchasedOn:purchase.purchased_on,installmentCount:Number(purchase.installment_count||1),rows:[]};
       current.rows.push({id:i.id,installment,dueDate:i.due_date||statementDueDate(i.billing_month,card.due_day)});
       groups.set(purchase.id,current);
@@ -125,7 +116,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       const openRows=rows.filter(row=>row.installment.remaining>0);
       return{...group,rows,openRows,remaining,resolved:Math.max(0,group.original-remaining),next:openRows[0]||null};
     }).sort((a,b)=>b.purchasedOn.localeCompare(a.purchasedOn)||a.description.localeCompare(b.description));
-  },[cards,inst,itemPays]);
+  },[cards,inst,cardBalances]);
 
   function toggleInstallmentSelection(id:string){
     setSelectedInstallments(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
@@ -204,36 +195,32 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   }
 
   async function pay(e:FormEvent){
-    e.preventDefault();if(!payTarget)return;
+    e.preventDefault();if(!payTarget||saving)return;
     const value=minor(payAmount);
-    const installment=payTarget.installment;const purchase=installment.card_purchases;
+    const installment=payTarget.installment;
     const settleExisting=payMode==='settle'&&installment.paid>0&&value===0;
-    if((value<=0&&!settleExisting)||value>installment.remaining){if(value>installment.remaining)setNotice(t('cards.paymentTooHigh'));return}
+    if((value<=0&&!settleExisting)||value>installment.remaining){
+      if(value>installment.remaining)setNotice(t('cards.paymentTooHigh'));
+      return;
+    }
     setSaving(true);
-    const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);return}
-    let created:{id:string}|null=null;
-    if(value>0){
-      const{data,error:txError}=await s.from('transactions').insert({
-        user_id:user.id,type:'expense',category_id:purchase?.category_id||'card_payment',
-        description:purchase?.description||payTarget.card.name,amount_minor:value,
-        occurred_on:payDate,payment_method:null,is_avoidable:!!purchase?.is_avoidable,is_recurring:false,
-        source_type:'card_installment_payment',source_id:installment.id
-      }).select('id').single();
-      if(txError||!data?.id){setSaving(false);setNotice(t('common.errorSave'));return}
-      created=data;
-    }
-    const willFinish=payMode==='settle'||installment.paid+value>=Number(installment.amount_minor);
-    if(willFinish){
-      const paidAt=new Date(payDate+'T12:00:00').toISOString();
-      const{error:installmentError}=await s.from('card_installments').update({paid_at:paidAt}).eq('id',installment.id).eq('user_id',user.id);
-      if(installmentError){
-        if(created?.id)await s.from('transactions').delete().eq('id',created.id).eq('user_id',user.id);
-        setSaving(false);setNotice(t('common.errorSave'));return
-      }
-    }else if(installment.paid_at){
-      await s.from('card_installments').update({paid_at:null}).eq('id',installment.id).eq('user_id',user.id);
-    }
-    setSaving(false);setNotice(payMode==='settle'&&installment.paid+value<Number(installment.amount_minor)?t('payment.discountSettled'):willFinish?t('cards.itemPaid'):t('cards.partialPaid'));setPayTarget(null);setPayAmount('');setPayMode('partial');notifyFinanceUpdated();await load();
+    try{
+      const s=createClient();
+      const {error}=value>0
+        ?await s.rpc('register_card_installment_batch',{
+          p_items:[{installment_id:installment.id,amount_minor:value,settle:payMode==='settle'}],
+          p_paid_on:payDate
+        })
+        :await s.from('card_installments').update({
+          paid_at:new Date(payDate+'T12:00:00').toISOString()
+        }).eq('id',installment.id).is('paid_at',null);
+      if(error){setNotice(t('common.errorSave'));return}
+      const willFinish=payMode==='settle'||installment.paid+value>=Number(installment.amount_minor);
+      setNotice(payMode==='settle'&&installment.paid+value<Number(installment.amount_minor)?t('payment.discountSettled'):willFinish?t('cards.itemPaid'):t('cards.partialPaid'));
+      setPayTarget(null);setPayAmount('');setPayMode('partial');
+      notifyFinanceUpdated();
+      await load();
+    }finally{setSaving(false)}
   }
 
   return <div className="cardsPage">
