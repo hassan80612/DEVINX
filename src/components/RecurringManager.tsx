@@ -106,6 +106,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       s.from('recurring_bill_month_overrides').select('id,recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).order('due_month',{ascending:true}),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind','expense').order('created_at')
     ]);
+    if(b.error||p.error||o.error||c.error){setNotice(t('common.errorAccess'));return}
     setBills((b.data||[]) as Bill[]);
     setPayments((p.data||[]) as Payment[]);
     setOverrides((o.data||[]) as Override[]);
