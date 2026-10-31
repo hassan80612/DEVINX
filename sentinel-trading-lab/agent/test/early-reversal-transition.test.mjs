@@ -70,7 +70,7 @@ test('5m is completely untouched; stale, future, incomplete and disconnected quo
   ctx({ms:300000}),ctx({now:T+2100}),ctx({m:{...map,asOf:T+1000}}),
   ctx({m:{...map,observedCandles:10}}),
   ctx({history:full.slice(-7)}),
-  ctx({history:full.map((x,i)=>i===7?{...x,receivedAt:T+5000}:x)}),
+  ctx({history:full.map((x,i)=>i===10?{...x,receivedAt:T+5000}:x)}),
   ctx({history:full.map((x,i)=>i===5?{...x,ts:x.ts-4000}:x)})
  ])assert.equal(review(x),x.candidate);
 });

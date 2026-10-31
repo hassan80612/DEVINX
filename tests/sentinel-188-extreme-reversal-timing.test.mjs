@@ -71,5 +71,6 @@ test('reversal path and final extreme timing guard are actually wired to engine 
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
  const engine=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs',import.meta.url),'utf8');
  assert.match(runtime,/eligible=reviewLiveExtremeTiming\(\{/);
- assert.match(engine,/const located=reviewEarlyDistantReversal\(\{/);
+ assert.match(engine,/const located=reviewEarlyVerifiedTurn\(\{/);
+ assert.match(engine,/candidate:reviewEarlyDistantReversal\(\{/);
 });

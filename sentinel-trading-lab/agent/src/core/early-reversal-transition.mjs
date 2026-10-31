@@ -64,8 +64,8 @@ export function reviewEarlyVerifiedTurn({candidate,map,quoteHistory=[],quoteAt,
     if(!(extreme.price>=low-tol*.55&&extreme.price<=high+tol*.55))continue;
     // Reject a breakout through the old support/resistance; a re-test
     // cannot magically turn that old level into reliable opposite proof.
-    if(side==='PUT'&&rows.slice(extremeIndex).some(q=>q.price>high+tol*.5))continue;
-    if(side==='CALL'&&rows.slice(extremeIndex).some(q=>q.price<low-tol*.5))continue;
+    if(side==='PUT'&&rows.slice(extremeIndex).some(q=>q.price>=high+tol*.49))continue;
+    if(side==='CALL'&&rows.slice(extremeIndex).some(q=>q.price<=low-tol*.49))continue;
     const departure=d*(spot-level);
     if(!(departure>=-tol*.35&&departure<=tol*1.7))continue;
     proofs.push({side,level,extreme:extreme.price,first:rows[first].price,
