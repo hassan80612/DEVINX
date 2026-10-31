@@ -1,3 +1,4 @@
+import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 import {entryFamilyOf} from './entry-family.mjs';
 // Read-only current-entry analysis for the Sentinel Agent. Never sends orders
@@ -38,7 +39,7 @@ export function lateUnverifiedFloorImpulseRisk({candidate,quoteHistory=[],quoteA
   ['confirmed-fast-level-reversal',
    'closed-range-extreme-reversal-confirmed'].includes(candidate.reason))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
- if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&
+ if(!(at>0&&clock>=at&&clock-at<=structuralQuoteMaxAgeMs(durationMs)&&spot>0&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
  const rows=[];
  for(let i=quoteHistory.length-1;i>=0;i--){
@@ -256,11 +257,11 @@ export function reviewChangedOpportunitySide({candidate,previousSide,quoteHistor
  const pivotRisk=countertrendPivotRisk({quoteHistory,quoteAt,price,side:candidate.side,now,durationMs,
   reversalEvidence:candidate.priceStructure?.confirmedReversal??candidate.priceStructure?.observedSequence?.structureChange});
  const structure=structureCache?structureCache.get({candles,now,context}):historicalPriceStructure({candles,now});
- const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price}):null;
+ const wallRisk=!pivotRisk?verifiedWallExhaustionRisk({candidate,structure,quoteHistory,quoteAt,now,price,durationMs}):null;
  const roomRisk=!pivotRisk&&!wallRisk?continuationRoomRisk({candidate,structure,quoteHistory,quoteAt,now,price,durationMs}):null;
  const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk?
   lateUnverifiedFloorImpulseRisk({candidate,quoteHistory,quoteAt,now,price,durationMs}):null;
- const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price}):null;
+ const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk?liveEntryContradiction({candidate,quoteHistory,quoteAt,now,price,durationMs}):null;
  return pivotRisk?{...candidate,ready:false,side:null,reason:'final-side-countertrend-pivot-risk'}:
   wallRisk?{...candidate,ready:false,side:null,reason:'final-side-verified-wall-exhaustion',entryRisk:wallRisk}:
   roomRisk?{...candidate,ready:false,side:null,reason:'final-side-continuation-wall-pressure',entryRisk:roomRisk}:
@@ -574,7 +575,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // One final shared-market-base screen for a fading approach to a verified
   // historical wall. No direction inversion, timing changes, waits or reads.
   const wallRisk=!pivotRisk&&proposed.ready?verifiedWallExhaustionRisk({
-   candidate:proposed,structure,quoteHistory,quoteAt,now,price
+   candidate:proposed,structure,quoteHistory,quoteAt,now,price,durationMs
   }):null;
   const roomRisk=!pivotRisk&&!wallRisk&&proposed.ready?continuationRoomRisk({
    candidate:proposed,structure,quoteHistory,quoteAt,now,price,durationMs
@@ -582,7 +583,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const floorRisk=!pivotRisk&&!wallRisk&&!roomRisk&&proposed.ready?
    lateUnverifiedFloorImpulseRisk({candidate:proposed,quoteHistory,quoteAt,now,price,durationMs}):null;
   const liveRisk=!pivotRisk&&!wallRisk&&!roomRisk&&!floorRisk&&proposed.ready?liveEntryContradiction({
-   candidate:proposed,quoteHistory,quoteAt,now,price
+   candidate:proposed,quoteHistory,quoteAt,now,price,durationMs
   }):null;
   const final=pivotRisk?{...proposed,ready:false,side:null,
    reason:'shared-base-countertrend-pivot-risk'}:

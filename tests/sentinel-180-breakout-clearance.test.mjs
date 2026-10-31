@@ -53,7 +53,10 @@ test('an opposite six-second move is not misrepresented as a directional approac
 test('future inputs cannot authorize a new wall veto; stale or interrupted inputs do not fabricate evidence',()=>{
  const a=scenario(),expected=continuationRoomRisk(a);
  assert.deepEqual(continuationRoomRisk({...a,quoteHistory:[...a.quoteHistory,{ts:T+1000,receivedAt:T+1000,price:1}]}),expected);
- assert.equal(continuationRoomRisk({...a,now:T+1451}),null);
+ assert.deepEqual(continuationRoomRisk({...a,now:T+1451}),expected);
+ assert.deepEqual(continuationRoomRisk({...a,now:T+1950}),expected);
+ assert.equal(continuationRoomRisk({...a,now:T+1951}),null);
+ assert.equal(continuationRoomRisk({...a,durationMs:30000,now:T+1451}),null);
  assert.equal(continuationRoomRisk({...a,quoteHistory:a.quoteHistory.map(q=>({...q,receivedAt:T+1000}))}),null);
  assert.equal(continuationRoomRisk({...a,quoteHistory:a.quoteHistory.filter(q=>q.ts!==T-3000&&q.ts!==T-4000)}),null);
  const b=structuredClone(a);b.structure.candleLevelMap.asOf=T+1000;assert.equal(continuationRoomRisk(b),null);

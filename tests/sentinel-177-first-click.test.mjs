@@ -48,10 +48,24 @@ test('a known different native duration and an active repair still prevent a cli
   assert.equal(inspectNativeExpiryBeforeClick({requiredDurationMs:60000}).reason,'expiry-repair-in-progress');
  }finally{b.restore()}
 });
-test('182 preserves the underlying 168 reversal detectors',()=>{
+test('202 preserves the underlying 168 reversal geometry except quote-validity parameter threading',()=>{
  const blob=b=>createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');
  for(const [name,sha] of [
   ['fast-level-reversal.mjs','810d78b3229d3eeb427e6c28dcb63a8f6647e9aa'],
   ['observed-level-sequence.mjs','cb3c9a914c1f3cc0ea62ab98a2b0e44690572624']
- ])assert.equal(blob(readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url))),sha,name);
+ ]){
+  let source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/'+name,import.meta.url),'utf8')
+   .replace("import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';\n",'')
+   .replace('clock-at<=structuralQuoteMaxAgeMs(durationMs)','clock-at<=1450')
+   .replaceAll('now-ts<=structuralQuoteMaxAgeMs(durationMs)','now-ts<=1450')
+   .replace('now=quoteAt,price,side,durationMs}={})','now=quoteAt,price,side}={})')
+   .replaceAll('now=quoteAt,price,durationMs}={})','now=quoteAt,price}={})')
+   .replace('quoteAt,now=quoteAt,durationMs}={})','quoteAt,now=quoteAt}={})')
+   .replace('currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side,durationMs})','currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side})')
+   .replace('observedLevelSequence({map,...input,durationMs})','observedLevelSequence({map,...input})')
+   .replace('confirmedFastLevelReversal({map,...input,durationMs})','confirmedFastLevelReversal({map,...input})')
+   .replace('confirmedLevelReversal({map,...input,durationMs})','confirmedLevelReversal({map,...input})');
+  assert.equal(blob(Buffer.from(source)),sha,name);
+ }
+
 });

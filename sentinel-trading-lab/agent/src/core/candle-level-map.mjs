@@ -1,3 +1,4 @@
+import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Research candidate: candle-derived context, without a collection timer.
 // Receives only validated CLOSED rows from historical-price-structure.mjs.
 const WINDOWS=[3,10,20,50,100];
@@ -57,10 +58,10 @@ function previousPrice(rows,at){
   return at-rows[i].ts<=2500?rows[i].price:null;
  return null;
 }
-export function assessCandleLevelRoute({map,quoteHistory=[],quoteAt,now=quoteAt,price,side,targetPrice}={}){
+export function assessCandleLevelRoute({map,quoteHistory=[],quoteAt,now=quoteAt,price,side,targetPrice,durationMs}={}){
  if(!map?.observedCandles||map.asOf>now)return null;
  const ts=Number(quoteAt),spot=Number(price),tolerance=map.tolerance;
- if(!(spot>0&&ts>0&&ts<=now&&now-ts<=1450&&tolerance>0))return null;
+ if(!(spot>0&&ts>0&&ts<=now&&now-ts<=structuralQuoteMaxAgeMs(durationMs)&&tolerance>0))return null;
  const byTime=new Map();
  for(const q of quoteHistory){
   if(!(q.ts>=ts-12000&&q.ts<=ts&&(q.receivedAt??q.ts)<=now&&q.price>0))continue;

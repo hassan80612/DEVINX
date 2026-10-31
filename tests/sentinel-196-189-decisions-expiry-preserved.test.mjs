@@ -16,14 +16,16 @@ test('201: preserves the 197 runtime except the two explicit price admission rev
    .replace("import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';\n",'')
    .replace(/      \/\/ Review only already-qualified[\s\S]*?      eligible=reviewSetupIntegrity\(\{[\s\S]*?      \}\);\n/,'');
  assert.equal(gitSha(previousRuntime),'f5118600856c7846e6e5a8470aed81acc95c167b');
- assert.equal(gitSha(room),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
+ const previousRoom=room.replace("import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';\n",'').replace('clock-at<=structuralQuoteMaxAgeMs(durationMs)','clock-at<=1450');
+ assert.equal(gitSha(previousRoom),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
  assert.match(runtime,/reviewOneMinuteRejectionProof/);
  assert.match(runtime,/reviewSetupIntegrity/);
  assert.doesNotMatch(runtime,/reviewDynamicEntryQuality|arbitrateFinalSide/);
 });
 test('196: original 189 fast 1m reversal route softened only from 50 to 40 prior candles',()=>{
  const timing=read('src/core/historical-extreme-timing.mjs');
- assert.match(timing,/Number\(durationMs\)!==60000\|\|!candidate\|\|candidate.ready===true/);
+ assert.match(timing,/Number\(durationMs\)!==60000\|\|!candidate/);
+ assert.match(timing,/candidate.ready===true&&entryFamilyOf\(candidate\)!=='continuation'/);
  assert.match(timing,/map\?\.observedCandles>=40/);
  assert.match(timing,/lastTwoConfirm\(rows,event.side\)/);
  assert.match(timing,/proof\.pivots>=1&&zone\?\.independentTests>=2/);

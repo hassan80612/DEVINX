@@ -1,3 +1,4 @@
+import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Price structure from the last 100 CLOSED, actually received candles.
 // Older levels remain spatial evidence; they are neither guaranteed barriers
 // nor a reason to wait for 100 new candles. No broker calls or clock lookup.
@@ -84,7 +85,7 @@ function priceBefore(rows,at){
 export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs=30000}={}){
  if(!candidate||!structure?.candles)return candidate;
  const spot=Number(price),ts=Number(quoteAt);
- if(!(positive(spot)&&ts>0&&ts<=now&&now-ts<=1450))return candidate;
+ if(!(positive(spot)&&ts>0&&ts<=now&&now-ts<=structuralQuoteMaxAgeMs(durationMs)))return candidate;
  // The broker driver retains ordered quote history (up to 6,000 ticks).
  // A fresh structural reaction only needs the last 12 seconds, so traverse
  // backwards rather than re-filter the complete 5-minute tape every tick.
