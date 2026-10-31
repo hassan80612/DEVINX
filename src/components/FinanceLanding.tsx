@@ -10,7 +10,7 @@ import styles from "@/app/page.module.css";
 const features=[
   {icon:"⌁",key:"movements"},
   {icon:"↻",key:"bills"},
-  {icon:"▣",key:"cards"},
+  {icon:"▥",key:"reports"},
   {icon:"◇",key:"reserves"},
   {icon:"◷",key:"work"},
   {icon:"◎",key:"goals"},

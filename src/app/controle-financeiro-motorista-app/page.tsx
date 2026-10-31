@@ -27,7 +27,7 @@ export default function ControleFinanceiroMotoristaApp(){
     ]}
     sections={[
       {title:'Saiba se a jornada realmente compensou',text:'Faturamento sozinho não mostra o resultado completo. No DevinX, a jornada fica separada do saldo real: você enxerga bruto, custos estimados e líquido sem transformar estimativas em pagamentos que ainda não aconteceram.'},
-      {title:'Junte trabalho e vida financeira',text:'Além das jornadas, você pode acompanhar entradas, gastos, cartões, contas, parcelas, reservas e objetivos. Assim, a meta de trabalho deixa de ser um número solto e passa a considerar sua situação financeira.'},
+      {title:'Junte trabalho e vida financeira',text:'Além das jornadas, você pode acompanhar entradas, gastos, contas mensais, parcelas, reservas e objetivos. Assim, a meta de trabalho deixa de ser um número solto e passa a considerar sua situação financeira.'},
       {title:'Use no celular durante a rotina',text:'O DevinX funciona pela web e foi pensado para uso no celular, permitindo registrar informações e consultar a meta sem depender de uma planilha separada.'}
     ]}
     faq={[

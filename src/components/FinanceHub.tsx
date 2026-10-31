@@ -188,7 +188,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
             <button type="button" className="homeActionCard income" onClick={()=>openCapture('income')}><span className="homeActionCardTop"><i>＋</i><b>{t('common.income')}</b></span><small>{t('home.incomeDesc')}</small></button>
             <button type="button" className="homeActionCard expense" onClick={()=>openCapture('expense')}><span className="homeActionCardTop"><i>−</i><b>{t('quick.expense')}</b></span><small>{t('home.expenseDesc')}</small></button>
             <button type="button" className="homeActionCard work" onClick={()=>setSection('work')}><span className="homeActionCardTop"><i>◷</i><b>{t('home.work')}</b></span><small>{t('home.workDesc')}</small></button>
-            <button type="button" className="homeActionCard movements" onClick={()=>setSection('movements')}><span className="homeActionCardTop"><i>↕</i><b>{t('nav.movements')}</b></span><small>{t('move.history')} · {t('move.pending')}</small></button>
+            <button type="button" className="homeActionCard card" onClick={()=>setSection('bills')}><span className="homeActionCardTop"><i>↻</i><b>{t('nav.bills')}</b></span><small>{t('more.billsHelp')}</small></button>
           </div>
         </section>
         <DashboardOverview onOpenReport={openReport}/>

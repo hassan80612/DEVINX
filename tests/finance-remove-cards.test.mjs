@@ -20,7 +20,8 @@ test('legacy card-generated expenses are excluded but ordinary income, expenses 
 
 test('old saved card tab redirects to Movimentos; no card module navigation',()=>{
   const hub=file('src/components/FinanceHub.tsx');
-  assert.ok(hub.includes('homeActionCard movements'));
+  assert.ok(hub.includes('homeActionCard card'));
+  assert.ok(hub.includes("onClick={()=>setSection('bills')}"));
   assert.ok(hub.includes("if(saved==='cards')setSection('movements')"));
   assert.ok(hub.includes("if(target==='cards'){setSection('movements');return}"));
   assert.ok(!hub.includes("setSection('cards')"));

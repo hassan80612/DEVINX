@@ -411,7 +411,6 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <button className="primary" disabled={savingAction==='add'} aria-busy={savingAction==='add'}>{savingAction==='add'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('bills.save')}</button>
     </form>}
 
-    {onNavigate&&<div className="flowGuard"><span>{t('bills.cardQuestion')}</span><button onClick={()=>onNavigate('cards')}>{t('bills.goCards')}</button></div>}
     {notice&&<div className="authMessage">{notice}</div>}
 
     <section className="recurringList">
@@ -436,7 +435,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
             <span><small>{t('bills.remainingThisMonth')}</small><b className={remaining>0?'negative':'positive'}>{currency(remaining)}</b></span>
           </div>
           {b.installment_count&&<div className="installmentOriginSummary">
-            <span><small>{t('cards.originalValue')}</small><b>{currency(schedule.reduce((sum,row)=>sum+row.expected,0))}</b></span>
+            <span><small>{t('bills.originalValue')}</small><b>{currency(schedule.reduce((sum,row)=>sum+row.expected,0))}</b></span>
             <span><small>{t('debts.totalPaid')}</small><b className="positive">{currency(schedule.reduce((sum,row)=>sum+row.paid,0))}</b></span>
             <span><small>{t('debts.balance')}</small><b>{currency(schedule.reduce((sum,row)=>sum+row.remaining,0))}</b></span>
           </div>}
@@ -454,7 +453,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
             <div className="installmentScheduleHead"><div><small>{t('payment.installmentSchedule')}</small><b>{b.name} · {b.installment_count}x</b></div>{scheduleOpen.length>0&&<button type="button" className="goldOutline" onClick={()=>toggleBillOpenSelection(b)}>{scheduleAllSelected?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>}</div>
             <div className="installmentScheduleList">{schedule.map(row=><label className={'installmentScheduleRow '+(row.remaining<=0?'settled':'')+(selectedInstallments.has(row.key)?' selected':'')} key={row.key}>
               <input type="checkbox" disabled={row.remaining<=0} checked={row.remaining<=0||selectedInstallments.has(row.key)} onChange={()=>row.remaining>0&&toggleInstallmentSelection(b.id,row.month)}/>
-              <span><b>{t('bills.installment')} {row.number}/{b.installment_count}</b><small>{t('move.dueOn')} {date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}{row.paid>0?' · '+t('cards.paidSoFar')+' '+currency(row.paid):''}</small></span>
+              <span><b>{t('bills.installment')} {row.number}/{b.installment_count}</b><small>{t('move.dueOn')} {date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}{row.paid>0?' · '+t('bills.paidSoFar')+' '+currency(row.paid):''}</small></span>
               <strong>{row.remaining>0?currency(row.remaining):'✓ '+t('bills.paid')}</strong>
             </label>)}</div>
           </div>}

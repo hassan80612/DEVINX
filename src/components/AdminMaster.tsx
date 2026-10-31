@@ -298,7 +298,6 @@ export function AdminMaster(){
       <div className="diagGrid">
         <article><small>{t('master.tx')}</small><b>{diag.transactions_count}</b></article>
         <article><small>{t('master.work')}</small><b>{diag.work_sessions_count}</b></article>
-        <article><small>{t('master.cards')}</small><b>{diag.cards_count}</b></article>
         <article><small>{t('master.bills')}</small><b>{diag.recurring_bills_count}</b></article>
         <article><small>{t('master.debts')}</small><b>{diag.debts_count}</b></article>
         <article><small>{t('master.lastActivity')}</small><b>{diag.last_financial_activity?date(diag.last_financial_activity,{day:'2-digit',month:'short',year:'numeric'}):'—'}</b></article>
