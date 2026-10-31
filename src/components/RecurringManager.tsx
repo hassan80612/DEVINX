@@ -279,14 +279,16 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
           amount_minor:value,paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()
         }).eq('id',editingPayment.id).eq('user_id',user.id));
       }else{
-        ({error}=await s.from('recurring_bill_payments').insert({
-          user_id:user.id,recurring_bill_id:paying.id,due_month:selectedMonth,amount_minor:value,
-          paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()
+        // One database transaction records the payment AND any settlement
+        // discount, preventing a paid bill from remaining pending.
+        ({error}=await s.rpc('register_recurring_bill_batch',{
+          p_items:[{bill_id:paying.id,due_month:selectedMonth,amount_minor:value,settle:paymentMode==='settle'}],
+          p_paid_on:paidOn
         }));
       }
       if(error){setNotice(t('common.errorSave'));return}
       const settlesWithDiscount=paymentMode==='settle'&&paidOther+value<expected;
-      if(settlesWithDiscount){
+      if(settlesWithDiscount&&editingPayment){
         const{error:overrideError}=await s.from('recurring_bill_month_overrides').upsert({
           user_id:user.id,recurring_bill_id:paying.id,due_month:selectedMonth,
           amount_minor:paidOther+value,due_day:billDueDay(paying,selectedMonth,overrides)
