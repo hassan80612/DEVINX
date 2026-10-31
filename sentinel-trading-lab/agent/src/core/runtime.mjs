@@ -43,6 +43,7 @@ import {precisionEntryGate} from './precision-entry-policy.mjs';
 import {reviewEntryPrice} from './entry-price-timing.mjs';
 import {reviewPriorCandleBreakout} from './prior-candle-breakout-guard.mjs';
 import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
+import {reviewStretchedContinuationEntry} from './stretched-continuation-admission.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';
 import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
@@ -1203,6 +1204,10 @@ export class DemoTradingRuntime{
       eligible=reviewEntryFamily(eligible,settings.entryFamily);
       // Avoid buying a terminal impulse at the very tip. No artificial delay.
       eligible=reviewLateImpulseEntry({candidate:eligible,quoteHistory:snap.quoteHistory,
+        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});
+      // An otherwise healthy trend can be too late at the 60-second edge.
+      // Admission-only: no reversal flip, no artificial wait, no expiry change.
+      eligible=reviewStretchedContinuationEntry({candidate:eligible,quoteHistory:snap.quoteHistory,
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});
       // A peak reached after a spent 50-bar climb is not a fresh start.
       // An isolated one-tick reversal at a range extreme isn't proof either.
