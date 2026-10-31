@@ -12,11 +12,11 @@ test('paid recurring bill stays paid when dashboard chart period changes',()=>{
   const dashboard=readFileSync('src/components/DashboardOverview.tsx','utf8');
   const change=dashboard.slice(dashboard.indexOf('async function loadFlowData('),dashboard.indexOf('useLayoutEffect('));
   assert.ok(change.includes('setFlowBillPays('));
-  assert.ok(change.includes('setFlowCardPays('));
+  assert.ok(!change.includes('setFlowCardPays('));
   assert.ok(!change.includes('setBillPays('));
   assert.ok(!change.includes('setCardPays('));
   assert.ok(dashboard.includes('setBillPays(allBillPays)'));
-  assert.ok(dashboard.includes('setCardPays(allCardPays)'));
+  assert.ok(!dashboard.includes('setCardPays(allCardPays)'));
 });
 
 test('recurring settlement with discount leaves no phantom debt',()=>{
@@ -52,5 +52,5 @@ test('temporary loading errors cannot erase an existing bill or payment ledger',
   const recurring=readFileSync('src/components/RecurringManager.tsx','utf8');
   const movements=readFileSync('src/components/MovementCenter.tsx','utf8');
   assert.ok(recurring.includes('if(b.error||p.error||o.error||c.error)'));
-  assert.ok(movements.includes('if([r1,r2,r3,r4,r5,cats].some(result=>result.error))'));
+  assert.ok(movements.includes('if([r1,r2,r3,cats].some(result=>result.error))'));
 });

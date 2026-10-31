@@ -5,17 +5,16 @@ import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthKey} from '@/lib/date';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
+import {isCardGeneratedTransaction} from '@/domain/finance-scope';
 
 type Period='7'|'30'|'month'|'1'|'3'|'6'|'12'|'24'|'custom';
 type Flow='all'|'income'|'expense';
-type Origin='transactions'|'work'|'bills'|'cards';
+type Origin='transactions'|'work'|'bills';
 
 type Tx={id:string;type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean;category_id:string;description:string|null;payment_method:string|null;source_type:string|null;source_id:string|null};
 type Work={id:string;vehicle_id:string|null;income_source_id:string|null;gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;minutes_worked:number;distance_km:number;income_sources:{name:string;kind:string}|null;vehicles:{name:string;energy_type:string;efficiency:number|null;unit_price_minor:number|null;default_fuel_percent:number|null}|null};
 type BillPay={id:string;amount_minor:number;paid_on:string;recurring_bills:{name:string;category_id:string;is_avoidable:boolean}|null};
-type CardPay={id:string;card_id:string;statement_month:string;amount_minor:number;paid_on:string;credit_cards:{name:string}|null};
-type Inst={amount_minor:number;billing_month:string;card_purchases:{card_id:string;category_id:string;is_avoidable:boolean}|null};
-type EditableRaw=Tx|Work|BillPay|CardPay;
+type EditableRaw=Tx|Work|BillPay;
 type ReportRow={
   id:string;
   sign:1|-1;
@@ -72,8 +71,6 @@ export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow
   const[tx,setTx]=useState<Tx[]>([]);
   const[work,setWork]=useState<Work[]>([]);
   const[billPays,setBillPays]=useState<BillPay[]>([]);
-  const[cardPays,setCardPays]=useState<CardPay[]>([]);
-  const[inst,setInst]=useState<Inst[]>([]);
   const[custom,setCustom]=useState<CustomCategory[]>([]);
   const[loading,setLoading]=useState(true);
   const[notice,setNotice]=useState('');
@@ -111,25 +108,15 @@ export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
-    const[a,b,c,d,f]=await Promise.all([
+    const[a,b,c,f]=await Promise.all([
       s.from('transactions').select('id,type,amount_minor,occurred_on,is_avoidable,category_id,description,payment_method,source_type,source_id').eq('user_id',user.id).gte('occurred_on',bounds.start).lte('occurred_on',bounds.end),
       s.from('work_sessions').select('id,vehicle_id,income_source_id,gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,minutes_worked,distance_km,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).gte('worked_on',bounds.start).lte('worked_on',bounds.end),
       s.from('recurring_bill_payments').select('id,amount_minor,paid_on,recurring_bills(name,category_id,is_avoidable)').eq('user_id',user.id).gte('paid_on',bounds.start).lte('paid_on',bounds.end),
-      s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).gte('paid_on',bounds.start).lte('paid_on',bounds.end),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id)
     ]);
-    const cards=(d.data||[]) as unknown as CardPay[];
-    const statementMonths=[...new Set(cards.map(x=>x.statement_month).filter(Boolean))];
-    let installments:Inst[]=[];
-    if(statementMonths.length){
-      const{data}=await s.from('card_installments').select('amount_minor,billing_month,card_purchases(card_id,category_id,is_avoidable)').in('billing_month',statementMonths);
-      installments=(data||[]) as unknown as Inst[];
-    }
     setTx((a.data||[]) as Tx[]);
     setWork((b.data||[]) as unknown as Work[]);
     setBillPays((c.data||[]) as unknown as BillPay[]);
-    setCardPays(cards);
-    setInst(installments);
     setCustom((f.data||[]) as CustomCategory[]);
     setLoading(false);
   }
@@ -140,7 +127,7 @@ export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow
     const rows:ReportRow[]=[];
     const label=(kind:'income'|'expense',id:string)=>id==='work_income'?t('move.workIncome'):id==='card_payment'?t('move.cardPayment'):categoryName(kind,id,custom,t);
     tx.forEach(x=>{
-      if(x.source_type==='cash_adjustment'||x.source_type==='cash_adjustment_v2'||x.source_type==='work_cash_model_migration')return;
+      if(x.source_type==='cash_adjustment'||x.source_type==='cash_adjustment_v2'||x.source_type==='work_cash_model_migration'||isCardGeneratedTransaction(x.source_type))return;
       const kind=x.type;
       const isDebt=x.source_type==='debt_payment';
       const isFuture=x.source_type==='future_plan';
@@ -158,35 +145,8 @@ export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow
       const cat=label('expense',catId);
       rows.push({id:'bp:'+x.id,sign:-1,amount:Number(x.amount_minor),date:x.paid_on,title:x.recurring_bills?.name||t('move.billPayment'),subtitle:cat,kind:'expense',categoryId:catId,categoryKey:'expense|'+catId,categoryLabel:cat,sourceKey:'bills',sourceLabel:t('nav.bills'),origin:'bills',avoidable:!!x.recurring_bills?.is_avoidable,rawId:x.id,raw:x});
     });
-    cardPays.forEach(x=>{
-      const related=inst.filter(i=>i.billing_month===x.statement_month&&i.card_purchases?.card_id===x.card_id);
-      const groups=new Map<string,{categoryId:string;avoidable:boolean;weight:number}>();
-      related.forEach(i=>{
-        const categoryId=i.card_purchases?.category_id||'other';
-        const avoidable=!!i.card_purchases?.is_avoidable;
-        const key=categoryId+'|'+(avoidable?'1':'0');
-        const current=groups.get(key)||{categoryId,avoidable,weight:0};
-        current.weight+=Number(i.amount_minor);
-        groups.set(key,current);
-      });
-      const grouped=[...groups.values()];
-      const payment=Number(x.amount_minor);
-      const weightTotal=grouped.reduce((sum,g)=>sum+g.weight,0);
-      const cardName=x.credit_cards?.name||t('move.cardPayment');
-      if(!grouped.length||weightTotal<=0){
-        rows.push({id:'cp:'+x.id,sign:-1,amount:payment,date:x.paid_on,title:cardName,subtitle:t('move.cardPayment'),kind:'expense',categoryId:'card_payment',categoryKey:'expense|card_payment',categoryLabel:t('move.cardPayment'),sourceKey:'cards',sourceLabel:t('nav.cards'),origin:'cards',avoidable:false,rawId:x.id,raw:x});
-        return;
-      }
-      let used=0;
-      grouped.forEach((g,index)=>{
-        const amount=index===grouped.length-1?payment-used:Math.round(payment*(g.weight/weightTotal));
-        used+=amount;
-        const cat=label('expense',g.categoryId);
-        rows.push({id:'cp:'+x.id+':'+index,sign:-1,amount,date:x.paid_on,title:cardName,subtitle:t('move.cardPayment')+' · '+cat,kind:'expense',categoryId:g.categoryId,categoryKey:'expense|'+g.categoryId,categoryLabel:cat,sourceKey:'cards',sourceLabel:t('nav.cards'),origin:'cards',avoidable:g.avoidable,rawId:x.id,raw:x});
-      });
-    });
     return rows.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  },[tx,work,billPays,cardPays,inst,custom,t]);
+  },[tx,work,billPays,custom,t]);
 
   const categories=useMemo(()=>{
     const map=new Map<string,string>();
@@ -264,8 +224,6 @@ export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow
       else({error}=await s.from('transactions').update({amount_minor:value,occurred_on:editDate,description:editDescription.trim()||null,category_id:editCategory}).eq('id',x.id).eq('user_id',user.id));
     }else if(editing.origin==='bills'){
       const x=editing.raw as BillPay;({error}=await s.from('recurring_bill_payments').update({amount_minor:minor(editAmount),paid_on:editDate,paid_at:new Date(editDate+'T12:00:00').toISOString()}).eq('id',x.id).eq('user_id',user.id));
-    }else if(editing.origin==='cards'){
-      const x=editing.raw as CardPay;({error}=await s.rpc('update_card_bill_payment_date',{p_payment_id:x.id,p_paid_on:editDate}));
     }else{
       const x=editing.raw as Work;const gross=minor(editAmount);const transport=x.income_sources?.kind==='driver'||x.income_sources?.kind==='delivery';const km=transport?dec(editKm):0;const pct=transport?dec(editFuelPercent):0;const vehicle=x.vehicles;
       let energy=0;

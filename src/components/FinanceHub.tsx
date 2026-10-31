@@ -20,7 +20,6 @@ const MovementCenter=dynamic(()=>import('./MovementCenter').then(module=>module.
 const WorkManager=dynamic(()=>import('./WorkManager').then(module=>module.WorkManager),{loading:LazySectionFallback});
 const GoalManager=dynamic(()=>import('./GoalManager').then(module=>module.GoalManager),{loading:LazySectionFallback});
 const FuturePlanningManager=dynamic(()=>import('./FuturePlanningManager').then(module=>module.FuturePlanningManager),{loading:LazySectionFallback});
-const CardManager=dynamic(()=>import('./CardManager').then(module=>module.CardManager),{loading:LazySectionFallback});
 const RecurringManager=dynamic(()=>import('./RecurringManager').then(module=>module.RecurringManager),{loading:LazySectionFallback});
 const ReserveManager=dynamic(()=>import('./ReserveManager').then(module=>module.ReserveManager),{loading:LazySectionFallback});
 const ReportManager=dynamic(()=>import('./ReportManager').then(module=>module.ReportManager),{loading:LazySectionFallback});
@@ -29,7 +28,7 @@ const CategoryManager=dynamic(()=>import('./CategoryManager').then(module=>modul
 const PreferencesManager=dynamic(()=>import('./PreferencesManager').then(module=>module.PreferencesManager),{loading:LazySectionFallback});
 const AdminMaster=dynamic(()=>import('./AdminMaster').then(module=>module.AdminMaster),{loading:LazySectionFallback});
 
-type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
+type Section='home'|'movements'|'work'|'plan'|'more'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
 type CaptureMode='income'|'expense';
 type CaptureRequest={id:number;mode:CaptureMode};
 type Access={is_admin:boolean;allowed:boolean;status:string;source:string;expires_at:string|null;subscription_required:boolean;checkout_url:string|null};
@@ -63,8 +62,9 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   useEffect(()=>{
     try{
       const saved=sessionStorage.getItem('devinx-active-section');
-      const allowed:Section[]=['home','movements','work','plan','more','cards','bills','reserves','reports','spend','categories','settings','master'];
-      if(saved&&allowed.includes(saved as Section))setSection(saved as Section);
+      const allowed:Section[]=['home','movements','work','plan','more','bills','reserves','reports','spend','categories','settings','master'];
+      if(saved==='cards')setSection('movements');
+      else if(saved&&allowed.includes(saved as Section))setSection(saved as Section);
     }catch{}
     setSectionReady(true);
   },[]);
@@ -142,7 +142,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   const month=date(new Date(),{month:'long',year:'numeric'});
   const titles:Record<Section,string>={
     home:t('nav.home'),movements:t('nav.movements'),work:t('nav.work'),plan:t('nav.plan'),more:t('nav.more'),
-    cards:t('nav.cards'),bills:t('nav.bills'),reserves:t('nav.reserves'),reports:t('nav.reports'),spend:t('spend.title'),
+    bills:t('nav.bills'),reserves:t('nav.reserves'),reports:t('nav.reports'),spend:t('spend.title'),
     categories:t('nav.categories'),settings:t('nav.settings'),master:t('nav.master')
   };
 
@@ -150,10 +150,11 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   function openReport(range:{start:string;end:string;flow:'all'|'income'|'expense'}){setReportFocus(current=>({...range,token:(current?.token||0)+1}));setSection('reports')}
   function navigate(target:string){
     if(target==='income'||target==='expense'){openCapture(target);return}
-    const allowed:Section[]=['home','movements','work','plan','more','cards','bills','reserves','reports','spend','categories','settings','master'];
+    const allowed:Section[]=['home','movements','work','plan','more','bills','reserves','reports','spend','categories','settings','master'];
+    if(target==='cards'){setSection('movements');return}
     if(allowed.includes(target as Section))setSection(target as Section);
   }
-  function backTarget(){return ['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
+  function backTarget(){return ['bills','reserves','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
   async function signOut(){try{sessionStorage.removeItem('devinx-active-section')}catch{}await createClient().auth.signOut();location.href='/'}
 
   if(!sectionReady)return <main className="financeApp" data-theme={theme}><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
@@ -175,7 +176,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
       <button type="button" className={section==='movements'?'active':''} onClick={()=>setSection('movements')}><span>↕</span><b>{t('nav.movements')}</b></button>
       <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>{t('nav.work')}</b></button>
       <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>{t('nav.plan')}</b></button>
-      <button type="button" className={section==='more'||['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
+      <button type="button" className={section==='more'||['bills','reserves','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
     </nav>
     <section className="financeContent">
       {section!=='home'&&<div className="sectionTopbar"><button type="button" className="backButton" onClick={()=>setSection(backTarget())}>‹</button><div><small>DEVINX</small><h1>{titles[section]}</h1></div></div>}
@@ -187,7 +188,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
             <button type="button" className="homeActionCard income" onClick={()=>openCapture('income')}><span className="homeActionCardTop"><i>＋</i><b>{t('common.income')}</b></span><small>{t('home.incomeDesc')}</small></button>
             <button type="button" className="homeActionCard expense" onClick={()=>openCapture('expense')}><span className="homeActionCardTop"><i>−</i><b>{t('quick.expense')}</b></span><small>{t('home.expenseDesc')}</small></button>
             <button type="button" className="homeActionCard work" onClick={()=>setSection('work')}><span className="homeActionCardTop"><i>◷</i><b>{t('home.work')}</b></span><small>{t('home.workDesc')}</small></button>
-            <button type="button" className="homeActionCard card" onClick={()=>setSection('cards')}><span className="homeActionCardTop"><i>▣</i><b>{t('home.card')}</b></span><small>{t('home.cardDesc')}</small></button>
+            <button type="button" className="homeActionCard movements" onClick={()=>setSection('movements')}><span className="homeActionCardTop"><i>↕</i><b>{t('nav.movements')}</b></span><small>{t('move.history')} · {t('move.pending')}</small></button>
           </div>
         </section>
         <DashboardOverview onOpenReport={openReport}/>
@@ -200,7 +201,6 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
       {section==='more'&&<div className="moreStack">
         <SubscriptionPanel isAdmin={access.is_admin}/>
         <section className="organizeGrid">
-          <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>{t('nav.cards')}</b><small>{t('more.cardsHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('bills')} type="button"><span>↻</span><div><b>{t('nav.bills')}</b><small>{t('more.billsHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('reserves')} type="button"><span>◇</span><div><b>{t('nav.reserves')}</b><small>{t('more.reservesHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>{t('nav.reports')}</b><small>{t('more.reportsHelp')}</small></div><em>›</em></button>
@@ -211,7 +211,6 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
         </section>
       </div>}
 
-      {section==='cards'&&<CardManager onNavigate={navigate}/>}
       {section==='bills'&&<RecurringManager onNavigate={navigate}/>} 
       {section==='reserves'&&<ReserveManager/>}
       {section==='reports'&&<ReportManager focus={reportFocus}/>}

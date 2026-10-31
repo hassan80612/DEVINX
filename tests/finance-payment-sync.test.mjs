@@ -43,7 +43,8 @@ test('the installed app and browser refresh financial components on focus and vi
   assert.ok(hub.includes('new CustomEvent(FINANCE_UPDATED_EVENT)'));
   assert.ok(dashboard.includes('window.addEventListener(FINANCE_UPDATED_EVENT,scheduleRefresh)'));
   assert.ok(cards.includes('window.addEventListener(FINANCE_UPDATED_EVENT,refresh)'));
-  assert.ok(dashboard.includes('reconcileCardInstallments(cardInst,cardItemPays)'));
+  assert.ok(!dashboard.includes('reconcileCardInstallments(cardInst,cardItemPays)'));
+  assert.ok(dashboard.includes('activeFinanceTransactions('));
   assert.ok(cards.includes('reconcileCardInstallments(inst,itemPays)'));
   assert.ok(cards.includes("s.rpc('register_card_installment_batch'"));
 });

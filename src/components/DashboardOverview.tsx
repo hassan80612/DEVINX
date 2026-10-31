@@ -4,7 +4,7 @@ import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,notifyGoalUpdated} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
-import {reconcileCardInstallments} from '@/domain/card-installments';
+import {activeFinanceTransactions} from '@/domain/finance-scope';
 import {
   RecurringBillLike,RecurringOverrideLike,RecurringPaymentLike,
   billAppliesToMonth,billRemaining,billDueDay,dueDateForMonth,monthsBetween
@@ -21,9 +21,6 @@ type Goal={id:string;name:string;target_minor:number;basis:string;period:string;
 type Bill=RecurringBillLike&{created_at:string};
 type BillPay=RecurringPaymentLike&{paid_on:string};
 type BillOverride=RecurringOverrideLike;
-type CardInst={id:string;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
-type CardItemPay={source_id:string|null;amount_minor:number};
-type CardPay={amount_minor:number;paid_on:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
 type ReserveEntry=FutureReserveEntryLike&{occurred_on:string};
 type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
@@ -72,11 +69,7 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
   const[bills,setBills]=useState<Bill[]>([]);
   const[billPays,setBillPays]=useState<BillPay[]>([]);
   const[billOverrides,setBillOverrides]=useState<BillOverride[]>([]);
-  const[cardInst,setCardInst]=useState<CardInst[]>([]);
-  const[cardItemPays,setCardItemPays]=useState<CardItemPay[]>([]);
-  const[cardPays,setCardPays]=useState<CardPay[]>([]);
   const[flowBillPays,setFlowBillPays]=useState<BillPay[]>([]);
-  const[flowCardPays,setFlowCardPays]=useState<CardPay[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
   const[futurePlans,setFuturePlans]=useState<FuturePlanLike[]>([]);
@@ -127,9 +120,8 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     setChartPeriod(activePeriod);
     const from=dashboardDataFrom(activePeriod);
 
-    const cashTx=(snapshot.transactions||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null;occurred_on:string;created_at:string}[];
+    const cashTx=activeFinanceTransactions((snapshot.transactions||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null;occurred_on:string;created_at:string}[]);
     const allWork=(snapshot.work_sessions||[]) as {gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;created_at:string}[];
-    const allCardPays=(snapshot.card_payments||[]) as CardPay[];
     const allBillPays=(snapshot.bill_payments||[]) as BillPay[];
 
     setTx(cashTx.filter(item=>item.occurred_on>=from).map(item=>({type:item.type,amount_minor:item.amount_minor,occurred_on:item.occurred_on,source_type:item.source_type})) as Tx[]);
@@ -147,15 +139,11 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     setBills((snapshot.bills||[]) as Bill[]);
     setBillPays(allBillPays);
     setFlowBillPays(allBillPays.filter(item=>item.paid_on>=from));
-    setFlowCardPays(allCardPays.filter(item=>item.paid_on>=from));
     setBillOverrides((snapshot.bill_overrides||[]) as BillOverride[]);
-    setCardInst((snapshot.card_installments||[]) as CardInst[]);
-    setCardPays(allCardPays);
     setDebtPays((snapshot.debt_payments||[]) as DebtPay[]);
     setReserveEntries((snapshot.reserve_entries||[]) as ReserveEntry[]);
     setFuturePlans((snapshot.future_plans||[]) as FuturePlanLike[]);
     setFutureSettlements((snapshot.future_settlements||[]) as FutureSettlementLike[]);
-    setCardItemPays(cashTx.filter(item=>item.source_type==='card_installment_payment').map(item=>({source_id:item.source_id,amount_minor:Number(item.amount_minor)})));
 
     const hasWorkCashMigration=cashTx.some(item=>item.source_type==='work_cash_model_migration');
     const legacyBaseline=cashTx
@@ -167,8 +155,7 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0)-legacyWorkOffset;
     const cashWork=allWork.reduce((sum,item)=>sum+Number(item.gross_income_minor),0);
     const cashBills=allBillPays.reduce((sum,item)=>sum+Number(item.amount_minor),0);
-    const cashCards=allCardPays.reduce((sum,item)=>sum+Number(item.amount_minor),0);
-    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2')});
+    setCashPosition({current:cashTransactions+cashWork-cashBills,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2')});
 
     const saved=profile.daily_goal_target_date||'';
     setGoalTargetDate(saved);
@@ -178,19 +165,17 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
 
   async function loadFlowData(s:ReturnType<typeof createClient>,userId:string,period:ChartPeriod){
     const from=dashboardDataFrom(period);
-    const[rTx,rWork,rBillPay,rCardPay]=await Promise.all([
+    const[rTx,rWork,rBillPay]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,source_type').eq('user_id',userId).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',userId).gte('worked_on',from),
-      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from),
-      s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',userId).gte('paid_on',from)
+      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from)
     ]);
-    if(rTx.error||rWork.error||rBillPay.error||rCardPay.error)return;
-    setTx((rTx.data||[]) as Tx[]);
+    if(rTx.error||rWork.error||rBillPay.error)return;
+    setTx(activeFinanceTransactions((rTx.data||[]) as Tx[]));
     setWork((rWork.data||[]) as Work[]);
     // Never overwrite complete settlement ledgers when the chart range changes.
     // Filters should only affect graph points, not debts or the daily goal.
     setFlowBillPays((rBillPay.data||[]) as BillPay[]);
-    setFlowCardPays((rCardPay.data||[]) as CardPay[]);
   }
 
   useLayoutEffect(()=>{
@@ -239,42 +224,32 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     [reserveEntries]
   );
 
-  const cardRemainingById=useMemo(()=>new Map(
-    [...reconcileCardInstallments(cardInst,cardItemPays)].map(([id,balance])=>[id,balance.remaining] as const)
-  ),[cardInst,cardItemPays]);
-
   const numbers=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
     const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration');
     const workMonth=work.filter(x=>x.worked_on>=month);
     const billPayMonth=billPays.filter(x=>x.paid_on>=month);
-    const cardPayMonth=cardPays.filter(x=>x.paid_on>=month);
     const manualIncome=txMonth.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount_minor),0);
     const manualExpense=txMonth.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0);
     const workGross=workMonth.reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const recurringSpent=billPayMonth.reduce((a,b)=>a+Number(b.amount_minor),0);
-    const cardSpent=cardPayMonth.reduce((a,b)=>a+Number(b.amount_minor),0);
     const income=manualIncome+workGross;
-    const spent=manualExpense+recurringSpent+cardSpent;
+    const spent=manualExpense+recurringSpent;
     const todayIncome=
       tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const todaySpent=
       tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
-      billPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0)+
-      cardPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0);
+      billPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0);
 
     const recurringPending=bills.reduce((sum,bill)=>{
       if(!billAppliesToMonth(bill,month))return sum;
       return sum+billRemaining(bill,month,billPays,billOverrides);
     },0);
-    const cardsDueNow=cardInst
-      .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month)
-      .reduce((a,b)=>a+(cardRemainingById.get(b.id)||0),0);
-    const toPay=recurringPending+cardsDueNow;
+    const toPay=recurringPending;
     return{income,spent,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,toPay};
-  },[tx,work,bills,billPays,billOverrides,cardInst,cardRemainingById,cardPays]);
+  },[tx,work,bills,billPays,billOverrides]);
 
   const currentFutureImpact=useMemo(
     ()=>monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,localMonthStartISO(),localDateISO()),
@@ -294,9 +269,6 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
         recurring+=billRemaining(bill,dueMonth,billPays,billOverrides);
       }
     }
-    const cards=cardInst
-      .filter(item=>(item.due_date||dueDateForMonth(item.billing_month,1))<=horizon)
-      .reduce((sum,item)=>sum+(cardRemainingById.get(item.id)||0),0);
     let expectedIncome=0;
     let plannedExpense=0;
     for(const plan of futurePlans.filter(plan=>plan.is_active)){
@@ -307,9 +279,9 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
       if(plan.kind==='income')expectedIncome+=amount;
       else plannedExpense+=amount;
     }
-    const out=recurring+cards+plannedExpense;
-    return{horizon,recurring,cards,plannedExpense,expectedIncome,out,projected:cashPosition.current+expectedIncome-out};
-  },[projectionDate,bills,billPays,billOverrides,cardInst,cardRemainingById,futurePlans,futureSettlements,cashPosition.current]);
+    const out=recurring+plannedExpense;
+    return{horizon,recurring,plannedExpense,expectedIncome,out,projected:cashPosition.current+expectedIncome-out};
+  },[projectionDate,bills,billPays,billOverrides,futurePlans,futureSettlements,cashPosition.current]);
 
   const projectedWithFuture=dateProjection.projected;
   const pendingWithFuture=numbers.toPay+currentFutureImpact.totalNeed;
@@ -321,13 +293,10 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
       if(!billAppliesToMonth(bill,selected))return sum;
       return sum+billRemaining(bill,selected,billPays,billOverrides);
     },0);
-    const cardsDue=cardInst
-      .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===selected)
-      .reduce((a,b)=>a+(cardRemainingById.get(b.id)||0),0);
     const future=monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,selected,localDateISO());
-    const gross=recurringPending+cardsDue+future.totalNeed;
-    return{recurringPending,cardsDue,futureNeed:future.totalNeed,expectedIncome:future.expectedIncome,gross,total:Math.max(0,gross-future.expectedIncome)};
-  },[commitmentMonth,bills,billPays,billOverrides,cardInst,cardRemainingById,futurePlans,futureSettlements,reserveEntries]);
+    const gross=recurringPending+future.totalNeed;
+    return{recurringPending,futureNeed:future.totalNeed,expectedIncome:future.expectedIncome,gross,total:Math.max(0,gross-future.expectedIncome)};
+  },[commitmentMonth,bills,billPays,billOverrides,futurePlans,futureSettlements,reserveEntries]);
 
   const flowChart=useMemo(()=>{
     type FlowRow={key:string;start:string;end:string;income:number;out:number};
@@ -369,11 +338,10 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     tx.filter(item=>item.source_type!=='cash_adjustment'&&item.source_type!=='cash_adjustment_v2'&&item.source_type!=='work_cash_model_migration').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
     work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),0));
     flowBillPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
-    flowCardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
 
     const max=Math.max(1,...rows.flatMap(row=>[row.income,row.out]));
     return{rows,max,labelEvery};
-  },[tx,work,flowBillPays,flowCardPays,chartPeriod]);
+  },[tx,work,flowBillPays,chartPeriod]);
 
   const selectedFlowRow=flowChart.rows.find(row=>row.key===selectedFlowKey)||null;
 
@@ -398,7 +366,7 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     const fallbackHorizon=monthEnd(month);
     const horizon=goalTargetDate&&goalTargetDate>=today?goalTargetDate:fallbackHorizon;
     const horizonMonth=horizon.slice(0,7)+'-01';
-    const obligations:{due:string;amount:number;kind:'bill'|'card'|'future'}[]=[];
+    const obligations:{due:string;amount:number;kind:'bill'|'future'}[]=[];
 
     for(const bill of bills){
       for(const dueMonth of monthsBetween(month,horizonMonth)){
@@ -408,12 +376,6 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
         const remaining=billRemaining(bill,dueMonth,billPays,billOverrides);
         if(remaining>0)obligations.push({due:due<today?today:due,amount:remaining,kind:'bill'});
       }
-    }
-
-    for(const inst of cardInst){
-      const due=inst.due_date||dueDateForMonth(inst.billing_month,1);
-      const remaining=cardRemainingById.get(inst.id)||0;
-      if(due<=horizon&&remaining>0)obligations.push({due:due<today?today:due,amount:remaining,kind:'card'});
     }
 
     const future=planningEvents(futurePlans,futureSettlements,reserveEntries,today,horizon);
@@ -453,7 +415,7 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cardRemainingById,cashPosition.current,futureCommittedReserve,futurePlans,futureSettlements,reserveEntries]);
+  },[goalTargetDate,bills,billPays,billOverrides,cashPosition.current,futureCommittedReserve,futurePlans,futureSettlements,reserveEntries]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
@@ -596,13 +558,11 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration');
     const periodWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=today);
     const periodBill=billPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
-    const periodCard=cardPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
     const periodDebt=debtPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
     const income=periodTx.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount_minor),0)+periodWork.reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const out=
       periodTx.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0)+
-      periodBill.reduce((a,b)=>a+Number(b.amount_minor),0)+
-      periodCard.reduce((a,b)=>a+Number(b.amount_minor),0);
+      periodBill.reduce((a,b)=>a+Number(b.amount_minor),0);
     const workNet=periodWork.reduce((a,b)=>a+Number(b.gross_income_minor)-Number(b.energy_cost_minor)-Number(b.extra_work_cost_minor),0);
     const payoff=periodDebt.reduce((a,b)=>a+Number(b.amount_minor),0);
     const reservePeriodNet=reserveEntries.filter(e=>e.occurred_on>=start&&e.occurred_on<=today).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0);
@@ -614,7 +574,7 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     const target=goal.goal_source==='daily_reserve_auto'?reserveSuggestion.daily:Number(goal.target_minor);
     if(target<=0)return null;
     return{base,target,percent:Math.min(100,Math.max(0,Math.round(base/Math.max(1,target)*100)))};
-  },[goal,tx,work,billPays,cardPays,debtPays,reserveEntries,reserveSuggestion.daily]);
+  },[goal,tx,work,billPays,debtPays,reserveEntries,reserveSuggestion.daily]);
 
   function openBalanceAdjust(){
     setBalanceDraft(String(Number(cashPosition.current)/100).replace('.',','));
@@ -758,7 +718,6 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
         <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
         <div className="commitmentDouble futureCommitmentGrid">
           <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
-          <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
           <article><span>{t('future.planningNeed')}</span><b>{currency(selectedCommitments.futureNeed)}</b></article>
           <article className="futureIncomeCommitment"><span>{t('future.expectedIncome')}</span><b className="positive">+ {currency(selectedCommitments.expectedIncome)}</b></article>
         </div>
