@@ -295,8 +295,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {nowMode&&<small data-testid="now-probability-reading" style={{fontSize:11,opacity:.86,minHeight:16,lineHeight:'16px',fontVariantNumeric:'tabular-nums'}}>CALL {m.nowObservation?.probabilityCall!=null?Math.round(Number(m.nowObservation.probabilityCall)*100)+'%':'—'} · PUT {m.nowObservation?.probabilityPut!=null?Math.round(Number(m.nowObservation.probabilityPut)*100)+'%':'—'} · {t('Estimativa não calibrada')}</small>}
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} nowMode={nowMode} observation={m.nowObservation}/>
     <div data-testid="mobile-countdown-executor-wl" style={{display:'flex',gap:12,alignItems:'center',fontSize:11,fontWeight:800,marginTop:3,marginBottom:4,minHeight:16,visibility:s?.autoExecutor?'visible':'hidden'}}>
-      <span>WIN: {Number(s?.autoExecutor?.sessionWins||0)}</span>
-      <span>LOSS: {Number(s?.autoExecutor?.sessionLosses||0)}</span>
+      <span>WIN: {s?.autoExecutor?Number(s.autoExecutor.sessionWins||0):'—'}</span>
+      <span>LOSS: {s?.autoExecutor?Number(s.autoExecutor.sessionLosses||0):'—'}</span>
     </div>
     <div className="vnextProjectionValues vnextEntryQuotePair" data-testid="mobile-entry-and-quote">
       <div><small>{t(nowMode?"PREÇO NA ENTRADA":"PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
