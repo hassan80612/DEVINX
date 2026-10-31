@@ -1,4 +1,3 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // CALL rejection needs support evidence; PUT rejection needs resistance.
 // Generic legacy fixtures stay compatible, but a known zero is never filled
 // with confirmations observed on the opposite side of the same price zone.
@@ -33,10 +32,10 @@ export function observedRoleRetest({quoteHistory=[],quoteAt,now=quoteAt,price,si
 }
 // Short strategy evidence cannot turn a confirmed opposing historical zone
 // into the support/resistance it needs merely by renaming the same bounce.
-export function specialistLevelRoleRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function specialistLevelRoleRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side))return null;
  const spot=Number(price),t=Number(quoteAt),tol=Number(structure?.tolerance),map=structure?.candleLevelMap;
- if(!(spot>0&&t>0&&now>=t&&now-t<=structuralQuoteMaxAgeMs(durationMs)&&tol>0&&map?.asOf<=now))return null;
+ if(!(spot>0&&t>0&&now>=t&&now-t<=1450&&tol>0&&map?.asOf<=now))return null;
  for(const zone of map.levels||[]){
   const same=levelRoleEvidence(zone,candidate.side),opposed=levelRoleEvidence(zone,candidate.side==='CALL'?'PUT':'CALL');
   if(!same.known||same.confirmed||opposed.pivots<1||opposed.rejections<2)continue;

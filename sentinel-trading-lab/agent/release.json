@@ -1,6 +1,6 @@
 {
-  "version": "13.9.202",
-  "build": "13.9.202-201-baseline-consistent-freshness-independent-reversal",
+  "version": "13.9.203",
+  "build": "13.9.203-exact-197-engine-with-202-expiry-persistence",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.202"
+  "publicVersion": "13.9.203"
 }

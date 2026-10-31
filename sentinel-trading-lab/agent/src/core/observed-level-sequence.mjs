@@ -1,4 +1,3 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Research: chronological level events and price-confirmed swing changes.
 // No timer, future candle, broker request, or permission to alter a held signal.
 import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
@@ -38,9 +37,9 @@ function receivedQuotes(history,ts,now){
 // A real local structure change can precede the next completed chart candle.
 // CALL: a confirmed higher low, then break of its intervening high; mirrored
 // for PUT. A first bounce / a single opposite tick is never enough.
-export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,price,side,durationMs}={}){
+export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,price,side}={}){
  const ts=Number(quoteAt),spot=Number(price),sign=side==='CALL'?1:side==='PUT'?-1:0;
- if(!sign||!(ts>0&&ts<=now&&now-ts<=structuralQuoteMaxAgeMs(durationMs)&&spot>0))return null;
+ if(!sign||!(ts>0&&ts<=now&&now-ts<=1450&&spot>0))return null;
  let rows=receivedQuotes(quoteHistory,ts,now),start=0;
  for(let i=1;i<rows.length;i++)if(rows[i].ts-rows[i-1].ts>2500)start=i;
  rows=rows.slice(start);
@@ -54,10 +53,10 @@ export function currentQuoteStructureTurn({quoteHistory=[],quoteAt,now=quoteAt,p
  return {side,pivotPrice:pivot.price,pivotAt:pivot.at,turnPrice:last.price,turnAt:last.at,
   priorTurnPrice:prior.price,priorTurnAt:prior.at,confirmedAt:ts,amplitude};
 }
-export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  if(!map?.observedCandles||!(map.asOf<=now&&map.tolerance>0))return null;
  for(const side of ['CALL','PUT']){
-  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side,durationMs});if(!proof)continue;
+  const proof=currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side});if(!proof)continue;
   const sign=side==='CALL'?1:-1;
   const anchor=map.levels.filter(z=>{
    const role=levelRoleEvidence(z,side);
@@ -77,9 +76,9 @@ export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,
  }
  return null;
 }
-export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quoteAt,durationMs}={}){
+export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quoteAt}={}){
  const spot=Number(price),ts=Number(quoteAt);
- if(!(spot>0&&ts>0&&ts<=now&&now-ts<=structuralQuoteMaxAgeMs(durationMs))||!map?.observedCandles||map.asOf>now)return null;
+ if(!(spot>0&&ts>0&&ts<=now&&now-ts<=1450)||!map?.observedCandles||map.asOf>now)return null;
  let rows=receivedQuotes(quoteHistory,ts,now);
  if(rows.at(-1)?.ts!==ts||rows.at(-1)?.price!==spot)return null;
  let contiguous=0;
@@ -191,11 +190,11 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
 }
 export function applyObservedLevelSequence({candidate,map,durationMs,...input}={}){
  if(!candidate||![5000,10000,15000,30000,60000,120000,300000].includes(Number(durationMs)))return candidate;
- const sequence=observedLevelSequence({map,...input,durationMs});
+ const sequence=observedLevelSequence({map,...input});
  if(!sequence)return candidate;
  // A two-tick V at a level is useful for short expiries. For five minutes,
  // let the independently observed pivot break/reclaim establish the turn.
- const fastReversal=Number(durationMs)===300000?null:confirmedFastLevelReversal({map,...input,durationMs});
+ const fastReversal=Number(durationMs)===300000?null:confirmedFastLevelReversal({map,...input});
  const structureChange=sequence.structureChange&&
   (!['failed-breakout-structure-change','break-retest-continuation'].includes(sequence.structureChange.kind)||
    Number(input.now??input.quoteAt)-sequence.structureChange.confirmedAt<=1450)?
@@ -205,7 +204,7 @@ export function applyObservedLevelSequence({candidate,map,durationMs,...input}={
  // A continuation sequence must not prevent evaluation of a verified
  // opposite structural turn on the current quote. Preserve reclaim priority.
  const reversal=structureChange?.kind==='failed-breakout-structure-change'?null:
-  confirmedLevelReversal({map,...input,durationMs});
+  confirmedLevelReversal({map,...input});
  const event=fastReversal??reversal??structureChange??(Number(durationMs)===30000?sequence.continuation:null);
  const priceStructure={...candidate.priceStructure,observedSequence:sequence,
   ...(fastReversal?{confirmedReversal:fastReversal}:reversal?{confirmedReversal:reversal}:{})};

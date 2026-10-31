@@ -1,4 +1,3 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Timing at old resistance/support: do not chase a final weak tick into the
 // upper/lower end of a historically traded band. No quote collection, timers,
 // extra broker connections, machine learning claims or guaranteed outcomes.
@@ -82,18 +81,14 @@ export function reviewLiveExtremeTiming({candidate,original,quoteHistory=[],cand
 // All other strategy, expiry, precision and executor guards still apply.
 export function reviewEarlyDistantReversal({candidate,map,quoteHistory=[],quoteAt,
  now=quoteAt,price,durationMs}={}){
- if(Number(durationMs)!==60000||!candidate||
-   (candidate.ready===true&&entryFamilyOf(candidate)!=='continuation'))return candidate;
+ if(Number(durationMs)!==60000||!candidate||candidate.ready===true)return candidate;
  const at=Number(quoteAt),time=Number(now),spot=Number(price);
- if(!(at>0&&at<=time&&time-at<=structuralQuoteMaxAgeMs(durationMs)&&spot>0&&map?.observedCandles>=40&&
+ if(!(at>0&&at<=time&&time-at<=1450&&spot>0&&map?.observedCandles>=40&&
    map.asOf<=time&&Number(map.tolerance)>0))return candidate;
  const route=assessCandleLevelRoute({map,quoteHistory,quoteAt:at,now:time,
-   price:spot,side:candidate.provisionalSide||candidate.side||'CALL',durationMs});
+   price:spot,side:candidate.provisionalSide||candidate.side||'CALL'});
  const event=route?.event;
  if(!event||event.kind!=='rejection'||event.candleBacked!==true||route.conflict)return candidate;
- // Keep a qualified same-side setup; only independent opposite evidence
- // may displace an already-ready continuation. All downstream gates still run.
- if(candidate.ready===true&&event.side===candidate.side)return candidate;
  const zone=map.levels?.find(z=>Number(z.level)===Number(event.zone?.level));
  const proof=levelRoleEvidence(zone,event.side);
  if(!(proof.known&&proof.pivots>=1&&zone?.independentTests>=2&&

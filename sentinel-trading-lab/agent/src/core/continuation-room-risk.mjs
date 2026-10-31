@@ -1,4 +1,3 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Causal, price-first qualification of continuation approaching an OPPOSING
 // independently rejected historic wall. Does not decide a direction, create a
 // trade, change an expiry or wait for an arbitrary number of seconds.
@@ -28,7 +27,7 @@ export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteA
  // opposing-wall evidence without requiring deceleration first. Impulses,
  // range reversals and five-minute admission keep their own rules.
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),sign=candidate.side==='CALL'?1:-1;
- if(!(usable(spot)&&at>0&&at<=clock&&clock-at<=structuralQuoteMaxAgeMs(durationMs)&&
+ if(!(usable(spot)&&at>0&&at<=clock&&clock-at<=1450&&
    Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return null;
  const map=structure?.candleLevelMap;
  const tol=Math.max(Number(map?.tolerance)||0,Number(structure?.tolerance)||0);

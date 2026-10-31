@@ -1,13 +1,12 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Causal last-mile admission: never infer direction from the previous candle alone.
 // This module does not submit orders, delay a signal or reverse its side.
 const valid=p=>Number.isFinite(p)&&p>0;
 const continuation=/continuation|breakout|trend|impulse|followthrough|cycle|analogue|forecast/i;
 const reversal=/reversal|rejection|reclaim|range-extreme|structure-change/i;
-export function liveEntryContradiction({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function liveEntryContradiction({candidate,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side))return null;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),sign=candidate.side==='CALL'?1:-1;
- if(!valid(spot)||at<=0||at>clock||clock-at>structuralQuoteMaxAgeMs(durationMs)||
+ if(!valid(spot)||at<=0||at>clock||clock-at>1450||
   Number(candidate.observedAt)!==at||Number(candidate.entryPrice)!==spot)return null;
  const q=[];
  for(let i=quoteHistory.length-1;i>=0;i--){

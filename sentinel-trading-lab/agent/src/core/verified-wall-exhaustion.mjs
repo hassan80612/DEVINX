@@ -1,4 +1,3 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // Conservative NOW market-base admission screen. Never changes an expiry,
 // candle period, selector, scheduled entry, broker, martingale or WIN/LOSS.
 const finitePositive=p=>typeof p==='number'&&Number.isFinite(p)&&p>0;
@@ -6,14 +5,14 @@ const validated=x=>Number.isFinite(Number(x))?Number(x):NaN;
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 
 export function verifiedWallExhaustionRisk({
- candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs
+ candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price
 }={}){
  // A setup name cannot exempt an approach to a DIFFERENT opposing wall.
  // A breakout already beyond that wall and an accelerating continuation
  // still pass the geometric and observed-deceleration checks below.
  if(candidate?.ready!==true||!['CALL','PUT'].includes(candidate.side))return null;
  const ts=validated(quoteAt),clock=validated(now),spot=validated(price);
- if(!(finitePositive(spot)&&ts>0&&clock>=ts&&clock-ts<=structuralQuoteMaxAgeMs(durationMs)&&
+ if(!(finitePositive(spot)&&ts>0&&clock>=ts&&clock-ts<=1450&&
    Number(candidate.observedAt)===ts&&Number(candidate.entryPrice)===spot))return null;
  const map=structure?.candleLevelMap;
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&Array.isArray(map.levels)))return null;

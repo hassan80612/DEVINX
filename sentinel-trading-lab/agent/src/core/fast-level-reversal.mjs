@@ -1,14 +1,13 @@
-import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';
 // A fast V-shaped rejection of an ALREADY established directional level.
 // Only received prices qualify it. No timer, projected price, or extra candle.
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 const median=a=>{const v=[...a].sort((x,y)=>x-y);return v[Math.floor(v.length/2)]||0;};
 const copyLevel=z=>Object.fromEntries(['low','high','level','confirmedPivots','independentRejections',
  'supportPivots','resistancePivots','supportRejections','resistanceRejections'].map(k=>[k,z[k]]));
-export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function confirmedFastLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,price}={}){
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),tol=Number(map?.tolerance);
  if(!(map?.observedCandles>=10&&map.asOf<=clock&&tol>0&&at>0&&at<=clock&&
-   clock-at<=structuralQuoteMaxAgeMs(durationMs)&&spot>0&&Array.isArray(map.levels)))return null;
+   clock-at<=1450&&spot>0&&Array.isArray(map.levels)))return null;
  const rows=[];
  for(let i=quoteHistory.length-1;i>=0;i--){
   const q=quoteHistory[i],ts=Number(q?.ts),p=Number(q?.price);
