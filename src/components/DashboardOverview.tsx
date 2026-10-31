@@ -4,6 +4,7 @@ import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,notifyGoalUpdated} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
+import {reconcileCardInstallments} from '@/domain/card-installments';
 import {
   RecurringBillLike,RecurringOverrideLike,RecurringPaymentLike,
   billAppliesToMonth,billRemaining,billDueDay,dueDateForMonth,monthsBetween
@@ -228,15 +229,9 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     [reserveEntries]
   );
 
-  const cardRemainingById=useMemo(()=>{
-    const paid=new Map<string,number>();
-    cardItemPays.forEach(item=>{if(item.source_id)paid.set(item.source_id,(paid.get(item.source_id)||0)+Number(item.amount_minor))});
-    return new Map(cardInst.map(item=>{
-      const linked=paid.get(item.id)||0;
-      const remaining=item.paid_at?0:Math.max(0,Number(item.amount_minor)-linked);
-      return[item.id,remaining] as const;
-    }));
-  },[cardInst,cardItemPays]);
+  const cardRemainingById=useMemo(()=>new Map(
+    [...reconcileCardInstallments(cardInst,cardItemPays)].map(([id,balance])=>[id,balance.remaining] as const)
+  ),[cardInst,cardItemPays]);
 
   const numbers=useMemo(()=>{
     const today=localDateISO();
