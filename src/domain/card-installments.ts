@@ -22,3 +22,24 @@ export function reconcileCardInstallments(
     return[installment.id,{paid,remaining:original-paid}] as const;
   }));
 }
+
+export type CardOutstandingRow={remaining:number;dueDate:string;billing_month:string};
+
+// The collapsed card header and expanded installment schedule must be two
+// presentations of the exact same outstanding rows, never separate ledgers.
+export function summarizeCardOutstanding<T extends CardOutstandingRow>(
+  rows:readonly T[],currentMonth:string,today:string
+){
+  const unpaid=rows.filter(row=>row.remaining>0);
+  const monthOf=(row:T)=>row.dueDate.slice(0,7)+'-01';
+  const overdue=unpaid.filter(row=>row.dueDate<today).reduce((sum,row)=>sum+row.remaining,0);
+  const now=unpaid.filter(row=>monthOf(row)===currentMonth&&row.dueDate>=today)
+    .reduce((sum,row)=>sum+row.remaining,0);
+  const future=unpaid.filter(row=>monthOf(row)>currentMonth).reduce((sum,row)=>sum+row.remaining,0);
+  const statements=[...new Set(unpaid.map(row=>row.billing_month))].sort().map(month=>{
+    const monthRows=unpaid.filter(row=>row.billing_month===month);
+    return{month,amount:monthRows.reduce((sum,row)=>sum+row.remaining,0),
+      dueDate:monthRows[0].dueDate,rows:monthRows};
+  });
+  return{overdue,now,future,total:unpaid.reduce((sum,row)=>sum+row.remaining,0),statements};
+}
