@@ -1737,3 +1737,71 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextFutureDirection .marketReadingRow{
   flex:0 0 38px;max-height:38px;min-height:38px;overflow:hidden;
 }
+
+
+/* 13.9.207 mobile: compact and stabilize the live readout without modifying signal/expiry logic. */
+@media(max-width:900px){
+  /* The older 122px reservation left a visible empty canyon between the
+     direction and the secondary market reading on portrait phones. Retain
+     fixed slots for up to two headline lines and both status lines. */
+  .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
+  .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:44px 36px;
+    align-content:start;
+    align-items:start;
+    gap:2px;
+    height:82px!important;min-height:82px!important;max-height:82px!important;
+    overflow:hidden;
+  }
+  .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]) > strong,
+  .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]) > strong{
+    height:44px;min-height:44px;max-height:44px;
+    flex:none;line-height:1.2!important;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    overflow:hidden;
+  }
+  .liveScenario .vnextFutureDirection .marketReadingRow,
+  .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection .marketReadingRow{
+    display:grid;grid-template-rows:16px 16px;gap:2px;
+    height:36px;min-height:36px;max-height:36px;
+    margin-top:0!important;flex:none;overflow:hidden;
+    align-content:start;
+  }
+  .liveScenario .vnextFutureDirection .marketReadingSlot,
+  .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection .marketReadingSlot{
+    height:16px;min-height:16px;max-height:16px;
+    line-height:16px;overflow:hidden;
+  }
+  .liveScenario .vnextFutureDirection .marketReadingSlot>span,
+  .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection .marketReadingSlot>span{
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:16px;
+  }
+
+  /* Live signal wording must not toggle the bias strip between one and
+     two rows (VENCIMENTO / SINAL / PERÍODO APÓS). */
+  .liveScenario .vnextProjectionBias{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-rows:26px 24px;align-content:center;align-items:center;
+    gap:3px 7px;min-height:61px;box-sizing:border-box;
+  }
+  .liveScenario .vnextProjectionBias>span{
+    display:block;min-width:0;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;line-height:22px;
+  }
+  .liveScenario .vnextProjectionBias>span:nth-child(3){grid-column:1/-1}
+  .liveScenario .vnextProjectionBias b{font-variant-numeric:tabular-nums}
+
+  /* Entry and live quote stay the same height as labels and timestamps
+     change; no absolute positioning or new timers. */
+  .liveScenario .vnextEntryQuotePair>div{min-height:67px;box-sizing:border-box}
+  .liveScenario .vnextReceiptTitle{min-height:20px}
+  .liveScenario .vnextTargetCountdown{min-height:80px;box-sizing:border-box}
+  .liveScenario .vnextTargetCountdown strong,
+  .liveScenario .vnextTargetCountdown b,
+  .liveScenario .vnextEntryQuotePair strong,
+  .liveScenario .vnextMobileReadingsGrid span{font-variant-numeric:tabular-nums}
+  /* The contextual strategy sentence should not appear/disappear per tick. */
+  .liveScenario .vnextEngineToolbar>[data-testid="automatic-chart-context"]{display:none!important}
+}
