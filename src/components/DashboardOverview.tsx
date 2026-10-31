@@ -102,14 +102,17 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
   const refreshTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const refreshRunning=useRef(false);
   const refreshQueued=useRef(false);
+  const latestSnapshotRequest=useRef(0);
 
   async function load(show=false,periodOverride?:ChartPeriod){
+    const requestId=++latestSnapshotRequest.current;
     if(show)setLoading(true);
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.replace('/entrar');return}
 
     const{data:snapshotData,error:snapshotError}=await s.rpc('get_dashboard_snapshot');
+    if(requestId!==latestSnapshotRequest.current)return;
     if(snapshotError||!snapshotData){
       setLoading(false);
       return;
