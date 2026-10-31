@@ -7,9 +7,12 @@ const root=new URL('../',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
 const fixture=JSON.parse(read('tests/fixtures/sentinel-201-recorded-admission.json'));
 const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
-test('201: exactly the tested final admission is added to the published 199 runtime',()=>{
+test('204: explicit reviewer and closed-price admission preserve the published 199 runtime',()=>{
  const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
- const original=runtime.replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
+ const original=runtime
+  .replace("import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';\n",'')
+  .replace(/      \/\/ Review the proposed entry[\s\S]*?      eligible=reviewPreEntryRisk\(\{[\s\S]*?      \}\);\n/,'')
+  .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
   .replace(/      \/\/ Compare a qualified entry[\s\S]*?      eligible=reviewPreviousClosedCandlePrice\(\{[\s\S]*?      \}\);\n/,'');
  assert.equal(gitSha(original),'9ade5cb89128dc64dac05b84d96c5069e2972cf0');
  assert.ok(runtime.indexOf('eligible=reviewPreviousClosedCandlePrice(')>runtime.indexOf('eligible=reviewSetupIntegrity('));

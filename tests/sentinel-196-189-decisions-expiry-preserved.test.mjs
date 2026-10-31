@@ -7,10 +7,12 @@ import {reviewEarlyDistantReversal} from '../sentinel-trading-lab/agent/src/core
 import {verifyBrokerExpiryForOrder} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
-test('201: preserves the 197 runtime except the two explicit price admission reviews',()=>{
+test('204: preserves the 197 runtime except the three explicit admission reviews',()=>{
  const runtime=read('src/core/runtime.mjs'),room=read('src/core/continuation-room-risk.mjs');
  const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
  const previousRuntime=runtime
+   .replace("import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';\n",'')
+   .replace(/      \/\/ Review the proposed entry[\s\S]*?      eligible=reviewPreEntryRisk\(\{[\s\S]*?      \}\);\n/,'')
    .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
    .replace(/      \/\/ Compare a qualified entry[\s\S]*?      eligible=reviewPreviousClosedCandlePrice\(\{[\s\S]*?      \}\);\n/,'')
    .replace("import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';\n",'')

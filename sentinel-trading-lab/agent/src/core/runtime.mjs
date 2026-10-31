@@ -47,6 +47,7 @@ import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';
 import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
+import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1237,6 +1238,14 @@ export class DemoTradingRuntime{
       // Reuse the tested price rule; no new quote wait, timer or side inversion.
       eligible=reviewPreviousClosedCandlePrice({
         candidate:eligible,candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        durationMs:settings.orderDurationMs
+      });
+      // Review the proposed entry against contrary evidence already observed.
+      // No new market read, wait, side flip or expiration change.
+      eligible=reviewPreEntryRisk({
+        candidate:eligible,structure:reactionStructure,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
       });
