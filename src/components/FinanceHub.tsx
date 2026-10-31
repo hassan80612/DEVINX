@@ -115,7 +115,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   // Same-browser tabs also receive a lightweight storage change token.
   useEffect(()=>{
     if(!access?.allowed)return;
-    let scheduled:ReturnType<typeof setTimeout>|null=null;
+    let scheduled:number|null=null;
     const refreshExternalChanges=()=>{
       if(document.visibilityState!=='visible')return;
       if(scheduled!==null)window.clearTimeout(scheduled);
