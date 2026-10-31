@@ -47,3 +47,41 @@ test('the installed app and browser refresh financial components on focus and vi
   assert.ok(cards.includes('reconcileCardInstallments(inst,itemPays)'));
   assert.ok(cards.includes("s.rpc('register_card_installment_batch'"));
 });
+
+import {reconcileCardInstallments} from '../src/domain/card-installments.ts';
+
+test('paid card installments disappear from purchase, bill and goal balances',()=>{
+  const installments=[
+    {id:'first',amount_minor:5611,paid_at:'2026-10-31T12:00:00Z'},
+    {id:'second',amount_minor:5611,paid_at:null},
+    {id:'third',amount_minor:5611,paid_at:null},
+  ];
+  const balances=reconcileCardInstallments(installments,[]);
+  assert.deepEqual(balances.get('first'),{paid:5611,remaining:0});
+  assert.equal(balances.get('second')?.remaining,5611);
+  assert.equal([...balances.values()].reduce((sum,row)=>sum+row.remaining,0),11222);
+});
+
+test('partial payment reduces the same remaining amount in every screen',()=>{
+  const balances=reconcileCardInstallments(
+    [{id:'installment-2',amount_minor:10000,paid_at:null}],
+    [{source_id:'installment-2',amount_minor:2400},{source_id:'installment-2',amount_minor:1600}]
+  );
+  assert.deepEqual(balances.get('installment-2'),{paid:4000,remaining:6000});
+});
+
+test('settlement discount closes an installment even if its cash payment was lower',()=>{
+  const balances=reconcileCardInstallments(
+    [{id:'discounted',amount_minor:8316,paid_at:'2026-10-31T12:00:00Z'}],
+    [{source_id:'discounted',amount_minor:5000}]
+  );
+  assert.deepEqual(balances.get('discounted'),{paid:8316,remaining:0});
+});
+
+test('a fully paid cash ledger never remains pending even without paid_at',()=>{
+  const balances=reconcileCardInstallments(
+    [{id:'paid-by-ledger',amount_minor:4995,paid_at:null}],
+    [{source_id:'paid-by-ledger',amount_minor:2500},{source_id:'paid-by-ledger',amount_minor:2495}]
+  );
+  assert.deepEqual(balances.get('paid-by-ledger'),{paid:4995,remaining:0});
+});
