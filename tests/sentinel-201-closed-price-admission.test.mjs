@@ -9,7 +9,10 @@ const fixture=JSON.parse(read('tests/fixtures/sentinel-201-recorded-admission.js
 const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
 test('204: explicit reviewer and closed-price admission preserve the published 199 runtime',()=>{
  const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
+ assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
  const original=runtime
+  .replace("import {reviewStretchedContinuationEntry} from './stretched-continuation-admission.mjs';\n",'')
+  .replace("      // An otherwise healthy trend can be too late at the 60-second edge.\n      // Admission-only: no reversal flip, no artificial wait, no expiry change.\n      eligible=reviewStretchedContinuationEntry({candidate:eligible,quoteHistory:snap.quoteHistory,\n        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});\n",'')
   .replace("import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';\n",'')
   .replace(/      \/\/ Review the proposed entry[\s\S]*?      eligible=reviewPreEntryRisk\(\{[\s\S]*?      \}\);\n/,'')
   .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')

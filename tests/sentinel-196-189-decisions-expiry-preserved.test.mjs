@@ -10,7 +10,10 @@ const read=p=>readFileSync(new URL(p,root),'utf8');
 test('204: preserves the 197 runtime except the three explicit admission reviews',()=>{
  const runtime=read('src/core/runtime.mjs'),room=read('src/core/continuation-room-risk.mjs');
  const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
+ assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
  const previousRuntime=runtime
+  .replace("import {reviewStretchedContinuationEntry} from './stretched-continuation-admission.mjs';\n",'')
+  .replace("      // An otherwise healthy trend can be too late at the 60-second edge.\n      // Admission-only: no reversal flip, no artificial wait, no expiry change.\n      eligible=reviewStretchedContinuationEntry({candidate:eligible,quoteHistory:snap.quoteHistory,\n        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs});\n",'')
    .replace("import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';\n",'')
    .replace(/      \/\/ Review the proposed entry[\s\S]*?      eligible=reviewPreEntryRisk\(\{[\s\S]*?      \}\);\n/,'')
    .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
