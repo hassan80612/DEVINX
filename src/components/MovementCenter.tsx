@@ -6,7 +6,7 @@ import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
-import {RecurringBillLike,RecurringOverrideLike,billAppliesToMonth,billDueDay,billRemaining,dueDateForMonth,installmentNumber} from '@/domain/recurring';
+import {RecurringBillLike,RecurringOverrideLike,billAppliesToMonth,billDueDay,billRemaining,dueDateForMonth,installmentNumber,monthsBetween} from '@/domain/recurring';
 
 type View='today'|'history'|'pending';
 type Tx={id:string;type:'income'|'expense';category_id:string;description:string|null;amount_minor:number;occurred_on:string;payment_method:string|null;is_avoidable:boolean;source_type:string|null;source_id:string|null};
@@ -21,7 +21,7 @@ type ReserveEntry={id:string;kind:'deposit'|'withdraw';amount_minor:number;occur
 type SearchBill={id:string;name:string;category_id:string;amount_minor:number;due_day:number;payment_method:string|null;start_month:string;installment_count:number|null;is_active:boolean};
 type SearchDebt={id:string;name:string;original_minor:number;outstanding_minor:number;installment_minor:number|null;installments_remaining:number|null;expected_end:string|null;due_day:number|null;is_active:boolean;created_at:string};
 type SearchFuturePlan={id:string;kind:'income'|'expense';name:string;amount_minor:number;category_id:string;due_date:string;recurrence:string;reserve_enabled:boolean;is_active:boolean};
-type SearchData={tx:Tx[];work:Work[];recPays:RecPay[];cardPays:CardPay[];reserveEntries:ReserveEntry[];categories:CustomCategory[];bills:SearchBill[];purchases:Purchase[];debts:SearchDebt[];futurePlans:SearchFuturePlan[]};
+type SearchData={tx:Tx[];work:Work[];recPays:RecPay[];cardPays:CardPay[];reserveEntries:ReserveEntry[];categories:CustomCategory[];bills:SearchBill[];billOverrides:BillOverride[];purchases:Purchase[];debts:SearchDebt[];futurePlans:SearchFuturePlan[]};
 type CashRow={id:string;kind:'tx'|'work-income'|'bill-payment'|'card-payment'|'reserve-transfer';sign:1|-1;amount:number;date:string;title:string;subtitle:string;groupKey:string;groupLabel:string;raw:Tx|Work|RecPay|CardPay|ReserveEntry};
 type SearchRow={id:string;status:'realized'|'pending'|'planned';sign:1|-1;amount:number;date:string;title:string;subtitle:string;keywords:string;cash?:CashRow;target?:'bills'|'cards'|'debts'|'plan'};
 
@@ -92,7 +92,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     const{data:{user}}=await s.auth.getUser();
     if(!user){if(show)setSearching(false);return}
     try{
-      const[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll]=await Promise.all([
+      const[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll,overridesAll]=await Promise.all([
         s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
         s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).order('worked_on',{ascending:false}),
         s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).order('paid_on',{ascending:false}),
@@ -102,9 +102,11 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
         s.from('recurring_bills').select('id,name,category_id,amount_minor,due_day,payment_method,start_month,installment_count,is_active').eq('user_id',user.id),
         s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,due_date,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
         s.from('debts').select('id,name,original_minor,outstanding_minor,installment_minor,installments_remaining,expected_end,due_day,is_active,created_at').eq('user_id',user.id).order('created_at',{ascending:false}),
-        s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id).order('due_date')
+        s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id).order('due_date'),
+        s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id)
       ]);
-      const failed=[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll].some(result=>result.error);
+      const failed=[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll,overridesAll].some(result=>result.error);
+      if(failed){setSearchError(t('common.errorAccess'));return}
       setSearchData({
         tx:(r1.data||[]) as Tx[],
         work:(r2.data||[]) as unknown as Work[],
@@ -113,11 +115,12 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
         reserveEntries:(r5.data||[]) as ReserveEntry[],
         categories:(cats.data||[]) as CustomCategory[],
         bills:(billsAll.data||[]) as SearchBill[],
+        billOverrides:(overridesAll.data||[]) as BillOverride[],
         purchases:(purchasesAll.data||[]) as unknown as Purchase[],
         debts:(debtsAll.data||[]) as SearchDebt[],
         futurePlans:(futureAll.data||[]) as SearchFuturePlan[]
       });
-      setSearchError(failed?t('common.errorAccess'):'');
+      setSearchError('');
     }catch{
       setSearchError(t('common.errorAccess'));
     }finally{
@@ -144,6 +147,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     if(view!=='pending'){
       const[r1,r2,r3,r4,r5,cats]=await Promise.all([...(cashCalls as any),categoriesCall] as any);
+      if([r1,r2,r3,r4,r5,cats].some(result=>result?.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
       setTx((r1?.data||[]) as Tx[]);setWork((r2?.data||[]) as unknown as Work[]);setRecPays((r3?.data||[]) as unknown as RecPay[]);setCardPays((r4?.data||[]) as unknown as CardPay[]);setReserveEntries((r5?.data||[]) as ReserveEntry[]);setCustomCategories((cats?.data||[]) as CustomCategory[]);
     }else{
       const current=localMonthStartISO();
@@ -156,6 +160,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
         s.from('transactions').select('source_id,amount_minor').eq('user_id',user.id).eq('source_type','card_installment_payment'),
         categoriesCall
       ]);
+      if([r1,r2,r3,r4,r5,cats].some(result=>result.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
       setBills((r1.data||[]) as Bill[]);setRecPays((r2.data||[]) as unknown as RecPay[]);setBillOverrides((r3.data||[]) as BillOverride[]);setPurchases((r4.data||[]) as unknown as Purchase[]);setCardItemPays((r5.data||[]) as CardItemPay[]);setCustomCategories((cats.data||[]) as CustomCategory[]);
     }
     setLoading(false);
@@ -236,10 +241,20 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     });
 
     searchData.bills.filter(b=>b.is_active).forEach(b=>{
-      const month=b.start_month>localMonthStartISO()?b.start_month:localMonthStartISO();
-      const due=dueDateForMonth(month,b.due_day);
+      const current=localMonthStartISO();
+      const oldest=addMonths(current,-12);
+      const start=b.start_month>oldest?b.start_month:oldest;
+      const future=addMonths(current,12);
+      const end=b.start_month>future?b.start_month:future;
+      const month=monthsBetween(start,end).find(candidate=>
+        billAppliesToMonth(b,candidate)&&
+        billRemaining(b,candidate,searchData.recPays,searchData.billOverrides)>0
+      );
+      if(!month)return; // Fully paid bills are history, not pending debt.
+      const remaining=billRemaining(b,month,searchData.recPays,searchData.billOverrides);
+      const due=dueDateForMonth(month,billDueDay(b,month,searchData.billOverrides));
       const category=categoryName('expense',b.category_id,searchData.categories,t);
-      add({id:'bill:'+b.id,status:'pending',sign:-1,amount:Number(b.amount_minor),date:due,title:b.name,subtitle:t('nav.bills')+' · '+category,keywords:[b.name,category,b.category_id,b.payment_method,t('common.pending'),t('common.expense')].filter(Boolean).join(' '),target:'bills'});
+      add({id:'bill:'+b.id,status:'pending',sign:-1,amount:remaining,date:due,title:b.name,subtitle:t('nav.bills')+' · '+category,keywords:[b.name,category,b.category_id,b.payment_method,t('common.pending'),t('common.expense')].filter(Boolean).join(' '),target:'bills'});
     });
 
     searchData.purchases.forEach(p=>{
