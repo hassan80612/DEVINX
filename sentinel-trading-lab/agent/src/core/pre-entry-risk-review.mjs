@@ -3,7 +3,7 @@ import {historicalPriceStructure} from './historical-price-structure.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 import {assessDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
-export const POLICY=Object.freeze({version:'202-pre-entry-reviewer-v1',scopeMs:[60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
+export const POLICY=Object.freeze({version:'203-selective-one-minute-admission-v1',scopeMs:[60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
 export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,quoteHistory=[],candles=[],structure=null}){
  const allowed=()=>({blocked:false,reasons:[],details:{}}),d=side==='CALL'?1:side==='PUT'?-1:0;
  if(!d||!POLICY.scopeMs.includes(durationMs)||!(price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=(durationMs===30000?1450:1950)))return allowed();
@@ -54,12 +54,31 @@ export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,q
 const labels={
  'opposing-zone-or-insufficient-room':'Zona contrária ainda não superada; entrada sem espaço.',
  'fast-reversal-against-dominant-leg-without-structure-change':'Reversão rápida contra fluxo dominante sem mudança estrutural.',
- 'minor-breakout-without-closed-candle-and-minute-support':'Rompimento local sem sustentação da vela fechada e do último minuto.'
+ 'minor-breakout-without-closed-candle-and-minute-support':'Rompimento local sem sustentação da vela fechada e do último minuto.',
+ 'one-minute-observed-range-turn':'Virada em faixa sem validação fora da amostra para 60 s.',
+ 'one-minute-confirmed-level-rejection':'Rejeição de nível com prova de 60 s em revisão; entrada suspensa.'
 };
-export function reviewPreEntryRisk({candidate,...input}={}){
+export function reviewPreEntryRisk({candidate,original,...input}={}){
  if(candidate?.ready!==true||Number(input.durationMs)!==60000||
    !['CALL','PUT'].includes(candidate.side)||Number(candidate.observedAt)!==Number(input.quoteAt)||
    Number(candidate.entryPrice)!==Number(input.price))return candidate;
+ // The retrospective sample was weakest for range turns and confirmed
+ // historical-level rejections. Keep the gate narrow: the structural-turn
+ // and failed-breakout families remain admitted, and no other expiry changes.
+ const matchingOriginal=original?.reason===candidate.reason&&original?.side===candidate.side&&
+  Number(original.observedAt)===Number(candidate.observedAt)&&
+  Number(original.entryPrice)===Number(candidate.entryPrice);
+ const proof=candidate.priceStructure?.reactionProof||
+  (matchingOriginal?original.priceStructure?.reactionProof:null);
+ const selectiveRule=candidate.reason==='closed-range-extreme-reversal-confirmed'&&
+   candidate.regime==='observed-range-turn'?'one-minute-observed-range-turn':
+  candidate.reason==='historical-level-rejection'&&proof?.confirmed===true&&
+   proof?.kind==='sustained-level-reversal'&&proof?.side===candidate.side&&
+   Number(proof.durationMs)===60000?
+    'one-minute-confirmed-level-rejection':null;
+ if(selectiveRule)return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+  reason:labels[selectiveRule],entryRisk:{kind:'selective-one-minute-admission',blocked:true,
+   reasons:[selectiveRule],details:{durationMs:60000,proofKind:proof?.kind||null}}};
  const review=evaluatePreEntryRisk({...input,side:candidate.side,reason:candidate.reason});
  if(!review.blocked)return candidate;
  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,

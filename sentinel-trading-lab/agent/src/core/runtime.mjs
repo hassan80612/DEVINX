@@ -1244,7 +1244,7 @@ export class DemoTradingRuntime{
       // Review the proposed entry against contrary evidence already observed.
       // No new market read, wait, side flip or expiration change.
       eligible=reviewPreEntryRisk({
-        candidate:eligible,structure:reactionStructure,
+        candidate:eligible,original:original66,structure:reactionStructure,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
