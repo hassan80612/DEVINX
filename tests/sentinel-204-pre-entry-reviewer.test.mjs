@@ -28,10 +28,11 @@ test('204: no future quote/candle can affect the entry veto',()=>{
   }),expected);
  }
 });
-test('204: five-minute candidates, waiting states and stale/mismatched observations remain owned by existing guards',()=>{
+test('204: 30s/5m candidates, waiting states and stale/mismatched observations remain owned by existing guards',()=>{
  const input=cases.find(r=>r.expectedReasons.length).input;
  const candidate={ready:true,side:input.side,reason:input.reason,observedAt:input.quoteAt,entryPrice:input.price};
  assert.equal(reviewPreEntryRisk({...input,candidate,durationMs:300000}),candidate);
+ assert.equal(reviewPreEntryRisk({...input,candidate,durationMs:30000}),candidate);
  const waiting={...candidate,ready:false};assert.equal(reviewPreEntryRisk({...input,candidate:waiting}),waiting);
  const mismatched={...candidate,entryPrice:input.price+.01};assert.equal(reviewPreEntryRisk({...input,candidate:mismatched}),mismatched);
  assert.equal(reviewPreEntryRisk({...input,candidate,now:input.quoteAt+1951}),candidate);

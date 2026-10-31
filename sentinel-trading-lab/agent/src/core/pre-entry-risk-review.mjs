@@ -3,7 +3,7 @@ import {historicalPriceStructure} from './historical-price-structure.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 import {assessDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
-export const POLICY=Object.freeze({version:'202-pre-entry-reviewer-v1',scopeMs:[30000,60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
+export const POLICY=Object.freeze({version:'202-pre-entry-reviewer-v1',scopeMs:[60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
 export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,quoteHistory=[],candles=[],structure=null}){
  const allowed=()=>({blocked:false,reasons:[],details:{}}),d=side==='CALL'?1:side==='PUT'?-1:0;
  if(!d||!POLICY.scopeMs.includes(durationMs)||!(price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=(durationMs===30000?1450:1950)))return allowed();
@@ -57,7 +57,7 @@ const labels={
  'minor-breakout-without-closed-candle-and-minute-support':'Rompimento local sem sustentação da vela fechada e do último minuto.'
 };
 export function reviewPreEntryRisk({candidate,...input}={}){
- if(candidate?.ready!==true||![30000,60000].includes(Number(input.durationMs))||
+ if(candidate?.ready!==true||Number(input.durationMs)!==60000||
    !['CALL','PUT'].includes(candidate.side)||Number(candidate.observedAt)!==Number(input.quoteAt)||
    Number(candidate.entryPrice)!==Number(input.price))return candidate;
  const review=evaluatePreEntryRisk({...input,side:candidate.side,reason:candidate.reason});

@@ -19,7 +19,7 @@ function oneMinuteFixture(f){
  for(const [i,price] of raw.entries())quoteHistory.push({ts:T+1750+i*250,price});
  const last=quoteHistory.at(-1);return {...f,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price};
 }
-test('rapid V at known support and resistance reaches full runtime for every strategy and expiry without another candle',()=>{
+test('204: rapid V keeps 30s admission and 5m proof; 1m additionally reviews the opposing dominant leg',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [30000,60000,300000]){
   const base=fixture(mirror),f=durationMs===60000?oneMinuteFixture(base):base,
    rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
@@ -28,6 +28,9 @@ test('rapid V at known support and resistance reaches full runtime for every str
   const out=rt._signalValidationGate({analysis:{},settings:rt.settings,now:f.now,snap:{provider:'exnova',price:f.price,quoteTs:f.quoteAt,quoteHistory:f.quoteHistory,candles:[],historicalCandlesVerified:true}});
   if(durationMs===300000){
    assert.equal(out.analysis.vnext.futureEntryAnchor,null,'a short V needs structural reversal proof for 5m');
+  }else if(durationMs===60000){
+   assert.equal(out.analysis.vnext.futureEntryAnchor,null);
+   assert.equal(out.analysis.vnext.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
   }else assert.equal(out.analysis.vnext.futureEntryAnchor?.side,f.side,`${engine} ${durationMs} ${f.side}`);
  }
 });

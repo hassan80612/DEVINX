@@ -53,12 +53,17 @@ test('the fast V detector remains observational and symmetric across horizons',(
    assert.equal(confirmedFastLevelReversal({...b,durationMs}),null);
  }
 });
-test('the actual full runtime keeps the confirmed fast side through probability/final review for every strategy and supported expiry',()=>{
+test('204: 30s preserves the fast side; 1m rejects a V against the dominant leg without structure; 5m keeps its own proof',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [30000,60000,300000]){
   const base=fixture(mirror),f=ms===60000?oneMinuteFixture(base):base,
    r=runtime(f,engine,ms),v=gate(r,f.q);
   if(ms===300000){
    assert.equal(v.futureEntryAnchor,null,'a fast V alone cannot authorize a five-minute reversal');
+   continue;
+  }
+  if(ms===60000){
+   assert.equal(v.futureEntryAnchor,null);
+   assert.equal(v.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
    continue;
   }
   assert.equal(v.futureEntryAnchor?.side,f.side,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
@@ -85,11 +90,13 @@ test('unreceived future quotes, unordered ticks, gaps, and old confirmations nev
  assert.equal(confirmedFastLevelReversal({...a,now:a.now+2000}),null);
  assert.equal(verifiedFastLevelReversal({...a,side:'CALL',reversalEvidence:{...proof,confirmedAt:a.now-10000}}),false);
 });
-test('skipped late-floor PUT leaves the way open for a later proven CALL reversal',()=>{
+test('204: 1m skips the late-floor PUT and still reviews the later fast V before entry',()=>{
  const f=oneMinuteFixture(fixture()),r=runtime(f,'automatic',60000),before=f.q.filter(q=>q.ts<=T-10000);
  const first=gate(r,before);
  assert.notEqual(first.futureEntryAnchor?.side,'PUT','do not chase an unverified downside impulse at the floor');
  const second=gate(r,f.q);
- assert.equal(second.nowObservation.side,'CALL');
- assert.equal(second.futureEntryAnchor?.side,'CALL','confirmed fast turn can be acted on');
+ assert.equal(second.nowObservation.side,null);
+ assert.equal(second.nowObservation.provisionalSide,'CALL');
+ assert.equal(second.futureEntryAnchor,null);
+ assert.equal(second.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
 });
