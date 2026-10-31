@@ -739,7 +739,12 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path.st
       return status();
     }
     return runtime.setMode(payload.mode,payload.actor||'user')
-  }if(path==='/settings'&&method==='PATCH'){if(payload.nativeExpiryMapping){const expiryMapping=await expiryMappingAction(activeProvider,String(payload.nativeExpiryMapping));return {...await status(),expiryMapping};}return runtime.patchSettings(payload,payload.actor||'user');}if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+  }if(path==='/settings'&&method==='PATCH'){if(payload.nativeExpiryMapping){const expiryMapping=await expiryMappingAction(activeProvider,String(payload.nativeExpiryMapping));return {...await status(),expiryMapping};}const changed=runtime.patchSettings(payload,payload.actor||'user');
+    // The website and PC selector must write the same durable native receipt.
+    // Only an explicit duration PATCH enters this path; status/reconnect never do.
+    if(Object.prototype.hasOwnProperty.call(payload,'orderDurationMs')&&activeProvider)
+      await driver.setNativeExpiryPreference?.(activeProvider,Number(payload.orderDurationMs),{preserveExisting:false});
+    return changed;}if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{

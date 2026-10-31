@@ -830,10 +830,18 @@ export class LocalPlaywrightDriver{
         });
         page.__sentinelExpiryPermissionExposed=true;
       }
+      if(!page.__sentinelNativeExpiryGetterExposed){
+        await page.exposeFunction('__sentinelGetNativeExpiryChoice',async()=>{
+          await this.nativeExpiryPreferenceReady;
+          return {durationMs:this.nativeExpiryPreferences.get(provider)??null,
+            selectedAt:this.nativeExpirySelectedAt.get(provider)||0};
+        });
+        page.__sentinelNativeExpiryGetterExposed=true;
+      }
       if(!page.__sentinelNativeExpiryChoiceExposed){
-        await page.exposeFunction('__sentinelRememberNativeExpiryChoice',async value=>{
+        await page.exposeFunction('__sentinelRememberNativeExpiryChoice',async (value,selectedAt)=>{
           const ms=Number(value);if(![30000,60000,300000].includes(ms))return false;
-          return this.setNativeExpiryPreference(provider,ms,{preserveExisting:false});
+          return this.setNativeExpiryPreference(provider,ms,{preserveExisting:false,selectedAt});
         });
         page.__sentinelNativeExpiryChoiceExposed=true;
       }
@@ -1478,6 +1486,10 @@ export class LocalPlaywrightDriver{
     const requested=Number(preferredMs);
     if(!accepted.has(requested/1000))return false;
     await this.nativeExpiryPreferenceReady;
+    const priorSelectedAt=Number(this.nativeExpirySelectedAt.get(provider)||0);
+    const receiptAt=Number(options.selectedAt)||0;
+    // A delayed callback from an older document cannot overwrite a later click.
+    if(receiptAt>0&&receiptAt<priorSelectedAt)return false;
     // Reconnection repeats the same analyst duration. It must not overwrite
     // a newer manual native choice with the analyst's old 30s default.
     const priorRequest=this.nativeExpiryRequestedDurations.get(provider);
@@ -1515,11 +1527,12 @@ export class LocalPlaywrightDriver{
     const previouslySaved=this.nativeExpiryPreferences.get(provider);
     this.nativeExpiryPreferences.set(provider,ms);
     if(!preserveExisting){
-      this.nativeExpirySelectedAt.set(provider,Date.now());
+      this.nativeExpirySelectedAt.set(provider,receiptAt||Math.max(Date.now(),priorSelectedAt+1));
     }
     // A more recent native manual selection discovered after a frame
     // rebuild must also be durable in the Agent, not only in localStorage.
-    const persistChanged=!preserveExisting||previouslySaved!==ms;
+    const persistChanged=!preserveExisting||previouslySaved!==ms||
+      priorSelectedAt!==Number(this.nativeExpirySelectedAt.get(provider)||0);
     if(persistChanged){
       this.nativeExpirySaveQueue=this.nativeExpirySaveQueue.catch(()=>{}).then(async()=>{
         await mkdir(this.dataDir,{recursive:true});
