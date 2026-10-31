@@ -12,6 +12,7 @@ import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 import {historicalPriceStructure,applyHistoricalPriceStructure} from './historical-price-structure.mjs';
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
 import {reviewEarlyDistantReversal} from './historical-extreme-timing.mjs';
+import {reviewEarlyVerifiedTurn} from './early-reversal-transition.mjs';
 import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 import {countertrendPivotRisk} from './shared-pivot-guard.mjs';
 import {verifiedWallExhaustionRisk} from './verified-wall-exhaustion.mjs';
@@ -535,8 +536,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // An earlier 1m reversal is admitted only by a confirmed old level,
   // an observed rejection and two actual supporting price moves.
   // No countertrend guess, no extra waiting, no change to 30s/5m flows.
-  const located=reviewEarlyDistantReversal({
-    candidate:locatedBase,map:structure.candleLevelMap,...input
+  // A verified first micro-turn at an OLD level can be earlier than the
+  // 3-of-4 closed-candle continuation gate. Do not weaken that gate.
+  const located=reviewEarlyVerifiedTurn({
+    candidate:reviewEarlyDistantReversal({
+      candidate:locatedBase,map:structure.candleLevelMap,...input
+    }),map:structure.candleLevelMap,...input
   });
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
