@@ -7,17 +7,19 @@ import {reviewEarlyDistantReversal} from '../sentinel-trading-lab/agent/src/core
 import {verifyBrokerExpiryForOrder} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
-test('198: preserves the IDENTICAL 197 runtime except explicit last-mile price review',()=>{
+test('201: preserves the 197 runtime except the two explicit price admission reviews',()=>{
  const runtime=read('src/core/runtime.mjs'),room=read('src/core/continuation-room-risk.mjs');
  const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
  const previousRuntime=runtime
+   .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
+   .replace(/      \/\/ Compare a qualified entry[\s\S]*?      eligible=reviewPreviousClosedCandlePrice\(\{[\s\S]*?      \}\);\n/,'')
    .replace("import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';\n",'')
    .replace(/      \/\/ Review only already-qualified[\s\S]*?      eligible=reviewSetupIntegrity\(\{[\s\S]*?      \}\);\n/,'');
  assert.equal(gitSha(previousRuntime),'f5118600856c7846e6e5a8470aed81acc95c167b');
  assert.equal(gitSha(room),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
  assert.match(runtime,/reviewOneMinuteRejectionProof/);
  assert.match(runtime,/reviewSetupIntegrity/);
- assert.doesNotMatch(runtime,/reviewDynamicEntryQuality|arbitrateFinalSide|reviewPreviousClosedCandlePrice/);
+ assert.doesNotMatch(runtime,/reviewDynamicEntryQuality|arbitrateFinalSide/);
 });
 test('196: original 189 fast 1m reversal route softened only from 50 to 40 prior candles',()=>{
  const timing=read('src/core/historical-extreme-timing.mjs');

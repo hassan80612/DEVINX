@@ -46,6 +46,7 @@ import {reviewLateImpulseEntry} from './late-impulse-admission.mjs';
 import {reviewLiveExtremeTiming} from './historical-extreme-timing.mjs';
 import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mjs';
 import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
+import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1231,6 +1232,13 @@ export class DemoTradingRuntime{
       eligible=reviewSetupIntegrity({
         candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
         now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // Compare a qualified entry with already CLOSED broker candles.
+      // Reuse the tested price rule; no new quote wait, timer or side inversion.
+      eligible=reviewPreviousClosedCandlePrice({
+        candidate:eligible,candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        durationMs:settings.orderDurationMs
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
