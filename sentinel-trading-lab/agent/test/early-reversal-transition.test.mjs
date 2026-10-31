@@ -101,3 +101,26 @@ test('the shared engine admits a first level micro-turn before its normal four-b
  assert.equal(updated.reason,'confirmed-level-structure-reversal');
  assert.equal(updated.earlyTurnEvidence.withoutThreeClosedBars,true);
 });
+
+test('a deep retest with a weak three-second comeback is not promoted to an early reversal',()=>{
+ const values=[.99902,.99918,.99940,.99962,.99985,1.00001,1.00010,
+  1.00002,.99980,.99962,.99982,.99972,.99957];
+ const h=tape('PUT',values);
+ const historic={...map,levels:[{...level,level:.99988,low:.99975,high:1.00015}]};
+ const x=ctx({history:h,m:historic});
+ assert.equal(review(x),x.candidate);
+ const alreadyConfirmed={ready:true,side:'PUT',reason:'confirmed-level-structure-reversal'};
+ assert.equal(review({...x,candidate:alreadyConfirmed}),alreadyConfirmed);
+});
+test('the same retest with a genuine three-second break retains its first qualified entry',()=>{
+ const values=[.99902,.99918,.99940,.99962,.99985,1.00001,1.00010,
+  1.00002,.99980,.99962,.99982,.99972,.99939];
+ const h=tape('PUT',values);
+ const historic={...map,levels:[{...level,level:.99988,low:.99975,high:1.00015}]};
+ for(const ms of [30000,60000]){
+  const out=review(ctx({history:h,m:historic,ms}));
+  assert.equal(out.ready,true,'expiry '+ms);
+  assert.equal(out.side,'PUT');
+  assert.equal(out.reason,'confirmed-level-structure-reversal');
+ }
+});
