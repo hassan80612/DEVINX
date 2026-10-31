@@ -48,6 +48,14 @@ export function reviewEarlyVerifiedTurn({candidate,map,quoteHistory=[],quoteAt,
    const retrace=opp*(retest.price-rows[first].price);
    if(!(retrace>=tol*.12&&retrace<=move*.75&&retestIndex>=first+1&&
        retestIndex<=rows.length-3))continue;
+   // Deep retests with an almost stationary 3s recovery were mistaken
+   // for an early turn. Judge the CURRENT rebound, not the old candle.
+   // No timed pause: missing 3s coverage leaves the established policy intact.
+   const threeSecondTarget=at-3000;
+   const threeSecond=rows.findLast(q=>q.ts<=threeSecondTarget);
+   const presentThreeSecond=threeSecond&&threeSecondTarget-threeSecond.ts<=1500;
+   const recovery3=presentThreeSecond?d*(spot-threeSecond.price):null;
+   if(retrace>=tol*.6&&recovery3!==null&&recovery3<tol*.75)continue;
    const last=rows.at(-1),prev=rows.at(-2),prev2=rows.at(-3);
    if(!(d*(last.price-prev.price)>0&&d*(prev.price-prev2.price)>0&&
        d*(last.price-rows[first].price)>=tol*.18&&
