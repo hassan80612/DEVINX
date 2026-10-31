@@ -75,6 +75,8 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
   const[cardInst,setCardInst]=useState<CardInst[]>([]);
   const[cardItemPays,setCardItemPays]=useState<CardItemPay[]>([]);
   const[cardPays,setCardPays]=useState<CardPay[]>([]);
+  const[flowBillPays,setFlowBillPays]=useState<BillPay[]>([]);
+  const[flowCardPays,setFlowCardPays]=useState<CardPay[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
   const[futurePlans,setFuturePlans]=useState<FuturePlanLike[]>([]);
@@ -144,9 +146,11 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
 
     setBills((snapshot.bills||[]) as Bill[]);
     setBillPays(allBillPays);
+    setFlowBillPays(allBillPays.filter(item=>item.paid_on>=from));
+    setFlowCardPays(allCardPays.filter(item=>item.paid_on>=from));
     setBillOverrides((snapshot.bill_overrides||[]) as BillOverride[]);
     setCardInst((snapshot.card_installments||[]) as CardInst[]);
-    setCardPays(allCardPays.filter(item=>item.paid_on>=from));
+    setCardPays(allCardPays);
     setDebtPays((snapshot.debt_payments||[]) as DebtPay[]);
     setReserveEntries((snapshot.reserve_entries||[]) as ReserveEntry[]);
     setFuturePlans((snapshot.future_plans||[]) as FuturePlanLike[]);
@@ -180,10 +184,13 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',userId).gte('paid_on',from)
     ]);
+    if(rTx.error||rWork.error||rBillPay.error||rCardPay.error)return;
     setTx((rTx.data||[]) as Tx[]);
     setWork((rWork.data||[]) as Work[]);
-    setBillPays((rBillPay.data||[]) as BillPay[]);
-    setCardPays((rCardPay.data||[]) as CardPay[]);
+    // Never overwrite complete settlement ledgers when the chart range changes.
+    // Filters should only affect graph points, not debts or the daily goal.
+    setFlowBillPays((rBillPay.data||[]) as BillPay[]);
+    setFlowCardPays((rCardPay.data||[]) as CardPay[]);
   }
 
   useLayoutEffect(()=>{
@@ -361,12 +368,12 @@ export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:st
     };
     tx.filter(item=>item.source_type!=='cash_adjustment'&&item.source_type!=='cash_adjustment_v2'&&item.source_type!=='work_cash_model_migration').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
     work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),0));
-    billPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
-    cardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
+    flowBillPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
+    flowCardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
 
     const max=Math.max(1,...rows.flatMap(row=>[row.income,row.out]));
     return{rows,max,labelEvery};
-  },[tx,work,billPays,cardPays,chartPeriod]);
+  },[tx,work,flowBillPays,flowCardPays,chartPeriod]);
 
   const selectedFlowRow=flowChart.rows.find(row=>row.key===selectedFlowKey)||null;
 
