@@ -3,6 +3,7 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
+import {activeFinanceTransactions,isCardGeneratedTransaction} from '@/domain/finance-scope';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
@@ -92,31 +93,29 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     const{data:{user}}=await s.auth.getUser();
     if(!user){if(show)setSearching(false);return}
     try{
-      const[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll,overridesAll]=await Promise.all([
+      const[r1,r2,r3,r5,cats,billsAll,debtsAll,futureAll,overridesAll]=await Promise.all([
         s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
         s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).order('worked_on',{ascending:false}),
         s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).order('paid_on',{ascending:false}),
-        s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).order('paid_on',{ascending:false}),
         s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
         s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id),
         s.from('recurring_bills').select('id,name,category_id,amount_minor,due_day,payment_method,start_month,installment_count,is_active').eq('user_id',user.id),
-        s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,due_date,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
         s.from('debts').select('id,name,original_minor,outstanding_minor,installment_minor,installments_remaining,expected_end,due_day,is_active,created_at').eq('user_id',user.id).order('created_at',{ascending:false}),
         s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id).order('due_date'),
         s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id)
       ]);
-      const failed=[r1,r2,r3,r4,r5,cats,billsAll,purchasesAll,debtsAll,futureAll,overridesAll].some(result=>result.error);
+      const failed=[r1,r2,r3,r5,cats,billsAll,debtsAll,futureAll,overridesAll].some(result=>result.error);
       if(failed){setSearchError(t('common.errorAccess'));return}
       setSearchData({
-        tx:(r1.data||[]) as Tx[],
+        tx:activeFinanceTransactions((r1.data||[]) as Tx[]),
         work:(r2.data||[]) as unknown as Work[],
         recPays:(r3.data||[]) as unknown as RecPay[],
-        cardPays:(r4.data||[]) as unknown as CardPay[],
+        cardPays:[],
         reserveEntries:(r5.data||[]) as ReserveEntry[],
         categories:(cats.data||[]) as CustomCategory[],
         bills:(billsAll.data||[]) as SearchBill[],
         billOverrides:(overridesAll.data||[]) as BillOverride[],
-        purchases:(purchasesAll.data||[]) as unknown as Purchase[],
+        purchases:[],
         debts:(debtsAll.data||[]) as SearchDebt[],
         futurePlans:(futureAll.data||[]) as SearchFuturePlan[]
       });
@@ -141,27 +140,24 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
       s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end).order('worked_on',{ascending:false}),
       s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false}),
-      s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false}),
       s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end).order('occurred_on',{ascending:false}).order('created_at',{ascending:false})
     ];
 
     if(view!=='pending'){
-      const[r1,r2,r3,r4,r5,cats]=await Promise.all([...(cashCalls as any),categoriesCall] as any);
-      if([r1,r2,r3,r4,r5,cats].some(result=>result?.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
-      setTx((r1?.data||[]) as Tx[]);setWork((r2?.data||[]) as unknown as Work[]);setRecPays((r3?.data||[]) as unknown as RecPay[]);setCardPays((r4?.data||[]) as unknown as CardPay[]);setReserveEntries((r5?.data||[]) as ReserveEntry[]);setCustomCategories((cats?.data||[]) as CustomCategory[]);
+      const[r1,r2,r3,r5,cats]=await Promise.all([...(cashCalls as any),categoriesCall] as any);
+      if([r1,r2,r3,r5,cats].some(result=>result?.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
+      setTx(activeFinanceTransactions((r1?.data||[]) as Tx[]));setWork((r2?.data||[]) as unknown as Work[]);setRecPays((r3?.data||[]) as unknown as RecPay[]);setCardPays([]);setReserveEntries((r5?.data||[]) as ReserveEntry[]);setCustomCategories((cats?.data||[]) as CustomCategory[]);
     }else{
       const current=localMonthStartISO();
       const oldest=addMonths(current,-12);
-      const[r1,r2,r3,r4,r5,cats]=await Promise.all([
+      const[r1,r2,r3,cats]=await Promise.all([
         s.from('recurring_bills').select('id,name,amount_minor,due_day,start_month,installment_count,created_at,category_id,payment_method,is_avoidable').eq('user_id',user.id).eq('is_active',true).order('due_day'),
         s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('due_month',oldest),
         s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).gte('due_month',oldest),
-        s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,due_date,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
-        s.from('transactions').select('source_id,amount_minor').eq('user_id',user.id).eq('source_type','card_installment_payment'),
         categoriesCall
       ]);
-      if([r1,r2,r3,r4,r5,cats].some(result=>result.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
-      setBills((r1.data||[]) as Bill[]);setRecPays((r2.data||[]) as unknown as RecPay[]);setBillOverrides((r3.data||[]) as BillOverride[]);setPurchases((r4.data||[]) as unknown as Purchase[]);setCardItemPays((r5.data||[]) as CardItemPay[]);setCustomCategories((cats.data||[]) as CustomCategory[]);
+      if([r1,r2,r3,cats].some(result=>result.error)){setNotice(t('common.errorAccess'));setLoading(false);return}
+      setBills((r1.data||[]) as Bill[]);setRecPays((r2.data||[]) as unknown as RecPay[]);setBillOverrides((r3.data||[]) as BillOverride[]);setPurchases([]);setCardItemPays([]);setCustomCategories((cats.data||[]) as CustomCategory[]);
     }
     setLoading(false);
   }
@@ -178,7 +174,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   function composeCashRows(txItems:Tx[],workItems:Work[],recItems:RecPay[],cardItems:CardPay[],reserveItems:ReserveEntry[],cats:CustomCategory[]){
     const rows:CashRow[]=[];
     txItems.forEach(item=>{
-      if(item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2'||item.source_type==='work_cash_model_migration')return;
+      if(item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2'||item.source_type==='work_cash_model_migration'||isCardGeneratedTransaction(item.source_type))return;
       const isDebt=item.source_type==='debt_payment';
       const isFuture=item.source_type==='future_plan';
       const isCardItem=item.source_type==='card_installment_payment';
@@ -195,7 +191,6 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const cat=item.recurring_bills?.category_id||'other';
       rows.push({id:'rp:'+item.id,kind:'bill-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.recurring_bills?.name||t('move.billPayment'),subtitle:t('move.billPayment'),groupKey:'expense:'+cat,groupLabel:categoryName('expense',cat,cats,t),raw:item});
     });
-    cardItems.forEach(item=>rows.push({id:'cp:'+item.id,kind:'card-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.credit_cards?.name||t('move.cardPayment'),subtitle:t('move.cardPayment')+' · '+date(item.statement_month,{month:'long',year:'numeric'}),groupKey:'system:cards',groupLabel:t('nav.cards'),raw:item}));
     reserveItems.forEach(item=>rows.push({
       id:'rs:'+item.id,
       kind:'reserve-transfer',
@@ -222,11 +217,6 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const haystack=normalizeSearch([row.title,row.subtitle,row.keywords,row.date,amount,amount.replace('.',',')].filter(Boolean).join(' '));
       if(tokens.every(token=>haystack.includes(token)))rows.push(row);
     };
-    const searchCardPaidMap=new Map<string,number>();
-    searchData.tx.filter(item=>item.source_type==='card_installment_payment'&&item.source_id).forEach(item=>{
-      searchCardPaidMap.set(item.source_id!, (searchCardPaidMap.get(item.source_id!)||0)+Number(item.amount_minor));
-    });
-
     composeCashRows(searchData.tx,searchData.work,searchData.recPays,searchData.cardPays,searchData.reserveEntries,searchData.categories).forEach(row=>{
       const raw=row.raw as any;
       add({
@@ -255,18 +245,6 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const due=dueDateForMonth(month,billDueDay(b,month,searchData.billOverrides));
       const category=categoryName('expense',b.category_id,searchData.categories,t);
       add({id:'bill:'+b.id,status:'pending',sign:-1,amount:remaining,date:due,title:b.name,subtitle:t('nav.bills')+' · '+category,keywords:[b.name,category,b.category_id,b.payment_method,t('common.pending'),t('common.expense')].filter(Boolean).join(' '),target:'bills'});
-    });
-
-    searchData.purchases.forEach(p=>{
-      const remaining=(p.card_installments||[]).reduce((sum,i)=>{
-        const linked=searchCardPaidMap.get(i.id)||0;
-        const paid=i.paid_at?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
-        return sum+Math.max(0,Number(i.amount_minor)-paid);
-      },0);
-      const open=remaining>0;
-      const card=p.credit_cards?.name||t('nav.cards');
-      const category=categoryName('expense',p.category_id,searchData.categories,t);
-      add({id:'purchase:'+p.id,status:open?'pending':'realized',sign:-1,amount:open?remaining:Number(p.total_minor),date:p.purchased_on,title:p.description||card,subtitle:card+' · '+p.installment_count+'x · '+category,keywords:[p.description,card,category,p.category_id,t('move.cardCommitment'),open?t('common.pending'):t('common.history')].filter(Boolean).join(' '),target:'cards'});
     });
 
     searchData.debts.filter(d=>d.is_active&&Number(d.outstanding_minor)>0).forEach(d=>{
@@ -335,26 +313,6 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   },[bills,recPays,billOverrides]);
 
   function currentMonth(){return localMonthStartISO()}
-
-  const purchasePending=useMemo(()=>{
-    const current=currentMonth();
-    const today=localDateISO();
-    const paidMap=new Map<string,number>();
-    cardItemPays.forEach(item=>{if(item.source_id)paidMap.set(item.source_id,(paidMap.get(item.source_id)||0)+Number(item.amount_minor))});
-    return purchases.flatMap(p=>(p.card_installments||[])
-      .map(i=>{
-        const linked=paidMap.get(i.id)||0;
-        const paid=i.paid_at?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
-        const remaining=Math.max(0,Number(i.amount_minor)-paid);
-        const dueDate=i.due_date||cardDueDate(i.billing_month,p.credit_cards?.due_day??null);
-        const dueMonth=dueDate.slice(0,7)+'-01';
-        const status=dueDate<today?'overdue':dueMonth>current?'future':'current';
-        return{purchase:p,installment:i,status,dueDate,paid,remaining};
-      })
-      .filter(item=>item.remaining>0))
-      .sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.purchase.purchased_on.localeCompare(b.purchase.purchased_on));
-  },[purchases,cardItemPays]);
-
 
   async function syncCardInstallmentStatus(s:ReturnType<typeof createClient>,userId:string,installmentId:string,preserveSettled=false){
     const[instResult,paymentsResult]=await Promise.all([
@@ -526,9 +484,8 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     </>}
 
     {!searchActive&&view==='pending'&&<>
-      {loading?<section className="panel"><span className="loader"/></section>:billPending.length+purchasePending.length===0?<section className="empty"><b>{t('move.noPending')}</b></section>:<div className="pendingStack">
+      {loading?<section className="panel"><span className="loader"/></section>:billPending.length===0?<section className="empty"><b>{t('move.noPending')}</b></section>:<div className="pendingStack">
         {billPending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.bills').toUpperCase()}</small><h2>{t('nav.bills')}</h2></div></div>{billPending.map(item=><article className="pendingRow premiumPendingRow" key={item.key}><div className="pendingCopy"><b>{item.bill.name}</b><small>{item.bill.installment_count&&item.installment?t('bills.installment')+' '+item.installment+'/'+item.bill.installment_count+' · ':''}{t('move.dueOn')} {date(item.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></div><strong>{currency(item.remaining)}</strong><div className="pendingFooter"><span className={item.overdue?'statusBadge overdue':'statusBadge'}>{item.overdue?t('common.overdue'):item.month>currentMonth()?t('move.future'):t('common.pending')}</span><button className="pendingOpenButton" onClick={()=>onNavigate?.('bills')}>{t('move.openModule')} <i>›</i></button></div></article>)}</section>}
-        {purchasePending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.cards').toUpperCase()}</small><h2>{t('cards.totalOpen')}</h2></div></div>{purchasePending.map(item=><article className="pendingRow premiumPendingRow purchasePending" key={item.installment.id}><div className="pendingCopy"><b>{item.purchase.description||item.purchase.credit_cards?.name||t('move.cardCommitment')}</b><small>{item.purchase.credit_cards?.name} · {item.installment.installment_number}/{item.purchase.installment_count} · {t('move.dueOn')} {date(item.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}{item.paid>0?' · '+t('cards.paidSoFar')+' '+currency(item.paid):''}</small></div><strong>{currency(item.remaining)}</strong><div className="pendingFooter"><span className={item.status==='overdue'?'statusBadge overdue':'statusBadge'}>{item.status==='overdue'?t('common.overdue'):item.status==='current'?t('move.current'):t('move.future')}</span><div className="pendingActions"><button onClick={()=>startPurchaseEdit(item.purchase)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>deletePurchase(item.purchase)}>{t('common.delete')}</button></div></div></article>)}</section>}
       </div>}
     </>}
 
@@ -536,6 +493,5 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&(()=>{const txRow=editing.raw as Tx;const linkedCard=txRow.source_type==='card_installment_payment';return <><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>{!linkedCard&&<label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label>}{txRow.source_type!=='debt_payment'&&!linkedCard&&<label>{t('common.category')}<select value={editCategory} onChange={e=>setEditCategory(e.target.value)}>{categoryOptions(txRow.type,customCategories,t).map(cat=><option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}</select></label>}{linkedCard&&<div className="settingsNote">{t('cards.individualPaymentHelp')}</div>}</>})()}{(editing.kind==='bill-payment'||editing.kind==='card-payment')&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income')&&(()=>{const wx=editing.raw as Work;const transport=wx.income_sources?.kind==='driver'||wx.income_sources?.kind==='delivery';return <><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label>{transport&&<><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label></>}<label>{t('work.estimatedExtra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>})()}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
-    {purchaseEdit&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPurchaseEdit(null)}}><form className="modalCard" onSubmit={savePurchase}><div className="modalHead"><h2>{t('common.edit')} · {t('move.cardCommitment')}</h2><button type="button" onClick={()=>setPurchaseEdit(null)}>×</button></div><label>{t('common.description')}<input value={purchaseDesc} onChange={e=>setPurchaseDesc(e.target.value)}/></label><label>{t('cards.total')}<input value={purchaseTotal} onChange={e=>setPurchaseTotal(e.target.value)} inputMode="decimal" required/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={purchaseCount} onChange={e=>setPurchaseCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('cards.firstDueDate')} <small>({t('common.optional')})</small><input type="date" value={purchaseFirstDueDate} onChange={e=>setPurchaseFirstDueDate(e.target.value)}/><small>{t('cards.firstDueDateHelp')}</small></label><label>{t('common.category')}<input value={purchaseCategory} onChange={e=>setPurchaseCategory(e.target.value)} /></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPurchaseEdit(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
   </div>;
 }
