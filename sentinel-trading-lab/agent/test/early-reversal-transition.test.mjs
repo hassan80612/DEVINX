@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {reviewEarlyVerifiedTurn as review} from '../src/core/early-reversal-transition.mjs';
+import {analyzeNowOpportunity} from '../src/core/now-opportunity-engine.mjs';
 const T=1800000000000;
 const forward=[.99902,.99918,.99940,.99962,.99985,1.00001,1.00010,
  1.00002,.99988,.99978,.99991,.99970,.99954];
@@ -81,4 +82,22 @@ test('continuations still require 3 of 4 fully closed bars; no expiry, polling o
  assert.match(core,/reviewEarlyVerifiedTurn\(/);
  const src=readFileSync(new URL('../src/core/early-reversal-transition.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(src,/setTimeout|setInterval|\bawait\b|fetch\(|broker\./);
+});
+
+test('the shared engine admits a first level micro-turn before its normal four-bar continuation can qualify',()=>{
+ const base={quoteHistory:tape('PUT'),quoteAt:T,now:T,price:forward.at(-1),
+   durationMs:60000,engineId:'automatic',entryFamily:'automatic'};
+ const old=analyzeNowOpportunity({...base,qualityPolicy:'adaptive-market-v1'});
+ assert.equal(old.ready,false);
+ assert.equal(old.reason,'completed-structure-not-ready');
+ const proven={...level,confirmedPivots:4,independentRejections:2,windows:[3,10,20]};
+ const historic={...map,levels:[proven],
+   windows:[3,10,20,50,100].map(size=>({size,available:size<=30,observed:Math.min(size,30),levels:[1]}))};
+ const structure={asOf:T-60000,tolerance:.0003,atr:.0003,candleLevelMap:historic};
+ const updated=analyzeNowOpportunity({...base,qualityPolicy:'adaptive-market-v17',
+   structureCache:{get:()=>structure}});
+ assert.equal(updated.ready,true);
+ assert.equal(updated.side,'PUT');
+ assert.equal(updated.reason,'confirmed-level-structure-reversal');
+ assert.equal(updated.earlyTurnEvidence.withoutThreeClosedBars,true);
 });
