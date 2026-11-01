@@ -103,8 +103,17 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // and even the latest 2-3s remain in the contradicting direction.
  // This never transforms a structural reversal into an opposite order.
  if(protectedStructure){
+  // A newly observed two-step V at a real level must not be cancelled
+  // just because a prior 28s down/up leg was much larger. Newest evidence
+  // beats the old extrapolation; existing structure checks still apply.
+  const lastThree=rows.slice(-3);
+  const s=candidate.side==='CALL'?1:-1;
+  const freshTurn=lastThree.length===3&&lastThree[2].ts===t&&
+   lastThree[2].ts-lastThree[1].ts<=1000&&lastThree[1].ts-lastThree[0].ts<=1000&&
+   s*(lastThree[2].price-lastThree[1].price)>0&&
+   s*(lastThree[1].price-lastThree[0].price)>0;
   const recentAgainst=sign*Math.log(current/fresh);
-  if(priceProof&&Number.isFinite(recentAgainst)&&recentAgainst>=typical*1.5)
+  if(!freshTurn&&priceProof&&Number.isFinite(recentAgainst)&&recentAgainst>=typical*1.5)
    return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
     reason:'confirmed-structure-contradicted-by-observed-expiry-trend',
     entryRisk:{kind:'expiry-trend-structural-contradiction',blocked:true,
