@@ -28,13 +28,7 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  price,durationMs,estimate=null}={}){
  if(candidate?.ready!==true||!SIDE.has(candidate.side))return candidate;
  const points=scales[Number(durationMs)];
- const protectedStructure=isProtected(candidate.reason);
- // Preserve the earlier carefully validated range, failed-breakout and
- // multi-scale policies. Only independently mapped level-turn variants
- // participate in this additional, exceptionally strong contradiction veto.
- const reviewLevelTurn=['confirmed-level-structure-reversal','confirmed-fast-level-reversal']
-  .includes(String(candidate.reason||''))&&[30000,60000].includes(Number(durationMs));
- if(!points||(protectedStructure&&!reviewLevelTurn))return candidate;
+ if(!points||isProtected(candidate.reason))return candidate;
  const t=Number(quoteAt),current=Number(price),clock=Number(now);
  if(!(t>0&&clock>=t&&clock-t<=1500&&current>0))return candidate;
  // Do not scan historic chart candles or request anything from the broker.
@@ -100,29 +94,6 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // Four coherent moves and a strong majority of the observed excursion
  // can corroborate the direction even when the probability model is absent.
  const priceProof=agreeing===4&&Math.abs(net)/absolute>=.87&&Math.abs(net)>=typical*7;
- // Previously every name containing "reversal", "retest" or "level"
- // bypassed this independent price check. A name is not evidence: decline
- // only when ALL four on-time segments strongly contradict the proposed side
- // and even the latest 2-3s remain in the contradicting direction.
- // This never transforms a structural reversal into an opposite order.
- if(protectedStructure){
-  // A newly observed two-step V at a real level must not be cancelled
-  // just because a prior 28s down/up leg was much larger. Newest evidence
-  // beats the old extrapolation; existing structure checks still apply.
-  const lastThree=rows.slice(-3);
-  const s=candidate.side==='CALL'?1:-1;
-  const freshTurn=lastThree.length===3&&lastThree[2].ts===t&&
-   lastThree[2].ts-lastThree[1].ts<=1000&&lastThree[1].ts-lastThree[0].ts<=1000&&
-   s*(lastThree[2].price-lastThree[1].price)>0&&
-   s*(lastThree[1].price-lastThree[0].price)>0;
-  const recentAgainst=sign*Math.log(current/fresh);
-  if(!freshTurn&&priceProof&&Number.isFinite(recentAgainst)&&recentAgainst>=typical*1.5)
-   return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
-    reason:'confirmed-structure-contradicted-by-observed-expiry-trend',
-    entryRisk:{kind:'expiry-trend-structural-contradiction',blocked:true,
-     observedSegments:agreeing,efficiency:Number((Math.abs(net)/absolute).toFixed(3))}};
-  return candidate;
- }
  // A historical rejection may be only a tiny bounce inside a 60s trend.
  // In that case, demand the stronger *independent price proof*, not an
  // uncalibrated probability estimate, before changing the proposed side.
