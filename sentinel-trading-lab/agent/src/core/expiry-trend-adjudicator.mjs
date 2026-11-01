@@ -29,9 +29,12 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  if(candidate?.ready!==true||!SIDE.has(candidate.side))return candidate;
  const points=scales[Number(durationMs)];
  const protectedStructure=isProtected(candidate.reason);
- // Leave 5m structural reversal policy entirely unchanged. For 30s/1m
- // a protected label may still be contradicted by the entire LIVE price path.
- if(!points||(protectedStructure&&![30000,60000].includes(Number(durationMs))))return candidate;
+ // Preserve the earlier carefully validated range, failed-breakout and
+ // multi-scale policies. Only independently mapped level-turn variants
+ // participate in this additional, exceptionally strong contradiction veto.
+ const reviewLevelTurn=['confirmed-level-structure-reversal','confirmed-fast-level-reversal']
+  .includes(String(candidate.reason||''))&&[30000,60000].includes(Number(durationMs));
+ if(!points||(protectedStructure&&!reviewLevelTurn))return candidate;
  const t=Number(quoteAt),current=Number(price),clock=Number(now);
  if(!(t>0&&clock>=t&&clock-t<=1500&&current>0))return candidate;
  // Do not scan historic chart candles or request anything from the broker.
