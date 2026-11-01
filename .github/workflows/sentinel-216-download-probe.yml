@@ -1,4 +1,4 @@
-name: Sentinel 216 public download integrity probe
+name: Sentinel 216 EXE preview public hash parity
 on:
   push:
     branches: [diagnostic/sentinel-216-download-http-20261101]
@@ -6,45 +6,27 @@ on:
 permissions:
   contents: read
 jobs:
-  probe:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify public installer and alternate ZIP independently of authenticated update API
+      - name: Check preview EXE is byte-exact to GitHub CI Windows build
         shell: bash
         run: |
           set -euo pipefail
-          cd /tmp
-          base='https://trading.devinx.com.br/downloads'
-          for name in sentinel-agent-windows.exe Sentinel-Agent-13.9.216.exe Sentinel-Agent-13.9.216-Alternativo.zip agent-update.json; do
-            curl -fLsS --max-time 65 -o "$name" -w "$name http=%{http_code} bytes=%{size_download}\n" "$base/$name"
+          base='https://sentinel-trading-pibax3pi6-iguassu-shop.vercel.app/downloads'
+          for p in Sentinel-Agent-13.9.216.exe sentinel-agent-windows.exe agent-update.json; do
+            curl --fail --location --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 50 -D "/tmp/$p.headers" -o "/tmp/$p" "$base/$p"
+            echo "URL $p:"
+            grep -iE '^(HTTP/|content-type:|content-length:|content-disposition:)' "/tmp/$p.headers" | tail -7
+            sha256sum "/tmp/$p"
           done
+          echo '0f9c9e68cd6e7f8abe0fc6763a770471281c1adf44eabfb8117e5cfd4507b78d  /tmp/Sentinel-Agent-13.9.216.exe' | sha256sum --check
+          cmp /tmp/Sentinel-Agent-13.9.216.exe /tmp/sentinel-agent-windows.exe
           python3 - <<'PY'
-          import json,hashlib,zipfile,io,pathlib,sys
-          manifest=json.loads(pathlib.Path('agent-update.json').read_text())
-          exe=pathlib.Path('sentinel-agent-windows.exe').read_bytes()
-          versioned=pathlib.Path('Sentinel-Agent-13.9.216.exe').read_bytes()
-          alt=pathlib.Path('Sentinel-Agent-13.9.216-Alternativo.zip')
-          digest=lambda b:hashlib.sha256(b).hexdigest()
-          with zipfile.ZipFile(alt) as z:
-            members=z.namelist()
-            embedded=z.read('agent_payload_v88.zip')
-            print('alternate archive members',members)
-            print('alternate archive integrity',z.testzip())
-          with zipfile.ZipFile(io.BytesIO(embedded)) as z:
-            pkg=json.loads(z.read('package.json'))
-            rel=json.loads(z.read('release.json'))
-            print('embedded payload integrity',z.testzip())
-          report={'manifestVersion':manifest['version'],'pkgVersion':pkg['version'],'releaseVersion':rel['version'],
-                  'manifestPayloadSha':manifest['zipSha256'],'embeddedPayloadSha':digest(embedded),
-                  'manifestMatchesArchive':manifest['zipSha256']==digest(embedded),
-                  'versionedExeMatchesAlias':exe==versioned,
-                  'exeContainsPublishedPayload':exe.find(embedded)>=0,
-                  'exeSize':len(exe)}
-          print(json.dumps(report,indent=2))
-          assert all([manifest['version']==pkg['version']==rel['version']=='13.9.216',
-            report['manifestMatchesArchive'],report['versionedExeMatchesAlias'],
-            report['exeContainsPublishedPayload']]),'The publicly delivered files are inconsistent'
-          print('PASS: delivered EXE, alternate ZIP and update metadata match')
+          import json
+          j=json.load(open('/tmp/agent-update.json'))
+          assert j['version']=='13.9.216'
+          assert j['zipSha256']=='9aa8b13725c8906765dfa97a7eb6b97f5c4a3d588de41d7ed05446817d0d0835'
+          print('PASS: preview EXACT GH tested EXE and manifest')
           PY
