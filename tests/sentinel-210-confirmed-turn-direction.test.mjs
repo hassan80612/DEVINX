@@ -6,8 +6,7 @@ import {reviewDirectionalPersistence} from '../sentinel-trading-lab/agent/src/co
 
 const T=1800000000000;
 const reasons=[
- 'confirmed-level-structure-reversal','confirmed-fast-level-reversal',
- 'failed-breakout-structure-change','rejection-followthrough-clear-room'
+ 'confirmed-level-structure-reversal','confirmed-fast-level-reversal'
 ];
 const make=(durationMs,kind='opposing')=>{
  // The broker's observed 1s quotes, not future candles or auxiliary forecasts.
@@ -69,4 +68,15 @@ test('210: no experimental probability estimator becomes a mandatory vote or opp
  assert.match(adj,/if\(protectedStructure\)\{/);
  assert.match(adj,/return \{\.\.\.candidate,ready:false,side:null,provisionalSide:candidate.side,/);
  assert.doesNotMatch(adj,/setTimeout\(|setInterval\(|setNativeExpiry|\.click\(/);
+});
+
+test('210: confirmed range, failed-breakout and multiscale reversals retain their validated expiry-trend policy',()=>{
+ for(const durationMs of [30000,60000,300000]){
+  const args=make(durationMs);
+  for(const reason of ['closed-range-extreme-reversal-confirmed',
+   'failed-breakout-structure-change','multiscale-candle-rejection']){
+   const c=candidate(reason,args.price);
+   assert.equal(adjudicateExpiryTrend({candidate:c,...args}),c,reason+'/'+durationMs);
+  }
+ }
 });
