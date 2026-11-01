@@ -50,7 +50,8 @@ import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
-import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';
+import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';
+import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';
 import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
@@ -989,7 +990,11 @@ export class DemoTradingRuntime{
       feedLatencyMs:Math.max(0,now-(this._marketSnapshot().quoteTs||now)),tradesToday:todayTrades.length,tradesLastHour:this.trades.filter(t=>new Date(t.openedAt).getTime()>=hourAgo).length,tradesSession,
       maxTradesPerSession:this.settings.risk.maxTradesPerSession,maxTradesPerDay:this.settings.risk.maxTradesPerDay,maxTradesPerHour:this.settings.risk.maxTradesPerHour,consecutiveLosses:this.state.consecutiveLosses,maxConsecutiveLosses:this.settings.risk.maxConsecutiveLosses,
       dailyPnl:todayTrades.reduce((s,t)=>s+Number(t.pnl||0),0),maxDailyLoss:this.settings.risk.maxDailyLoss,dailyProfitTarget:this.settings.risk.dailyProfitTarget,drawdownPct:this.state.drawdownPct,
-      maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
+      maxDrawdownPct:this.settings.risk.maxDrawdownPct,
+      // A continuous LIVE quote stream has no artificial post-settlement wait.
+      // Keep the monetary stops and consecutive-loss safeguards intact.
+      cooldownUntil:this.externalMarket?.provider&&this.settings.engine&&this.settings.forecastMode!=='selective'?null:this.state.cooldownUntil,
+      executionError:this.state.executionError,humanConfirmed:false};
   }
   _validationKey(kind,asset,durationMs,strategy){return ['micro-v5',CALIBRATION_EPOCH,kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence'),'provider:'+String(this.validationProvider||this.externalMarket?.provider||'unknown')].join('|')}
   _probabilityBucket(probability){
@@ -1260,7 +1265,6 @@ export class DemoTradingRuntime{
       // A new quote after expiry alone is NOT a new opportunity. Retain
       // the last actually fired setup across scanning without any fixed wait.
       // The 5m specialist, expiry selector and broker remain unchanged.
-      if(!usesLegacy207OpportunityAdmission(eligible))
       eligible=reviewDistinctOpportunity({
         candidate:eligible,last:this.lastDistinctOpportunity,
         provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,
@@ -1280,6 +1284,13 @@ export class DemoTradingRuntime{
         candidate:eligible,structure:reactionStructure,quoteHistory:snap.quoteHistory,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // 215: evidence-only exhaustion / verified-level invalidation for 1m.
+      // No waiting period: a newly qualified later quote is evaluated immediately.
+      eligible=reviewCausalEntry215({
+        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+        now,price:snap.price,durationMs:settings.orderDurationMs,
+        structure:reactionStructure
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
