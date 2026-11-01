@@ -49,8 +49,15 @@ export function reviewDistinctOpportunity({candidate,last,provider,asset,duratio
  // missing, zero or manufactured level would be unsafe.
  const currentLevel=reactionLevel(candidate);
  const structuralScale=Math.max(Number(tolerance)||0,Math.abs(spot)*0.000005);
- if(finitePositive(last.level)&&finitePositive(currentLevel)&&
+ const oldLevelKnown=finitePositive(last.level),newLevelKnown=finitePositive(currentLevel);
+ if(oldLevelKnown&&newLevelKnown&&
     Math.abs(currentLevel-last.level)>structuralScale)
+   return unchanged(candidate);
+ // A different continuation route is already fresh strategy evidence.
+ // For reversals, different names may still refer to the SAME historical
+ // level; compare that verified level instead of its changing label.
+ if(last.reason!==candidate.reason&&
+    (family!=='reversal'||!oldLevelKnown||!newLevelKnown))
    return unchanged(candidate);
 
  // Read the received quote prefix only. Keep this bounded in the hot path.
@@ -63,8 +70,9 @@ export function reviewDistinctOpportunity({candidate,last,provider,asset,duratio
  rows.reverse();
  // Missing coverage is NOT evidence of a repeated opportunity. Existing
  // quote/history integrity gates remain the authority in that case.
- if(rows.length<7||rows.at(-1).ts!==at||rows.at(-1).price!==spot)
-   return unchanged(candidate);
+ if(rows.length<7||rows.at(-1).ts!==at||rows.at(-1).price!==spot||
+    rows[0].ts-priorAt>2500)
+   return unchanged(candidate); // Cannot prove reuse if prior-entry tape was lost.
  const d=sign(candidate.side);
  const values=[Number(last.entryPrice),...rows.map(r=>d*r.price)];
  values[0]=d*Number(last.entryPrice);
@@ -82,8 +90,8 @@ export function reviewDistinctOpportunity({candidate,last,provider,asset,duratio
  const latest=values.length-1;
  // A new pullback must be followed by a genuine CURRENT recovery; old
  // retracements consumed before the previous entry never count.
- const recentRise=values[latest]>values[latest-1]&&
-   values[latest-1]>values[latest-2];
+ const recentRise=latest>=4&&values[latest]>values[latest-3]&&
+   values[latest]>values[latest-1];
  let peak=values[0],renewed=false;
  for(let i=1;i<latest-1;i++){
   if(peak-values[i]>=minTurn&&
