@@ -20,7 +20,14 @@ test('204: preserves the 197 runtime except the three explicit admission reviews
    .replace(/      \/\/ Compare a qualified entry[\s\S]*?      eligible=reviewPreviousClosedCandlePrice\(\{[\s\S]*?      \}\);\n/,'')
    .replace("import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';\n",'')
    .replace(/      \/\/ Review only already-qualified[\s\S]*?      eligible=reviewSetupIntegrity\(\{[\s\S]*?      \}\);\n/,'');
- assert.equal(gitSha(previousRuntime),'f5118600856c7846e6e5a8470aed81acc95c167b');
+ const before209=previousRuntime
+  .replace("import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';\n",'')
+  .replace('this.reactionOpportunityMemory=new ReactionOpportunityMemory();this.lastDistinctOpportunity=null;',
+    'this.reactionOpportunityMemory=new ReactionOpportunityMemory();')
+  .replace("      // A new quote after expiry alone is NOT a new opportunity. Retain\n      // the last actually fired setup across scanning without any fixed wait.\n      // The 5m specialist, expiry selector and broker remain unchanged.\n      eligible=reviewDistinctOpportunity({\n        candidate:eligible,last:this.lastDistinctOpportunity,\n        provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,\n        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,\n        tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance\n      });\n",'')
+  .replace("      if(freshSignal){\n        this.lastDistinctOpportunity=rememberFiredOpportunity({\n          candidate:eligible,signal:next,provider:snap.provider,\n          asset:settings.asset,durationMs:settings.orderDurationMs\n        });\n","      if(freshSignal){\n");
+ assert.match(runtime,/eligible=reviewDistinctOpportunity\\(/);
+ assert.equal(gitSha(before209),'f5118600856c7846e6e5a8470aed81acc95c167b');
  const previousRoom=room.replace("import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';\n",'').replace('clock-at<=structuralQuoteMaxAgeMs(durationMs)','clock-at<=1450');
  assert.equal(gitSha(previousRoom),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
  assert.match(runtime,/reviewOneMinuteRejectionProof/);
