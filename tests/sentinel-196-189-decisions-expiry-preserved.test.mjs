@@ -12,6 +12,10 @@ test('204: preserves the 197 runtime except the three explicit admission reviews
  const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
  assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
  const previousRuntime=runtime
+  // Remove only additive 213 wiring for the historical 207/209 runtime hash.
+  .replace("import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';\n",'')
+  .replace("      if(!usesLegacy207OpportunityAdmission(eligible))\n",'')
+  .replace("      // 213: analyse only weak setup families against data already available\n      // before entry; leave the 207 impulse path and 212 fast reversal intact.\n      eligible=reviewHybridFamilyProof({\n        candidate:eligible,quoteHistory:snap.quoteHistory,\n        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),\n        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs\n      });\n",'')
   // Strip only the additive 212 admission hook when checking the historical runtime hash.
   .replace("import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';\n",'')
   .replace("      // 212: veto ONLY a late 1m historical breakout whose 5s bounce opposes\n      // the already observed minute. Preserve 207 confirmed reversals and all\n      // other entries; no timing, broker expiry, click or executor changes.\n      eligible=reviewLateBreakoutTransition({\n        candidate:eligible,quoteHistory:snap.quoteHistory,\n        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs\n      });\n",'')
