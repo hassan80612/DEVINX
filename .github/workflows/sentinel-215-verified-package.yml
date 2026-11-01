@@ -9,6 +9,8 @@ on:
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-213-hybrid-family-fidelity.test.mjs'
       - 'tests/sentinel-214-six-family-exact-fidelity.test.mjs'
+      - 'tests/sentinel-196-189-decisions-expiry-preserved.test.mjs'
+      - 'tests/sentinel-201-closed-price-admission.test.mjs'
 permissions:
   contents: write
 concurrency:

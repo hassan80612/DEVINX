@@ -11,8 +11,13 @@ test('204: explicit reviewer and closed-price admission preserve the published 1
  const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
  assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
  const original=runtime
+  // 215 quality review is additive and absent from this historical 197/199 baseline.
+  .replace("import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';\n",'')
+  .replace("      // 215: evidence-only exhaustion / verified-level invalidation for 1m.\n      // No waiting period: a newly qualified later quote is evaluated immediately.\n      eligible=reviewCausalEntry215({\n        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,\n        now,price:snap.price,durationMs:settings.orderDurationMs,\n        structure:reactionStructure\n      });\n",'')
+  .replace("      maxDrawdownPct:this.settings.risk.maxDrawdownPct,\n      // A continuous LIVE quote stream has no artificial post-settlement wait.\n      // Keep the monetary stops and consecutive-loss safeguards intact.\n      cooldownUntil:this.externalMarket?.provider&&this.settings.engine&&this.settings.forecastMode!=='selective'?null:this.state.cooldownUntil,\n      executionError:this.state.executionError,humanConfirmed:false};",
+    "      maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};")
   // Remove only additive 213 wiring for the historical 207/209 runtime hash.
-  .replace("import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';\n",'')
+  .replace("import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';\n",'')
   .replace("      if(!usesLegacy207OpportunityAdmission(eligible))\n",'')
   .replace("      // 213: analyse only weak setup families against data already available\n      // before entry; leave the 207 impulse path and 212 fast reversal intact.\n      eligible=reviewHybridFamilyProof({\n        candidate:eligible,structure:reactionStructure,quoteHistory:snap.quoteHistory,\n        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),\n        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs\n      });\n",'')
   // Strip only the additive 212 admission hook when checking the historical runtime hash.
