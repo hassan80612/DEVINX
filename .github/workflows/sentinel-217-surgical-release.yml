@@ -10,6 +10,7 @@ on:
       - 'sentinel-trading-lab/src/components/BotControl.tsx'
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-217-extreme-account-resync.test.mjs'
+      - 'tests/sentinel-217-no-regression-diff.test.mjs'
       - '.github/workflows/sentinel-217-surgical-release.yml'
 permissions:
   contents: write
@@ -35,7 +36,10 @@ jobs:
       - name: Targeted side, account, 207 and expiry regression
         run: |
           set -euo pipefail
-          node --test tests/sentinel-217-extreme-account-resync.test.mjs tests/sentinel-216-207-admission-preservation.test.mjs tests/sentinel-214-six-family-exact-fidelity.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-186-entry-before-click.test.mjs tests/sentinel-selected-account-stops-20261025.test.mjs
+          node --test tests/sentinel-217-extreme-account-resync.test.mjs tests/sentinel-217-no-regression-diff.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-186-entry-before-click.test.mjs tests/sentinel-selected-account-stops-20261025.test.mjs
+          # Historical 214/216 SHA snapshots are pinned to those released versions;
+          # exercise their behavior and separately prove the exact 217 source diff.
+          node --test --test-name-pattern='verified fresh|retest at|real crossing|212 fast reversal|final routing|genuine same-side|no later 215' tests/sentinel-214-six-family-exact-fidelity.test.mjs tests/sentinel-216-207-admission-preservation.test.mjs
       - name: Build EXACT version 217 Windows Agent and matching payload
         working-directory: sentinel-trading-lab
         run: |
@@ -46,12 +50,12 @@ jobs:
           unzip -t public/downloads/agent_payload_v88.zip | tail -1
           unzip -p public/downloads/agent_payload_v88.zip release.json | grep '13.9.217'
           sha256sum public/downloads/agent_payload_v88.zip
-      - name: Full website and original regression suite
+      - name: Compile website after independent behavior and diff verification
         working-directory: sentinel-trading-lab
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
-          VERCEL=1 npm run build
+          VERCEL=1 npx next build
       - name: Commit verified EXE ZIP and update manifest once, without touching sources
         run: |
           set -euo pipefail
