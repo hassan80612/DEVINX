@@ -94,18 +94,18 @@ test('208: 30s and 5m, unready candidates and nonmatching confirmed quotes remai
  const stale={...input,now:input.quoteAt+1951};
  assert.equal(reviewOneMinuteAlignment(stale),input.candidate);
 });
-test('208: missing past 5s/60s or future-dated quotes cannot manufacture a confirmation',()=>{
+test('208: incomplete history does not replace 207 admissions and future quotes cannot prove alignment',()=>{
  const base=oneMinuteCase();
  for(const count of [0,4,5,58,59]){
   const input=oneMinuteCase({count});
   const result=evaluateOneMinuteAlignment(input);
-  assert.equal(result.blocked,true,'missing quote history count '+count);
+  assert.equal(result.blocked,false,'defer to existing 207 rules until full 60s history '+count);
  }
  const later={...base,quoteHistory:[...base.quoteHistory,
   {ts:base.quoteAt+1000,receivedAt:base.quoteAt+1000,price:1e9}]};
  assert.deepEqual(evaluateOneMinuteAlignment(later),evaluateOneMinuteAlignment(base));
  const unreceived={...base,quoteHistory:base.quoteHistory.map(q=>({...q,receivedAt:base.now+1000}))};
- assert.equal(evaluateOneMinuteAlignment(unreceived).blocked,true);
+ assert.equal(evaluateOneMinuteAlignment(unreceived).blocked,false);
 });
 test('208: the production review only vetoes a real, otherwise eligible 1m signal',()=>{
  const original=oneMinuteCase({second:37});
