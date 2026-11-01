@@ -1,0 +1,50 @@
+name: Sentinel 215 causal candidate - read-only checks
+on:
+  push:
+    branches:
+      - fix/sentinel-215-causal-entries-no-timers-20261101
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/**'
+      - 'sentinel-trading-lab/agent/test/causal-entry-quality-215.test.mjs'
+      - '.github/workflows/sentinel-215-causal-candidate-check.yml'
+permissions:
+  contents: read
+jobs:
+  verify-only-no-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Agent syntax
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Causal, no-timer, expiry, continuation checks
+        run: |
+          set -euo pipefail
+          node --test sentinel-trading-lab/agent/test/causal-entry-quality-215.test.mjs \
+            tests/sentinel-211-207-core-mobile-preservation.test.mjs \
+            tests/sentinel-212-late-breakout-transition.test.mjs \
+            tests/sentinel-189-5m-reversal-parallel.test.mjs \
+            tests/sentinel-190-native-expiry-persistence.test.mjs \
+            tests/sentinel-199-expiry-last-choice.test.mjs
+      - name: Verify broker and expiry modules remain exactly the same as baseline
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            const expected={
+              "sentinel-trading-lab/agent/worker/signal-executor.mjs":"314f146d33ac60186dcd4c7f3bb69b33a9738d74",
+              "sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs":"be2aa95874922b94564400979aad4dedd1d61485",
+              "sentinel-trading-lab/agent/worker/broker-chart-period-keeper.mjs":"a59968654723e4c8124164844745eee30ef89655"
+            };
+            for(const [f,sha] of Object.entries(expected)){
+              const b=readFileSync(f);
+              const h=createHash("sha1").update("blob "+b.length+"\0").update(b).digest("hex");
+              if(h!==sha)throw Error(f+" was modified: "+h);
+            }
+          '
