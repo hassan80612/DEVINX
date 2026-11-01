@@ -207,7 +207,23 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  // its latest 1.2/1.8s quote. Do not flip the side or wait for a timer.
  // Genuine current turns are classified as reversal-testing/weakening and
  // keep their original independently verified admission.
- const stillOpposingConfirmedTurn=confirmedReversalCandidate(candidate)&&
+ // The FIRST verified V/reversal may happen inside the last 1.8s.
+ // Keep it when the current TWO observed price steps already turn in the
+ // candidate's direction. Net movement over the prior 20s is not enough
+ // to overrule such an early structural turn.
+ const newest=[];
+ for(let i=quoteHistory.length-1;i>=0&&newest.length<3;i--){
+  const q=quoteHistory[i],ts=Number(q?.ts),received=Number(q?.receivedAt??ts),p=Number(q?.price);
+  if(ts<Number(quoteAt)-3000)break;
+  if(ts<=Number(quoteAt)&&received<=Number(now)&&p>0)newest.push({ts,price:p});
+ }
+ const s=candidate.side==='CALL'?1:-1;
+ const freshTurn=newest.length===3&&newest[0].ts===Number(quoteAt)&&
+   newest[0].ts-newest[1].ts<=1000&&newest[1].ts-newest[2].ts<=1000&&
+   newest[0].ts>newest[1].ts&&newest[1].ts>newest[2].ts&&
+   s*(newest[0].price-newest[1].price)>0&&
+   s*(newest[1].price-newest[2].price)>0;
+ const stillOpposingConfirmedTurn=!freshTurn&&confirmedReversalCandidate(candidate)&&
    candidate.side!==state.side&&state.phase==='continuing'&&
    Number(state.efficiency)>=.55&&Number(state.retracement)<=.12&&
    Number(state.lateMove)>0&&Number(state.latestMove)>0;
