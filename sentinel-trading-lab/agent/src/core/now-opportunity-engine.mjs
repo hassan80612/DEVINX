@@ -202,6 +202,19 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
     Number(state.latestMove)<0)
   return {...candidate,...diagnostic,ready:false,side:null,
    provisionalSide:candidate.side,reason:'live-turn-opposes-stale-direction'};
+ // A "confirmed" reversal label is not proof when the OBSERVED 12/20s
+ // market is still moving strongly in the opposite direction, including
+ // its latest 1.2/1.8s quote. Do not flip the side or wait for a timer.
+ // Genuine current turns are classified as reversal-testing/weakening and
+ // keep their original independently verified admission.
+ const stillOpposingConfirmedTurn=confirmedReversalCandidate(candidate)&&
+   candidate.side!==state.side&&state.phase==='continuing'&&
+   Number(state.efficiency)>=.55&&Number(state.retracement)<=.12&&
+   Number(state.lateMove)>0&&Number(state.latestMove)>0;
+ if(stillOpposingConfirmedTurn)
+  return {...candidate,...diagnostic,ready:false,side:null,
+   provisionalSide:candidate.side,reason:'confirmed-turn-contradicted-by-live-direction',
+   entryRisk:{kind:'confirmed-turn-direction-contradiction',blocked:true}};
  if(confirmedReversalCandidate(candidate))return candidate;
  const continuation=entryFamilyOf(candidate)==='continuation'||
    CONTINUATION_SETUP.test(String(candidate.reason||''));
