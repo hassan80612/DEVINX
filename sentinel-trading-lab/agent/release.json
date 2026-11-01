@@ -1,6 +1,6 @@
 {
-  "version": "13.9.209",
-  "build": "13.9.209-208-distinct-opportunity-expiry-unchanged",
+  "version": "13.9.210",
+  "build": "13.9.210-209-confirmed-turn-direction-guard-expiry-unchanged",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
