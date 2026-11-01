@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {evaluateExtremeBoundary,reviewExtremeBoundarySide} from '../sentinel-trading-lab/agent/src/core/extreme-boundary-review.mjs';
 import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 import {entryFamilyOf} from '../sentinel-trading-lab/agent/src/core/entry-family.mjs';
+import {dispatchExecutor} from '../sentinel-trading-lab/agent/worker/executor-remote.mjs';
 import {readFileSync} from 'node:fs';
 const NOW=1800000000000;
 function extremeFixture(){
@@ -75,4 +76,13 @@ test('217 route and card limited to Sentinel module',()=>{
  assert.match(ui,/Sincronizar conta/);
  assert.match(ui,/executor\/reset-account/);
  assert.match(runtime,/reviewExtremeBoundarySide/);
+});
+
+test('217 reset route is dispatched and cannot accidentally trigger a buy or bot start',async()=>{
+ const seen=[];
+ const result=await dispatchExecutor('/executor/reset-account',{},async(action,payload)=>{
+  seen.push({action,payload});return{ok:true};
+ },()=>({provider:'iq_option',asset:'EUR/USD OTC',durationMs:60000}));
+ assert.deepEqual(seen,[{action:'executor-reset-account',payload:{}}]);
+ assert.deepEqual(result,{ok:true});
 });

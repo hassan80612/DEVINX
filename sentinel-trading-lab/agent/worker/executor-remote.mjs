@@ -25,7 +25,7 @@ export function unpackExecutor(a){
   ...(a[18]?{capabilities:{brokerExecution:a[18][0]},martingaleLevel:a[18][1],nextAmount:a[18][2],lossLimitRemaining:a[18][3],initialBalance:a[18][4],durationMs:a[18][5],nextClicks:a[18][6]??1,consecutiveLossBatches:a[18][7]??0,sessionWins:a[18][8]??0,sessionLosses:a[18][9]??0,unresolvedDetail:{waitingResult:a[18][10]??0,waitingId:a[18][11]??0,uncertainAttempts:a[18][12]??0}}:{})};
 }
 export async function dispatchExecutor(path,payload,run,context){
- const action={'/executor/start':'executor-start','/executor/stop':'executor-stop','/executor/config':'executor-config'}[path];
+ const action={'/executor/start':'executor-start','/executor/stop':'executor-stop','/executor/config':'executor-config','/executor/reset-account':'executor-reset-account'}[path];
  if(!action)throw Error('Comando do bot inválido.');
  if(action==='executor-start'){
   const c=context(),expected=payload.context;

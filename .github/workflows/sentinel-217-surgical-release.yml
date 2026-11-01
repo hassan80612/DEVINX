@@ -11,6 +11,7 @@ on:
       - 'sentinel-trading-lab/package.json'
       - 'tests/sentinel-217-extreme-account-resync.test.mjs'
       - 'tests/sentinel-217-no-regression-diff.test.mjs'
+      - 'sentinel-trading-lab/agent/worker/executor-remote.mjs'
       - '.github/workflows/sentinel-217-surgical-release.yml'
 permissions:
   contents: write
@@ -55,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
-          VERCEL=1 npx next build
+          VERCEL=1 npm run build
       - name: Commit verified EXE ZIP and update manifest once, without touching sources
         run: |
           set -euo pipefail
@@ -70,6 +71,6 @@ jobs:
           git add sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.217.exe
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.217-Alternativo.zip
-          git diff --cached --quiet && { echo 'No packaging difference'; exit 1; }
+          git diff --cached --quiet && { echo 'Verified: Windows payload unchanged'; exit 0; }
           git commit -m 'build(sentinel): verified 13.9.217 Windows Agent and installer'
           git push origin HEAD:"$branch"

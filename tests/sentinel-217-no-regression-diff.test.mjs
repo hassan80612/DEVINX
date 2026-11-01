@@ -32,3 +32,8 @@ test('217: only account sync button and its action were added to original bot ca
   s.replace(/   if\(action==='resync'\)\{[\s\S]*?\n   \}\n   else if\(action==='start'\)/,"   if(action==='start')")
    .replace(/    <button className="secondary" disabled=\{!online\|\|!!pending\|\|bot.arming\|\|!current\|\|bot.executing\|\|!!bot.pending\} onClick=\{\(\)=>void run\('resync'\)\}>[\s\S]*?<\/button>\n/,''));
 });
+
+test('217: only new explicit account reset route on original executor-remote',()=>{
+ checked('sentinel-trading-lab/agent/worker/executor-remote.mjs',s=>
+  s.replace(",'/executor/reset-account':'executor-reset-account'",''));
+});
