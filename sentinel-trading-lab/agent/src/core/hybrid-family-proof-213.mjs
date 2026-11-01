@@ -11,7 +11,7 @@ const epoch=v=>Number(v)>0?(Number(v)<1e12?Number(v)*1000:Number(v)):0;
 const noRisk=Object.freeze({blocked:false,kind:'hybrid-213-family-proof',reasons:[]});
 
 export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
- quoteAt,now=quoteAt,price,durationMs}={}){
+ quoteAt,now=quoteAt,price,durationMs,structure=null}={}){
  // 30s, 5m, already confirmed fast reversals, 207 impulse and historical
  // breakout are never evaluated here.
  if(Number(durationMs)!==60000||candidate?.ready!==true||!SIDE.has(candidate.side)||
@@ -42,7 +42,7 @@ export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
   // opposing role is VERIFIED and no actual observed role conversion exists.
   // Missing level metadata is not proof of a bad trade.
   const seq=candidate.priceStructure?.observedSequence?.structureChange;
-  const map=candidate.priceStructure?.candleLevelMap;
+  const map=structure?.candleLevelMap??candidate.priceStructure?.candleLevelMap;
   const level=Number(seq?.level?.level),tol=Number(map?.tolerance);
   if(seq?.kind!=='break-retest-continuation'||seq.side!==candidate.side||
      !(level>0&&tol>0&&Array.isArray(map?.levels)))return noRisk;
@@ -98,7 +98,7 @@ export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
  // momentary 5-second bounce. No extra sampling or fixed waiting is added.
  const seq=candidate.priceStructure?.observedSequence?.structureChange;
  const level=Number(seq?.level?.level);
- const mapTol=Number(candidate.priceStructure?.candleLevelMap?.tolerance);
+ const mapTol=Number(structure?.candleLevelMap?.tolerance??candidate.priceStructure?.candleLevelMap?.tolerance);
  let prior30=null,target30=at-30000;
  for(let i=qs.length-1;i>=0;i--){
   if(Number(qs[i].ts)<=target30){
