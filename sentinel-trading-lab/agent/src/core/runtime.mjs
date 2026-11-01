@@ -49,6 +49,7 @@ import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mj
 import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
+import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -101,7 +102,7 @@ function newPriceStructure(main,side,snap,strict=false){
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67',precisionProfile='off'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();this.directionDisagreement=new DirectionDisagreementEvidence();
-    this.structureCache=new HistoricalPriceStructureCache();this.reactionOpportunityMemory=new ReactionOpportunityMemory();
+    this.structureCache=new HistoricalPriceStructureCache();this.reactionOpportunityMemory=new ReactionOpportunityMemory();this.lastDistinctOpportunity=null;
     this.forecastModel=forecastModel;this.precisionProfile=precisionProfile;this.probabilityReview=new CausalProbabilityReview();this.continuousCalibration=new ContinuousExpiryCalibration();this.lastFastProbability=null;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
@@ -1254,6 +1255,15 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
       });
+      // A new quote after expiry alone is NOT a new opportunity. Retain
+      // the last actually fired setup across scanning without any fixed wait.
+      // The 5m specialist, expiry selector and broker remain unchanged.
+      eligible=reviewDistinctOpportunity({
+        candidate:eligible,last:this.lastDistinctOpportunity,
+        provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,
+        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
+        tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance
+      });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1263,6 +1273,10 @@ export class DemoTradingRuntime{
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
       if(freshSignal){
+        this.lastDistinctOpportunity=rememberFiredOpportunity({
+          candidate:eligible,signal:next,provider:snap.provider,
+          asset:settings.asset,durationMs:settings.orderDurationMs
+        });
         if(learnedReview&&Number(next.entryPrice)>0){
           this.entryResearch.record({
             id:['now',next.context,next.entryTriggeredAt].join('|'),
