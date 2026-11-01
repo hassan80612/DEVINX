@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {reviewPreEntryRisk} from '../sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs';
 import {reviewDistinctOpportunity} from '../sentinel-trading-lab/agent/src/core/distinct-opportunity-review.mjs';
 const get=(path)=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const blob=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\\0').update(s).digest('hex');
+const blob=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').update(s).digest('hex');
 
 test('211: the three 207 analytical modules are faithfully restored',()=>{
  assert.equal(blob(get('sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs')),'2ea7af14e969b684665ccbc8804f7afde31ce316');
@@ -38,7 +38,7 @@ test('211: repetition review still distinguishes exact reused entry from a new d
 });
 test('211: mobile compact heading and blue reading use fixed 26+34px layout without hiding timers',()=>{
  const css=get('sentinel-trading-lab/src/app/globals.css');
- assert.match(css,/13\\.9\\.211: single-line fixed-height mobile live heading/);
+ assert.match(css,/13\.9\.211: single-line fixed-height mobile live heading/);
  assert.match(css,/grid-template-rows:26px 34px!important/);
  assert.match(css,/height:62px!important;min-height:62px!important;max-height:62px!important/);
  assert.match(css,/font-size:23px!important;line-height:27px!important/);
