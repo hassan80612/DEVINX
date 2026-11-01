@@ -63,7 +63,7 @@ test('210: no experimental probability estimator becomes a mandatory vote or opp
  const file=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs',import.meta.url),'utf8');
  assert.match(file,/calibratedWinProbability:false/);
  const adj=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs',import.meta.url),'utf8');
- assert.match(adj,/if\\(!points\\|\\|isProtected\\(candidate\\.reason\\)\\)/);
+ assert.match(adj,/if\(!points\|\|isProtected\(candidate\.reason\)\)/);
  assert.match(adj,/opposite-trend-near-confirmed-wall/);
  assert.doesNotMatch(adj,/setTimeout\(|setInterval\(|setNativeExpiry|\.click\(/);
 });
