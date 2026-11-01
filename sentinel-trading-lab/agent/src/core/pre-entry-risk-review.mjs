@@ -3,6 +3,7 @@ import {historicalPriceStructure} from './historical-price-structure.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 import {assessDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
+import {entryFamilyOf} from './entry-family.mjs';
 export const POLICY=Object.freeze({version:'203-selective-one-minute-admission-v1',scopeMs:[60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
 export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,quoteHistory=[],candles=[],structure=null}){
  const allowed=()=>({blocked:false,reasons:[],details:{}}),d=side==='CALL'?1:side==='PUT'?-1:0;
@@ -98,6 +99,7 @@ export function evaluateOneMinuteAlignment({candidate,price,quoteAt,now,duration
  // Leave all other durations, unqualified signals and existing admission
  // ownership unchanged. Never manufacture a CALL/PUT or a pending order.
  if(Number(durationMs)!==ONE_MINUTE_ALIGNMENT.durationMs||candidate?.ready!==true||
+    entryFamilyOf(candidate)!=='continuation'|| // Preserve already-confirmed 207 structural reversals.
     !['CALL','PUT'].includes(candidate.side)||
     Number(candidate.observedAt)!==Number(quoteAt)||
     Number(candidate.entryPrice)!==Number(price))return ok;
