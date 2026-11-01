@@ -50,6 +50,7 @@ import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
+import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
@@ -1263,6 +1264,13 @@ export class DemoTradingRuntime{
         provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance
+      });
+      // 212: veto ONLY a late 1m historical breakout whose 5s bounce opposes
+      // the already observed minute. Preserve 207 confirmed reversals and all
+      // other entries; no timing, broker expiry, click or executor changes.
+      eligible=reviewLateBreakoutTransition({
+        candidate:eligible,quoteHistory:snap.quoteHistory,
+        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
