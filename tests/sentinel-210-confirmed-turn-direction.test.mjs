@@ -23,7 +23,8 @@ const make=(durationMs,kind='opposing')=>{
 };
 const candidate=(reason,price)=>({
  ready:true,side:'CALL',reason,entryPrice:price,observedAt:T,
- priceStructure:{confirmedReversal:{kind:reason,side:'CALL',confirmedAt:T},\n  observedSequence:{continuation:{kind:reason,side:'CALL',confirmedAt:T}}}
+ priceStructure:{confirmedReversal:{kind:reason,side:'CALL',confirmedAt:T},
+  observedSequence:{continuation:{kind:reason,side:'CALL',confirmedAt:T}}}
 });
 test('210: a completely opposite live 30s/1m price path vetoes an uncorroborated labelled reversal; no PUT is manufactured',()=>{
  for(const durationMs of [30000,60000])for(const reason of reasons){
