@@ -1805,3 +1805,46 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
   /* The contextual strategy sentence should not appear/disappear per tick. */
   .liveScenario .vnextEngineToolbar>[data-testid="automatic-chart-context"]{display:none!important}
 }
+
+/* 13.9.211: single-line fixed-height mobile live heading. The previous 44px
+   reserved two rows even for "OPERAÇÃO EM ANDAMENTO", leaving a large blank
+   area before the blue technical reading. These rules affect presentation only;
+   countdown, signal, quote, expiry and executor are deliberately untouched. */
+@media(max-width:900px){
+ .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"]),
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"]){
+  display:grid!important;
+  grid-template-rows:26px 34px!important;
+  gap:2px!important;
+  height:62px!important;min-height:62px!important;max-height:62px!important;
+  overflow:hidden!important;
+ }
+ .liveScenario .vnextFutureDirection:has([data-testid="market-reading-detail"])>strong,
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection:has([data-testid="market-reading-detail"])>strong{
+  display:block!important;
+  height:26px!important;min-height:26px!important;max-height:26px!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+  line-height:26px!important;font-size:clamp(11px,3.45vw,15px)!important;
+  -webkit-line-clamp:unset!important;
+ }
+ .liveScenario .vnextFutureDirection .marketReadingRow,
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection .marketReadingRow{
+  display:grid!important;grid-template-rows:16px 16px!important;gap:2px!important;
+  height:34px!important;min-height:34px!important;max-height:34px!important;
+  align-content:start!important;margin:0!important;overflow:hidden!important;
+ }
+ .liveScenario .vnextFutureReceipt{gap:5px!important;margin:4px 0 6px!important}
+ .liveScenario .vnextReceiptTitle{
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto;
+  align-items:center!important;gap:5px!important;min-height:20px!important;
+ }
+ .liveScenario .vnextReceiptTitle>b,.liveScenario .vnextReceiptTitle>small{
+  overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;
+ }
+ .liveScenario .vnextTargetCountdown,.liveScenario .vnextTargetCountdown.ended{
+  min-height:80px!important;box-sizing:border-box;
+ }
+ .liveScenario .vnextTargetCountdown strong,.liveScenario .vnextTargetCountdown.ended strong{
+  font-size:23px!important;line-height:27px!important;
+ }
+}
