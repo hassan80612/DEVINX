@@ -107,15 +107,13 @@ test('208: incomplete history does not replace 207 admissions and future quotes 
  const unreceived={...base,quoteHistory:base.quoteHistory.map(q=>({...q,receivedAt:base.now+1000}))};
  assert.equal(evaluateOneMinuteAlignment(unreceived).blocked,false);
 });
-test('208: the production review only vetoes a real, otherwise eligible 1m signal',()=>{
+test('211: 208 late-candle counterfactual is testable but not active in restored 207 production',()=>{
  const original=oneMinuteCase({second:37});
- const blocked=reviewPreEntryRisk(original);
- assert.equal(blocked.ready,false);
- assert.equal(blocked.side,null);
- assert.equal(blocked.entryRisk?.kind,'one-minute-causal-alignment');
+ assert.deepEqual(evaluateOneMinuteAlignment(original).reasons,['one-minute-late-in-candle']);
+ assert.strictEqual(reviewPreEntryRisk(original),original.candidate,
+   'the live 207 policy must not veto every qualified signal after second 30');
  const other=oneMinuteCase({second:37});
- const pass=reviewPreEntryRisk({...other,durationMs:300000});
- assert.equal(pass,other.candidate);
+ assert.strictEqual(reviewPreEntryRisk({...other,durationMs:300000}),other.candidate);
 });
 
 test('208: previously confirmed 207 reversals remain eligible after second 30',()=>{
