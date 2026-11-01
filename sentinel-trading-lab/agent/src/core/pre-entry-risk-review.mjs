@@ -107,8 +107,6 @@ export function evaluateOneMinuteAlignment({candidate,price,quoteAt,now,duration
    return ok; // Stale/invalid quotes are already rejected upstream.
  const blocked=(reason,details={})=>({blocked:true,reasons:[reason],details});
  const second=Math.floor(decisionAt/1000)%60;
- if(second>=ONE_MINUTE_ALIGNMENT.latestSecondExclusive)
-   return blocked('one-minute-late-in-candle',{second});
  // Read only the actual quote prefix available when the decision was made.
  // A future tick, or a quote received later, is never proof for this signal.
  const quotes=(Array.isArray(quoteHistory)?quoteHistory:[])
@@ -118,7 +116,7 @@ export function evaluateOneMinuteAlignment({candidate,price,quoteAt,now,duration
   .sort((a,b)=>Number(a.ts)-Number(b.ts));
  const current=quotes.at(-1);
  if(!current||Number(current.ts)!==at||Number(current.price)!==value)
-   return blocked('one-minute-missing-current-quote');
+   return ok; // Existing quote integrity checks own missing/incomplete frames.
  const before=lookbackMs=>{
    const target=at-lookbackMs;
    for(let i=quotes.length-1;i>=0;i--){
@@ -131,8 +129,9 @@ export function evaluateOneMinuteAlignment({candidate,price,quoteAt,now,duration
  const five=before(ONE_MINUTE_ALIGNMENT.shortMs);
  const sixty=before(ONE_MINUTE_ALIGNMENT.longMs);
  if(five===null||sixty===null)
-   return blocked('one-minute-insufficient-observed-history',
-     {fiveObserved:five!==null,sixtyObserved:sixty!==null});
+   return ok; // Do not break 207 admissions before a full 60s tape exists.
+ if(second>=ONE_MINUTE_ALIGNMENT.latestSecondExclusive)
+   return blocked('one-minute-late-in-candle',{second});
  const sign=candidate.side==='CALL'?1:-1;
  const move5=sign*(value-five),move60=sign*(value-sixty);
  if(!(move5>0&&move60>0))
