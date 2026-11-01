@@ -43,7 +43,7 @@ export function executorSignal(analysis){
 export class SignalExecutor{
  constructor({driver,context,clock=Date.now,onAuditEvent=null}={}){
   this.driver=driver;this.context=context;this.clock=clock;this.onAuditEvent=typeof onAuditEvent==='function'?onAuditEvent:null;this.config={...DEFAULT_EXECUTOR_CONFIG};
-  this.balanceRisk=new ExecutorBalanceRisk();this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.stakeRefreshPending=null;this.stakeRefreshAt=0;this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
+  this.balanceRisk=new ExecutorBalanceRisk();this.lastBrokerSettlementAt=0;this.lastSettlementBalanceRevision=0;this.stopBalanceReference=null;this.stakeRefreshPending=null;this.stakeRefreshAt=0;this.accountInvestSyncPending=false;this.executing=false;this.martingaleLevel=0;this.lastEntryAt=null;this.sessionId=0;
   this.nextScheduledAt=null;this.lastCadenceDurationMs=null;this.enabled=false;this.generation=0;this.message='Desligado';this.pending=null;this.unresolvedBatches=new Map();this.queuedSignal=null;this.seen=new Set();this.sequence=0;this.executed=0;this.closed=0;this.history=[];this.ledger=new Map();this.net=0;this.sessionWins=0;this.sessionLosses=0;this.consecutiveLossBatches=0;this.suspensionReason=null;this.hardHoldReason=null;this.lastBrokerExpiryMismatch=null;this.expirySettlementEvidence=null;
  }
  emitAudit(record){
@@ -82,6 +82,7 @@ export class SignalExecutor{
   return this.status();
  }
  async start(){
+  if(this.accountInvestSyncPending)throw Error('Sincronização de conta/Invest em andamento.');
   this.watch();
   if(this.enabled||this.arming)throw Error('Bot já ligado ou em ativação.');
   // A stopped bot can be rearmed while older broker orders are still
@@ -139,7 +140,7 @@ export class SignalExecutor{
       confirmed+'/'+suspendedBatch.orders.length+') · sem duplicar entradas';
     return this.status();
    }
-   this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??null};
+   this.session={provider:c.provider,asset:c.asset,durationMs:c.durationMs,engine:current.engine,accountId:broker?.accountId??null,brokerMode:c.brokerMode??null};
    this.startedAt=this.clock();this.deadlineAt=null;this.nextScheduledAt=this.startedAt;this.lastCadenceDurationMs=Number(c.durationMs);
    if(broker)this.balanceRisk.observe(broker);
    else this.balanceRisk.current=null; // A stale ID must not be the starting account.
@@ -169,6 +170,68 @@ export class SignalExecutor{
   }else this.message=reason;
   return this.status();
  }
+ // 218 BEGIN USER INVEST/ACCOUNT RESYNCHRONIZATION.
+ async syncAccountAndInvest(){
+  // Only the user's explicit click may rebind accounts; never overlap a
+  // possibly executed order, including an unidentified pending broker click.
+  if(this.accountInvestSyncPending||this.arming||this.executing||this.pending||
+     this.unresolvedDetail().orders>0||this.unresolvedExposure()>0||
+     [...this.unresolvedBatches.values()].some(b=>b.orders.some(o=>
+       (o.clicked||o.dispatchUncertain)&&!o.settled&&!o.rejected)))
+   throw Error('Existe operação pendente. Aguarde a confirmação da corretora antes de atualizar Invest.');
+  const before=this.context(),clock=this.clock(),first=validBrokerBalance(before?.brokerBalance);
+  const mode=String(before?.brokerMode||'').toLowerCase();
+  if(!before?.provider||!before.asset||!['demo','real'].includes(mode)||
+     !first||first.provider!==before.provider||
+     !freshBalance(first,clock)||clock-Number(first.receivedAt)>5000)
+   throw Error('Conta DEMO/REAL e saldo ainda não confirmados na corretora. Confira a conta e tente novamente.');
+  const generation=this.generation,sessionId=this.sessionId;
+  this.accountInvestSyncPending=true;
+  // A queued signal from the old account is NEVER carried into the new one.
+  this.queuedSignal=null;
+  try{
+   const reading=await this.driver.prepare(before.provider,before);
+   const after=this.context(),actual=validBrokerBalance(after?.brokerBalance);
+   if(this.generation!==generation||this.sessionId!==sessionId||this.arming||
+      this.executing||this.pending||this.unresolvedDetail().orders>0||
+      !after||!this.sameContext(before,after)||
+      Number(before.durationMs)!==Number(after.durationMs)||
+      String(after.brokerMode||'').toLowerCase()!==mode||
+      !actual||actual.provider!==first.provider||actual.accountId!==first.accountId||
+      !freshBalance(actual,this.clock())||this.clock()-Number(actual.receivedAt)>5000)
+    throw Error('Conta, ativo ou prazo mudou durante a leitura. Invest antigo preservado.');
+   const stake=Number(reading?.amount);
+   if(!Number.isFinite(stake)||stake<=0||stake>1000000)
+    throw Error('Não consegui identificar o Invest atual na corretora. Nenhum valor antigo foi confirmado.');
+   const changed=!!this.session&&(
+     !this.sameContext(this.session,after)||
+     Number(this.session.durationMs)!==Number(after.durationMs)||
+     this.session.accountId==null||String(this.session.accountId)!==actual.accountId||
+     String(this.session.brokerMode||'').toLowerCase()!==mode);
+   if(changed){
+    // DEMO/REAL cannot inherit each other's profit, stops baseline or
+    // Martingale. User must explicitly choose Ligar bot for a new account.
+    this.stop('Conta alterada · sessão antiga encerrada',{reset:true});
+   }
+   this.config.amount=money(stake);
+   this.balanceRisk.observe(actual);
+   if(!changed&&this.suspensionReason==='Invest não confirmado')
+    this.suspensionReason=null;
+   if(!changed&&this.enabled)this.watch();
+   this.queuedSignal=null;
+   const latest=executorSignal(after.analysis);if(latest)this.seen.add(latest.id);
+   const required=money(this.config.amount*this.nextClicks());
+   const enough=actual.amount>=required&&(
+      this.config.stopLoss<=0||required<=this.lossBudgetRemaining()+0.000001);
+   this.message=(this.enabled?'Ligado':'Desligado')+
+     ' · conta '+mode.toUpperCase()+' · Invest '+this.config.amount.toFixed(2)+' confirmado'+
+     (!enough?' · saldo/Stop Loss insuficiente para próxima entrada':
+       changed?' · clique Ligar bot para continuar':
+       this.enabled?' · aguardando próximo sinal':' · pronto para Ligar bot');
+   return this.status();
+  }finally{this.accountInvestSyncPending=false;}
+ }
+ // 218 END USER INVEST/ACCOUNT RESYNCHRONIZATION.
  observeBalance(value){this.balanceRisk.observe(value);if(this.enabled)this.watch();}
  // Defensive reconciliation: a batch with all broker-identified results
  // should never remain in the old pending/unresolved maps after callback
@@ -300,7 +363,7 @@ export class SignalExecutor{
     Number(this.session.durationMs)!==Number(context.durationMs);
   if(!changed||!current||current.provider!==context.provider||!freshBalance(current,now))return false;
   this.session={provider:context.provider,asset:context.asset,durationMs:context.durationMs,
-    engine:context.engine,accountId:String(current.accountId)};
+    engine:context.engine,accountId:String(current.accountId),brokerMode:context.brokerMode??null};
   this.balanceRisk.begin(context.provider);
   // Keep the session P/L counters, but anchor absolute stops to the new
   // account/asset snapshot so an old asset cannot distort the target.
@@ -314,6 +377,7 @@ export class SignalExecutor{
   return true;
  }
  watch(){
+  if(this.accountInvestSyncPending)return;
   if(!this.enabled&&!this.pending)return;
   const now=this.clock(),c=this.context(),p=this.pending;
   // Quarantine pre-start account readings until the native broker supplies
@@ -372,6 +436,7 @@ export class SignalExecutor{
   }
  }
  pulse(freshAnchor=null,freshAudit=null){
+  if(this.accountInvestSyncPending)return;
   this.watch();if(!this.enabled||this.suspensionReason)return;
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
