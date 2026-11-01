@@ -13,29 +13,42 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Validate public binary and ZIP downloads end-to-end from a remote machine
+      - name: Test published Sentinel 216 package, manifest, EXE and ZIP archive
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           base='https://trading.devinx.com.br/downloads'
-          failed=0
-          for name in sentinel-agent-windows.exe Sentinel-Agent-13.9.216.exe Sentinel-Agent-Windows.exe Sentinel-Agent-13.9.216-Alternativo.zip agent-update.json; do
-            echo "::group::Download $name"
-            rc=0
-            curl --location --silent --show-error --max-time 75 --connect-timeout 10 --dump-header /tmp/probe-headers --output "/tmp/$name" --write-out 'http=%{http_code} bytes=%{size_download} remote=%{remote_ip} type=%{content_type} effective=%{url_effective}\n' "$base/$name" || rc=$?
-            grep -iE '^(HTTP/|content-type:|content-length:|content-range:|content-disposition:|location:|x-vercel|cache-control:)' /tmp/probe-headers | head -30 || true
-            if [[ "$rc" != "0" ]]; then echo "ERROR curl=$rc"; failed=1; fi
-            localfile="sentinel-trading-lab/public/downloads/$name"
-            if [[ -f "/tmp/$name" ]]; then
-              wc -c "/tmp/$name"
-              sha256sum "/tmp/$name" "$localfile"
-              if cmp --silent "/tmp/$name" "$localfile"; then
-                echo "OK: exact downloaded contents match git for $name"
-              else
-                echo "ERROR: downloaded content differs from verified GitHub file $name"
-                failed=1
-              fi
-            else echo "ERROR: no downloaded file"; failed=1; fi
+          cd /tmp
+          for name in sentinel-agent-windows.exe Sentinel-Agent-13.9.216.exe Sentinel-Agent-13.9.216-Alternativo.zip agent-update.json agent_payload_v88.zip; do
+            echo "::group::GET $name"
+            curl --fail --location --silent --show-error --max-time 65 --connect-timeout 15 --dump-header /tmp/headers --output "$name" --write-out 'http=%{http_code} bytes=%{size_download} type=%{content_type}\n' "$base/$name"
+            grep -iE '^(HTTP/|content-type:|content-length:|content-disposition:|accept-ranges:|x-vercel)' /tmp/headers | head -15 || true
+            sha256sum "$name"
             echo "::endgroup::"
           done
-          exit "$failed"
+          python3 - <<'PY'
+          import json,hashlib,zipfile,io,pathlib,sys
+          manifest=json.loads(pathlib.Path('agent-update.json').read_text())
+          payload=pathlib.Path('agent_payload_v88.zip').read_bytes()
+          alternate=pathlib.Path('Sentinel-Agent-13.9.216-Alternativo.zip')
+          one=pathlib.Path('Sentinel-Agent-13.9.216.exe').read_bytes()
+          alias=pathlib.Path('sentinel-agent-windows.exe').read_bytes()
+          calc=lambda p:hashlib.sha256(p).hexdigest()
+          print('Manifest release', manifest['version'])
+          print('Manifest SHA', manifest['zipSha256'])
+          print('CDN payload SHA',calc(payload))
+          print('EXE alias matches versioned EXE',one==alias)
+          with zipfile.ZipFile(io.BytesIO(payload)) as z:
+            print('PAYLOAD package version',json.loads(z.read('package.json'))['version'])
+            print('PAYLOAD release version',json.loads(z.read('release.json'))['version'])
+            print('PAYLOAD archive readable',z.testzip() is None)
+          with zipfile.ZipFile(alternate) as z:
+            print('ALTERNATE ZIP members',z.namelist())
+            embedded=z.read('agent_payload_v88.zip')
+            print('ALTERNATIVE embedded matches CDN payload',embedded==payload)
+            print('ALTERNATIVE archive readable',z.testzip() is None)
+          print('EXE actually contains CDN payload',one.find(payload)>=0)
+          if manifest['version']!='13.9.216' or manifest['zipSha256']!=calc(payload) or one!=alias or embedded!=payload or one.find(payload)<0:
+            sys.exit('FAIL: published package is internally inconsistent')
+          print('PASS: CDN package/manifest/EXE/ZIP consistent')
+          PY
