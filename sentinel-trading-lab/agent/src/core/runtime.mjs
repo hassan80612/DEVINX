@@ -50,6 +50,7 @@ import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
+import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';
 import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
@@ -1259,6 +1260,7 @@ export class DemoTradingRuntime{
       // A new quote after expiry alone is NOT a new opportunity. Retain
       // the last actually fired setup across scanning without any fixed wait.
       // The 5m specialist, expiry selector and broker remain unchanged.
+      if(!usesLegacy207OpportunityAdmission(eligible))
       eligible=reviewDistinctOpportunity({
         candidate:eligible,last:this.lastDistinctOpportunity,
         provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,
@@ -1270,6 +1272,13 @@ export class DemoTradingRuntime{
       // other entries; no timing, broker expiry, click or executor changes.
       eligible=reviewLateBreakoutTransition({
         candidate:eligible,quoteHistory:snap.quoteHistory,
+        quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
+      });
+      // 213: analyse only weak setup families against data already available
+      // before entry; leave the 207 impulse path and 212 fast reversal intact.
+      eligible=reviewHybridFamilyProof({
+        candidate:eligible,quoteHistory:snap.quoteHistory,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
       });
       let next=advanceNowOpportunity({
