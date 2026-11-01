@@ -1,0 +1,41 @@
+name: Sentinel 216 public download integrity probe
+on:
+  push:
+    branches:
+      - diagnostic/sentinel-216-download-http-20261101
+    paths:
+      - .github/workflows/sentinel-216-download-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public binary and ZIP downloads end-to-end from a remote machine
+        shell: bash
+        run: |
+          set -uo pipefail
+          base='https://trading.devinx.com.br/downloads'
+          failed=0
+          for name in sentinel-agent-windows.exe Sentinel-Agent-13.9.216.exe Sentinel-Agent-Windows.exe Sentinel-Agent-13.9.216-Alternativo.zip agent-update.json; do
+            echo "::group::Download $name"
+            rc=0
+            curl --location --silent --show-error --max-time 75 --connect-timeout 10 --dump-header /tmp/probe-headers --output "/tmp/$name" --write-out 'http=%{http_code} bytes=%{size_download} remote=%{remote_ip} type=%{content_type} effective=%{url_effective}\n' "$base/$name" || rc=$?
+            grep -iE '^(HTTP/|content-type:|content-length:|content-range:|content-disposition:|location:|x-vercel|cache-control:)' /tmp/probe-headers | head -30 || true
+            if [[ "$rc" != "0" ]]; then echo "ERROR curl=$rc"; failed=1; fi
+            localfile="sentinel-trading-lab/public/downloads/$name"
+            if [[ -f "/tmp/$name" ]]; then
+              wc -c "/tmp/$name"
+              sha256sum "/tmp/$name" "$localfile"
+              if cmp --silent "/tmp/$name" "$localfile"; then
+                echo "OK: exact downloaded contents match git for $name"
+              else
+                echo "ERROR: downloaded content differs from verified GitHub file $name"
+                failed=1
+              fi
+            else echo "ERROR: no downloaded file"; failed=1; fi
+            echo "::endgroup::"
+          done
+          exit "$failed"
