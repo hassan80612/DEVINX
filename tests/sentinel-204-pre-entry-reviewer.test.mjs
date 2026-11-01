@@ -117,3 +117,12 @@ test('208: the production review only vetoes a real, otherwise eligible 1m signa
  const pass=reviewPreEntryRisk({...other,durationMs:300000});
  assert.equal(pass,other.candidate);
 });
+
+test('208: previously confirmed 207 reversals remain eligible after second 30',()=>{
+ for(const reason of ['confirmed-fast-level-reversal','failed-breakout-structure-change','confirmed-level-structure-reversal','multiscale-candle-rejection']){
+  const input=oneMinuteCase({second:44,five:-1,sixty:-2});
+  const candidate={...input.candidate,reason};
+  assert.equal(evaluateOneMinuteAlignment({...input,candidate}).blocked,false,reason);
+  assert.equal(reviewOneMinuteAlignment({...input,candidate}),candidate,reason);
+ }
+});
