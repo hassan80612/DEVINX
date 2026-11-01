@@ -1,8 +1,9 @@
-// Sentinel 13.9.213: independent, causal validation ONLY for previously weak
+// Sentinel 13.9.214: independent, causal validation ONLY for previously weak
 // entry families. The 207 impulse path and the 212 rapid-reversal / level
 // breakout policies remain unchanged. This code never delays a trade,
 // manufactures the opposite direction or touches broker expiry/execution.
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
+import {levelRoleEvidence,observedRoleRetest} from './level-role-evidence.mjs';
 
 const SIDE=new Set(['CALL','PUT']);
 const maxGap=2500;
@@ -21,7 +22,7 @@ export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
   Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return noRisk;
  const qs=(Array.isArray(quoteHistory)?quoteHistory:[]).filter(q=>{
   const t=Number(q?.ts),r=Number(q?.receivedAt??t),p=Number(q?.price);
-  return Number.isFinite(t)&&t<=at&&t>=at-65000&&r<=clock&&p>0&&Number.isFinite(p);
+  return Number.isFinite(t)&&t<=at&&t>=at-180000&&r<=clock&&p>0&&Number.isFinite(p);
  }).sort((a,b)=>Number(a.ts)-Number(b.ts));
  if(qs.length<5||Number(qs.at(-1).ts)!==at||Number(qs.at(-1).price)!==spot)return noRisk;
  const d=candidate.side==='CALL'?1:-1;
@@ -31,10 +32,34 @@ export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
   const opposite=candidate.side==='CALL'?'PUT':'CALL';
   const turn=currentQuoteStructureTurn({quoteHistory:qs,quoteAt:at,now:clock,
     price:spot,side:opposite,durationMs});
-  if(!turn||Number(turn.confirmedAt)!==at)return noRisk;
+  if(turn&&Number(turn.confirmedAt)===at){
+   return {blocked:true,kind:'hybrid-213-family-proof',
+    reasons:['retest-contradicted-by-live-opposite-structure'],
+    details:{opposite,confirmedAt:at}};
+  }
+  // 214: A historical resistance does not become support (or vice versa)
+  // merely because a breakout was labelled as a retest. Only veto when
+  // opposing role is VERIFIED and no actual observed role conversion exists.
+  // Missing level metadata is not proof of a bad trade.
+  const seq=candidate.priceStructure?.observedSequence?.structureChange;
+  const map=candidate.priceStructure?.candleLevelMap;
+  const level=Number(seq?.level?.level),tol=Number(map?.tolerance);
+  if(seq?.kind!=='break-retest-continuation'||seq.side!==candidate.side||
+     !(level>0&&tol>0&&Array.isArray(map?.levels)))return noRisk;
+  const zone=map.levels.find(z=>Number(z?.level)>0&&
+   Math.abs(Number(z.level)-level)<=tol*.5);
+  if(!zone)return noRisk;
+  const same=levelRoleEvidence(zone,candidate.side),
+   opposed=levelRoleEvidence(zone,opposite);
+  if(same.confirmed||opposed.pivots<1||opposed.rejections<2)return noRisk;
+  const changedRole=observedRoleRetest({
+   quoteHistory:qs,quoteAt:at,now:clock,price:spot,
+   side:candidate.side,zone,tolerance:tol
+  });
+  if(changedRole)return noRisk;
   return {blocked:true,kind:'hybrid-213-family-proof',
-   reasons:['retest-contradicted-by-live-opposite-structure'],
-   details:{opposite,confirmedAt:at}};
+   reasons:['retest-without-verified-new-level-role'],
+   details:{level,neededRole:same.role,oldRole:opposed.role}};
  }
  const target=at-60000;
  let prior=null;
@@ -65,9 +90,35 @@ export function evaluateHybridFamilyProof({candidate,quoteHistory=[],candles=[],
  // direction over the previous full minute; a short favourable 5s bounce is
  // not by itself reliable proof of a sustained failed breakout.
  if(minute>0)return noRisk;
+ // 214: The full minute can still point against a freshly confirmed
+ // failed breakout. Preserve it only when the original 207 structural engine
+ // verified break -> reclaim -> pivot change, AND the last 30 seconds have
+ // reclaimed price beyond that independently observed level. Unlike a 60s
+ // sign-only veto, this protects an actual structural transition, not a
+ // momentary 5-second bounce. No extra sampling or fixed waiting is added.
+ const seq=candidate.priceStructure?.observedSequence?.structureChange;
+ const level=Number(seq?.level?.level);
+ const mapTol=Number(candidate.priceStructure?.candleLevelMap?.tolerance);
+ let prior30=null,target30=at-30000;
+ for(let i=qs.length-1;i>=0;i--){
+  if(Number(qs[i].ts)<=target30){
+   if(target30-Number(qs[i].ts)<=maxGap)prior30=Number(qs[i].price);
+   break;
+  }
+ }
+ const minClearance=Math.max(mapTol>0?mapTol:0,spot*1e-7);
+ const independentlyReclaimed=
+   seq?.kind==='failed-breakout-structure-change'&&
+   seq.side===candidate.side&&
+   Number(seq.brokenAt)>0&&Number(seq.reclaimedAt)>Number(seq.brokenAt)&&
+   Number(seq.confirmedAt)>=at-1450&&Number(seq.confirmedAt)<=at&&
+   level>0&&mapTol>0&&prior30!==null&&
+   d*(spot-prior30)>minClearance&&
+   d*(spot-level)>mapTol;
+ if(independentlyReclaimed)return noRisk;
  return {blocked:true,kind:'hybrid-213-family-proof',
   reasons:['failed-breakout-without-minute-reclaim'],
-  details:{minuteMove:minute}};
+  details:{minuteMove:minute,structuralReclaimVerified:false}};
 }
 
 export function reviewHybridFamilyProof({candidate,...input}={}){
