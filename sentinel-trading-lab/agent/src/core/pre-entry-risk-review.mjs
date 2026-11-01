@@ -80,7 +80,77 @@ export function reviewPreEntryRisk({candidate,original,...input}={}){
   reason:labels[selectiveRule],entryRisk:{kind:'selective-one-minute-admission',blocked:true,
    reasons:[selectiveRule],details:{durationMs:60000,proofKind:proof?.kind||null}}};
  const review=evaluatePreEntryRisk({...input,side:candidate.side,reason:candidate.reason});
- if(!review.blocked)return candidate;
+ if(!review.blocked)return reviewOneMinuteAlignment({candidate,...input});
  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
   reason:labels[review.reasons[0]],entryRisk:{kind:'pre-entry-risk-review',...review}};
+}
+
+
+// Sentinel 13.9.208: ONE-MINUTE-ONLY admission from observed quotes.
+// Read-only, synchronous, no broker UI, no timer, no order/expiry mutation.
+// The selected rule was fitted retrospectively; it has no guaranteed win rate.
+export const ONE_MINUTE_ALIGNMENT=Object.freeze({
+ durationMs:60000,latestSecondExclusive:30,
+ shortMs:5000,longMs:60000,maxQuoteLagMs:1950,maxLookbackGapMs:2500
+});
+export function evaluateOneMinuteAlignment({candidate,price,quoteAt,now,durationMs,quoteHistory=[]}={}){
+ const ok={blocked:false,reasons:[],details:{}};
+ // Leave all other durations, unqualified signals and existing admission
+ // ownership unchanged. Never manufacture a CALL/PUT or a pending order.
+ if(Number(durationMs)!==ONE_MINUTE_ALIGNMENT.durationMs||candidate?.ready!==true||
+    !['CALL','PUT'].includes(candidate.side)||
+    Number(candidate.observedAt)!==Number(quoteAt)||
+    Number(candidate.entryPrice)!==Number(price))return ok;
+ const at=Number(quoteAt),decisionAt=Number(now),value=Number(price);
+ if(!Number.isFinite(at)||!Number.isFinite(decisionAt)||!Number.isFinite(value)||
+    at<=0||decisionAt<at||decisionAt-at>ONE_MINUTE_ALIGNMENT.maxQuoteLagMs||value<=0)
+   return ok; // Stale/invalid quotes are already rejected upstream.
+ const blocked=(reason,details={})=>({blocked:true,reasons:[reason],details});
+ const second=Math.floor(decisionAt/1000)%60;
+ if(second>=ONE_MINUTE_ALIGNMENT.latestSecondExclusive)
+   return blocked('one-minute-late-in-candle',{second});
+ // Read only the actual quote prefix available when the decision was made.
+ // A future tick, or a quote received later, is never proof for this signal.
+ const quotes=(Array.isArray(quoteHistory)?quoteHistory:[])
+  .filter(q=>Number.isFinite(Number(q?.ts))&&Number(q.ts)<=at&&
+    Number.isFinite(Number(q?.price))&&Number(q.price)>0&&
+    Number(q?.receivedAt??q.ts)<=decisionAt)
+  .sort((a,b)=>Number(a.ts)-Number(b.ts));
+ const current=quotes.at(-1);
+ if(!current||Number(current.ts)!==at||Number(current.price)!==value)
+   return blocked('one-minute-missing-current-quote');
+ const before=lookbackMs=>{
+   const target=at-lookbackMs;
+   for(let i=quotes.length-1;i>=0;i--){
+     const t=Number(quotes[i].ts);
+     if(t<=target)return target-t<=ONE_MINUTE_ALIGNMENT.maxLookbackGapMs?
+       Number(quotes[i].price):null;
+   }
+   return null;
+ };
+ const five=before(ONE_MINUTE_ALIGNMENT.shortMs);
+ const sixty=before(ONE_MINUTE_ALIGNMENT.longMs);
+ if(five===null||sixty===null)
+   return blocked('one-minute-insufficient-observed-history',
+     {fiveObserved:five!==null,sixtyObserved:sixty!==null});
+ const sign=candidate.side==='CALL'?1:-1;
+ const move5=sign*(value-five),move60=sign*(value-sixty);
+ if(!(move5>0&&move60>0))
+   return blocked('one-minute-directional-momentum-not-aligned',
+     {fiveSeconds:move5,sixtySeconds:move60});
+ return ok;
+}
+
+const ONE_MINUTE_LABELS={
+ 'one-minute-late-in-candle':'Entrada de 1 minuto fora do início da vela.',
+ 'one-minute-missing-current-quote':'Aguardando cotação atual confirmada para 1 minuto.',
+ 'one-minute-insufficient-observed-history':'Aguardando histórico observado de 5 e 60 segundos.',
+ 'one-minute-directional-momentum-not-aligned':'Movimento de 5s e 60s não confirmou a direção.'
+};
+export function reviewOneMinuteAlignment({candidate,...input}={}){
+ const review=evaluateOneMinuteAlignment({candidate,...input});
+ if(!review.blocked)return candidate;
+ return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+   reason:ONE_MINUTE_LABELS[review.reasons[0]],
+   entryRisk:{kind:'one-minute-causal-alignment',...review}};
 }
