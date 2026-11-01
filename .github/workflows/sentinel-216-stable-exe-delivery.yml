@@ -1,0 +1,39 @@
+name: Sentinel 216 stable EXE download - verified immutable bundle
+on:
+  push:
+    branches: [fix/sentinel-216-stable-exe-delivery-20261101]
+    paths:
+      - 'sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs'
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'sentinel-trading-lab/next.config.mjs'
+      - 'tests/sentinel-216-stable-exe-delivery.test.mjs'
+      - '.github/workflows/sentinel-216-stable-exe-delivery.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify binary and browser delivery policy before build
+        run: |
+          set -euo pipefail
+          node --test tests/sentinel-216-stable-exe-delivery.test.mjs tests/sentinel-1395-installer-download-middleware.test.mjs tests/sentinel-1384-session-download-reversal.test.mjs
+          sha256sum sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.216.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip | tee /tmp/prebuilt-sha.txt
+      - name: Reproduce exact Vercel build without regenerating EXE
+        working-directory: sentinel-trading-lab
+        env:
+          VERCEL: '1'
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Assert final binary bytes identical to tested CI artifacts
+        run: |
+          set -euo pipefail
+          sha256sum sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.216.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip | diff -u /tmp/prebuilt-sha.txt -
+          node --test tests/sentinel-216-stable-exe-delivery.test.mjs

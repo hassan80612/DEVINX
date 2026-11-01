@@ -20,6 +20,34 @@ const tool=(name,args,options={})=>{
   throw Error(name+' failed: '+String(result.stderr||result.error?.message||result.stdout).slice(0,600));
  return result.stdout?.trim()||'';
 };
+// The CI pipeline already built, tested and committed the Windows installer.
+// A website build MUST publish those exact bytes: rebuilding on Vercel used
+// another Go toolchain and produced a different unsigned EXE/payload, making
+// every new deploy a new binary with no stable browser reputation.
+if(process.env.VERCEL==='1'){
+ const zipPath=join(dl,'agent_payload_v88.zip');
+ const zip=readFileSync(zipPath);
+ const sha=createHash('sha256').update(zip).digest('hex');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||
+    manifest.zipSha256!==sha)throw Error('vercel_prebuilt_payload_manifest_mismatch');
+ const packagedRelease=JSON.parse(tool('unzip',['-p',zipPath,'release.json']));
+ const packagedPkg=JSON.parse(tool('unzip',['-p',zipPath,'package.json']));
+ if(packagedRelease.version!==release.version||packagedRelease.build!==release.build||
+    packagedPkg.version!==release.version)throw Error('vercel_prebuilt_agent_version_mismatch');
+ const filename='Sentinel-Agent-'+release.version+'.exe';
+ const exe=readFileSync(join(dl,filename));
+ if(exe.length<1000000||exe.indexOf(zip)<0)
+   throw Error('vercel_prebuilt_exe_does_not_embed_exact_zip');
+ for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe'])
+   if(!exe.equals(readFileSync(join(dl,alias))))
+     throw Error('vercel_prebuilt_alias_differs_from_verified_exe: '+alias);
+ tool('unzip',['-t',zipPath]);
+ tool('unzip',['-t',join(dl,'Sentinel-Agent-'+release.version+'-Alternativo.zip')]);
+ console.log('Vercel: keeping verified Windows Agent '+release.version+
+   ' EXE ('+exe.length+' bytes) and exact CI payload SHA256 '+sha);
+ process.exit(0);
+}
 // Vercel's Next.js build image has no Go toolchain. Bootstrap a PINNED
 // official distribution, check the SHA256 published at go.dev/dl, and do not
 // silently fall back to an old bundled executable.

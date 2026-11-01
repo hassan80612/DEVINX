@@ -23,7 +23,12 @@ const nextConfig={
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-13.8.9.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
+    // The versioned EXE must keep its identity in the Edge download list.
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:[
+      {key:'Content-Type',value:'application/octet-stream'},
+      {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'.exe"'},
+      {key:'Cache-Control',value:'private, no-store'}
+    ]},
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
       {key:'Content-Disposition',value:'attachment'},
