@@ -1277,7 +1277,7 @@ export class DemoTradingRuntime{
       // 213: analyse only weak setup families against data already available
       // before entry; leave the 207 impulse path and 212 fast reversal intact.
       eligible=reviewHybridFamilyProof({
-        candidate:eligible,quoteHistory:snap.quoteHistory,
+        candidate:eligible,structure:reactionStructure,quoteHistory:snap.quoteHistory,
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteAt:snap.quoteTs,now,price:snap.price,durationMs:settings.orderDurationMs
       });
