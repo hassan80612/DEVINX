@@ -28,7 +28,16 @@ function scenario(reason='failed-breakout-structure-change',side='CALL') {
 }
 test('214: original 207 main decision runtime is byte-exact after removing later isolated extensions',()=>{
  let code=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
- code=code.replace("import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';\n",'')
+ code=code
+ // Normalize ONLY 216 additive final-admission routing and read-only diagnostics
+ // before comparing the unchanged historical market core.
+ .replace("import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';\n",
+   "import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';\n")
+ .replace("      const restore207Admission=[30000,60000].includes(Number(settings.orderDurationMs))&&\n        usesLegacy207OpportunityAdmission(eligible);\n",'')
+ .replace("      // 216: retain the 207 core and all its original admission rules. The\n      // new distinct-opportunity check above blocks only proven repetition.\n      // Later optional 212/213/215 reviewers cannot veto those 207 families.\n      if(!restore207Admission){\n",'')
+ .replace(/      \}\n      \/\/ 216: bounded reason diagnostics[\s\S]*?(?=      let next=advanceNowOpportunity\()/,'')
+ .replace("      entryAdmissionDenials:(this.entryAdmissionDenials||[]).slice(-30),\n",'')
+  .replace("import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';\n",'')
    .replace("import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';\n",'')
    .replace("import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';\n",'')
    .replace("import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';\n",'')

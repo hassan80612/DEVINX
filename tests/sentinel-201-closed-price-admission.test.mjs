@@ -10,7 +10,16 @@ const gitSha=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').upd
 test('204: explicit reviewer and closed-price admission preserve the published 199 runtime',()=>{
  const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
  assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
- const original=runtime
+ const base216=runtime
+ // Normalize ONLY 216 additive final-admission routing and read-only diagnostics
+ // before comparing the unchanged historical market core.
+ .replace("import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';\n",
+   "import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';\n")
+ .replace("      const restore207Admission=[30000,60000].includes(Number(settings.orderDurationMs))&&\n        usesLegacy207OpportunityAdmission(eligible);\n",'')
+ .replace("      // 216: retain the 207 core and all its original admission rules. The\n      // new distinct-opportunity check above blocks only proven repetition.\n      // Later optional 212/213/215 reviewers cannot veto those 207 families.\n      if(!restore207Admission){\n",'')
+ .replace(/      \}\n      \/\/ 216: bounded reason diagnostics[\s\S]*?(?=      let next=advanceNowOpportunity\()/,'')
+ .replace("      entryAdmissionDenials:(this.entryAdmissionDenials||[]).slice(-30),\n",'');
+ const original=base216
   // 215 quality review is additive and absent from this historical 197/199 baseline.
   .replace("import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';\n",'')
   .replace("      // 215: evidence-only exhaustion / verified-level invalidation for 1m.\n      // No waiting period: a newly qualified later quote is evaluated immediately.\n      eligible=reviewCausalEntry215({\n        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,\n        now,price:snap.price,durationMs:settings.orderDurationMs,\n        structure:reactionStructure\n      });\n",'')
