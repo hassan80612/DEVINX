@@ -100,3 +100,21 @@ test('209: pure causal check, no delays, loops, broker mutations or changes to e
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
  assert.match(runtime,/this\.lastDistinctOpportunity=null/);
 });
+
+test('209: independent continuation reason stays eligible without being mistaken for the old setup',()=>{
+ const input=ctx({reason:'historical-level-breakout'});
+ assert.equal(reviewDistinctOpportunity(input),input.candidate);
+});
+test('209: an older setup whose entry has fallen out of the recorded quote buffer cannot be vetoed',()=>{
+ const input=ctx();
+ input.last={...last(),at:T-6*MS,exitAt:T-5*MS};
+ assert.equal(reviewDistinctOpportunity(input),input.candidate);
+});
+test('209: two reversal labels sharing a VERIFIED old level still need an observed new swing',()=>{
+ const input=ctx({reason:'confirmed-level-structure-reversal',
+   previous:{...last('CALL','reversal'),reason:'failed-breakout-structure-change',level:100}});
+ input.candidate.priceStructure={confirmedReversal:{level:{level:100}}};
+ assert.equal(reviewDistinctOpportunity(input).entryRisk?.kind,'same-opportunity-after-expiry');
+ input.last.level=null;assert.equal(reviewDistinctOpportunity(input),input.candidate,
+   'unknown old level may not counterfeit identical structural setup');
+});
