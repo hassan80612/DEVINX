@@ -17,7 +17,14 @@ test('204: explicit reviewer and closed-price admission preserve the published 1
   .replace(/      \/\/ Review the proposed entry[\s\S]*?      eligible=reviewPreEntryRisk\(\{[\s\S]*?      \}\);\n/,'')
   .replace("import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';\n",'')
   .replace(/      \/\/ Compare a qualified entry[\s\S]*?      eligible=reviewPreviousClosedCandlePrice\(\{[\s\S]*?      \}\);\n/,'');
- assert.equal(gitSha(original),'9ade5cb89128dc64dac05b84d96c5069e2972cf0');
+ const before209=original
+  .replace("import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';\n",'')
+  .replace('this.reactionOpportunityMemory=new ReactionOpportunityMemory();this.lastDistinctOpportunity=null;',
+    'this.reactionOpportunityMemory=new ReactionOpportunityMemory();')
+  .replace("      // A new quote after expiry alone is NOT a new opportunity. Retain\n      // the last actually fired setup across scanning without any fixed wait.\n      // The 5m specialist, expiry selector and broker remain unchanged.\n      eligible=reviewDistinctOpportunity({\n        candidate:eligible,last:this.lastDistinctOpportunity,\n        provider:snap.provider,asset:settings.asset,durationMs:settings.orderDurationMs,\n        quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,\n        tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance\n      });\n",'')
+  .replace("      if(freshSignal){\n        this.lastDistinctOpportunity=rememberFiredOpportunity({\n          candidate:eligible,signal:next,provider:snap.provider,\n          asset:settings.asset,durationMs:settings.orderDurationMs\n        });\n","      if(freshSignal){\n");
+ assert.match(runtime,/eligible=reviewDistinctOpportunity\\(/);
+ assert.equal(gitSha(before209),'9ade5cb89128dc64dac05b84d96c5069e2972cf0');
  assert.ok(runtime.indexOf('eligible=reviewPreviousClosedCandlePrice(')>runtime.indexOf('eligible=reviewSetupIntegrity('));
  assert.ok(runtime.indexOf('eligible=reviewPreviousClosedCandlePrice(')<runtime.indexOf('let next=advanceNowOpportunity('));
  assert.match(runtime,/candles:snap.historicalCandlesVerified===false\?\[\]:\(snap.candles\|\|\[\]\)/);
