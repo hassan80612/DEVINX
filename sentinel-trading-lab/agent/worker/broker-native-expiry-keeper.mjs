@@ -292,7 +292,6 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     }
    }
    candidates.sort((a,b)=>b.score-a.score);
-   if(!candidates.length){discoveryReason='field-not-found';discoverySource=null;return null;}
    // Exnova can render "Expiration" and "1 min" as separate plain
    // unlabelled nodes in the narrow RIGHT trade sidebar. Inspect one
    // exact label next to one exact value; never read the chart's 1m,
@@ -322,6 +321,8 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     }
     if(scoped.length===1)candidates.push(scoped[0]);
    }
+   if(!candidates.length){discoveryReason='field-not-found';discoverySource=null;return null;}
+   candidates.sort((a,b)=>b.score-a.score);
    // A tie between disjoint native controls is ambiguous: never guess.
    const top=candidates[0],other=candidates.find(z=>
     z!==top&&z.score===top.score&&!top.el.contains(z.el)&&!z.el.contains(top.el));
