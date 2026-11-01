@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Check preview EXE is byte-exact to GitHub CI Windows build
+      - name: Check production EXE is byte-exact to GitHub CI Windows build
         shell: bash
         run: |
           set -euo pipefail
-          base='https://sentinel-trading-pibax3pi6-iguassu-shop.vercel.app/downloads'
+          base='https://trading.devinx.com.br/downloads'
           for p in Sentinel-Agent-13.9.216.exe sentinel-agent-windows.exe agent-update.json; do
             curl --fail --location --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 --max-time 50 -D "/tmp/$p.headers" -o "/tmp/$p" "$base/$p"
             echo "URL $p:"
@@ -28,5 +28,5 @@ jobs:
           j=json.load(open('/tmp/agent-update.json'))
           assert j['version']=='13.9.216'
           assert j['zipSha256']=='9aa8b13725c8906765dfa97a7eb6b97f5c4a3d588de41d7ed05446817d0d0835'
-          print('PASS: preview EXACT GH tested EXE and manifest')
+          print('PASS: production EXACT GH tested EXE and manifest')
           PY
