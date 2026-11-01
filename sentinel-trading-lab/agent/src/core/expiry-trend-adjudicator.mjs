@@ -28,7 +28,10 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  price,durationMs,estimate=null}={}){
  if(candidate?.ready!==true||!SIDE.has(candidate.side))return candidate;
  const points=scales[Number(durationMs)];
- if(!points||isProtected(candidate.reason))return candidate;
+ const protectedStructure=isProtected(candidate.reason);
+ // Leave 5m structural reversal policy entirely unchanged. For 30s/1m
+ // a protected label may still be contradicted by the entire LIVE price path.
+ if(!points||(protectedStructure&&![30000,60000].includes(Number(durationMs))))return candidate;
  const t=Number(quoteAt),current=Number(price),clock=Number(now);
  if(!(t>0&&clock>=t&&clock-t<=1500&&current>0))return candidate;
  // Do not scan historic chart candles or request anything from the broker.
@@ -94,6 +97,20 @@ export function adjudicateExpiryTrend({candidate,quoteHistory=[],quoteAt,now=quo
  // Four coherent moves and a strong majority of the observed excursion
  // can corroborate the direction even when the probability model is absent.
  const priceProof=agreeing===4&&Math.abs(net)/absolute>=.87&&Math.abs(net)>=typical*7;
+ // Previously every name containing "reversal", "retest" or "level"
+ // bypassed this independent price check. A name is not evidence: decline
+ // only when ALL four on-time segments strongly contradict the proposed side
+ // and even the latest 2-3s remain in the contradicting direction.
+ // This never transforms a structural reversal into an opposite order.
+ if(protectedStructure){
+  const recentAgainst=sign*Math.log(current/fresh);
+  if(priceProof&&Number.isFinite(recentAgainst)&&recentAgainst>=typical*1.5)
+   return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
+    reason:'confirmed-structure-contradicted-by-observed-expiry-trend',
+    entryRisk:{kind:'expiry-trend-structural-contradiction',blocked:true,
+     observedSegments:agreeing,efficiency:Number((Math.abs(net)/absolute).toFixed(3))}};
+  return candidate;
+ }
  // A historical rejection may be only a tiny bounce inside a 60s trend.
  // In that case, demand the stronger *independent price proof*, not an
  // uncalibrated probability estimate, before changing the proposed side.
