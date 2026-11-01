@@ -1,6 +1,6 @@
 {
-  "version": "13.9.212",
-  "build": "13.9.212-207-selective-one-minute-late-breakout-review-expiry-untouched",
+  "version": "13.9.213",
+  "build": "13.9.213-207-impulse-structural-fidelity-212-fast-reversal-level-breakout-preserved",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.212"
+  "publicVersion": "13.9.213"
 }
