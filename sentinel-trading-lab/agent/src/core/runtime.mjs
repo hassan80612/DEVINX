@@ -50,7 +50,7 @@ import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
-import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';
+import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';
 import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';
 import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';
 import {marketReading} from './market-reading.mjs';
@@ -1262,6 +1262,8 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
       });
+      const restore207Admission=[30000,60000].includes(Number(settings.orderDurationMs))&&
+        usesLegacy207OpportunityAdmission(eligible);
       // A new quote after expiry alone is NOT a new opportunity. Retain
       // the last actually fired setup across scanning without any fixed wait.
       // The 5m specialist, expiry selector and broker remain unchanged.
@@ -1271,6 +1273,10 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         tolerance:reactionStructure.candleLevelMap?.tolerance||reactionStructure.tolerance
       });
+      // 216: retain the 207 core and all its original admission rules. The
+      // new distinct-opportunity check above blocks only proven repetition.
+      // Later optional 212/213/215 reviewers cannot veto those 207 families.
+      if(!restore207Admission){
       // 212: veto ONLY a late 1m historical breakout whose 5s bounce opposes
       // the already observed minute. Preserve 207 confirmed reversals and all
       // other entries; no timing, broker expiry, click or executor changes.
@@ -1292,6 +1298,20 @@ export class DemoTradingRuntime{
         now,price:snap.price,durationMs:settings.orderDurationMs,
         structure:reactionStructure
       });
+      }
+      // 216: bounded reason diagnostics for real proposed entries that final
+      // admission rejects. Never used as a market gate, timer or broker call.
+      if(original66.ready===true&&eligible.ready!==true){
+        const denied={at:now,asset:String(settings.asset),durationMs:Number(settings.orderDurationMs),
+          proposedSide:String(original66.side||''),proposal:String(original66.reason||''),
+          rejection:String(eligible.reason||'unqualified'),kind:String(eligible.entryRisk?.kind||'')};
+        const last=this.entryAdmissionDenials?.at(-1);
+        if(!last||last.asset!==denied.asset||last.durationMs!==denied.durationMs||
+          last.proposedSide!==denied.proposedSide||last.rejection!==denied.rejection||
+          now-last.at>=15000){
+          this.entryAdmissionDenials=[...(this.entryAdmissionDenials||[]).slice(-39),denied];
+        }
+      }
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -1887,6 +1907,7 @@ export class DemoTradingRuntime{
     const demoEligible=this.settings.mode==='demo'&&brokerMode==='demo'&&this.externalMarket?.executionReady===true;
     return{state:this.stateName,mode:this.settings.mode,killSwitch:this.killSwitch,masterFrozen:this.masterFrozen,balance,pnl:this.trades.reduce((s,t)=>s+Number(t.pnl||0),0),trades:this.trades.length,wins,losses,winRate:this.trades.length?wins/this.trades.length*100:0,
       research:this.forecastResearch.summary(),entryResearch:this.entryResearch.summary(),pathResearch:this.pathResearch.summary(),drawdownPct:this.state.drawdownPct,consecutiveLosses:this.state.consecutiveLosses,lastHeartbeat:this.lastHeartbeat,lastEvalMs:this.lastEvalMs,nextEvalMs:this.nextEvalMs,lastResult:this.lastResult,
+      entryAdmissionDenials:(this.entryAdmissionDenials||[]).slice(-30),
       feed:{label:snap.source||'OFFLINE',price:snap.price,quoteTs:snap.quoteTs},analysisSource:this.externalMarket?.provider?(snap.feedValidated?'LIVE':'WAITING_LIVE'):(this.settings.requireLiveBroker?'OFFLINE':'SIMULATED'),
       liveBroker:this.externalMarket?{...this.externalMarket,mode:brokerMode}:null,
       executionMode:this.settings.mode==='real'?'real_manual':demoEligible?(this.settings.demoAutopilot===true?'broker_demo_auto':'broker_demo_disarmed'):'broker_demo_wait',
