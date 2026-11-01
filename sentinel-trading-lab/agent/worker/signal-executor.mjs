@@ -169,6 +169,25 @@ export class SignalExecutor{
   }else this.message=reason;
   return this.status();
  }
+ resetForAccountSwitch(){
+  // Explicit user reset. Never automatically rearm when switching DEMO/REAL.
+  // No old or ambiguous physical order may be discarded by this action.
+  if(this.arming||this.executing||this.pending||
+    this.unresolvedDetail().orders>0||this.unresolvedExposure()>0||
+    [...this.unresolvedBatches.values()].some(b=>b.orders.some(o=>
+      (o.clicked||o.dispatchUncertain)&&!o.settled&&!o.rejected)))
+    throw Error('Há operação pendente. Aguarde o encerramento na corretora antes de sincronizar.');
+  const now=this.clock(),c=this.context(),confirmed=validBrokerBalance(c.brokerBalance);
+  if(!c.provider||!confirmed||confirmed.provider!==c.provider||
+    !freshBalance(confirmed,now)||now-confirmed.receivedAt>5000||
+    c.brokerMode==='switching')
+    throw Error('Conta ainda não confirmada pela corretora. Confira DEMO/REAL e tente novamente.');
+  this.stop('Sessão da conta anterior encerrada',{reset:true});
+  this.balanceRisk.observe(confirmed);
+  this.message='Desligado · conta '+(c.brokerMode==='real'?'REAL':c.brokerMode==='demo'?'DEMO':'atual')+
+    ' sincronizada · ligue o bot para iniciar nova sessão';
+  return this.status();
+ }
  observeBalance(value){this.balanceRisk.observe(value);if(this.enabled)this.watch();}
  // Defensive reconciliation: a batch with all broker-identified results
  // should never remain in the old pending/unresolved maps after callback

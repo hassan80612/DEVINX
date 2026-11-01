@@ -1,0 +1,71 @@
+name: Sentinel 217 surgical extreme and account resync - verified Windows build
+on:
+  push:
+    branches: [fix/sentinel-217-extreme-turn-account-resync-20261101]
+    paths:
+      - 'sentinel-trading-lab/agent/src/**'
+      - 'sentinel-trading-lab/agent/worker/**'
+      - 'sentinel-trading-lab/agent/release.json'
+      - 'sentinel-trading-lab/agent/package.json'
+      - 'sentinel-trading-lab/src/components/BotControl.tsx'
+      - 'sentinel-trading-lab/package.json'
+      - 'tests/sentinel-217-extreme-account-resync.test.mjs'
+      - '.github/workflows/sentinel-217-surgical-release.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-217-surgical-release
+  cancel-in-progress: true
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate all Agent JavaScript syntax
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Targeted side, account, 207 and expiry regression
+        run: |
+          set -euo pipefail
+          node --test tests/sentinel-217-extreme-account-resync.test.mjs tests/sentinel-216-207-admission-preservation.test.mjs tests/sentinel-214-six-family-exact-fidelity.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-186-entry-before-click.test.mjs tests/sentinel-selected-account-stops-20261025.test.mjs
+      - name: Build EXACT version 217 Windows Agent and matching payload
+        working-directory: sentinel-trading-lab
+        run: |
+          set -euo pipefail
+          node scripts/build-sentinel-137-installer.mjs
+          test -s public/downloads/Sentinel-Agent-13.9.217.exe
+          test -s public/downloads/Sentinel-Agent-13.9.217-Alternativo.zip
+          unzip -t public/downloads/agent_payload_v88.zip | tail -1
+          unzip -p public/downloads/agent_payload_v88.zip release.json | grep '13.9.217'
+          sha256sum public/downloads/agent_payload_v88.zip
+      - name: Full website and original regression suite
+        working-directory: sentinel-trading-lab
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          VERCEL=1 npm run build
+      - name: Commit verified EXE ZIP and update manifest once, without touching sources
+        run: |
+          set -euo pipefail
+          branch=fix/sentinel-217-extreme-turn-account-resync-20261101
+          git fetch origin "$branch"
+          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+          git add sentinel-trading-lab/public/downloads/agent-update.json
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          git add sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.217.exe
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.217-Alternativo.zip
+          git diff --cached --quiet && { echo 'No packaging difference'; exit 1; }
+          git commit -m 'build(sentinel): verified 13.9.217 Windows Agent and installer'
+          git push origin HEAD:"$branch"

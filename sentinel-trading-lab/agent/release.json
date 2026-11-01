@@ -1,6 +1,6 @@
 {
-  "version": "13.9.216",
-  "build": "13.9.216-207-core-verified-reversal-and-impulse-expiry-preserved",
+  "version": "13.9.217",
+  "build": "13.9.217-extreme-boundary-account-resync-candidate",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.216"
+  "publicVersion": "13.9.217"
 }

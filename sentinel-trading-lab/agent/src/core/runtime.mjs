@@ -49,6 +49,7 @@ import {reviewOneMinuteRejectionProof} from './one-minute-rejection-admission.mj
 import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
+import {reviewExtremeBoundarySide} from './extreme-boundary-review.mjs';
 import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';
 import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';
 import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';
@@ -1298,6 +1299,18 @@ export class DemoTradingRuntime{
         now,price:snap.price,durationMs:settings.orderDurationMs,
         structure:reactionStructure
       });
+      }
+      // 217: One narrowly defined exhaustion turn only at EUR/USD OTC 1m.
+      // The original 207 and 216 admission gates above are untouched.
+      if(eligible.ready===true&&normalizeEntryFamily(settings.entryFamily)==='automatic'){
+        const originalLevels=original66.priceStructure||{};
+        eligible=reviewExtremeBoundarySide({
+          candidate:eligible,entryFamily:'automatic',asset:settings.asset,
+          durationMs:settings.orderDurationMs,quoteHistory:snap.quoteHistory,
+          quoteAt:snap.quoteTs,now,price:snap.price,
+          levels:{support:originalLevels.nearestSupport||null,
+            resistance:originalLevels.nearestResistance||null}
+        });
       }
       // 216: bounded reason diagnostics for real proposed entries that final
       // admission rejects. Never used as a market gate, timer or broker call.

@@ -2,7 +2,7 @@
 // it never chooses the direction or changes an already issued operation.
 export const ENTRY_FAMILIES=Object.freeze(['automatic','continuation','reversal']);
 export function normalizeEntryFamily(value){return ENTRY_FAMILIES.includes(value)?value:'automatic';}
-const reversals=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
+const reversals=new Set(['closed-range-extreme-reversal-confirmed','extreme-boundary-opposite','confirmed-level-structure-reversal',
  'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection']);
 const continuations=new Set(['closed-structure-and-live-impulse','historical-level-breakout',
  'break-retest-continuation','rejection-followthrough-clear-room','historical-trend-and-live-forecast',

@@ -43,7 +43,12 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
     if(Object.keys(patch).length){if(!await act('executor/config',{patch}))return;dirty.current.clear();}
    }
    if(request!==generation.current)return;
-   if(action==='start'){const result=await act('executor/start',{context:{provider:bot.provider,asset:s.liveBroker?.symbol||s.settings?.asset,durationMs:Number(s.settings?.orderDurationMs)}});if(result===false||result===null)setMessage(t('Não foi possível ligar o bot. Confira o aviso do Agent no PC.'));}
+   if(action==='resync'){
+    const result=await act('executor/reset-account');
+    if(request===generation.current&&result!==false&&result!==null)
+     setMessage(t('Conta sincronizada. Confira DEMO/REAL e ligue o bot novamente.'));
+   }
+   else if(action==='start'){const result=await act('executor/start',{context:{provider:bot.provider,asset:s.liveBroker?.symbol||s.settings?.asset,durationMs:Number(s.settings?.orderDurationMs)}});if(result===false||result===null)setMessage(t('Não foi possível ligar o bot. Confira o aviso do Agent no PC.'));}
    else if(action==='stop')await act('executor/stop');
    else setMessage(t('Configuração do bot aplicada'));
   }catch(error){
@@ -59,6 +64,7 @@ export function BotControl({s,act,online}:{s:any,act:(path:string,body?:any)=>Pr
    <div className="botControlActions">
     <button className="primary" disabled={!online||!current||!!pending||bot.arming||bot.enabled||s.state!=='running'} onClick={()=>void run('start')}>{pending==='start'?t('Ativando…'):t('Ligar bot')}</button>
     <button className="kill" disabled={!online||pending==='stop'} onClick={()=>void run('stop')}>{pending==='stop'?t('Parando…'):t('Parar bot')}</button>
+    <button className="secondary" disabled={!online||!!pending||bot.arming||!current||bot.executing||!!bot.pending} onClick={()=>void run('resync')}>{pending==='resync'?t('Sincronizando…'):t('Sincronizar conta')}</button>
     <button className="secondary" disabled={!online||!!pending||bot.arming||!current} onClick={()=>void run('save')}>{t('Salvar limites')}</button>
    </div>
    <div className="botSummary">

@@ -67,7 +67,7 @@ const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 const executorSettingsFile=resolve(dirname(STATE_FILE),'executor-settings.json');
 const executorTargetsFile=resolve(dirname(STATE_FILE),'executor-targets.json');
-function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),entryFamily:runtime.settings.entryFamily||'automatic',engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
+function executionContext(){const st=activeProvider?driver.state?.(activeProvider):null;return{provider:activeProvider,activeId:st?.activeId,asset:st?.symbol,state:runtime.stateName,licensed:accessLeaseValid(),durationMs:Number(runtime.settings.orderDurationMs),entryFamily:runtime.settings.entryFamily||'automatic',engine:runtime.settings.engine,analysis:runtime.lastResult?.analysis,quote:st?.quote,quoteAt:st?.lastQuoteAt,quoteHistory:st?.quoteHistory||[],brokerMode:st?.mode||null,brokerBalance:activeProvider?driver.accountBalanceSnapshot?.(activeProvider)||null:null};}
 const uiExecutor=new BrokerUiExecutor(driver,{onSent:(rid,id)=>executor.sent(rid,id),onAccepted:event=>executor.accepted(event),onRejected:event=>executor.rejected(event),onSettlement:event=>executor.settle(event),onUnexpectedOrder:()=>{if(executor.enabled){executor.hardHoldReason='operação externa detectada · confira a conta';executor.suspensionReason=executor.hardHoldReason;executor.message='Ligado · suspenso por segurança: '+executor.hardHoldReason;}},isBotEnabled:()=>executor.enabled});
 const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
  onAuditEvent:recordTradeAudit?event=>marketJournal.enqueue(event):null});
@@ -96,6 +96,15 @@ async function expiryMappingAction(provider,mode){
 async function executorAction(action,payload={}){
  if(action==='executor-stop'){const old=executor.pending;const result=executor.stop('Parado por você',{reset:true});if(old)uiExecutor.retireUnidentifiedBatch(old);return{ok:true,message:result.message};}
  assertLicensedAccess();
+ if(action==='executor-reset-account'){
+  // Explicit button; refresh visible account identity without trading.
+  if(!activeProvider)throw Error('Selecione a corretora antes de sincronizar.');
+  if(executor.arming||executor.executing||executor.pending||
+    executor.unresolvedDetail().orders>0||executor.unresolvedExposure()>0)
+    throw Error('Aguarde o encerramento das operações antes de sincronizar a conta.');
+  await driver.domSnapshot?.(activeProvider).catch(()=>{});
+  return{ok:true,message:executor.resetForAccountSwitch().message};
+ }
  if(action==='executor-map'||action==='executor-map-save'){
   if(executor.enabled||executor.arming||executor.pending||executor.executing)throw Error('Pare o bot e aguarde a entrada encerrar antes de mapear.');
   if(action==='executor-map'){await uiExecutor.beginCalibration(activeProvider);return{ok:true,message:'Indique CALL e depois PUT no painel da corretora. Os cliques de indicação não operam.'};}
