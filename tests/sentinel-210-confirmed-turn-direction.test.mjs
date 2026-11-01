@@ -25,17 +25,15 @@ const candidate=(reason,price)=>({
  priceStructure:{confirmedReversal:{kind:reason,side:'CALL',confirmedAt:T},
   observedSequence:{continuation:{kind:reason,side:'CALL',confirmedAt:T}}}
 });
-test('210: a completely opposite live 30s/1m price path vetoes an uncorroborated labelled reversal; no PUT is manufactured',()=>{
+test('211: restore 207 independent confirmed reversal decisions instead of blanket opposite-trend veto',()=>{
  for(const durationMs of [30000,60000])for(const reason of reasons){
   const args=make(durationMs),c=candidate(reason,args.price),frozen=structuredClone(c);
   const a=reviewDirectionalPersistence({candidate:c,...args});
-  assert.equal(a.ready,false,reason+'/'+durationMs+'/persistence');
-  assert.equal(a.side,null);
-  assert.equal(a.entryRisk.kind,'confirmed-turn-direction-contradiction');
+  assert.equal(a.ready,true,reason+'/'+durationMs+'/207 reversal persistence');
+  assert.equal(a.side,'CALL');
   const b=adjudicateExpiryTrend({candidate:c,...args});
-  assert.equal(b.ready,false,reason+'/'+durationMs+'/expiry-trend');
-  assert.equal(b.side,null);
-  assert.equal(b.entryRisk.kind,'expiry-trend-structural-contradiction');
+  assert.equal(b.ready,true,reason+'/'+durationMs+'/207 expiry-matched observation');
+  assert.equal(b.side,'CALL','no opposite-side order manufactured');
   assert.deepEqual(c,frozen,'candidate must not be mutated');
  }
 });
@@ -65,7 +63,7 @@ test('210: no experimental probability estimator becomes a mandatory vote or opp
  const file=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/66-probability-integration.mjs',import.meta.url),'utf8');
  assert.match(file,/calibratedWinProbability:false/);
  const adj=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs',import.meta.url),'utf8');
- assert.match(adj,/if\(protectedStructure\)\{/);
+ assert.match(adj,/if\(!points\|\|\(protectedStructure&&/);
  assert.match(adj,/return \{\.\.\.candidate,ready:false,side:null,provisionalSide:candidate.side,/);
  assert.doesNotMatch(adj,/setTimeout\(|setInterval\(|setNativeExpiry|\.click\(/);
 });
