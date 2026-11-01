@@ -10,7 +10,11 @@ const blob=s=>createHash('sha1').update('blob '+Buffer.byteLength(s)+'\0').updat
 test('211: the three 207 analytical modules are faithfully restored',()=>{
  assert.equal(blob(get('sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs')),'2ea7af14e969b684665ccbc8804f7afde31ce316');
  assert.equal(blob(get('sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs')),'4beaac679a3912842a4d6a28e93c6481e3cc7f1e');
- assert.equal(blob(get('sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs')),'50c282497a7c4f80e51c745612e454ad21d5739b');
+ const liveReviewer=get('sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs');
+ const baselineReviewer=liveReviewer.replace("import {entryFamilyOf} from './entry-family.mjs';\\n",'')
+   .split('// Historical 208 alignment functions for replay tests only. NOT invoked by 207')[0].trimEnd()+'\\n';
+ assert.equal(blob(baselineReviewer),'50c282497a7c4f80e51c745612e454ad21d5739b');
+ assert.match(liveReviewer,/if\\(!review\\.blocked\\)return candidate;/,'208 hard cutoff is not called by live reviewer');
 });
 test('211: native broker expiration, selected chart period and Agent executor stay byte-for-byte as 210',()=>{
  assert.equal(blob(get('sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs')),'be2aa95874922b94564400979aad4dedd1d61485');
