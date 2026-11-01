@@ -30,22 +30,28 @@ test('214: original 207 main decision runtime is byte-exact after removing later
  let code=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
  code=code.replace("import {reviewDistinctOpportunity,rememberFiredOpportunity} from './distinct-opportunity-review.mjs';\n",'')
    .replace("import {reviewLateBreakoutTransition} from './late-breakout-transition-review.mjs';\n",'')
-   .replace("import {reviewHybridFamilyProof,usesLegacy207OpportunityAdmission} from './hybrid-family-proof-213.mjs';\n",'')
+   .replace("import {reviewHybridFamilyProof} from './hybrid-family-proof-213.mjs';\n",'')
+   .replace("import {reviewCausalEntry215} from './causal-entry-quality-215.mjs';\n",'')
    .replace("this.reactionOpportunityMemory=new ReactionOpportunityMemory();this.lastDistinctOpportunity=null;",
       "this.reactionOpportunityMemory=new ReactionOpportunityMemory();")
    .replace(/      \/\/ A new quote after expiry alone is NOT a new opportunity\.[\s\S]*?(?=      let next=advanceNowOpportunity\()/,'')
-   .replace(/        this.lastDistinctOpportunity=rememberFiredOpportunity\(\{[\s\S]*?\n        \}\);\n/,'');
+   .replace(/        this.lastDistinctOpportunity=rememberFiredOpportunity\(\{[\s\S]*?\n        \}\);\n/,'')
+   .replace(/      maxDrawdownPct:this.settings.risk.maxDrawdownPct,\n      \/\/ A continuous LIVE quote stream has no artificial post-settlement wait\.[\s\S]*?      executionError:this.state.executionError,humanConfirmed:false\};/,
+     '      maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};');
  assert.equal(blob(code),'3226855b87438ded475a064f5a01d2caadafea31');
  const risk=read('sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs')
    .replace("import {entryFamilyOf} from './entry-family.mjs';\n",'')
    .split('// Historical 208 alignment functions for replay tests only.')[0].trimEnd()+'\n';
  assert.equal(blob(risk),'50c282497a7c4f80e51c745612e454ad21d5739b');
 });
-test('214: 207 impulse and structural path bypass later repetition rule; 212 rapid and breakout still use it',()=>{
+test('214: 207 impulse and structural analytical core retained, 215 checks repeat only after qualification',()=>{
  assert.equal(usesLegacy207OpportunityAdmission({reason:'closed-structure-and-live-impulse'}),true);
  assert.equal(usesLegacy207OpportunityAdmission({reason:'confirmed-level-structure-reversal'}),true);
  assert.equal(usesLegacy207OpportunityAdmission({reason:'confirmed-fast-level-reversal'}),false);
  assert.equal(usesLegacy207OpportunityAdmission({reason:'historical-level-breakout'}),false);
+ const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
+ assert.ok(runtime.includes('eligible=reviewDistinctOpportunity({'));
+ assert.ok(!runtime.includes('if(!usesLegacy207OpportunityAdmission(eligible))'));
  for(const [path,sha] of [
   ['sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs','2ea7af14e969b684665ccbc8804f7afde31ce316'],
   ['sentinel-trading-lab/agent/src/core/entry-family.mjs','fe086df157758c8ba2150902fc088c3996f8a6c6'],

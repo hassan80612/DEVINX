@@ -28,7 +28,10 @@ test('213: 207 impulse and confirmed structural entry retain the original opport
   assert.equal(usesLegacy207OpportunityAdmission({reason}),false,reason);
  }
  const runtime=read('sentinel-trading-lab/agent/src/core/runtime.mjs');
- assert.ok(runtime.includes('if(!usesLegacy207OpportunityAdmission(eligible))'));
+ // 215: legacy 207 remains unchanged in its core, but repeated physical
+ // opportunities are now checked for all eligible 30s/1m signal families.
+ assert.ok(runtime.includes('eligible=reviewDistinctOpportunity({'));
+ assert.ok(!runtime.includes('if(!usesLegacy207OpportunityAdmission(eligible))'));
  assert.ok(runtime.indexOf('eligible=reviewHybridFamilyProof(')>runtime.indexOf('eligible=reviewDistinctOpportunity('));
  assert.ok(runtime.indexOf('eligible=reviewHybridFamilyProof(')<runtime.indexOf('let next=advanceNowOpportunity('));
 });
