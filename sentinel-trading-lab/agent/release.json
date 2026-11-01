@@ -1,6 +1,6 @@
 {
-  "version": "13.9.207",
-  "build": "13.9.207-206-verified-early-reversal-deep-retest-expiry-preserved",
+  "version": "13.9.208",
+  "build": "13.9.208-207-one-minute-alignment-exnova-expiry-fix",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.207"
+  "publicVersion": "13.9.208"
 }
