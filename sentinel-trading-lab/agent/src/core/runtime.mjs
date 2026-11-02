@@ -52,6 +52,49 @@ import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
+
+// H207 experimental unified admission. 30s/1m share identical decisions,
+// scaled to their own duration; 5m and the physical broker expiry stay unchanged.
+// No timers, quote polling, side flipping or future observations.
+function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+ const duration=Number(durationMs);
+ if(![30000,60000].includes(duration)||candidate?.ready!==true||
+    !['CALL','PUT'].includes(candidate?.side))return candidate;
+ const blocked=(reason,kind,details={})=>({...candidate,ready:false,side:null,
+   provisionalSide:candidate.side,reason,entryRisk:{kind,blocked:true,reasons:[kind],details}});
+ // Keep weak structural reversal out of automatic 30s/1m trade execution;
+ // the analyst can still describe it. No effect on impulse/5m signals.
+ if(candidate.reason==='confirmed-level-structure-reversal')
+   return blocked('H207: reversão estrutural não autorizada em 30s/1m',
+                  'h207-structural-reversal-excluded');
+ if(candidate.reason!=='historical-level-breakout')return candidate;
+ const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+ const maxLag=duration===30000?1450:1950;
+ if(!(at>0&&clock>=at&&clock-at<=maxLag&&spot>0&&
+      Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return candidate;
+ const seconds=duration/1000,second=Math.floor(at/1000)%seconds;
+ if(second<seconds/2)return candidate;
+ const rows=(Array.isArray(quoteHistory)?quoteHistory:[]).filter(q=>{
+   const ts=Number(q?.ts),received=Number(q?.receivedAt??ts),value=Number(q?.price);
+   return Number.isFinite(ts)&&ts<=at&&ts>=at-duration-5000&&
+     Number.isFinite(received)&&received<=clock&&Number.isFinite(value)&&value>0;
+ }).sort((a,b)=>Number(a.ts)-Number(b.ts));
+ if(Number(rows.at(-1)?.ts)!==at||Number(rows.at(-1)?.price)!==spot)return candidate;
+ const before=ms=>{
+   const t=at-ms;
+   for(let i=rows.length-1;i>=0;i--)if(Number(rows[i].ts)<=t)
+     return t-Number(rows[i].ts)<=2500?Number(rows[i].price):null;
+   return null;
+ };
+ const p5=before(5000),pDuration=before(duration);
+ if(p5===null||pDuration===null)return candidate;
+ const d=candidate.side==='CALL'?1:-1;
+ if(!(d*(spot-p5)>0&&d*(spot-pDuration)<=0))return candidate;
+ return blocked('H207: rompimento tardio sem confirmação do período anterior',
+   'h207-late-breakout-contradiction',{second,candleSeconds:seconds,
+     move5:d*(spot-p5),movePeriod:d*(spot-pDuration)});
+}
+
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(ts));
@@ -1253,6 +1296,11 @@ export class DemoTradingRuntime{
         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
         quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,now,price:snap.price,
         durationMs:settings.orderDurationMs
+      });
+      // H207: shared 30s/1m entry admission; preserve broker and 5m paths.
+      eligible=reviewH207UnifiedAdmission({
+        candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
+        now,price:snap.price,durationMs:settings.orderDurationMs
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
