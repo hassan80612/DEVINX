@@ -15,6 +15,25 @@ const pkg=JSON.parse(readFileSync(join(agent,'package.json'),'utf8'));
 if(release.version!==pkg.version||!/^\d+\.\d+\.\d+$/.test(release.version))throw Error('agent_release_mismatch');
 mkdirSync(dl,{recursive:true});
 
+if(release.version==='13.9.223'){
+ // This is the exact Windows-tested release built by the isolated 223
+ // GitHub workflow. Next.js/Vercel MUST NOT silently produce another EXE.
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ const sha=JSON.parse(readFileSync(join(dl,'sentinel-223-sha256.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build)
+  throw Error('sentinel_223_manifest_version_mismatch');
+ const verify=(file,expected)=>createHash('sha256').update(readFileSync(join(dl,file))).digest('hex')===expected;
+ const exeNames=['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe','Sentinel-Agent-13.9.223.exe'];
+ for(const filename of exeNames)
+  if(!verify(filename,sha.exe))throw Error('sentinel_223_windows_tested_exe_mismatch:'+filename);
+ if(!verify('agent_payload_v88.zip',manifest.zipSha256)||
+  !verify('agent_payload_v88.zip',sha.payload))
+  throw Error('sentinel_223_verified_payload_mismatch');
+ for(const file of ['Sentinel-Agent-13.9.223-EXE.zip','Sentinel-Agent-13.9.223-Alternativo.zip'])
+  if(!verify(file,sha[file]))throw Error('sentinel_223_installer_archive_mismatch:'+file);
+ console.log('Sentinel 223: exact verified Windows EXE, payload and offline archives preserved.');
+ process.exit(0);
+}
 if(release.version==='13.9.222'){
  // The 222 EXE was built from this reviewed source and EXECUTED on
  // windows-latest. Do not silently replace that tested binary during the
