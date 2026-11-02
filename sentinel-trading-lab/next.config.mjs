@@ -5,26 +5,14 @@ const agentDownloadHeaders=[
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
   {key:'Cache-Control',value:'private, no-store'}
 ];
-// Retired binaries no longer take up production deployment space. Existing
-// authenticated direct download links still work via an explicit 307 redirect.
-// Keep 67.1 rollback, 67.18-67.21, the signed update zip and stable aliases.
-const retiredInstallerVersions=[2,3,4,5,6,7,9,10,11,12,13,14,15,16,17];
 const nextConfig={
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},
     // Immutable original 207 Windows installer, served by GitHub instead of Vercel.
-    {source:'/downloads/Sentinel-Agent-13.9.207.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/58557bef13d3a9a87eda9e3f0bd601b914a56ef4/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe',permanent:false},...['13.8.0','13.8.1','13.8.2','13.8.3','13.8.4','13.8.5','13.8.6','13.8.7','13.8.8'].map(version=>({
-    source:'/downloads/Sentinel-Agent-'+version+'.exe',
-    destination:'/downloads/Sentinel-Agent-Windows.exe',permanent:false
-  })),...retiredInstallerVersions.map(n=>({
-    source:'/downloads/Sentinel-Agent-13.4.67.'+n+'.exe',
-    destination:'/downloads/Sentinel-Agent-13.4.67.21.exe',
-    permanent:false
-  }))]},
+    {source:'/downloads/Sentinel-Agent-13.9.207.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/58557bef13d3a9a87eda9e3f0bd601b914a56ef4/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe',permanent:false}},
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-13.8.9.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
