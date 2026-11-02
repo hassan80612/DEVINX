@@ -408,17 +408,14 @@ export class SignalExecutor{
       else this.message='Ligado · entrada programada pulada: cotação atrasada ou corretora ocupada';
     }
   }
-  // Only a matching fired tick's explicit negative reversal proof can
-  // veto a click. Consume its ID so the backup pulse cannot retry the trade.
+  // 227: an unconfirmed legacy horizon reaction is NOT evidence that the
+  // analyst's independently validated 226 direction is wrong. Previously it
+  // cancelled ready signals here and could suppress subsequent valid trades.
+  // This advisory is never an executor veto; the actual analyst's structural,
+  // price, exhaustion, stale-quote, expiry and broker-risk gates remain intact.
   if(s&&mode==='automatic'&&freshAudit){
    const lastMile=reviewLastMileEvidence({signal:s,evidence:freshAudit,mode});
-   if(!lastMile.allowed){
-    this.seen.add(s.id);
-    if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
-    if(this.queuedSignal?.id===s.id)this.queuedSignal=null;
-    this.message='Ligado · entrada descartada: confirmação de reversão contrária ao vencimento';
-    return;
-   }
+   if(!lastMile.allowed)s.lastMileAdvisory=lastMile.reason;
   }
   if(s?.engineId&&s.engineId!==c.engine)return;
   if(mode==='automatic'&&s?.entryFamilyExplicit&&c.entryFamily&&s.entryFamily!==c.entryFamily)return;
