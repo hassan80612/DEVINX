@@ -13,13 +13,19 @@ test('201: held CALL is immutable when closed-price admission declines a remembe
  const after=tick(rt,d,candles(d),rows.at(-1),d.signalAt,rows);
  assert.equal(after.nowObservation.reason,'same-reaction-after-better-missed-price');assert.equal(after.futureEntryAnchor,null);assert.equal(after.nowObservation.marketReading,'REVERSÃO JÁ AVANÇOU · PUT');
 });
-test('H207 keeps later better-priced CALL as an analysis but not an unverified 1m automatic order',()=>{
+test('226: genuinely confirmed new 1m CALL reversal is eligible while H207 still rejects unverified variants',()=>{
  const previous=ds['5'],d=ds['6'],rt=runtime(previous),rows=quotes(d),q=rows.find(q=>q.ts===1793334467000),latency=d.signalAt-d.snapshotQuoteAt;
  tick(rt,d,candles(previous),q,q.ts+latency,rows.filter(x=>x.ts<=q.ts));
  const after=tick(rt,d,candles(d),rows.at(-1),d.signalAt,rows);
- // The unchanged 182 decision proposes CALL, but H207 now intentionally
- // excludes the weak structural 1m path at the FINAL physical admission.
- assert.equal(after.futureEntryAnchor,null);
- assert.equal(after.nowObservation.provisionalSide,'CALL');
- assert.match(after.nowObservation.reason,/^H207: (reversão estrutural|rompimento tardio)/);
+ // H207 no longer blanket-blocks a FRESH observed higher-low/pivot break
+ // with independently verified historical structure; it still rejects weak
+ // or stale proposals in sentinel-226-early-entry-and-intelligence.test.mjs.
+ assert.equal(after.nowObservation.ready,true);
+ assert.equal(after.nowObservation.side,'CALL');
+ assert.equal(after.nowObservation.reason,'confirmed-level-structure-reversal');
+ assert.equal(after.nowObservation.priceStructure?.confirmedReversal?.kind,
+  'confirmed-level-structure-reversal');
+ assert.equal(after.futureEntryAnchor?.phase,'fired');
+ assert.equal(after.futureEntryAnchor?.side,'CALL');
+ assert.equal(after.futureEntryAnchor?.observedEntryFamily,'reversal');
 });
