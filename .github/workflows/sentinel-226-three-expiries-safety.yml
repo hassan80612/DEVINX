@@ -52,9 +52,10 @@ jobs:
             tests/sentinel-168-targeted-corrections.test.mjs
       - name: Verify selected native expiry implementation was not modified
         run: |
+          git fetch --no-tags --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
           node --input-type=module -e "
           import {execFileSync} from 'node:child_process';
-          const compare=execFileSync('git',['diff','--name-only','5e7a58da0c2f876d01e4ed1761afca1b182fa700','HEAD'],{encoding:'utf8'});
+          const compare=execFileSync('git',['diff','--name-only','FETCH_HEAD','HEAD'],{encoding:'utf8'});
           const changes=compare.split('\n').filter(Boolean);
           const forbidden=changes.filter(f=>/native-expiry|expiry-keeper|signal-executor|worker\/index\.mjs|local-playwright-driver\.mjs/.test(f));
           if(forbidden.length)throw Error('Protected expiry or click files changed: '+forbidden.join(', '));
