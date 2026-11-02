@@ -5,6 +5,11 @@ const agentDownloadHeaders=[
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
   {key:'Cache-Control',value:'private, no-store'}
 ];
+const versionedAgentDownloadHeaders=[
+  {key:'Content-Type',value:'application/octet-stream'},
+  {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'.exe"'},
+  {key:'Cache-Control',value:'private, no-store'}
+];
 const nextConfig={
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},
@@ -15,7 +20,7 @@ const nextConfig={
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:versionedAgentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
       {key:'Content-Disposition',value:'attachment'},
