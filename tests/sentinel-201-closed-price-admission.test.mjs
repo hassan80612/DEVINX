@@ -67,6 +67,21 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
   'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
   'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'a1aa4f148557bc0a00d4cf463cd782f1e39b29e4'
  };
- for(const [path,hash] of Object.entries(fixture.preserved))
+
+ // The only approved 221 change to the guarded worker is an event-driven,
+ // readout-only balance refresh. First prove its exact code is present, then
+ // remove ONLY that addition and hash-check the rest against the frozen H207
+ // baseline. All native expiry controls and prior strategy code must match.
+ const newBalanceHandler="driver.setBalanceUpdateHandler?.((provider,balance)=>{\n if(provider!==activeProvider)return;\n const previousRevision=executor.balanceRisk.current?.revision;\n executor.observeBalance(balance);\n // Update confirmed balance on the existing text-only card immediately;\n // never poll the broker, rebuild its chart, or touch expiry/entry logic.\n const current=executor.balanceRisk.current;\n if(!current||current.revision===previousRevision)return;\n const state={...executor.status(),provider};\n lastExecutorReadoutKey=(runtime.settings.uiLanguage||'pt')+'|'+executorReadoutKey(state);\n lastExecutorReadoutAt=Date.now();\n executorReadoutUpdates.publish(provider,{state,\n  revision:(executorReadoutRevision=Math.max(executorReadoutRevision+1,Date.now())),\n  language:runtime.settings.uiLanguage||'pt'},{urgent:true});\n void publishLiveFrame();\n});";
+ const originalBalanceHandler="driver.setBalanceUpdateHandler?.((provider,balance)=>{\n if(provider===activeProvider)executor.observeBalance(balance);\n});";
+ const workerPath='sentinel-trading-lab/agent/worker/index.mjs';
+ const worker=read(workerPath);
+ assert.ok(worker.includes(newBalanceHandler),'verified broker-balance readout callback');
+ const normalizedWorker=worker.replace(newBalanceHandler,originalBalanceHandler);
+ assert.equal(gitSha(normalizedWorker),approvedH207[workerPath],
+   'only the balance callback may differ from protected H207 worker');
+ for(const [path,hash] of Object.entries(fixture.preserved)){
+  if(path===workerPath)continue;
   assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
+ }
 });
