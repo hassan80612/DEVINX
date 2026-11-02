@@ -5,6 +5,10 @@ on:
       - fix/sentinel-226-inteligencia-3-prazos-20261102
     paths:
       - .github/workflows/sentinel-226-verified-agent-release.yml
+      - .github/workflows/sentinel-225-verified-agent.yml
+      - sentinel-trading-lab/agent/release.json
+      - sentinel-trading-lab/agent/package.json
+      - sentinel-trading-lab/package.json
   workflow_dispatch:
 permissions:
   contents: write
