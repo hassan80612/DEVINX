@@ -69,8 +69,8 @@ export function decisionAudit({signal,context,mode,martingaleLevel,clickCount,no
    evidence
   },
   probability:{
-   qualified:research.qualified===true,
-   samples:numberOrNull(proof?null:research.samples),
+   qualified:proof?proof.probabilityQualified===true:research.qualified===true,
+   samples:numberOrNull(proof?.probabilityQualified?proof.probabilitySamples:(proof?null:research.samples)),
    estimated:numberOrNull(proof?(signal?.side==='CALL'?proof.probabilityCall:proof.probabilityPut):research.probability),
    source:short(proof?proof.probabilitySource:research.probabilitySource,75)
   }
