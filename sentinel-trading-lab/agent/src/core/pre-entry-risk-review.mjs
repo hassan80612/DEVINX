@@ -39,7 +39,10 @@ export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,q
  const state=assessDirectionalPersistence({quoteHistory:qs,quoteAt,now,price,durationMs});
  // 2. A fast two-quote bounce against a dominant observed leg needs an
  // independently observable local higher-low/lower-high structure change.
- if(reason==='confirmed-fast-level-reversal'&&state.side&&state.side!==side&&state.efficiency>=POLICY.dominantEfficiency){
+ // Keep the proven 30s fast-structure reversal path: unlike a 1m
+ // opposing leg it has already passed dedicated micro-turn/pivot guards.
+ // Additional 30s wall/weak-breakout risk checks still run below.
+ if(durationMs===60000&&reason==='confirmed-fast-level-reversal'&&state.side&&state.side!==side&&state.efficiency>=POLICY.dominantEfficiency){
   const turn=currentQuoteStructureTurn({quoteHistory:qs,quoteAt,now,price,side,durationMs});
   if(!turn){reasons.push('fast-reversal-against-dominant-leg-without-structure-change');details.counterLeg=state;}
  }
