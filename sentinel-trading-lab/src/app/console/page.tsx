@@ -21,7 +21,7 @@ const AVAILABLE_AGENT_VERSION=agentRelease.version;
 // Reuse the original stable same-origin direct binary endpoint used by
 // successful releases. No redirect or external GitHub hop; the response
 // names the packaged version via Content-Disposition.
-const AGENT_DOWNLOAD_URL='/downloads/sentinel-agent-windows.exe';
+const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${encodeURIComponent(AVAILABLE_AGENT_VERSION)}`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();
