@@ -553,6 +553,10 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     control.el.querySelector?.('button,[role="button"],input')||control.el;
    const optionSelector='[role="option"],[role="menuitem"],li,[class*="option" i],[class*="item" i]';
    const visibleBefore=new Set([...document.querySelectorAll(optionSelector)].filter(visible));
+   // Some Exnova expiry popups have plain div rows, with no option role.
+   // Only newly rendered nodes next to this verified native picker qualify.
+   const plainBefore=new Set([...document.querySelectorAll('div,span,button,[role="button"]')].filter(visible));
+   const origin=control.el.getBoundingClientRect();
    try{opener.click()}catch{repairing=false;return}
    // Only exact native duration menu matches are eligible. Absolute-clock
    // times, forecast dropdowns, and chart timeframe options are excluded.
@@ -573,13 +577,30 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
        Math.abs(el.getBoundingClientRect().x-control.el.getBoundingClientRect().x)<=450&&
        Math.abs(el.getBoundingClientRect().y-control.el.getBoundingClientRect().y)<=450&&
        !chartRe.test(nativeLabel(el)+' '+nativeLabel(el.parentElement))));
-     const options=elements.filter(el=>{
+     // Native popups can render unstyled options in a fresh body portal.
+     // Count ONLY newly created leaves adjacent to the opened expiry control.
+     // Never accept existing chart periods, countdowns, or Sentinel controls.
+     const freshPlain=[...document.querySelectorAll('div,span,button,[role="button"]')]
+      .filter(el=>!plainBefore.has(el)&&visible(el)&&!unsafeField(el)&&
+        !el.closest?.('#sentinel-trading-overlay-host')&&
+        el!==opener&&!el.contains(opener))
+      .filter(el=>{
+       const r=el.getBoundingClientRect?.();
+       const text=String(el.innerText||el.textContent||'').trim();
+       return !!r&&r.width>=15&&r.width<=250&&r.height>=10&&r.height<=60&&
+         r.left>=Math.max(innerWidth*.58,origin.left-120)&&
+         Math.abs(r.left-origin.left)<=260&&
+         Math.abs(r.top-origin.top)<=340&&
+         text.length<=28&&parse(text)===preferredMs&&
+         !chartRe.test(nativeLabel(el)+' '+nativeLabel(el.parentElement));
+      });
+     const all=[...elements,...freshPlain];
+     const options=all.filter(el=>{
       const raw=String(el.innerText||el.textContent||'').trim();
       if(raw.length>28||!raw)return false;
       return parse(raw)===preferredMs;
      }).filter(el=>el!==opener&&!el.contains(opener))
-      // Drop composite ancestors when the real clickable leaf is present.
-      .filter(el=>!elements.some(other=>other!==el&&el.contains?.(other)&&
+      .filter(el=>!all.some(other=>other!==el&&el.contains?.(other)&&
         parse(String(other.innerText||other.textContent||'').trim())===preferredMs));
      // Unique selection only; clicking a guessed item risks a wrong expiry.
      if(options.length!==1){repairing=false;try{opener.click()}catch{};return}
