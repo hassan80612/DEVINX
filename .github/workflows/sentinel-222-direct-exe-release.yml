@@ -1,0 +1,45 @@
+name: Sentinel 222 independent direct EXE release
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-direct-exe-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-direct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Publish same Windows-tested EXE to GitHub Release distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.222.exe'
+          expected='27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041'
+          test "$(stat -c%s "$file")" = 2863616
+          test "$(sha256sum "$file" | cut -d' ' -f1)" = "$expected"
+          test "$(head -c2 "$file")" = MZ
+          tag='sentinel-agent-13.9.222'
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Sentinel release already exists; comparing binary only.'
+            gh release download "$tag" -p 'Sentinel-Agent-13.9.222.exe' -D /tmp
+            cmp -s "$file" /tmp/Sentinel-Agent-13.9.222.exe
+          else
+            gh release create "$tag" "$file#Sentinel-Agent-13.9.222.exe" \
+              --target '357a9d8b9e63742baaa652596fbe7898b5dfd452' \
+              --title 'Sentinel Agent Windows 13.9.222' \
+              --notes 'Instalador Windows original da versão 13.9.222. Binário previamente verificado em Windows. SHA256: 27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041. O download não concede uma licença; o Agent mantém autenticação própria.' \
+              --latest=false
+          fi
+          gh release view "$tag" --json url,assets --jq '{url:.url,assets:[.assets[]|{name:.name,size:.size,url:.url}]}'
