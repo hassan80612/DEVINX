@@ -11,7 +11,9 @@ test('reload: an already injected expiry keeper re-reads Agent after the durable
   // Browser new document injected keeper before Playwright exposed bridge.
   window.__sentinelGetNativeExpiryChoice=async()=>({durationMs:60000,selectedAt:99999});
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  await Promise.resolve();await Promise.resolve();await Promise.resolve();
+  // Allow the asynchronous Playwright-style exposed-function receipt to
+  // settle before inspecting the restored preference.
+  await new Promise(resolve=>setImmediate(resolve));
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
   b.step();b.step();b.step();
   assert.equal(b.control._text,'1 min','broker default 30s is restored to Agent choice');
@@ -26,7 +28,9 @@ test('reload: a stale Agent 1m receipt must never replace a newer trusted manual
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   window.__sentinelGetNativeExpiryChoice=async()=>({durationMs:60000,selectedAt:99999});
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  await Promise.resolve();await Promise.resolve();await Promise.resolve();
+  // Allow the asynchronous Playwright-style exposed-function receipt to
+  // settle before inspecting the restored preference.
+  await new Promise(resolve=>setImmediate(resolve));
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,30000);
   b.step();b.step();
   assert.equal(b.control._text,'30 s');
@@ -38,7 +42,9 @@ test('reload: old 30s unchosen fallback never supplants durable selected 5m',asy
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
   window.__sentinelGetNativeExpiryChoice=async()=>({durationMs:300000,selectedAt:99999});
   installBrokerNativeExpiryKeeper({provider:'iq_option'});
-  await Promise.resolve();await Promise.resolve();await Promise.resolve();
+  // Allow the asynchronous Playwright-style exposed-function receipt to
+  // settle before inspecting the restored preference.
+  await new Promise(resolve=>setImmediate(resolve));
   assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,300000);
   assert.equal(b.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'300000');
  }finally{b.restore()}
