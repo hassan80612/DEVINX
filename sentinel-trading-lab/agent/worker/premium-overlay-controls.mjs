@@ -15,8 +15,13 @@ export const PREMIUM_OVERLAY_CSS=`
 #sentinel-trading-overlay[data-console-layout="split"]{scrollbar-gutter:auto!important}
 [data-sentinel-command-dock] [data-sentinel-executor-monitor]{font-size:11px}
 .sentinel-monitor-head{display:flex;align-items:center;gap:7px;min-height:38px}.sentinel-monitor-head>[data-sentinel-executor-state]{font-size:10px;line-height:13px;max-width:160px}.sentinel-monitor-head strong{margin-left:auto;font-size:18px!important;white-space:nowrap}
-.sentinel-monitor-results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:18px 15px;align-items:center;gap:3px 7px;margin-top:4px;height:36px;min-height:36px;max-height:36px;font-size:10px;line-height:14px;overflow:hidden}
-.sentinel-monitor-results>[data-sentinel-executor-wl],.sentinel-monitor-results>[data-sentinel-executor-session]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sentinel-monitor-results{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1.08fr) minmax(0,.97fr);grid-template-rows:18px 15px;align-items:center;gap:3px 5px;margin-top:4px;height:36px;min-height:36px;max-height:36px;font-size:10.6px;line-height:14px;overflow:hidden}
+.sentinel-monitor-results>[data-sentinel-executor-wl],.sentinel-monitor-results>[data-sentinel-executor-session],.sentinel-monitor-results>[data-sentinel-market-condition]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sentinel-monitor-results>[data-sentinel-market-condition]{font:800 10.6px/14px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0;text-align:center;color:#dfc47e}
+.sentinel-monitor-results>[data-sentinel-market-condition][data-condition="good"]{color:#75dfb4}
+.sentinel-monitor-results>[data-sentinel-market-condition][data-condition="bad"]{color:#ff91a0}
+.sentinel-monitor-results>[data-sentinel-market-condition][data-condition="sync"]{color:#dfc47e}
+.sentinel-monitor-results>[data-sentinel-executor-session]{font:850 11.7px/15px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0;text-align:right}
 .sentinel-monitor-results>[data-sentinel-executor-broker-balance]{grid-column:1/-1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-sentinel-vnext-cards]>[data-sentinel-summary]{height:116px!important;min-height:116px!important;max-height:116px!important;overflow:hidden!important;contain:layout paint}
 [data-sentinel-vnext-cards] [data-sentinel-reading-side]{height:19px;min-height:19px;max-height:19px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -27,7 +32,7 @@ export const PREMIUM_OVERLAY_CSS=`
 [data-sentinel-summary="market-total"]>div:nth-last-child(2),[data-sentinel-summary="strategy-total"]>div:nth-last-child(2),[data-sentinel-summary="operational-total"]>div:nth-last-child(2){flex-wrap:nowrap!important;overflow:hidden}
 [data-sentinel-summary="market-total"]>div:nth-last-child(2) span,[data-sentinel-summary="strategy-total"]>div:nth-last-child(2) span,[data-sentinel-summary="operational-total"]>div:nth-last-child(2) span{white-space:nowrap;font-variant-numeric:tabular-nums}
 .sentinel-monitor-results>[data-sentinel-executor-broker-balance]{margin-top:0!important;font-size:9px!important}
-[data-sentinel-executor-session]{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:.02em;font-weight:850}
+[data-sentinel-executor-session]{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0;font-weight:850}
 [data-sentinel-executor-session][data-pnl-tone="positive"]{color:#74e0b5!important}
 [data-sentinel-executor-session][data-pnl-tone="negative"]{color:#ff91a0!important}
 [data-sentinel-executor-session][data-pnl-tone="neutral"]{color:#e6c879!important}
