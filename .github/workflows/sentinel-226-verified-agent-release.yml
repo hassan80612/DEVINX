@@ -13,7 +13,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: sentinel-226-windows-verified-release
+  group: sentinel-226-windows-release-final-20261102
   cancel-in-progress: true
 jobs:
   build:
