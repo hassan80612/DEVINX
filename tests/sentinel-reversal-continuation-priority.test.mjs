@@ -25,7 +25,7 @@ test('a verified current structural reversal is evaluated even when an older con
  }
 });
 
-test('the full runtime issues the verified reversal through final review for each expiry and strategy',()=>{
+test('H207 blocks weak 30s/1m reversals while 5m retains prior strategy behaviour',()=>{
  for(const mirror of [false,true])for(const durationMs of [30000,60000,300000])
  for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest']){
   const a=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
@@ -33,6 +33,11 @@ test('the full runtime issues the verified reversal through final review for eac
   rt.structureCache={get:()=>({candles:100,asOf:a.map.asOf,tolerance:a.map.tolerance,atr:1.5,averages:[],zones:a.map.levels,candleLevelMap:a.map})};
   const result=rt._signalValidationGate({analysis:{},settings:rt.settings,now:a.now,
    snap:{provider:'exnova',price:a.price,quoteTs:a.quoteAt,quoteHistory:a.quoteHistory,candles:[],historicalCandlesVerified:true}});
-  assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+  if(durationMs===30000||durationMs===60000){
+   assert.equal(result.analysis.vnext.futureEntryAnchor?.side??null,null,
+     'H207 rejects the structural entry: '+[mirror,durationMs,engine].join('|'));
+  }else{
+   assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+  }
  }
 });
