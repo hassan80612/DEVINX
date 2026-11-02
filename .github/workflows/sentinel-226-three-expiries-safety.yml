@@ -22,12 +22,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install dependencies without building EXE or deploying
         working-directory: sentinel-trading-lab
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate 226 syntax
         run: |
           node --check sentinel-trading-lab/agent/src/core/runtime.mjs
