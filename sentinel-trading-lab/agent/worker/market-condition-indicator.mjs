@@ -31,27 +31,32 @@ export function marketConditionEvidence(d={},now=Date.now()){
    return {state:'good',label:'FAVORÁVEL',reason:'Leituras atuais alinhadas para este prazo; não é ordem',at:now};
  return {state:'watch',label:'ATENÇÃO',reason:opposed?'Leituras divergentes':'Aguardando confirmação do gráfico',at:now};
 }
-// A changing 1-second quote must not switch the label from good to bad
-// and back on each packet. Unsafe evidence demotes immediately to watch;
-// both good and bad need sustained independent updates to commit.
+// Sentinel 226: visual-only hysteresis. A 1-second quote must not
+// flip the card. Good needs 8s of sustained evidence, bad 7s, and ordinary
+// caution 5s. Actual risk instantly downgrades "good" to "watch", and feed
+// loss immediately shows "no reading". None of this affects trading.
 export function smoothMarketCondition(previous,observed,{at=Date.now(),context=''}={}){
- const obs={...observed,at:Number(at)||Date.now()};
+ const tick=Number(at)||Date.now(),obs={...observed,at:tick};
  if(!previous||previous.context!==context){
   return {context,state:obs.state==='good'?'watch':obs.state,
-    pending:obs.state==='good'?'good':null,pendingAt:at,count:obs.state==='good'?1:0,
-    since:at,reason:obs.reason};
+    pending:obs.state==='good'?'good':null,pendingAt:tick,count:obs.state==='good'?1:0,
+    since:tick,reason:obs.state==='good'?'Verificando estabilidade do gráfico':obs.reason};
  }
- if(obs.state==='sync')return {...previous,state:'sync',pending:null,count:0,since:at,reason:obs.reason,context};
+ if(obs.state==='sync')
+   return {...previous,state:'sync',pending:null,pendingAt:tick,count:0,since:tick,reason:obs.reason,context};
  if(obs.state===previous.state)
-   return {...previous,pending:null,count:0,reason:obs.reason,context};
- // Never keep saying favorable while the current analyst explicitly vetoes.
+   return {...previous,pending:null,count:0,context};
+ // Never label a vetoed market as favorable; do not immediately bounce
+ // all the way back to good on the very next quote.
  if(previous.state==='good'&&obs.state==='bad')
-   return {...previous,state:'watch',pending:'bad',pendingAt:at,count:1,since:at,reason:obs.reason,context};
- const count=previous.pending===obs.state?previous.count+1:1;
- const pendingAt=previous.pending===obs.state?previous.pendingAt:at;
- if(count>=3&&at-pendingAt>=2800)
-   return {...previous,state:obs.state,pending:null,pendingAt:at,count:0,since:at,reason:obs.reason,context};
- return {...previous,pending:obs.state,pendingAt,count,reason:obs.reason,context};
+   return {...previous,state:'watch',pending:'bad',pendingAt:tick,
+     count:1,since:tick,reason:'Risco atual detectado; aguardando cenário estável',context};
+ const count=previous.pending===obs.state?Number(previous.count||0)+1:1;
+ const pendingAt=previous.pending===obs.state?Number(previous.pendingAt||tick):tick;
+ const requiredMs=obs.state==='good'?8000:obs.state==='bad'?7000:5000;
+ if(count>=4&&tick-pendingAt>=requiredMs)
+   return {...previous,state:obs.state,pending:null,pendingAt:tick,count:0,since:tick,reason:obs.reason,context};
+ return {...previous,pending:obs.state,pendingAt,count,context};
 }
 export const marketConditionLabel=(state,lang='pt')=>{
  const k=String(state||'sync'),en=lang==='en';
