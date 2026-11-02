@@ -1,0 +1,137 @@
+name: Sentinel 223 Windows-tested isolated release
+on:
+  push:
+    branches:
+      - fix/sentinel-223-reversal-expiry-cards
+    paths:
+      - .github/workflows/sentinel-223-isolated-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-223-isolated-release
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Test reversal, 30s parity, keeper reload and card stability
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs
+          node --check sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-222-reversal-precision-no-wait.test.mjs tests/sentinel-222-expiry-late-bridge-regression.test.mjs tests/sentinel-222-30s-parity-pre-entry.test.mjs tests/sentinel-222-card-stability-broker-support.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-204-pre-entry-reviewer.test.mjs tests/sentinel-222-last-mile-evidence.test.mjs
+      - name: Bundle exact Agent, compile Windows EXE and ZIP installers
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          export RELEASE_SHA="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          python3 -c 'import json,os; r=json.load(open("agent/release.json")); assert r["version"]=="13.9.223"; print(json.dumps({"format":"sentinel-agent-update-v1","version":r["version"],"build":r["build"],"zipSha256":os.environ["RELEASE_SHA"]},separators=(",",":")))' > public/downloads/agent-update.json
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/Sentinel-Agent-13.9.223.exe
+          (cd public/downloads && zip -Xq Sentinel-Agent-13.9.223-EXE.zip Sentinel-Agent-13.9.223.exe)
+          mkdir -p .sentinel-223-offline
+          cp public/downloads/agent_payload_v88.zip public/downloads/install-agent-v88.ps1 .sentinel-223-offline/
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          rel=json.loads(Path('agent/release.json').read_text())
+          cmd='\r\n'.join(['@echo off','cd /d "%~dp0"',
+          'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "13.9.223" -ExpectedBuild "'+rel['build']+'" -OpenSiteAfterInstall',
+          'if errorlevel 1 (','echo ERRO NA INSTALACAO','pause','exit /b 1',')','exit /b 0',''])
+          Path('.sentinel-223-offline/Instalar-Sentinel.cmd').write_bytes(cmd.encode('ascii'))
+          Path('.sentinel-223-offline/LEIA-ME.txt').write_text('Sentinel 13.9.223 - extrair todos os arquivos antes de executar Instalar-Sentinel.cmd\n')
+          PY
+          (cd .sentinel-223-offline && zip -Xq ../public/downloads/Sentinel-Agent-13.9.223-Alternativo.zip Instalar-Sentinel.cmd LEIA-ME.txt agent_payload_v88.zip install-agent-v88.ps1)
+          rm -rf .sentinel-223-offline
+          (cd public/downloads && unzip -tq Sentinel-Agent-13.9.223-EXE.zip && unzip -tq Sentinel-Agent-13.9.223-Alternativo.zip)
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,hashlib
+          d=Path('public/downloads')
+          sha=lambda name:hashlib.sha256((d/name).read_bytes()).hexdigest()
+          v={'exe':sha('Sentinel-Agent-13.9.223.exe'),'payload':sha('agent_payload_v88.zip')}
+          for name in ('Sentinel-Agent-13.9.223-EXE.zip','Sentinel-Agent-13.9.223-Alternativo.zip'):v[name]=sha(name)
+          assert sha('Sentinel-Agent-Windows.exe')==v['exe']
+          assert sha('sentinel-agent-windows.exe')==v['exe']
+          assert (d/'Sentinel-Agent-13.9.223.exe').read_bytes()[:2]==b'MZ'
+          (d/'sentinel-223-sha256.json').write_text(json.dumps(v,sort_keys=True))
+          print(v)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-223-verified-windows-package
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-EXE.zip
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-Alternativo.zip
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+            sentinel-trading-lab/public/downloads/sentinel-223-sha256.json
+          if-no-files-found: error
+  windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-223-verified-windows-package
+          path: output
+      - name: Verify actual EXE + alternative ZIP in Windows without installing it
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe=Join-Path $PWD 'output/Sentinel-Agent-13.9.223.exe'
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw "Actual Windows EXE failed: $LASTEXITCODE" }
+          $zip=Join-Path $PWD 'output/Sentinel-Agent-13.9.223-Alternativo.zip'
+          Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $PWD 'offline') -Force
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PWD 'offline/install-agent-v88.ps1') -LocalPayload (Join-Path $PWD 'offline/agent_payload_v88.zip') -ExpectedVersion '13.9.223' -ExpectedBuild '13.9.223-native-expiry-reload-reversal-entry-review-card-continuity' -VerifyPayloadOnly
+          if ($LASTEXITCODE -ne 0) { throw "Alternate ZIP failed: $LASTEXITCODE" }
+  publish:
+    needs: windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-223-verified-windows-package
+          path: sentinel-trading-lab/public/downloads
+      - name: Commit immutable Windows-verified release only if branch unchanged
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="$GITHUB_REF_NAME"
+          remote="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          test "$remote" = "$GITHUB_SHA" || { echo 'Branch advanced; refusing stale installer'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-EXE.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-Alternativo.zip sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json sentinel-trading-lab/public/downloads/sentinel-223-sha256.json
+          git diff --cached --quiet || { git commit -m 'build(sentinel 223): Windows-tested native expiry + reversals + total cards'; git push origin "HEAD:$branch"; }
+          if ! gh release view 'sentinel-agent-13.9.223' >/dev/null 2>&1; then
+            gh release create 'sentinel-agent-13.9.223' sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-Alternativo.zip --target "$branch" --title 'Sentinel Agent 13.9.223' --notes 'Native expiry persistence on broker refresh, evidence-confirmed reversal review, 30s risk review parity and stable three totals; previous 222 untouched.' --latest=false
+          fi
