@@ -423,7 +423,22 @@ function Scheduler({s,act}:{s:Status,act:any}){
   return <section className="card span12"><div className="split"><div><h3><T>Análise em tempo real & tempo da operação</T></h3><p className="muted">A análise acompanha cada atualização do mercado em tempo real. CALL/PUT só é liberado como entrada depois que o próprio Sentinel valida o desempenho recente daquele ativo e duração; até lá ele mostra apenas viés técnico.</p></div>{dirty&&<Pill tone="warn"><T>ALTERAÇÕES NÃO SALVAS</T></Pill>}</div><div className="formgrid three"><Text label="Timezone" value={form.timezone} onChange={set('timezone')}/><Text label="Início diário" type="time" value={form.dailyStart} onChange={set('dailyStart')}/><Text label="Fim diário" type="time" value={form.dailyEnd} onChange={set('dailyEnd')}/><Select label="Fallback sem novo evento" value={String(form.intervalMs)} onChange={set('intervalMs')} options={[["1000","1 segundo"],["2000","2 segundos"],["5000","5 segundos"]]}/><Select label="Tempo da operação / expiração" value={String(form.orderDurationMs)} onChange={set('orderDurationMs')} options={[["30000","30 segundos"],["60000","1 minuto"],["300000","5 minutos"]]}/><Text label="Data/hora inicial (ISO opcional)" value={form.startAt||''} onChange={set('startAt')}/><Text label="Data/hora final (ISO opcional)" value={form.endAt||''} onChange={set('endAt')}/></div>{msg&&<p className="formerror">{msg}</p>}<div className="actions"><button className="primary save" disabled={!dirty} onClick={save}><T>Salvar análise e tempo</T></button>{dirty&&<button className="secondary save" onClick={()=>{setForm(make());setDirty(false);setMsg('')}}><T>Descartar</T></button>}</div></section>
 }
 function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}){
- const {t}=useSentinelLocale();
+ const {t,language}=useSentinelLocale();
+ // UI-only preview: never registers a broker or changes the running Agent.
+ const[otherVisible,setOtherVisible]=useState(false);
+ const[otherUrl,setOtherUrl]=useState('');
+ const[otherError,setOtherError]=useState('');
+ const openOtherSite=()=>{
+   try{
+     const url=new URL(otherUrl.trim());
+     if(url.protocol!=='https:'||!url.hostname||url.username||url.password)
+       throw new Error('invalid_url');
+     const popup=window.open(url.href,'_blank','noopener,noreferrer');
+     // Browsers may return null even when noopener opens successfully.
+     void popup;
+     setOtherError('');
+   }catch{setOtherError(language==='en'?'Enter a valid HTTPS website.':'Informe um endereço HTTPS válido.')}
+ };
  const allowed=account?.profile?.role==='master'||account?.profile?.access_active===true;
  const live=s?.liveBroker||{};
  const local=s?.runtimeKind==='persistent-worker';
@@ -440,7 +455,26 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
      <div className="actions topgap">
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('iq_option')}>{t('Abrir IQ Option')}</button>
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('exnova')}>{t('Abrir Exnova')}</button>
+       <button className="secondary" disabled={!allowed} aria-expanded={otherVisible}
+         onClick={()=>{setOtherVisible(v=>!v);setOtherError('')}}>{language==='en'?'Other broker':'Outra corretora'}</button>
      </div>
+     {otherVisible&&<div className="stack topgap" style={{maxWidth:560}}>
+       <p className="muted">{language==='en'
+         ?'Compatibility preview only. This opens the broker website in a separate tab; the Agent cannot read or trade on this broker yet.'
+         :'Prévia de compatibilidade. O site abre em outra aba; o Agent ainda não lê nem executa operações nessa corretora.'}</p>
+       <label htmlFor="sentinel-other-broker-url">{language==='en'?'Broker website (HTTPS)':'Site da corretora (HTTPS)'}</label>
+       <div className="actions">
+         <input id="sentinel-other-broker-url" type="url" inputMode="url"
+           autoComplete="url" placeholder="https://..." value={otherUrl}
+           onChange={e=>{setOtherUrl(e.target.value);setOtherError('')}}
+           style={{flex:'1 1 240px',minWidth:0}}/>
+         <button className="secondary" onClick={openOtherSite}>{language==='en'?'Open website':'Abrir site'}</button>
+       </div>
+       {otherError&&<p className="formerror" role="alert">{otherError}</p>}
+       <small className="muted">{language==='en'
+         ?'CALL/PUT mapping will only be enabled after quotes, expiry and trade results have been validated. Existing brokers are unaffected.'
+         :'O mapeamento CALL/PUT só será habilitado após validar cotações, expiração e resultados. As corretoras atuais permanecem intactas.'}</small>
+     </div>}
    </section>
    <section className="card span12">
      <div className="split"><h3>{t('Conexão do PC')}</h3>
