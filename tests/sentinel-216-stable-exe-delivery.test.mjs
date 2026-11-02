@@ -29,9 +29,12 @@ test('216: prevent independent EXE repackaging by Vercel',()=>{
 });
 test('216: browser download has stable versioned URL and filename; aliases preserved',async()=>{
  const s=read('sentinel-trading-lab/src/app/console/page.tsx').toString('utf8');
- assert.match(s,/AGENT_DOWNLOAD_URL=`\/downloads\/Sentinel-Agent-\$\{encodeURIComponent\(AVAILABLE_AGENT_VERSION\)\}\.exe`/);
+ assert.match(s,/AGENT_DOWNLOAD_URL='https:\/\/raw\.githubusercontent\.com\/hassan80612\/DEVINX\/84de4c4b740818cf9fd7b3082e00540ae25d5e97\/sentinel-trading-lab\/public\/downloads\/Sentinel-Agent-13\.9\.218\.exe'/);
  assert.doesNotMatch(s,/AGENT_DOWNLOAD_URL=.*\?build=/);
  assert.equal((s.match(/download=\{`Sentinel-Agent-\$\{AVAILABLE_AGENT_VERSION\}\.exe`\}/g)||[]).length,3);
+ const redirects=await nextConfig.redirects();
+ assert.equal(redirects.find(x=>x.source==='/downloads/Sentinel-Agent-'+release.version+'.exe')?.destination,
+ 'https://raw.githubusercontent.com/hassan80612/DEVINX/84de4c4b740818cf9fd7b3082e00540ae25d5e97/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.218.exe');
  const headers=await nextConfig.headers();
  const rule=headers.find(x=>x.source==='/downloads/Sentinel-Agent-'+release.version+'.exe');
  assert.equal(rule.headers.find(x=>x.key==='Content-Disposition').value,
