@@ -1,0 +1,51 @@
+name: Restore original Sentinel 207 Windows release
+on:
+  push:
+    branches: [fix/sentinel-13.9.207-mobile-card-stability-20261031]
+    paths: ['.github/workflows/sentinel-207-original-windows-repackage.yml']
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate exact original source and expiry tests
+        run: |
+          set -euo pipefail
+          test "$(git hash-object sentinel-trading-lab/agent/src/core/runtime.mjs)" = "3226855b87438ded475a064f5a01d2caadafea31"
+          node --test tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-190-native-expiry-persistence.test.mjs
+      - name: Package original 207 source into Windows installer
+        working-directory: sentinel-trading-lab
+        run: |
+          set -euo pipefail
+          node scripts/build-sentinel-137-installer.mjs
+          test -s public/downloads/Sentinel-Agent-13.9.207.exe
+          unzip -p public/downloads/agent_payload_v88.zip release.json | grep '"version": "13.9.207"'
+          unzip -t public/downloads/agent_payload_v88.zip | tail -1
+      - name: Save only matching generated binaries and update manifest
+        run: |
+          set -euo pipefail
+          branch=fix/sentinel-13.9.207-mobile-card-stability-20261031
+          git fetch origin "$branch"
+          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+          git add sentinel-trading-lab/public/downloads/agent-update.json
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          git add sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207-Alternativo.zip
+          git diff --cached --quiet && exit 0
+          git commit -m 'build(sentinel 207): exact original engine matching Windows binaries'
+          git push origin HEAD:"$branch"
