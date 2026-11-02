@@ -23,7 +23,7 @@ const nextConfig={
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:versionedAgentDownloadHeaders},
+    // A redirect response must not advertise itself as a downloadable EXE.
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
       {key:'Content-Disposition',value:'attachment'},
