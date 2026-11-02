@@ -1,4 +1,5 @@
 name: Sentinel Exnova native expiry reload Edge regression
+# Rerun against scoped plain-popup expiry restoration after failure reproduction.
 on:
   push:
     branches:
