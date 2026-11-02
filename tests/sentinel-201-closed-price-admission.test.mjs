@@ -68,13 +68,21 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
  // H207 intentionally changes ONLY the manual expiry bridge and its durable
  // runtime callback. Keep byte-for-byte guards for all other 199/207 files.
  const approvedH207={
-  'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'63e31143ea5ffb8fb1286bfeecc115d431863e7c',
+  'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'f55a48c5cd21db5335744746c2dd2c5b90affaa8',
   'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
-  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'47b8a9229866ed2a4a3f55bb2ae8a925eab06152',
+  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'586dd29060928269264ffc18afb98eedeb4b206c',
   // 222: only the reviewed final-entry proof veto; other workers remain frozen.
   'sentinel-trading-lab/agent/worker/signal-executor.mjs':'534529f15a8d9e8ea34ae1662ec5f1ff0ad91707'
  };
 
+ // Explicit 223 review: only two additional blob changes are permitted:
+ // visual-only three-card continuity in PC overlay and re-reading the
+ // durable native expiry receipt after a broker frame reload. Preserve the
+ // historical byte guard for everything else.
+ assert.match(read('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'),
+  /el\.__sentinelMarketTotalsCache/);
+ assert.match(read('sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'),
+  /window\.__sentinelGetNativeExpiryChoice\(\)/);
  // The only approved 221 change to the guarded worker is an event-driven,
  // readout-only balance refresh. First prove its exact code is present, then
  // remove ONLY that addition and hash-check the rest against the frozen H207
