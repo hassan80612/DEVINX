@@ -65,6 +65,34 @@ test('221: an unchosen broker 30s reset never triggers a durable manual-choice c
   assert.equal(b.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'60000');
  }finally{b.restore()}
 });
+test('221: Exnova split-label expiry is discoverable without a saved field mapping',()=>{
+ const b=browser('1 min');
+ try{
+  globalThis.location.hostname='exnova.com';
+  window.__sentinelNativeExpiryPermissionV3.provider='exnova';
+  b.storage.set('sentinel-broker-native-expiration-preference-v3:exnova','60000');
+  const rect=(x,y,w,h)=>({x,y,left:x,top:y,width:w,height:h,right:x+w,bottom:y+h});
+  const host={isConnected:true,className:'trade-sidebar',parentElement:null,
+   getBoundingClientRect:()=>rect(1010,130,240,85),getAttribute:()=>null,closest:()=>null};
+  const value={isConnected:true,className:'trade-value',parentElement:host,
+   innerText:'1 min',textContent:'1 min',getAttribute:()=>null,
+   getBoundingClientRect:()=>rect(1100,165,90,28),closest:()=>null,
+   matches:()=>false};
+  const label={isConnected:true,className:'trade-caption',parentElement:host,
+   children:[],innerText:'Expiration',textContent:'Expiration',getAttribute:()=>null,
+   getBoundingClientRect:()=>rect(1040,140,100,18),closest:()=>null};
+  host.querySelectorAll=()=>[value];
+  document.querySelectorAll=selector=>
+   selector==='div,span,p,label,strong,small'?[label]:[];
+  installBrokerNativeExpiryKeeper({provider:'exnova'});
+  b.step();b.step();
+  const expiry=window.__sentinelNativeExpiryKeeperV3.snapshot();
+  assert.equal(expiry.currentMs,60000);
+  assert.equal(expiry.discoveryReason,'identified');
+  assert.equal(expiry.discoverySource,'semantic');
+  assert.equal(expiry.preferredMs,60000);
+ }finally{b.restore()}
+});
 test('221: runtime seed only executes for missing durable native preference',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.match(source,/if\(driver\.nativeExpiryPreferences\.has\(provider\)\)return;/);
