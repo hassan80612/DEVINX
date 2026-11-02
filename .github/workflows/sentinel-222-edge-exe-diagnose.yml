@@ -1,0 +1,55 @@
+name: Sentinel 222 Edge direct EXE download diagnosis
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-edge-exe-diagnose.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-edge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download direct EXE with Microsoft Edge using Playwright
+        shell: pwsh
+        run: |
+          npm install --no-save playwright-core@1.55.1
+          @'
+          const {chromium}=require('playwright-core');
+          const fs=require('fs'),crypto=require('crypto');
+          const urls=[
+            'https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.222.exe',
+            'https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.222-EXE.zip',
+          ];
+          (async()=>{
+            const browser=await chromium.launch({channel:'msedge',headless:true});
+            try {
+              const context=await browser.newContext({acceptDownloads:true});
+              for(const url of urls){
+                const page=await context.newPage();
+                const name=url.split('/').at(-1);
+                const evt=page.waitForEvent('download',{timeout:45000});
+                await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000}).catch(e=>{
+                  if(!/download is starting/i.test(e.message))throw e;
+                });
+                const dl=await evt;
+                const error=await dl.failure();
+                const path=error?null:await dl.path();
+                const data=path?fs.readFileSync(path):null;
+                const sha=data?crypto.createHash('sha256').update(data).digest('hex'):null;
+                console.log(JSON.stringify({name,suggestedFilename:dl.suggestedFilename(),failure:error,bytes:data?.length??null,sha}));
+                await page.close();
+                if(error)process.exitCode=2;
+              }
+            }finally{await browser.close()}
+          })().catch(e=>{console.error('EDGE_TEST_ERROR',e.message);process.exitCode=1});
+          '@ | Set-Content -Path .\edge-download-diagnose.cjs
+          node .\edge-download-diagnose.cjs
