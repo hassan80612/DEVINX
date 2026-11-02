@@ -1,4 +1,5 @@
 name: Sentinel 225 native Exnova expiry SPA refresh end-to-end
+# Re-run after scoped plain popup restoration was fixed.
 on:
   push:
     branches:
