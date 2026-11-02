@@ -86,7 +86,7 @@ export function patchMarketTotals(frame){
     available&&Number(card.callPct)>Number(card.putPct)?call.style.color:
     available&&Number(card.putPct)>Number(card.callPct)?put.style.color:p.dataset.neutralColor;
    if(side.style.color!==color)side.style.color=color;
-   if(node)node.dataset.historyOnly=old?'true':'false';
+   if(node?.dataset)node.dataset.historyOnly=old?'true':'false';
   }
   p.dataset.readingsAt=String(frame.at);
  };
