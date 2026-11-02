@@ -53,7 +53,7 @@ test('the fast V detector remains observational and symmetric across horizons',(
    assert.equal(confirmedFastLevelReversal({...b,durationMs}),null);
  }
 });
-test('204: 30s preserves the fast side; 1m rejects a V against the dominant leg without structure; 5m keeps its own proof',()=>{
+test('223: 30s and 1m reject a V without structure; 5m keeps its own independent proof',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','fibonacci_retest','smart_confluence'])for(const ms of [30000,60000,300000]){
   const base=fixture(mirror),f=ms===60000?oneMinuteFixture(base):base,
    r=runtime(f,engine,ms),v=gate(r,f.q);
@@ -66,9 +66,10 @@ test('204: 30s preserves the fast side; 1m rejects a V against the dominant leg 
    assert.equal(v.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
    continue;
   }
-  assert.equal(v.futureEntryAnchor?.side,f.side,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
-  assert.equal(v.futureEntryAnchor.exitAt,f.q.at(-1).ts+ms);
-  assert.equal(v.nowObservation.reason,'confirmed-fast-level-reversal');
+  // 223: a 30s fast V is subject to the same market-structure proof
+  // as 1m; this fixture has no separate structural change and must WAIT.
+  assert.equal(v.futureEntryAnchor,null,JSON.stringify({mirror,engine,ms,reason:v.nowObservation?.reason}));
+  assert.equal(v.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
  }
 });
 test('weak reactions, wrong directional roles and a nearby opposite wall cannot qualify a fast reversal',()=>{
