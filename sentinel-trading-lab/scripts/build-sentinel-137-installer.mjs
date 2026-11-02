@@ -14,6 +14,26 @@ const release=JSON.parse(readFileSync(join(agent,'release.json'),'utf8'));
 const pkg=JSON.parse(readFileSync(join(agent,'package.json'),'utf8'));
 if(release.version!==pkg.version||!/^\d+\.\d+\.\d+$/.test(release.version))throw Error('agent_release_mismatch');
 mkdirSync(dl,{recursive:true});
+
+if(release.version==='13.9.222'){
+ // The 222 EXE was built from this reviewed source and EXECUTED on
+ // windows-latest. Do not silently replace that tested binary during the
+ // Vercel Next.js prebuild with a different, untested Go build.
+ const fingerprint=file=>createHash('sha256').update(readFileSync(join(dl,file))).digest('hex');
+ const exeHash='27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041';
+ const zipHash='9111064d0c62a11a5735165fc6f3416543c5b0626bf13dc298ecd846bfa4d55f';
+ const expectedNames=['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe','Sentinel-Agent-13.9.222.exe'];
+ for(const name of expectedNames)if(fingerprint(name)!==exeHash)
+  throw Error('sentinel_222_windows_tested_exe_missing_or_mismatch:'+name);
+ if(fingerprint('agent_payload_v88.zip')!==zipHash)
+  throw Error('sentinel_222_windows_tested_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==zipHash)
+  throw Error('sentinel_222_windows_tested_manifest_mismatch');
+ console.log('Sentinel 222: retaining EXACT Windows-smoke-tested EXE, same-origin asset and embedded ZIP.');
+ process.exit(0);
+}
+
 const tool=(name,args,options={})=>{
  const result=spawnSync(name,args,{cwd:root,encoding:'utf8',...options});
  if(result.error||result.status!==0)
