@@ -1531,8 +1531,7 @@ export class LocalPlaywrightDriver{
       // preference. Timestamped user choices and explicit 30s are respected.
       const explicitNative30=best?.value===30000&&best?.explicitDefault===true;
       if(best&&(Number(best.selectedAt||0)>savedAt||
-        (!savedAt&&!this.nativeExpiryPreferences.has(provider)&&
-          (best.value!==30000||explicitNative30)))){
+        (!savedAt&&(best.value!==30000||explicitNative30)))){
         ms=best.value;
         this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);
       }
