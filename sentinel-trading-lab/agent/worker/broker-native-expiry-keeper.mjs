@@ -502,12 +502,16 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    try{
     localStorage.setItem(key,String(v));
     localStorage.setItem(defaultChoiceKey,explicitDefault?'30000':'');
-    if(source==='manual'||source==='analyst'||source==='agent'){
+    if(source==='manual'||source==='analyst'||source==='agent'||source==='native-verified'){
      if(at>0)localStorage.setItem(key+':selectedAt',String(at));
      localStorage.setItem(key+':source',source);
     }
    }catch{}
-   if(source==='manual'&&typeof window.__sentinelRememberNativeExpiryChoice==='function')try{Promise.resolve(window.__sentinelRememberNativeExpiryChoice(v,at)).catch(()=>{})}catch{}
+   // Stable non-default expiry fields can predate the native click listener
+   // after a frame rebuild. Save their confirmed value in the Agent as well;
+   // never adopt a spontaneous 30s reset as a verified choice.
+   if((source==='manual'||source==='native-verified')&&typeof window.__sentinelRememberNativeExpiryChoice==='function')
+    try{Promise.resolve(window.__sentinelRememberNativeExpiryChoice(v,at)).catch(()=>{})}catch{}
   };
   const notify=(value)=>{window.__sentinelNativeExpiryStatusV3={
    preferredMs,currentMs:value,changedAt:Date.now(),lastRepairAt,restoring:repairing
@@ -602,11 +606,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     if(manualOpenedAt){manualOpenedAt=0;openingValue=null;chosenValue=null;chosenTarget=null;manualControl=null;}
     // An inherited/default 30s receipt is not an explicit request to undo
     // an already selected non-default field. Preserve the visible choice.
-    if(preferredMs===30000&&!explicitDefault&&current!==30000&&stableCount>=2)save(current);
+    if(preferredMs===30000&&!explicitDefault&&current!==30000&&stableCount>=2)save(current,'native-verified');
     if(!preferredMs){
      // Bootstrap only a stable non-default selected duration. A fresh
      // default 30s is never silently treated as the user's last preference.
-     if(current!==30000&&stableCount>=2)save(current);
+     if(current!==30000&&stableCount>=2)save(current,'native-verified');
      notify(current);return;
     }
     if(current===preferredMs){mismatchSince=0;notify(current);return}
