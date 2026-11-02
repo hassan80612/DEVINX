@@ -1,0 +1,26 @@
+name: Sentinel empty overlay real Edge smoke
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-224-overlay-edge-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-overlay:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install only Agent browser dependency
+        shell: pwsh
+        run: npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+      - name: Verify a fully rendered overlay in actual Edge on first and subsequent frames
+        shell: pwsh
+        env:
+          SENTINEL_TEST_EDGE: '1'
+        run: node --test tests/sentinel-224-overlay-real-browser.test.mjs
