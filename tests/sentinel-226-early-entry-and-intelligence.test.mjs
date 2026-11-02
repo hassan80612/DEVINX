@@ -91,6 +91,31 @@ test('226 keeps H207 late-breakout veto and admits only verified current structu
   assert.equal(reviewH207UnifiedAdmission({...input,allowVerifiedEarlyReversal:true,
     candidate:{...c,earlyTurnEvidence:null}}).ready,false);
  }
+ // A genuine higher-low / pivot-break path uses different proof metadata
+ // from the first micro-turn but also deserves a fresh early entry.
+ const historical=proposed();
+ historical.earlyTurnEvidence=null;
+ historical.priceStructure.confirmedReversal={
+  kind:'confirmed-level-structure-reversal',side:'CALL',
+  level:{level:1.1001,confirmedPivots:2,independentRejections:2},
+  pivotPrice:1.1003,turnPrice:1.1001,amplitude:.00012,confirmedAt:at-1000
+ };
+ const tape=[{ts:at-1700,price:1.10036,receivedAt:at-1700},
+  {ts:at-1000,price:1.10048,receivedAt:at-1000},
+  {ts:at,price,receivedAt:at}];
+ for(const durationMs of [30000,60000]){
+  assert.strictEqual(reviewH207UnifiedAdmission({candidate:historical,
+   quoteHistory:tape,quoteAt:at,now:at,price,durationMs,
+   allowVerifiedEarlyReversal:true}),historical,'fresh verified pivot break enters');
+  assert.equal(reviewH207UnifiedAdmission({candidate:historical,
+   quoteHistory:tape,quoteAt:at,now:at+3000,price,durationMs,
+   allowVerifiedEarlyReversal:true}).ready,false,'stale reversal is not revived');
+  const chased={...historical,priceStructure:{confirmedReversal:{
+   ...historical.priceStructure.confirmedReversal,turnPrice:1.099}}};
+  assert.equal(reviewH207UnifiedAdmission({candidate:chased,
+   quoteHistory:tape,quoteAt:at,now:at,price,durationMs,
+   allowVerifiedEarlyReversal:true}).ready,false,'late distant move cannot be chased');
+ }
  const five=proposed();
  assert.strictEqual(reviewH207UnifiedAdmission({candidate:five,quoteAt:at,
   now:at,price,durationMs:300000,allowVerifiedEarlyReversal:true}),five);
