@@ -9,7 +9,7 @@ const nextConfig={
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},
     // Immutable original 207 Windows installer, served by GitHub instead of Vercel.
-    {source:'/downloads/Sentinel-Agent-13.9.207.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/58557bef13d3a9a87eda9e3f0bd601b914a56ef4/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe',permanent:false}},
+    {source:'/downloads/Sentinel-Agent-13.9.207.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/58557bef13d3a9a87eda9e3f0bd601b914a56ef4/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe',permanent:false}]},
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
