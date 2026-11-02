@@ -113,6 +113,17 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
      (!(current>0)||at>storedAt||
        (at===0&&storedAt===0&&current===30000&&chosen>30000)))
     keeper.setPreferred?.(chosen,{selectedAt:at});
+   // The earliest document script may run BEFORE the Agent's durable-choice
+   // bridge is exposed. After a broker SPA/frame rebuild this fast path must
+   // re-read the Agent receipt; otherwise a local default 30s may survive.
+   if(typeof window.__sentinelGetNativeExpiryChoice==='function')
+    Promise.resolve().then(()=>window.__sentinelGetNativeExpiryChoice()).then(choice=>{
+     const ms=Number(choice?.durationMs),receiptAt=Number(choice?.selectedAt)||0;
+     const savedAt=Number(localStorage.getItem(nativeKey+':selectedAt')||0);
+     if([30000,60000,300000].includes(ms)&&receiptAt>0&&receiptAt>=savedAt&&
+       window.__sentinelNativeExpiryKeeperV3===keeper)
+      keeper.setPreferred?.(ms,{selectedAt:receiptAt});
+    }).catch(()=>{});
    return;
   }
   try{window.__sentinelNativeExpiryKeeperV3?.dispose?.()}catch{}
