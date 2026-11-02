@@ -6,6 +6,7 @@ on:
       - fix/sentinel-221-github-direct-no-vercel-hop-20261102
     paths:
       - .github/workflows/sentinel-225-verified-agent.yml
+      - sentinel-trading-lab/package.json
   workflow_dispatch:
 permissions:
   contents: write
