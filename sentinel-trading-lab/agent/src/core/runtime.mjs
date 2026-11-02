@@ -50,6 +50,7 @@ import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';
 import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission.mjs';
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {marketReading} from './market-reading.mjs';
+import {unifiedMarketEvidence227} from './unified-market-evidence-227.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 
@@ -1461,6 +1462,27 @@ export class DemoTradingRuntime{
         eligible.ready===true&&confirmedPhase?'reversal-confirmed':
         eligible.ready===true&&trendPersistence?.side&&eligible.side!==trendPersistence.side&&fadingPhase?
           'reversal-forming':trendPersistence?.phase||'insufficient';
+      // Visual interpretation of long- and short-term evidence is separate
+      // from the trade admission. A broker with occasional sparse ticks can
+      // fail the strict microstructure proof without losing the ability to
+      // describe the historical EMA/RSI/ADX context. Never use this
+      // readout-only context to authorize an order or change expiration.
+      let readoutIndicators=null;
+      const quoteAt=Number(snap.quoteTs),quoteAge=now-quoteAt;
+      if(derivedPhase==='insufficient'&&quoteAt>0&&quoteAge>=0&&quoteAge<=2500){
+       const key=[snap.provider||'',settings.asset,settings.engine,
+        settings.orderDurationMs,snap.historicalCandlesVerified].join('|');
+       const cached=this.marketReadoutEvidenceCache;
+       if(cached?.key===key&&now-Number(cached.at)<1000){
+        readoutIndicators=cached.value;
+       }else{
+        readoutIndicators=unifiedMarketEvidence227({
+         candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),
+         quoteHistory:snap.quoteHistory,quoteAt,now,price:snap.price
+        });
+        this.marketReadoutEvidenceCache={key,at:now,value:readoutIndicators};
+       }
+      }
       const phaseLabels={continuing:'CONTINUIDADE',weakening:'CONTINUIDADE PERDENDO FORÇA',
         'reversal-testing':'REVERSÃO EM TESTE','reversal-forming':'REVERSÃO EM FORMAÇÃO',
         'reversal-confirmed':'REVERSÃO CONFIRMADA','reversal-review':'OBSERVANDO EXTREMO',
@@ -1491,7 +1513,9 @@ export class DemoTradingRuntime{
           marketReading:marketReading({phase:eligible.marketPhase||observation.marketPhase||derivedPhase,
             label:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase],
             trendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
-            candidate:eligible,observation,quoteAt:snap.quoteTs,now}),
+            candidate:eligible,observation,quoteAt:snap.quoteTs,now,
+            indicatorEvidence:readoutIndicators,
+            historicalCandlesVerified:snap.historicalCandlesVerified}),
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
           observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
