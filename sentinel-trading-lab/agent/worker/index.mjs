@@ -96,7 +96,20 @@ runtime.onNowOpportunity=(anchor,evidence)=>{
  // Hand it to the risk engine immediately instead of waiting for next 400ms tick.
  // Do not request balances or rescan the browser; forecast is untouched.
 driver.setBalanceUpdateHandler?.((provider,balance)=>{
- if(provider===activeProvider)executor.observeBalance(balance);
+ if(provider!==activeProvider)return;
+ const previousRevision=executor.balanceRisk.current?.revision;
+ executor.observeBalance(balance);
+ // Update confirmed balance on the existing text-only card immediately;
+ // never poll the broker, rebuild its chart, or touch expiry/entry logic.
+ const current=executor.balanceRisk.current;
+ if(!current||current.revision===previousRevision)return;
+ const state={...executor.status(),provider};
+ lastExecutorReadoutKey=(runtime.settings.uiLanguage||'pt')+'|'+executorReadoutKey(state);
+ lastExecutorReadoutAt=Date.now();
+ executorReadoutUpdates.publish(provider,{state,
+  revision:(executorReadoutRevision=Math.max(executorReadoutRevision+1,Date.now())),
+  language:runtime.settings.uiLanguage||'pt'},{urgent:true});
+ void publishLiveFrame();
 });
 executor.onBatchReleased=batch=>uiExecutor.retireUnidentifiedBatch(batch);
 let executorSettingsWrite=Promise.resolve();
