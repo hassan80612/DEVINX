@@ -70,7 +70,7 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
  const approvedH207={
   'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'25d67271aee1e407e40a27d46604ef335c2eaff3',
   'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
-  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'6992003cd16164e6b473148e559ec433da89afeb',
+  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'6fd1cf45912373343181bc342fb314945b759e1a',
   // 222: only the reviewed final-entry proof veto; other workers remain frozen.
   'sentinel-trading-lab/agent/worker/signal-executor.mjs':'534529f15a8d9e8ea34ae1662ec5f1ff0ad91707'
  };
