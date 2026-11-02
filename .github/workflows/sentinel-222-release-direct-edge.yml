@@ -1,0 +1,47 @@
+name: Sentinel 222 GitHub Release Edge direct EXE verification
+
+on:
+  push:
+    branches: 
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-release-direct-edge.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-edge-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test GitHub Releases EXE direct download in real Edge and verify exact 222 SHA
+        shell: pwsh
+        run: |
+          npm install --no-save playwright-core@1.55.1
+          @'
+          const {chromium}=require('playwright-core');
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const url='https://github.com/hassan80612/DEVINX/releases/download/sentinel-agent-13.9.222/Sentinel-Agent-13.9.222.exe';
+          (async()=>{
+           const browser=await chromium.launch({channel:'msedge',headless:true});
+           try{
+            const ctx=await browser.newContext({acceptDownloads:true});
+            const page=await ctx.newPage();
+            const pending=page.waitForEvent('download',{timeout:60000});
+            await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000}).catch(e=>{
+             if(!/download is starting/i.test(e.message))throw e;
+            });
+            const download=await pending, failure=await download.failure();
+            if(failure)throw Error(failure);
+            const actual=fs.readFileSync(await download.path()),hash=crypto.createHash('sha256').update(actual).digest('hex');
+            console.log(JSON.stringify({downloadUrl:url,filename:download.suggestedFilename(),size:actual.length,sha256:hash,failure}));
+            if(actual.length!==2863616||hash!=='27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041')throw Error('binary-mismatch');
+           }finally{await browser.close()}
+          })().catch(e=>{console.error('DIRECT RELEASE FAILURE',e);process.exitCode=1});
+          '@ | Set-Content .\sentinel-release-edge.cjs
+          node .\sentinel-release-edge.cjs
