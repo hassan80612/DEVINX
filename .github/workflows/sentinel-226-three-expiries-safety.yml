@@ -1,5 +1,8 @@
 name: Sentinel 226 - 30s 1m 5m safety and expiry lock
 on:
+  pull_request:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
   push:
     branches:
       - fix/sentinel-226-inteligencia-3-prazos-20261102
