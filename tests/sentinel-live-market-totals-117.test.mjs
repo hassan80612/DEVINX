@@ -26,8 +26,19 @@ test('asset, broker, strategy, duration, language and stopped state stay isolate
  }
  patchMarketTotals(frame);assert.equal(nodes[0].side.textContent,'CALL');
 }));
-test('stale or missing current readings clear old percentages instead of freezing them',()=>withPanel(({nodes,frame})=>{
- patchMarketTotals(frame);patchMarketTotals({...frame,at:frame.at+1,quoteAt:frame.quoteAt-4000});
- for(const n of nodes){assert.equal(n.side.textContent,'AGUARDAR');assert.equal(n.call.textContent,'CALL —');assert.equal(n.put.textContent,'PUT —');}
- patchMarketTotals({...frame,at:frame.at+2,cards:[]});assert.equal(nodes[0].side.textContent,'AGUARDAR');
+test('227: transient missing readings retain percentage with explicit LAST READING label, not fake live data',()=>withPanel(({nodes,frame})=>{
+ patchMarketTotals(frame);
+ patchMarketTotals({...frame,at:frame.at+1,quoteAt:frame.quoteAt-4000});
+ for(let i=0;i<nodes.length;i++){
+  assert.equal(nodes[i].side.textContent,'ÚLTIMA LEITURA · '+(i===1?'PUT':'CALL'));
+  assert.equal(nodes[i].call.textContent,i===1?'CALL 25%':'CALL 75%');
+  assert.equal(nodes[i].put.textContent,i===1?'PUT 75%':'PUT 25%');
+ }
+ patchMarketTotals({...frame,at:frame.at+2,cards:[]});
+ assert.equal(nodes[0].side.textContent,'ÚLTIMA LEITURA · CALL');
+ // A stale historical label must not persist forever or cross contexts.
+ window.__sentinelLastConfirmedMarketTotals.at=Date.now()-31000;
+ patchMarketTotals({...frame,at:frame.at+3,cards:[]});
+ assert.equal(nodes[0].side.textContent,'AGUARDAR');
+ assert.equal(nodes[0].call.textContent,'CALL —');
 }));

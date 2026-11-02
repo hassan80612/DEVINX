@@ -1,6 +1,6 @@
 {
   "name": "sentinel-trading-agent-v8",
-  "version": "13.9.226",
+  "version": "13.9.227",
   "private": true,
   "type": "module",
   "dependencies": {

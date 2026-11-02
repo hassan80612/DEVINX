@@ -2051,6 +2051,25 @@ export class LocalPlaywrightDriver{
         const reversalSide=reversalCall==null||reversalPut==null?'AGUARDAR':reversalCall>=reversalPut?'CALL':'PUT';
         const reversalStrength=reversalCall==null||reversalPut==null?null:Math.max(reversalCall,reversalPut);
         const reversalTimer=pre.kind==='reversal'&&preRemaining!=null&&preRemaining>0?preRemaining:null;
+        // Sentinel 227 — presentation-only continuity for the THREE
+        // quick analyst cards. A short data gap may not erase six numbers.
+        // This cache never participates in EMA/RSI decisions or bot orders.
+        const quickContext=[d.quoteProvider||'',String(d.validatedAsset||d.asset||'').trim().toUpperCase(),
+          d.engine||'',duration,runtime].join('|');
+        const quickLive=runtime==='running'&&!analysisStale&&liveNow&&
+          [finalCall,finalPut,statusCall,statusPut,reversalCall,reversalPut].every(v=>v!=null&&Number.isFinite(v));
+        if(quickLive)el.__sentinelQuickCardCache={
+          key:quickContext,at:Date.now(),values:[finalCall,finalPut,statusCall,statusPut,reversalCall,reversalPut]
+        };
+        else if(el.__sentinelQuickCardCache?.key!==quickContext||runtime!=='running')
+          el.__sentinelQuickCardCache=null;
+        const quickCache=quickLive?null:el.__sentinelQuickCardCache?.key===quickContext&&
+          Date.now()-Number(el.__sentinelQuickCardCache.at)<30000?
+          el.__sentinelQuickCardCache.values:null;
+        const [displayFinalCall,displayFinalPut,displayStatusCall,displayStatusPut,
+          displayReversalCall,displayReversalPut]=quickCache||
+          [finalCall,finalPut,statusCall,statusPut,reversalCall,reversalPut];
+        const quickHistoryOnly=!!quickCache;
         const marketSummary=generalConsensus.rapid||{};
         const marketCallPct=Number.isFinite(Number(marketSummary.callPct))?Number(marketSummary.callPct):50;
         const marketPutPct=Number.isFinite(Number(marketSummary.putPct))?Number(marketSummary.putPct):50;
@@ -2779,21 +2798,21 @@ export class LocalPlaywrightDriver{
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:start">
             <div data-sentinel-role="confluence" data-sentinel-card="quick-confluence" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_confluence')?'dashed':'solid'} ${panelBorder};min-width:0;min-height:128px;height:auto;overflow:visible;box-shadow:${panelShadow};opacity:${isPaused('market_confluence')?'.48':'1'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('CONFLUÊNCIA TÉCNICA')}</span>${pauseBtn('market_confluence')}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('CONFLUÊNCIA TÉCNICA')}${quickHistoryOnly?' · ◷':''}</span>${pauseBtn('market_confluence')}</div>
               <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px;margin-top:7px"><b style="font-size:15px;color:${finalTone}">${tr(isPaused('market_confluence')?'PAUSADA':finalSide)}</b><span style="font-size:9.5px;color:${subtle}">${tr('força')} ${n(finalStrength,0)} pts</span></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(finalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(finalPut,0)}%</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(displayFinalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(displayFinalPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:9.5px;color:${subtle}">${tr(isPaused('market_confluence')?'Fora dos totais enquanto pausada.':'Contexto técnico combinado.')}</div>
             </div>
             <div data-sentinel-role="entry-status" data-sentinel-card="entry-status" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_entry')?'dashed':'solid'} ${entryReady?tone:panelBorder};min-width:0;min-height:128px;height:auto;overflow:visible;box-shadow:${panelShadow};opacity:${isPaused('market_entry')?'.48':'1'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('PRONTIDÃO DE ENTRADA')}</span>${pauseBtn('market_entry')}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('PRONTIDÃO DE ENTRADA')}${quickHistoryOnly?' · ◷':''}</span>${pauseBtn('market_entry')}</div>
               <div style="margin-top:4px;font-size:9.5px;font-weight:700;color:${entryReady?callTone:warnTone};white-space:normal;overflow-wrap:anywhere;min-height:26px;line-height:1.35">${tr(isPaused('market_entry')?'PAUSADA':gateReason)}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(statusCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(statusPut,0)}%</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(displayStatusCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(displayStatusPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:9.5px;color:${subtle}">${tr(isPaused('market_entry')?'Fora dos totais enquanto pausada.':(entryReady?signal:'Aguardando confirmação.'))}</div>
             </div>
             <div data-sentinel-role="reversal" data-sentinel-card="reversal" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_reversal')?'dashed':'solid'} ${panelBorder};min-width:0;min-height:128px;height:auto;overflow:visible;box-shadow:${panelShadow};opacity:${isPaused('market_reversal')?'.48':'1'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('VIRADA / REVERSÃO')}</span>${pauseBtn('market_reversal')}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:750;color:${ink};min-width:0;overflow-wrap:anywhere">${tr('VIRADA / REVERSÃO')}${quickHistoryOnly?' · ◷':''}</span>${pauseBtn('market_reversal')}</div>
               <div style="margin-top:5px;font-size:15px;font-weight:750;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${tr(isPaused('market_reversal')?'PAUSADA':(reversalStrength==null?'AGUARDAR':reversalSide))}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(reversalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(reversalPut,0)}%</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:9.5px;color:${callTone};font-weight:700">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(displayReversalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:9.5px;color:${putTone};font-weight:700">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(displayReversalPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:9.5px;color:${subtle}">${isPaused('market_reversal')?tr('Fora dos totais enquanto pausada.'):(reversalTimer!=null?tr('janela')+' '+reversalTimer+'s':tr('leitura de reversão'))}</div>
             </div>
           </div>

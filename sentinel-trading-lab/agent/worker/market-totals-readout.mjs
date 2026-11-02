@@ -47,21 +47,46 @@ export function patchMarketTotals(frame){
   if(!matches(p)||Number(p.dataset.readingsAt)>frame.at)return;
   const quoteAge=Date.now()-Number(frame.quoteAt);
   const fresh=frame.fresh===true&&frame.state==='running'&&Number(frame.quoteAt)>0&&quoteAge>=-2500&&quoteAge<3500;
+  const contextKey=[frame.provider,key(frame.asset),frame.engine,frame.durationMs,frame.language,frame.state].join('|');
+  const known=id=>frame.cards.find(c=>c?.id===id);
+  const valid=c=>c?.callPct!=null&&c?.putPct!=null&&
+   Number.isFinite(Number(c.callPct))&&Number.isFinite(Number(c.putPct));
+  // The three percentages are PRESENTATION only. Do not replace valid
+  // readings with dashes during one missing/throttled broker packet.
+  // Never carry values across provider, asset, horizon, strategy or state.
+  const allValid=ids.every(id=>valid(known(id)));
+  const host=root?.getElementById?.('sentinel-trading-overlay');
+  if(fresh&&allValid){
+   window.__sentinelLastConfirmedMarketTotals={contextKey,at:Date.now(),
+    cards:ids.map(id=>({...known(id)}))};
+   if(host)host.__sentinelMarketTotalsCache={
+    key:[frame.provider,String(frame.asset||'').trim().toUpperCase(),frame.engine,frame.durationMs].join('|'),
+    at:Date.now(),cards:ids.map(id=>({...known(id)}))};
+  }
+  const saved=window.__sentinelLastConfirmedMarketTotals;
+  const historical=!fresh||!allValid;
+  const retained=historical&&saved?.contextKey===contextKey&&
+   Date.now()-Number(saved.at)<=30000?saved.cards:null;
   for(const id of ids){
-   const card=frame.cards.find(c=>c?.id===id),node=p.querySelector('[data-sentinel-summary="'+id+'"]');
+   const liveCard=known(id),card=retained?.find(c=>c.id===id)||liveCard;
+   const node=p.querySelector('[data-sentinel-summary="'+id+'"]');
    const side=node?.querySelector('[data-sentinel-reading-side]');
    const call=node?.querySelector('[data-sentinel-reading-call]'),put=node?.querySelector('[data-sentinel-reading-put]');
    if(!side||!call||!put)continue;
-   const available=fresh&&card?.callPct!=null&&card?.putPct!=null&&
-    Number.isFinite(Number(card.callPct))&&Number.isFinite(Number(card.putPct));
+   const available=valid(card)&&((fresh&&allValid)||!!retained);
+   const old=!!retained;
    const direction=available&&['CALL','PUT','NEUTRO'].includes(card.side)?card.side:'AGUARDAR';
    const set=(el,value)=>{if(el.textContent!==value)el.textContent=value;};
-   set(side,direction==='AGUARDAR'?frame.waitLabel:direction==='NEUTRO'?frame.neutralLabel:direction);
+   const directionLabel=direction==='AGUARDAR'?frame.waitLabel:
+    direction==='NEUTRO'?frame.neutralLabel:direction;
+   set(side,old?'ÚLTIMA LEITURA · '+directionLabel:directionLabel);
    set(call,'CALL '+(available?Math.round(Number(card.callPct))+'%':'—'));
    set(put,'PUT '+(available?Math.round(Number(card.putPct))+'%':'—'));
-   const color=available&&Number(card.callPct)>Number(card.putPct)?call.style.color:
+   const color=old?p.dataset.neutralColor:
+    available&&Number(card.callPct)>Number(card.putPct)?call.style.color:
     available&&Number(card.putPct)>Number(card.callPct)?put.style.color:p.dataset.neutralColor;
    if(side.style.color!==color)side.style.color=color;
+   if(node?.dataset)node.dataset.historyOnly=old?'true':'false';
   }
   p.dataset.readingsAt=String(frame.at);
  };

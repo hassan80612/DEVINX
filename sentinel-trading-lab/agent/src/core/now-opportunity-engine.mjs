@@ -21,6 +21,7 @@ import {liveEntryContradiction} from './live-entry-contradiction.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 import {reviewFreshPullbackContinuation} from './early-continuation-226.mjs';
+import {reviewFirstImpulseReversal} from './impulse-lifecycle-227.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -546,8 +547,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   });
   // A genuine fresh pullback can resume before four older bars qualify.
   // Existing shared wall, price, exhaustion and expiry checks still run.
+  // Reassess the *first real price turn* near an old level before accepting
+  // a mature continuation. The older swing need not consume three candles.
+  const impulseTurn=reviewFirstImpulseReversal({
+    candidate:earlyTurn,map:structure.candleLevelMap,candles,...input
+  });
   const located=reviewFreshPullbackContinuation({
-    candidate:earlyTurn,quoteHistory,quoteAt,now,price,durationMs
+    candidate:impulseTurn,quoteHistory,quoteAt,now,price,durationMs
   });
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
