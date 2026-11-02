@@ -3,6 +3,7 @@
 // continuation. No wait, expiry setter, risk bypass or broker interaction.
 import {entryFamilyOf} from './entry-family.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
+import {unifiedMarketEvidence227} from './unified-market-evidence-227.mjs';
 const d=side=>side==='CALL'?1:side==='PUT'?-1:0;
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
 const median=xs=>{const s=[...xs].sort((a,b)=>a-b);return s[Math.floor(s.length/2)]||0};
@@ -62,7 +63,7 @@ export function observedImpulsePhase({quoteHistory=[],quoteAt,now=quoteAt,price,
 // two real current-quote confirmations near its extreme. This allows a NEW
 // reversal to outrank an already qualified OLD continuation without assuming
 // that all fast candles reverse or waiting for several closed bars.
-export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],quoteAt,
+export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],candles=[],quoteAt,
  now=quoteAt,price,durationMs}={}){
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),ms=Number(durationMs);
  if(!candidate||![30000,60000].includes(ms)||!(at>0&&clock>=at&&
@@ -112,7 +113,23 @@ export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],quoteA
  if(options.length!==1)return candidate;
  const proof=options[0];
  if(candidate.ready===true&&candidate.side===proof.side)return candidate;
+ // Compare the two hypotheses using all independently available evidence:
+ // closed-candle EMA/RSI/structure + 5s EMA/RSI/ADX/DMI/divergence +
+ // proven historical level and fresh opposing tape. The old longer-term
+ // EMA is context, not authority to keep chasing a reversed candle.
+ const fusion=unifiedMarketEvidence227({
+  candles,quoteHistory,quoteAt:at,now:clock,price:spot,
+  proposedSide:candidate.ready===true?candidate.side:null,reversalSide:proof.side
+ });
+ const reversalAuthority=5.5+Number(fusion.reversalScore||0);
+ const continuationAuthority=Number(fusion.continuationScore||0);
+ // A true present turn with old-level proof outranks the last-candle vote;
+ // never synthesize an opposite order solely from EMA/RSI/ADX.
  return {...candidate,ready:true,side:proof.side,observedAt:at,entryPrice:spot,
+  strength:Math.max(60,Math.min(86,Math.round(60+reversalAuthority*2-
+   continuationAuthority))),
+  unifiedDecision:{...fusion,reversalAuthority,continuationAuthority,
+   selected:'verified-first-reversal',notCalibrated:true},
   predictedPrice:null,expectedLogMove:null,reason:'confirmed-level-structure-reversal',
   priceStructure:{...(candidate.priceStructure||{}),confirmedReversal:{
    kind:'confirmed-level-structure-reversal',side:proof.side,confirmedAt:at,
