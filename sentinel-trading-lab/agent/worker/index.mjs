@@ -1,3 +1,4 @@
+import {lastTrustedExpiryForResume} from './native-expiry-resume-228.mjs';
 import {executorReadoutKey} from './executor-readouts.mjs';
 import {packExecutor,unpackExecutor,dispatchExecutor} from './executor-remote.mjs';
 import {SignalExecutor} from './signal-executor.mjs';
@@ -156,9 +157,27 @@ function seedMissingNativeExpiry(provider){
  if(!savedRuntimeExpirySeed||nativeExpirySeedAttempted.has(provider)||
    typeof driver.setNativeExpiryPreference!=='function')return;
  nativeExpirySeedAttempted.add(provider);
+ // Capture the loaded preference before async storage recovery. A new manual
+ // selection made while this promise is outstanding always wins.
+ const startingDuration=Number(runtime.settings.orderDurationMs);
  void (async()=>{
   await driver.nativeExpiryPreferenceReady;
-  if(driver.nativeExpiryPreferences.has(provider))return;
+  if(activeProvider!==provider)return;
+  if(driver.nativeExpiryPreferences.has(provider)){
+   const latest=lastTrustedExpiryForResume({
+    nativeDurationMs:driver.nativeExpiryPreferences.get(provider),
+    nativeSelectedAt:driver.nativeExpirySelectedAt.get(provider),
+    currentDurationMs:runtime.settings.orderDurationMs,
+    changedDuringRecovery:Number(runtime.settings.orderDurationMs)!==startingDuration
+   });
+   if(latest!=null){
+    runtime.patchSettings({orderDurationMs:latest},'restore-last-trusted-native-expiry');
+    savedRuntimeExpirySeed=latest;
+    await saveState();
+    runtime.requestImmediateEvaluation?.();
+   }
+   return;
+  }
   await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:true});
  })().catch(e=>console.error('native_expiry_seed_error',String(e?.message||e)));
 }
