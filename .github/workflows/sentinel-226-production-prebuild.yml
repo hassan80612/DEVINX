@@ -1,0 +1,31 @@
+name: Sentinel 226 complete production prebuild safety
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-226-production-prebuild.yml
+      - tests/sentinel-182-runtime-reaction.test.mjs
+      - tests/sentinel-188-extreme-reversal-timing.test.mjs
+      - tests/sentinel-196-189-decisions-expiry-preserved.test.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-prebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install site build dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run exact full production prebuild with all legacy regressions, verified Agent and EXE contract
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
+      - name: Check TypeScript
+        working-directory: sentinel-trading-lab
+        run: npx tsc --noEmit --pretty false
