@@ -1469,7 +1469,8 @@ export class DemoTradingRuntime{
       // readout-only context to authorize an order or change expiration.
       let readoutIndicators=null;
       const quoteAt=Number(snap.quoteTs),quoteAge=now-quoteAt;
-      if(derivedPhase==='insufficient'&&quoteAt>0&&quoteAge>=0&&quoteAge<=2500){
+      const displayPhase=eligible.marketPhase||observation.marketPhase||derivedPhase;
+      if(displayPhase==='insufficient'&&quoteAt>0&&quoteAge>=0&&quoteAge<=2500){
        const key=[snap.provider||'',settings.asset,settings.engine,
         settings.orderDurationMs,snap.historicalCandlesVerified].join('|');
        const cached=this.marketReadoutEvidenceCache;
