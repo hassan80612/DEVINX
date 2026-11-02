@@ -95,9 +95,13 @@ export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,no
      Number(micro.extreme)>0&&Number(micro.firstBreak)>0&&Number(micro.retest)>0&&
      d*(spot-Number(micro.firstBreak))>0&&
      d*(spot-Number(micro.retest))>0;
-   const freshPivotBreak=!micro&&Number(p?.pivotPrice)>0&&
-     Number(p?.turnPrice)>0&&d*(spot-Number(p.pivotPrice))>0;
-   if(proofCurrent&&rising&&(verifiedOldLevel||freshPivotBreak))return candidate;
+   // The legacy H207 replay contains real-looking pivot crosses that
+   // remained LOSS-prone. Preserve that veto. Admit ONLY the separate
+   // old-level micro-turn route, which already independently verified the
+   // historical level, retrace and first break before this final check.
+   const independentlyLocated=candidate.earlyTurnEvidence?.kind==='level-microstructure-first-turn'&&
+     candidate.earlyTurnEvidence.withoutThreeClosedBars===true;
+   if(proofCurrent&&rising&&verifiedOldLevel&&independentlyLocated)return candidate;
    return blocked('H207: reversão estrutural sem prova atual suficiente',
                   'h207-structural-reversal-excluded');
  }
