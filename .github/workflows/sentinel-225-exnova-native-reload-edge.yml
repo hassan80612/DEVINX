@@ -1,0 +1,24 @@
+name: Sentinel Exnova native expiry reload Edge regression
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-225-exnova-native-reload-edge.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-exnova:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Agent browser dependency
+        shell: pwsh
+        run: npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+      - name: Reproduce and verify 30s reset repairs under Exnova broker reload in Windows Edge
+        shell: pwsh
+        run: node --test tests/sentinel-225-exnova-reload-native-duration-edge.test.mjs
