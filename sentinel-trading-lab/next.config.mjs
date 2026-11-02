@@ -13,6 +13,9 @@ const versionedAgentDownloadHeaders=[
 const nextConfig={
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},
+    // Verified original 13.9.221 EXE on immutable GitHub commit.
+    // Same download fix used for original 218: site redirects to archived EXE.
+    {source:'/downloads/Sentinel-Agent-13.9.221.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/339fe90f17d6ab2d8cef4660c8a0cc5c7a8bdd34/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.221.exe',permanent:false},
     // Immutable original 207 Windows installer, served by GitHub instead of Vercel.
     {source:'/downloads/Sentinel-Agent-13.9.207.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/58557bef13d3a9a87eda9e3f0bd601b914a56ef4/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.207.exe',permanent:false},
     // Retain compatibility for open legacy tabs without bundling old installers.
