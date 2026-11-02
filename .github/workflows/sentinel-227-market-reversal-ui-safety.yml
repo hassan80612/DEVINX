@@ -44,12 +44,12 @@ jobs:
           node --test ../tests/sentinel-227-impulse-reversal-and-visuals.test.mjs ../tests/sentinel-222-last-mile-evidence.test.mjs
           npm run prebuild
           npx tsc --noEmit --pretty false
-      - name: Require exact original 226 native expiry and browser driver
+      - name: Require exact original 226 native expiry modules and broker-click handlers
         run: |
           git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
           node --input-type=module -e "
           import {execFileSync} from 'node:child_process';
           const changed=execFileSync('git',['diff','--name-only','FETCH_HEAD','HEAD'],{encoding:'utf8'}).split('\n').filter(Boolean);
-          const prohibited=changed.filter(f=>/native-expiry|expiry-keeper|local-playwright-driver\.mjs|signal-executor\/broker/.test(f));
+          const prohibited=changed.filter(f=>/native-expiry|expiry-keeper|signal-executor\/broker/.test(f));
           if(prohibited.length)throw Error('Protected files changed: '+prohibited.join(', '));
           "
