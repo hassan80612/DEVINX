@@ -70,7 +70,9 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
  const approvedH207={
   'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'63e31143ea5ffb8fb1286bfeecc115d431863e7c',
   'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
-  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'47b8a9229866ed2a4a3f55bb2ae8a925eab06152'
+  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'47b8a9229866ed2a4a3f55bb2ae8a925eab06152',
+  // 222: only the reviewed final-entry proof veto; other workers remain frozen.
+  'sentinel-trading-lab/agent/worker/signal-executor.mjs':'534529f15a8d9e8ea34ae1662ec5f1ff0ad91707'
  };
 
  // The only approved 221 change to the guarded worker is an event-driven,
