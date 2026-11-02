@@ -1,0 +1,27 @@
+name: Sentinel 222 Public Domain Diagnose
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-domain-diagnose.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-domains:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check DNS and EXE HTTP status on each configured route
+        shell: bash
+        run: |
+          set +e
+          for host in sentinel.devinx.com.br trading.devinx.com.br trading.divinex.com.br sentinel-trading-lab.vercel.app sentinel-trading-lab-iguassu-shop.vercel.app sentinel-trading-d1uvy49lv-iguassu-shop.vercel.app; do
+            echo "=== DOMAIN $host ==="
+            getent ahostsv4 "$host" | head -2 || true
+            curl --location --silent --show-error --max-time 14 --connect-timeout 5 \
+              --head -D /tmp/sentinel-header -o /dev/null \
+              -w 'http_status=%{http_code} final=%{url_effective} remote_ip=%{remote_ip}\n' \
+              "https://$host/downloads/Sentinel-Agent-13.9.222.exe"
+            grep -Ei '^(HTTP/|location:|content-type:|content-length:|content-disposition:)' /tmp/sentinel-header | tail -10 || true
+          done
