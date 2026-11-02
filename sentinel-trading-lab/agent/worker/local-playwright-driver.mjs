@@ -7,6 +7,7 @@ import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
 import {executorPanel,executorActions,executorMonitor,executorMonitorReadout} from './executor-panel.mjs';
+import {marketConditionEvidence,smoothMarketCondition} from './market-condition-indicator.mjs';
 import {isExecutionFrame} from './broker-ui-executor.mjs';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -1900,7 +1901,17 @@ export class LocalPlaywrightDriver{
       payload.marketDataStatus=marketDataStatus({quoteAt:payload.vnext?.nowObservation?.quoteAt||payload.vnext?.nowObservation?.observedAt,
         evaluatedAt:payload.vnext?.nowObservation?.evaluatedAt,durationMs:payload.durationMs});
       payload.executorPanelHtml=executorPanel(payload.autoExecutor,payload.uiLanguage,{settingsOnly:!!payload.engine,externalMartingale:!!payload.engine});
-      payload.executorMonitorHtml=executorMonitor(payload.autoExecutor,payload.uiLanguage);
+      // Visual indicator follows the already-computed analyst evidence;
+      // it never sends decisions to, pauses, or resumes the bot.
+      const graphContext=[provider,String(payload.validatedAsset||payload.asset||'').trim().toUpperCase(),
+        Number(payload.durationMs||0),String(payload.engine||'automatic')].join('|');
+      if(!this.graphConditionStates)this.graphConditionStates=new Map();
+      const rawGraphCondition=marketConditionEvidence(payload);
+      const graphCondition=smoothMarketCondition(this.graphConditionStates.get(provider),
+        rawGraphCondition,{at:Date.now(),context:graphContext});
+      this.graphConditionStates.set(provider,graphCondition);
+      payload.graphCondition={state:graphCondition.state,reason:graphCondition.reason};
+      payload.executorMonitorHtml=executorMonitor(payload.autoExecutor,payload.uiLanguage,payload.graphCondition);
       payload.premiumControlsCss=PREMIUM_OVERLAY_CSS;
       payload.executorActionsHtml=executorActions(payload.autoExecutor,payload.uiLanguage);
       // Stable presentation slots only: no broker analysis, caching or extra timer.
