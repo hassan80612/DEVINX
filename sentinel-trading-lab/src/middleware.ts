@@ -40,7 +40,8 @@ export async function middleware(req:NextRequest){
   // Exact public fallback archive only; raw self-update ZIP remains gated.
   const fileName=p.startsWith('/downloads/')?p.slice('/downloads/'.length):'';
   const alternativeInstaller=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-Alternativo[.]zip$/i.test(fileName);
-  if(alternativeInstaller)return NextResponse.next();
+  const executableWrappedZip=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-EXE[.]zip$/i.test(fileName);
+  if(alternativeInstaller||executableWrappedZip)return NextResponse.next();
   if(p==='/'||p==='/planos'||p==='/como-usar-bot'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
   // update themselves without a browser session. Non-paying users cannot.
