@@ -5,6 +5,8 @@ import {observedImpulsePhase,reviewFirstImpulseReversal}
  from '../sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs';
 import {reviewH207UnifiedAdmission}
  from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
+import {unifiedMarketEvidence227}
+ from '../sentinel-trading-lab/agent/src/core/unified-market-evidence-227.mjs';
 import {reviewLastMileEvidence}
  from '../sentinel-trading-lab/agent/worker/last-mile-evidence-222.mjs';
 const T=1800000000000;
@@ -74,4 +76,31 @@ test('227: three-card patch retains last validated values and labels stale readi
  assert.match(src,/contextKey/);
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.match(driver,/__sentinelMarketTotalsCache/);
+});
+
+test('227: EMA RSI ADX DMI and structure are shared evidence from past, not just last candle',()=>{
+ const first=T-80*60000;
+ const candles=Array.from({length:80},(_,i)=>{
+  const value=100+i*.002;
+  return {from:first+i*60000,to:first+(i+1)*60000,
+   open:value-.001,close:value,high:value+.002,low:value-.003,
+   receivedAt:first+(i+1)*60000};
+ });
+ const ticks=Array.from({length:185},(_,i)=>({
+  ts:T-185000+i*1000,receivedAt:T-185000+i*1000,
+  price:100+i*.00011
+ }));
+ ticks.push({ts:T,receivedAt:T,price:100+185*.00011});
+ const result=unifiedMarketEvidence227({candles,quoteHistory:ticks,quoteAt:T,
+  now:T,price:ticks.at(-1).price,proposedSide:'CALL',reversalSide:'PUT'});
+ assert.equal(result.ready,true);
+ assert.equal(result.trendSide,'CALL');
+ assert.ok(Number.isFinite(result.rsi));
+ assert.ok(result.evidenceCount>=2);
+ assert.ok(result.continuationScore>result.reversalScore);
+ const future=[...candles,{from:T+60000,to:T+120000,open:60,high:70,low:50,close:61}];
+ const after=unifiedMarketEvidence227({candles:future,quoteHistory:ticks,
+  quoteAt:T,now:T,price:ticks.at(-1).price,proposedSide:'CALL',reversalSide:'PUT'});
+ assert.equal(after.trendSide,result.trendSide,'future candle cannot enter trend decisions');
+ assert.equal(after.rsi,result.rsi,'future candle cannot enter RSI');
 });
