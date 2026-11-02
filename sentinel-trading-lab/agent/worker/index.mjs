@@ -74,6 +74,18 @@ const executor=new SignalExecutor({driver:uiExecutor,context:executionContext,
 // Expiry recovery uses live executor state after page reload; independent of market analysis.
 driver.setNativeExpiryPermissionSource?.(provider=>
  provider===activeProvider&&accessLeaseValid()?executor.status():null);
+
+ // When the user explicitly chooses native 30s/1m/5m on the broker,
+ // persist that same operation duration in Sentinel. The broker's automatic
+ // reset after refresh never fires this callback (trusted manual choice only).
+driver.setNativeExpiryChoiceHandler?.(async(provider,ms,selectedAt)=>{
+ if(provider!==activeProvider||![30000,60000,300000].includes(Number(ms)))return;
+ if(Number(driver.nativeExpirySelectedAt?.get(provider)||0)>Number(selectedAt||0))return;
+ if(Number(runtime.settings.orderDurationMs)===ms)return;
+ runtime.patchSettings({orderDurationMs:ms},'native-broker-manual-choice');
+ await saveState();
+ runtime.requestImmediateEvaluation?.();
+});
 // An analyst-confirmed NOW decision must not wait for the rest of the heavy
 // cycle (research/dashboard/status). The post-tick pulse is deduplicated.
 runtime.onNowOpportunity=(anchor,evidence)=>{
