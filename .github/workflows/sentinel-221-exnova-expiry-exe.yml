@@ -1,4 +1,5 @@
 name: Sentinel 222 Verified Windows EXE
+# Guarded 222 executor SHA validated by the historical baseline test.
 
 on:
   push:
