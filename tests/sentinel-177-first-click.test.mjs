@@ -64,7 +64,11 @@ test('202 preserves the underlying 168 reversal geometry except quote-validity p
    .replace('currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side,durationMs})','currentQuoteStructureTurn({quoteHistory,quoteAt,now,price,side})')
    .replace('observedLevelSequence({map,...input,durationMs})','observedLevelSequence({map,...input})')
    .replace('confirmedFastLevelReversal({map,...input,durationMs})','confirmedFastLevelReversal({map,...input})')
-   .replace('confirmedLevelReversal({map,...input,durationMs})','confirmedLevelReversal({map,...input})');
+   .replace('confirmedLevelReversal({map,...input,durationMs})','confirmedLevelReversal({map,...input})')
+   // 226 passes observed amplitude to its fresh H207 reversal proof. Remove
+   // ONLY this addition when checking the old 168 reversal geometry.
+   .replace('pivotPrice:proof.pivotPrice,turnPrice:proof.turnPrice,\n   amplitude:proof.amplitude,confirmedAt:crossed.ts',
+    'pivotPrice:proof.pivotPrice,turnPrice:proof.turnPrice,confirmedAt:crossed.ts');
   assert.equal(blob(Buffer.from(source)),sha,name);
  }
 
