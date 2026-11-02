@@ -18,7 +18,7 @@ type Status=any;
 // authenticated worker/manager status and may legitimately be older.
 const WEB_RELEASE_VERSION=agentRelease.publicVersion||agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+const AGENT_DOWNLOAD_URL='https://raw.githubusercontent.com/hassan80612/DEVINX/84de4c4b740818cf9fd7b3082e00540ae25d5e97/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.218.exe';
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();
