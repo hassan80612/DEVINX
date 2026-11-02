@@ -1,0 +1,68 @@
+name: Sentinel 222 Fix Download Links and Archives
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-download-repair.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sentinel-222-download-repair
+  cancel-in-progress: true
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify current 222 console links
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}.exe`;' sentinel-trading-lab/src/app/console/page.tsx
+          grep -F 'const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;' sentinel-trading-lab/src/app/console/page.tsx
+          if grep -Fq '339fe90f17d6ab2d8cef4660c8a0cc5c7a8bdd34' sentinel-trading-lab/src/app/console/page.tsx; then
+            echo 'ERROR: outdated raw GitHub 221 URL remains in console'
+            exit 1
+          fi
+      - name: Package missing 222 archives from immutable Windows-tested EXE and payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+          node sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+          cd sentinel-trading-lab/public/downloads
+          unzip -tq Sentinel-Agent-13.9.222-EXE.zip
+          unzip -tq Sentinel-Agent-13.9.222-Alternativo.zip
+          test "$(unzip -Z1 Sentinel-Agent-13.9.222-EXE.zip)" = 'Sentinel-Agent-13.9.222.exe'
+          for name in Instalar-Sentinel.cmd LEIA-ME.txt agent_payload_v88.zip install-agent-v88.ps1; do
+            unzip -Z1 Sentinel-Agent-13.9.222-Alternativo.zip | grep -Fx "$name"
+          done
+          unzip -p Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222.exe | sha256sum
+          sha256sum Sentinel-Agent-13.9.222.exe
+          cmp -s Sentinel-Agent-13.9.222.exe <(unzip -p Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222.exe)
+          cmp -s agent_payload_v88.zip <(unzip -p Sentinel-Agent-13.9.222-Alternativo.zip agent_payload_v88.zip)
+          stat -c '%n: %s bytes' Sentinel-Agent-13.9.222.exe Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222-Alternativo.zip
+      - name: Publish only newly verified ZIP archives to isolated Sentinel branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="$GITHUB_REF_NAME"
+          head="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          test "$head" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.222-EXE.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.222-Alternativo.zip
+          git diff --cached --quiet && exit 0
+          git commit -m "build(sentinel 222): publish verified EXE archive and offline ZIP installer"
+          git push origin "HEAD:$branch"
