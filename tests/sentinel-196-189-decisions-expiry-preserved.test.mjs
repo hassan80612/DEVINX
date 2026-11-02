@@ -31,7 +31,13 @@ test('204: preserves the 197 runtime except the three explicit admission reviews
    .replace("import {reviewSetupIntegrity} from './setup-integrity-admission.mjs';\n",'')
    .replace(/      \/\/ Review only already-qualified[\s\S]*?      eligible=reviewSetupIntegrity\(\{[\s\S]*?      \}\);\n/,'');
  assert.equal(gitSha(previousRuntime),'f5118600856c7846e6e5a8470aed81acc95c167b');
- const previousRoom=room.replace("import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';\n",'').replace('clock-at<=structuralQuoteMaxAgeMs(durationMs)','clock-at<=1450');
+ const previousRoom=room
+  // 226 adds only a recognized fresh-continuation family; all old opposing
+  // wall admission logic must still reproduce the original 197 blob.
+  .replace(" 'locally-verified-opposite-direction',\n 'fresh-pullback-continuation'"," 'locally-verified-opposite-direction'")
+  .replace("import {structuralQuoteMaxAgeMs} from './structure-quote-freshness.mjs';\n",'')
+  .replace('clock-at<=structuralQuoteMaxAgeMs(durationMs)','clock-at<=1450');
+ assert.match(room,/fresh-pullback-continuation/);
  assert.equal(gitSha(previousRoom),'ee6a97c64ddfeb42c38f1696b4f4c6192450311e');
  assert.match(runtime,/reviewOneMinuteRejectionProof/);
  assert.match(runtime,/reviewSetupIntegrity/);
