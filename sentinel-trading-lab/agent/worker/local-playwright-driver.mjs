@@ -2065,7 +2065,7 @@ export class LocalPlaywrightDriver{
         // When a compact broker packet omits a reading, retain the last
         // CONFIRMED values for at most 30s, explicitly as historical data.
         // This cache is never sent back to the analyst or trade executor.
-        const marketTotalsKey=[d.quoteProvider||'',visibleAsset||'',d.engine||'',duration].join('|');
+        const marketTotalsKey=[d.quoteProvider||'',String(d.validatedAsset||d.asset||'—').trim().toUpperCase(),d.engine||'',duration].join('|');
         const rawMarketTotals=Array.isArray(d.visualMarketCards)?d.visualMarketCards:[];
         const marketTotalsLive=runtime==='running'&&liveNow&&d.vnext?.engineId===d.engine&&
           rawMarketTotals.length===3&&rawMarketTotals.every(c=>
