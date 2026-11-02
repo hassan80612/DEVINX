@@ -77,7 +77,7 @@ test('221: Exnova split-label expiry is discoverable without a saved field mappi
   const value={isConnected:true,className:'trade-value',parentElement:host,
    innerText:'1 min',textContent:'1 min',getAttribute:()=>null,
    getBoundingClientRect:()=>rect(1100,165,90,28),closest:()=>null,
-   matches:()=>false};
+   contains:()=>false,matches:()=>false};
   const label={isConnected:true,className:'trade-caption',parentElement:host,
    children:[],innerText:'Expiration',textContent:'Expiration',getAttribute:()=>null,
    getBoundingClientRect:()=>rect(1040,140,100,18),closest:()=>null};
