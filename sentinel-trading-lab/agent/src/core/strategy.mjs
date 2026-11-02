@@ -3,6 +3,7 @@ import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketS
 import {SignalSide} from './types.mjs';
 import {repeatedReaction} from './repeated-reaction.mjs';
 import {earlyScenarioTurn} from './early-scenario-turn.mjs';
+import {adxDmi,confirmedRsiDivergence,pullbackResumption} from './market-intelligence-226.mjs';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const near=(a,b,t)=>a!=null&&b!=null&&Math.abs(a-b)<=Math.max(t,Math.abs(b)*.00015);
@@ -60,11 +61,14 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  if(bars.length<5||!micro.ready)return{ready:false,bars:bars.length,callScore:null,putScore:null,reversalCallScore:null,reversalPutScore:null,readyCall:false,readyPut:false,reasons:['microestrutura em aquecimento']};
  const closes=bars.map(b=>Number(b.close)),lastBar=bars.at(-1),prior=bars.slice(0,-1);
  const fast=ema(closes,3),slow=ema(closes,8),microRsi=rsi(closes,7),microMom=momentum(closes,3),microMacd=macd(closes,5,10,4);
+ // Advisory only: closed 5s buckets for ADX/DMI and RSI divergences.
+ const microDmi=adxDmi(prior,10),microDivergence=confirmedRsiDivergence(prior,7);
  const structure=marketStructure(bars),sr=supportResistance(prior,Math.min(24,prior.length)),lines=trendLines(bars),patterns=candlePatterns(bars),retest=breakoutRetest(bars,Math.min(12,Math.max(4,bars.length-3)));
  const range=Math.max(1e-12,Number(lastBar.high)-Number(lastBar.low)),body=Number(lastBar.close)-Number(lastBar.open);
  const rejectionUp=(Number(lastBar.close)>Number(lastBar.open)&&Number(lastBar.low)<Number(lastBar.open)-Math.abs(body)*.55);
  const rejectionDown=(Number(lastBar.close)<Number(lastBar.open)&&Number(lastBar.high)>Number(lastBar.open)+Math.abs(body)*.55);
  const tol=Math.max(Math.abs(vol||0)*.18,Math.abs(last)*.00004);
+ const resumption=pullbackResumption(bars,{tolerance:vol,fast,slow});
  const nearSupport=near(last,sr.support,tol),nearResistance=near(last,sr.resistance,tol);
  const breakUp=Number.isFinite(sr.resistance)&&last>Number(sr.resistance)+tol*.10;
  const breakDown=Number.isFinite(sr.support)&&last<Number(sr.support)-tol*.10;
@@ -118,6 +122,9 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  if(micro.p15>=1.65)reversalPutScore+=7;
  if(micro.p5>0&&micro.p15<0)reversalCallScore+=8;
  if(micro.p5<0&&micro.p15>0)reversalPutScore+=8;
+ // Divergence does not create a reversal: it only supports a verified turn.
+ if(microDivergence.side==='CALL'&&micro.delta2>0&&(turnUp||failedBreakDown))reversalCallScore+=6;
+ if(microDivergence.side==='PUT'&&micro.delta2<0&&(turnDown||failedBreakUp))reversalPutScore+=6;
  reversalCallScore=clamp(Math.round(reversalCallScore),0,100);
  reversalPutScore=clamp(Math.round(reversalPutScore),0,100);
 
@@ -132,6 +139,11 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  if(micro.pulse>=8)call+=3;if(micro.pulse<=-8)put+=3;
  if(accelUp){call+=7;callReasons.push('aceleração inicial ↑')}
  if(accelDown){put+=7;putReasons.push('aceleração inicial ↓')}
+ // A new pullback-resumption is evidence, not a bypass of entry/room guards.
+ if(resumption.call&&!nearResistance){call+=6;callReasons.push('retomada após correção curta')}
+ if(resumption.put&&!nearSupport){put+=6;putReasons.push('retomada após correção curta')}
+ if(microDmi.ready&&microDmi.adx>=20&&flowBuy>=2&&microDmi.direction==='CALL')call+=3;
+ if(microDmi.ready&&microDmi.adx>=20&&flowSell>=2&&microDmi.direction==='PUT')put+=3;
  if(reversalCallCandidate){call+=14;callReasons.push('possível reversão ↑')}
  if(reversalPutCandidate){put+=14;putReasons.push('possível reversão ↓')}
 
@@ -185,8 +197,8 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const structureReadyPut=((fast!=null&&slow!=null&&fast<=slow*1.00002)&&(structure.bias!=='bullish'))||reversalPutCandidate;
  const callRoomOk=breakUp||reversalCallCandidate||callRoom==null||callRoom>minRoom;
  const putRoomOk=breakDown||reversalPutCandidate||putRoom==null||putRoom>minRoom;
- const callSetup=reversalCallCandidate||(retest?.side==='BUY')||(nearSupport&&rejectionUp)||(accelUp&&structureReadyCall&&!nearResistance)||(breakUp&&micro.p5>0);
- const putSetup=reversalPutCandidate||(retest?.side==='SELL')||(nearResistance&&rejectionDown)||(accelDown&&structureReadyPut&&!nearSupport)||(breakDown&&micro.p5<0);
+ const callSetup=reversalCallCandidate||(retest?.side==='BUY')||(nearSupport&&rejectionUp)||(accelUp&&structureReadyCall&&!nearResistance)||(resumption.call&&!nearResistance)||(breakUp&&micro.p5>0);
+ const putSetup=reversalPutCandidate||(retest?.side==='SELL')||(nearResistance&&rejectionDown)||(accelDown&&structureReadyPut&&!nearSupport)||(resumption.put&&!nearSupport)||(breakDown&&micro.p5<0);
  const callContinuation=flowReadyCall&&structureReadyCall&&callRoomOk&&!callReversalRisk&&!callOverextended;
  const putContinuation=flowReadyPut&&structureReadyPut&&putRoomOk&&!putReversalRisk&&!putOverextended;
  const callReversalTrigger=reversalCallCandidate&&micro.delta5>0;
@@ -198,7 +210,7 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
    flowReadyCall,flowReadyPut,structureReadyCall,structureReadyPut,callReversalRisk,putReversalRisk,
    callStretched,putStretched,callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallScore,reversalPutScore,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,persistenceDecayUp,persistenceDecayDown,failedBreakUp,failedBreakDown,
    reversalCallConfirmed:micro.delta5>0&&(turnUp||failedBreakDown||(reversalCallCandidate&&rejectionUp&&micro.delta2>0)),reversalPutConfirmed:micro.delta5<0&&(turnDown||failedBreakUp||(reversalPutCandidate&&rejectionDown&&micro.delta2<0)),
-   fast,slow,rsi:microRsi,momentum:microMom,macd:microMacd,structure,sr,trendlines:lines,
+   fast,slow,rsi:microRsi,momentum:microMom,macd:microMacd,adxDmi:microDmi,rsiDivergence:microDivergence,resumption,structure,sr,trendlines:lines,
    patterns:patterns.map(p=>p.name),retest,range,callReasons:callReasons.slice(0,9),putReasons:putReasons.slice(0,9)
  }
 }
@@ -242,6 +254,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const higherRows=tfRows(300),higher=higherRows.length>=5?higherRows:aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
  const m={
    fast:ema(closes,9),slow:ema(closes,21),ema50:ema(closes,50),ema200:ema(closes,200),rsi:rsi(closes,14),atr:vol,bb:bollinger(closes,20,2),momentum:momentum(closes,10),
+   adxDmi:adxDmi(prior,14),rsiDivergence:confirmedRsiDivergence(prior,14),
    sr:supportResistance(prior,50),srZones:supportResistanceZones(prior,90),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),
    trendlines:trendLines(candles),lineQuality:trendLineQuality(prior),fib:fibonacci(candles,80),swingFib:swingFibonacci(prior,120),volatility:volatilityState(candles),
    patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
@@ -397,6 +410,12 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  };
  const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
  box.regime=regimeLabel;box.regimeConfidence=regimeConfidence;
+ // A small independent trend-quality vote across all expiries. Never
+ // require ADX, DMI or divergence to trade; existing proof remains owner.
+ if(m.adxDmi?.ready&&m.adxDmi.adx>=22){
+   if(m.adxDmi.direction==='CALL'&&trendUp)box.buy=clamp(box.buy+3,0,100);
+   if(m.adxDmi.direction==='PUT'&&trendDn)box.sell=clamp(box.sell+3,0,100);
+ }
  const horizon=Math.max(30000,Number(durationMs||60000));
  const short=shortHorizonModel({
    quoteHistory,micro,last,vol,minConfidence,now,candidateModel,

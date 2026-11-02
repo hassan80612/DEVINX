@@ -73,7 +73,8 @@ export function confirmedLevelReversal({map,quoteHistory=[],quoteAt,now=quoteAt,
   return {kind:'confirmed-level-structure-reversal',side,
    level:{level:anchor.level,confirmedPivots:anchor.confirmedPivots,
     independentRejections:anchor.independentRejections},
-   pivotPrice:proof.pivotPrice,turnPrice:proof.turnPrice,confirmedAt:crossed.ts};
+   pivotPrice:proof.pivotPrice,turnPrice:proof.turnPrice,
+   amplitude:proof.amplitude,confirmedAt:crossed.ts};
  }
  return null;
 }
