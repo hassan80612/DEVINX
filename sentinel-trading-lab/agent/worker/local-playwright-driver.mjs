@@ -2061,6 +2061,26 @@ export class LocalPlaywrightDriver{
         const panelBorder=uiTheme==='light'?'#d2dae4':'#2b3a4c';
         const panelShadow='none',heroPanelBg=panelBg,heroShadow='none',goldGlow='none';
         const callTone=uiTheme==='light'?'#087052':'#7ce9c1',putTone=uiTheme==='light'?'#972d43':'#ff99a8',warnTone=uiTheme==='light'?'#7a5a12':'#e6c879';
+        // Visual-only continuity for the three live-market totals.
+        // When a compact broker packet omits a reading, retain the last
+        // CONFIRMED values for at most 30s, explicitly as historical data.
+        // This cache is never sent back to the analyst or trade executor.
+        const marketTotalsKey=[d.quoteProvider||'',visibleAsset||'',d.engine||'',duration].join('|');
+        const rawMarketTotals=Array.isArray(d.visualMarketCards)?d.visualMarketCards:[];
+        const marketTotalsLive=runtime==='running'&&liveNow&&d.vnext?.engineId===d.engine&&
+          rawMarketTotals.length===3&&rawMarketTotals.every(c=>
+            c?.callPct!=null&&c?.putPct!=null&&Number.isFinite(Number(c.callPct))&&Number.isFinite(Number(c.putPct)));
+        if(marketTotalsLive)el.__sentinelMarketTotalsCache={
+          key:marketTotalsKey,at:Date.now(),cards:rawMarketTotals.map(c=>({...c}))
+        };
+        else if(runtime!=='running'||el.__sentinelMarketTotalsCache?.key!==marketTotalsKey)
+          el.__sentinelMarketTotalsCache=null;
+        const retainedMarketTotals=!marketTotalsLive&&runtime==='running'&&
+          el.__sentinelMarketTotalsCache?.key===marketTotalsKey&&
+          Date.now()-Number(el.__sentinelMarketTotalsCache.at)<=30000?
+          el.__sentinelMarketTotalsCache.cards:null;
+        const visibleMarketTotals=marketTotalsLive?rawMarketTotals:(retainedMarketTotals||rawMarketTotals);
+        const marketTotalsHistorical=!marketTotalsLive&&!!retainedMarketTotals;
         const pausedReadings=d.pausedReadings&&typeof d.pausedReadings==='object'?d.pausedReadings:{};
         const isPaused=key=>pausedReadings[key]===true;
         const pauseBtn=key=>'<button data-sentinel-reading-pause="'+key+'" title="'+(isPaused(key)?'Ativar esta leitura':'Pausar esta leitura')+'" style="border:1px solid '+panelBorder+';border-radius:6px;height:20px;padding:0 5px;background:'+(isPaused(key)?'rgba(242,207,102,.13)':(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)'))+';color:'+(isPaused(key)?warnTone:subtle)+';font:700 9.5px/1 inherit;cursor:pointer;white-space:nowrap">'+tr(isPaused(key)?'ATIVAR':'PAUSAR')+'</button>';
@@ -2599,18 +2619,16 @@ export class LocalPlaywrightDriver{
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">${tr('TOTAIS · LEITURAS AO VIVO')}</b><small style="font-size:9px;color:${muted}">${tr('Índices direcionais, não taxa de acerto')}</small></div>
             <div data-sentinel-vnext-cards data-provider="${esc(d.quoteProvider)}" data-asset="${esc(visibleAsset)}" data-engine="${esc(d.engine)}" data-duration="${duration}" data-language="${uiLang}" data-state="${runtime}" data-readings-at="${Number(d.marketReadingsAt||0)}" data-neutral-color="${ink}" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
-              ${(d.visualMarketCards||[]).map(c=>{
+              ${visibleMarketTotals.map(c=>{
                 const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
-                // These percentages are measured from OBSERVED prices; they must
-                // never freeze when the independent future estimator has no
-                // receipt yet (e.g. first seconds after starting the Agent).
-                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine;
-                const side=fresh?esc(c.side):'AGUARDAR';
-                const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
-                return '<div data-sentinel-summary="'+esc(c.id||'')+'" style="padding:7px 8px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+
+                const readable=Number.isFinite(value)&&Number.isFinite(other)&&
+                  (marketTotalsLive||marketTotalsHistorical);
+                const side=marketTotalsHistorical?'ÚLTIMA LEITURA · '+esc(c.side):readable?esc(c.side):'AGUARDAR';
+                const color=marketTotalsHistorical?muted:readable&&value>other?callTone:readable&&other>value?putTone:ink;
+                return '<div data-sentinel-summary="'+esc(c.id||'')+'" data-history-only="'+(marketTotalsHistorical?'true':'false')+'" style="padding:7px 8px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+
                   '<div style="min-height:27px;font-size:10px;line-height:1.3;font-weight:800;color:'+ink+'">'+esc(c.label||'TOTAL')+'</div>'+
                   '<b data-sentinel-reading-side style="display:block;margin:4px 0;font-size:13px;color:'+color+'">'+side+'</b>'+
-                  '<div style="display:flex;flex-wrap:wrap;gap:5px;font-size:10px;font-weight:800"><span data-sentinel-reading-call style="color:'+callTone+'">CALL '+(fresh?Math.round(value)+'%':'—')+'</span><span data-sentinel-reading-put style="color:'+putTone+'">PUT '+(fresh?Math.round(other)+'%':'—')+'</span></div>'+
+                  '<div style="display:flex;flex-wrap:wrap;gap:5px;font-size:10px;font-weight:800"><span data-sentinel-reading-call style="color:'+callTone+'">CALL '+(readable?Math.round(value)+'%':'—')+'</span><span data-sentinel-reading-put style="color:'+putTone+'">PUT '+(readable?Math.round(other)+'%':'—')+'</span></div>'+
                   '</div>';
               }).join('')}
             </div>
