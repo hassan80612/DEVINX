@@ -1,0 +1,56 @@
+name: Sentinel 226 - 30s 1m 5m safety and expiry lock
+on:
+  push:
+    branches:
+      - fix/sentinel-226-inteligencia-3-prazos-20261102
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/**'
+      - 'sentinel-trading-lab/agent/worker/market-condition-indicator.mjs'
+      - 'tests/sentinel-225-one-minute-reversal-h207.test.mjs'
+      - 'tests/sentinel-225-market-condition-overlay.test.mjs'
+      - 'tests/sentinel-226-early-entry-and-intelligence.test.mjs'
+      - '.github/workflows/sentinel-226-three-expiries-safety.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies without building EXE or deploying
+        working-directory: sentinel-trading-lab
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate 226 syntax
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/src/core/strategy.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/src/core/market-intelligence-226.mjs
+          node --check sentinel-trading-lab/agent/src/core/early-continuation-226.mjs
+          node --check sentinel-trading-lab/agent/worker/market-condition-indicator.mjs
+      - name: Targeted early entry, reversal, visual, and expiry tests
+        run: |
+          node --test --test-concurrency=4 \
+            tests/sentinel-226-early-entry-and-intelligence.test.mjs \
+            tests/sentinel-225-one-minute-reversal-h207.test.mjs \
+            tests/sentinel-225-market-condition-overlay.test.mjs \
+            tests/sentinel-220-h207-unified-admission.test.mjs \
+            tests/sentinel-222-30s-parity-pre-entry.test.mjs \
+            tests/sentinel-222-last-mile-evidence.test.mjs \
+            tests/sentinel-199-expiry-last-choice.test.mjs \
+            tests/sentinel-221-expiry-native-durable.test.mjs \
+            tests/sentinel-168-targeted-corrections.test.mjs
+      - name: Verify selected native expiry implementation was not modified
+        run: |
+          node --input-type=module -e "
+          import {execFileSync} from 'node:child_process';
+          const compare=execFileSync('git',['diff','--name-only','5e7a58da0c2f876d01e4ed1761afca1b182fa700','HEAD'],{encoding:'utf8'});
+          const changes=compare.split('\n').filter(Boolean);
+          const forbidden=changes.filter(f=>/native-expiry|expiry-keeper|signal-executor|worker\/index\.mjs|local-playwright-driver\.mjs/.test(f));
+          if(forbidden.length)throw Error('Protected expiry or click files changed: '+forbidden.join(', '));
+          "
