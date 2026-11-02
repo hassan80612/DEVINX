@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
 const agentDownloadHeaders=[
   {key:'Content-Type',value:'application/octet-stream'},
-  {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
+  {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'.exe"'},
   {key:'Cache-Control',value:'private, no-store'}
 ];
 const nextConfig={
@@ -18,6 +18,8 @@ const nextConfig={
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
+    // Direct same-origin versioned executable: NO 302 and exact filename.
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
     // A redirect response must not advertise itself as a downloadable EXE.
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
