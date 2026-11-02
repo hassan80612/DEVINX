@@ -74,8 +74,22 @@ export function reviewPreEntryRisk({candidate,original,...input}={}){
  const proof=candidate.priceStructure?.reactionProof||
   (matchingOriginal?original.priceStructure?.reactionProof:null);
  const reviewedDuration=Number(input.durationMs);
+ // A historical range label alone is not proof. However, an INDEPENDENT
+ // same-tick structure-change/reaction confirmation should not be delayed
+ // by this retrospective range-specific veto. All ordinary risk checks below
+ // (opposing wall, live turn, candle support) still execute.
+ const structural=candidate.priceStructure?.confirmedReversal||
+   candidate.priceStructure?.observedSequence?.structureChange;
+ const independentTurn=structural?.side===candidate.side&&
+   Number(structural.confirmedAt)>0&&
+   Number(structural.confirmedAt)<=Number(input.quoteAt)&&
+   Number(input.quoteAt)-Number(structural.confirmedAt)<=
+    (reviewedDuration===30000?1450:1950);
+ const independentProof=proof?.confirmed===true&&
+   proof?.side===candidate.side&&Number(proof.durationMs)===reviewedDuration;
  const selectiveRule=candidate.reason==='closed-range-extreme-reversal-confirmed'&&
-   candidate.regime==='observed-range-turn'?'one-minute-observed-range-turn':
+   candidate.regime==='observed-range-turn'&&
+   !(independentTurn&&independentProof)?'one-minute-observed-range-turn':
   candidate.reason==='historical-level-rejection'&&proof?.confirmed===true&&
    proof?.kind==='sustained-level-reversal'&&proof?.side===candidate.side&&
    Number(proof.durationMs)===reviewedDuration?
