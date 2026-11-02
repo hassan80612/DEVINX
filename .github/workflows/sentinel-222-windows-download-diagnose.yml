@@ -1,0 +1,53 @@
+name: Sentinel EXE 218 versus 222 Windows download diagnosis
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-windows-download-diagnose.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: windows-latest
+    steps:
+      - name: Compare production 222 and archived 218 using Windows HTTP, Defender and Authenticode
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $base='https://trading.devinx.com.br/downloads'
+          $temp=Join-Path $env:RUNNER_TEMP 'sentinel-download-diagnosis'
+          New-Item -ItemType Directory $temp -Force | Out-Null
+          foreach($version in @('13.9.222','13.9.218')){
+            $file="Sentinel-Agent-$version.exe"
+            $path=Join-Path $temp $file
+            try {
+              $r=Invoke-WebRequest "$base/$file" -OutFile $path -PassThru -MaximumRedirection 5 -TimeoutSec 40
+              $len=(Get-Item $path).Length
+              $hash=(Get-FileHash $path -Algorithm SHA256).Hash
+              $sig=Get-AuthenticodeSignature -FilePath $path
+              Write-Host "DOWNLOAD $version status=$($r.StatusCode) bytes=$len sha=$hash signature=$($sig.Status) signer=$($sig.SignerCertificate.Subject)"
+              if($version -eq '13.9.222'){
+                if($len -ne 2863616){throw '222 changed size from Windows-tested EXE'}
+                if($hash -ne '27305FBF487EE8F1884C17D5956EB97FC2CB52675D1B0B38987D1AC059F66041'){throw '222 changed hash'}
+              }
+              try {
+                $mp=Get-MpComputerStatus -ErrorAction Stop
+                Write-Host "DEFENDER available=$($mp.AMServiceEnabled) realtime=$($mp.RealTimeProtectionEnabled) signatures=$($mp.AntivirusSignatureVersion)"
+                if($mp.AMServiceEnabled){
+                  Start-MpScan -ScanType CustomScan -ScanPath $path -ErrorAction Stop
+                  $detections=@(Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object { $_.Resources -match [regex]::Escape($file) })
+                  Write-Host "DEFENDER SCAN $version detections=$($detections.Count)"
+                  foreach($d in $detections){Write-Host "DEFENDER ThreatID=$($d.ThreatID) ActionSuccess=$($d.ActionSuccess) InitialDetectionTime=$($d.InitialDetectionTime)"}
+                }
+              }catch{Write-Host "DEFENDER DIAG $version unavailable_or_error=$($_.Exception.Message)"}
+            }catch{
+              Write-Host "DOWNLOAD FAILURE $version $($_.Exception.Message)"
+              if($version -eq '13.9.222'){throw}
+            }
+          }
+          Write-Host 'Windows HTTP comparison complete'
