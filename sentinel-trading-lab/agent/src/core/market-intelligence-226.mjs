@@ -85,7 +85,8 @@ export function pullbackResumption(bars=[],{tolerance=0,fast=null,slow=null}={})
  const closes=rows.map(c=>Number(c.close));
  const at=closes.length-1,one=closes[at-1],two=closes[at-2],four=closes[at-4],spot=closes[at];
  const tol=Math.max(Math.abs(Number(tolerance)||0)*.08,Math.abs(spot)*.000003);
- const call=Number(fast)>=Number(slow)&&two>four+tol&&one<two-tol&&spot>one+tol&&spot<=two+tol*2;
- const put=Number(fast)<=Number(slow)&&two<four-tol&&one>two+tol&&spot<one-tol&&spot>=two-tol*2;
+ const trendReady=fast!==null&&slow!==null&&Number.isFinite(Number(fast))&&Number.isFinite(Number(slow));
+ const call=trendReady&&Number(fast)>=Number(slow)&&two>four+tol&&one<two-tol&&spot>one+tol&&spot<=two+tol*2;
+ const put=trendReady&&Number(fast)<=Number(slow)&&two<four-tol&&one>two+tol&&spot<one-tol&&spot>=two-tol*2;
  return {call:!!call,put:!!put};
 }
