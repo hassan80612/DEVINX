@@ -72,15 +72,36 @@ export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,no
    const d=candidate.side==='CALL'?1:-1;
    const isFresh=at>0&&clock>=at&&clock-at<=(duration===30000?1450:1950)&&spot>0&&
      Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot;
-   const strong=allowVerifiedEarlyReversal===true&&isFresh&&
+   const early=!!turn&&
      candidate.earlyTurnEvidence?.kind==='level-microstructure-first-turn'&&
-     proof?.kind==='confirmed-level-structure-reversal'&&
-     proof?.side===candidate.side&&Number(proof?.confirmedAt)===at&&
-     Number(turn?.observedAt)===at&&Number(proof?.level?.level)>0&&
+     Number(turn?.observedAt)===at&&
      Number.isFinite(Number(turn?.retest))&&Number.isFinite(Number(turn?.firstBreak))&&
      Number.isFinite(Number(turn?.extreme))&&
      d*(Number(turn.firstBreak)-Number(turn.extreme))>0&&
      d*(spot-Number(turn.retest))>0;
+   // The independent observed-level-sequence route has a DIFFERENT
+   // genuine live proof: higher low + prior pivot broken on current quotes.
+   // Do not require the early-turn route's microTurn metadata on it.
+   const amplitude=Number(proof?.amplitude),pivot=Number(proof?.pivotPrice),
+     turnPrice=Number(proof?.turnPrice),confirmation=Number(proof?.confirmedAt);
+   const latest=(Array.isArray(quoteHistory)?quoteHistory:[])
+     .filter(q=>Number(q?.ts)<=at&&Number(q?.receivedAt??q?.ts)<=clock&&Number(q?.price)>0)
+     .slice(-4);
+   const current=latest.at(-1),previous=latest.at(-2);
+   const independent=Number(proof?.level?.confirmedPivots)>=1&&
+     Number(proof?.level?.independentRejections)>=1&&
+     Number.isFinite(amplitude)&&amplitude>0&&
+     Number.isFinite(pivot)&&Number.isFinite(turnPrice)&&
+     confirmation>0&&confirmation<=at&&at-confirmation<=1450&&
+     Number(current?.ts)===at&&Number(current?.price)===spot&&
+     Number(previous?.ts)<at&&at-Number(previous?.ts)<=2000&&
+     d*(spot-Number(previous?.price))>=0&&
+     d*(spot-pivot)>amplitude*.35&&
+     d*(spot-turnPrice)>0&&d*(spot-turnPrice)<=Math.max(amplitude*6,spot*.00025);
+   const strong=allowVerifiedEarlyReversal===true&&isFresh&&
+     proof?.kind==='confirmed-level-structure-reversal'&&
+     proof?.side===candidate.side&&Number(proof?.level?.level)>0&&
+     (early||independent);
    return strong?candidate:blocked('H207: reversão estrutural sem prova atual suficiente',
                   'h207-structural-reversal-excluded');
  }
