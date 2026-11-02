@@ -63,8 +63,9 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
  // H207 intentionally changes ONLY the manual expiry bridge and its durable
  // runtime callback. Keep byte-for-byte guards for all other 199/207 files.
  const approvedH207={
-  'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'3896405088886724022cc90a43364c5dbb30e4b9',
-  'sentinel-trading-lab/agent/worker/index.mjs':'501f342b428b920a68e09e8d22335467ef7de73a'
+  'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'095536e4696655690541cbbfadbb0939a2e6e6cb',
+  'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
+  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'a1aa4f148557bc0a00d4cf463cd782f1e39b29e4'
  };
  for(const [path,hash] of Object.entries(fixture.preserved))
   assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
