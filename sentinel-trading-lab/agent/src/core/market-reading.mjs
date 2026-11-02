@@ -4,7 +4,7 @@ const opposite=s=>s==='CALL'?'PUT':s==='PUT'?'CALL':null;
 export function marketReading({phase,label,trendSide,candidate={},observation={},quoteAt,now=quoteAt,indicatorEvidence=null,historicalCandlesVerified=null}={}){
  // A user entry-family preference changes emission, not the market reading.
  if(candidate.reason==='entry-family-not-selected'&&observation.ready===true)
-  return marketReading({phase,label,trendSide,candidate:observation,quoteAt,now});
+  return marketReading({phase,label,trendSide,candidate:observation,quoteAt,now,indicatorEvidence,historicalCandlesVerified});
  // Freshness belongs to the technical line, never to order permission.
  let text=label||'ANALISANDO',direction=side(trendSide);
  if(candidate.ready===true){
