@@ -816,6 +816,12 @@ export class LocalPlaywrightDriver{
   setNativeExpiryPermissionSource(source){
     this.nativeExpiryPermissionSource=typeof source==='function'?source:null;
   }
+  // A trusted MANUAL selection of the broker's expiry is also the Sentinel
+  // execution duration. Keep both durable receipts aligned across refreshes.
+  setNativeExpiryChoiceHandler(handler){
+    this.nativeExpiryChoiceHandler=typeof handler==='function'?handler:null;
+  }
+
   async installBridge(page,provider=null){
     // Order expiry and chart timeframe are separate persisted broker controls.
     if(provider&&['iq_option','exnova'].includes(provider)){
@@ -841,7 +847,10 @@ export class LocalPlaywrightDriver{
       if(!page.__sentinelNativeExpiryChoiceExposed){
         await page.exposeFunction('__sentinelRememberNativeExpiryChoice',async (value,selectedAt)=>{
           const ms=Number(value);if(![30000,60000,300000].includes(ms))return false;
-          return this.setNativeExpiryPreference(provider,ms,{preserveExisting:false,selectedAt});
+          const persisted=await this.setNativeExpiryPreference(provider,ms,{preserveExisting:false,selectedAt});
+          if(persisted&&this.nativeExpiryChoiceHandler)
+            await this.nativeExpiryChoiceHandler(provider,ms,selectedAt);
+          return persisted;
         });
         page.__sentinelNativeExpiryChoiceExposed=true;
       }
