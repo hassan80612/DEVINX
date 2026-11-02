@@ -41,6 +41,8 @@ test('225: one-tick readout cannot flip good to bad and vice versa',()=>{
  v=smoothMarketCondition(v,good,{at:14500,context:'exnova|EURUSD|60000'});
  assert.equal(v.state,'watch');
  v=smoothMarketCondition(v,good,{at:18000,context:'exnova|EURUSD|60000'});
+ assert.equal(v.state,'watch','226: elapsed time alone cannot cause a one-tick rebound');
+ v=smoothMarketCondition(v,good,{at:18500,context:'exnova|EURUSD|60000'});
  assert.equal(v.state,'good','226: recovery also needs sustained evidence');
  const other=smoothMarketCondition(v,good,{at:19000,context:'exnova|GBPUSD|30000'});
  assert.equal(other.state,'watch','new asset/expiry invalidates the previous favorable readout');
