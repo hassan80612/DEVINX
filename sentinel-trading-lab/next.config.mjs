@@ -5,11 +5,6 @@ const agentDownloadHeaders=[
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
   {key:'Cache-Control',value:'private, no-store'}
 ];
-const versionedAgentDownloadHeaders=[
-  {key:'Content-Type',value:'application/octet-stream'},
-  {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'.exe"'},
-  {key:'Cache-Control',value:'private, no-store'}
-];
 const nextConfig={
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},
