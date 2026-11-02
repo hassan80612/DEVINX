@@ -1526,8 +1526,13 @@ export class LocalPlaywrightDriver{
       // A broker's unchosen reset to 30s has no selectedAt receipt.
       // Never let that default trump the Agent's last manual choice.
       const best=choices[0],savedAt=Number(this.nativeExpirySelectedAt.get(provider)||0);
+      // A page's default 30s WITHOUT a manual timestamp is NOT a choice.
+      // On first Agent bootstrap this must not erase a saved 1m/5m runtime
+      // preference. Timestamped user choices and explicit 30s are respected.
+      const explicitNative30=best?.value===30000&&best?.explicitDefault===true;
       if(best&&(Number(best.selectedAt||0)>savedAt||
-        (!savedAt&&(!this.nativeExpiryPreferences.has(provider)||best.value!==30000)))){
+        (!savedAt&&!this.nativeExpiryPreferences.has(provider)&&
+          (best.value!==30000||explicitNative30)))){
         ms=best.value;
         this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);
       }
