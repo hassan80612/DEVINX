@@ -85,11 +85,12 @@ test('221: Exnova split-label expiry is discoverable without a saved field mappi
   document.querySelectorAll=selector=>
    selector==='div,span,p,label,strong,small'?[label]:[];
   installBrokerNativeExpiryKeeper({provider:'exnova'});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().discoverySource,'semantic');
   b.step();b.step();
   const expiry=window.__sentinelNativeExpiryKeeperV3.snapshot();
   assert.equal(expiry.currentMs,60000);
   assert.equal(expiry.discoveryReason,'identified');
-  assert.equal(expiry.discoverySource,'semantic');
+  assert.equal(expiry.discoverySource,'cached');
   assert.equal(expiry.preferredMs,60000);
  }finally{b.restore()}
 });
