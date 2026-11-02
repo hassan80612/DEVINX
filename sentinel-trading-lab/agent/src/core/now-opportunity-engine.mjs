@@ -20,6 +20,7 @@ import {continuationRoomRisk} from './continuation-room-risk.mjs';
 import {liveEntryContradiction} from './live-entry-contradiction.mjs';
 import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
+import {reviewFreshPullbackContinuation} from './early-continuation-226.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -538,10 +539,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // No countertrend guess, no extra waiting, no change to 30s/5m flows.
   // A verified first micro-turn at an OLD level can be earlier than the
   // 3-of-4 closed-candle continuation gate. Do not weaken that gate.
-  const located=reviewEarlyVerifiedTurn({
+  const earlyTurn=reviewEarlyVerifiedTurn({
     candidate:reviewEarlyDistantReversal({
       candidate:locatedBase,map:structure.candleLevelMap,...input
     }),map:structure.candleLevelMap,...input
+  });
+  // A genuine fresh pullback can resume before four older bars qualify.
+  // Existing shared wall, price, exhaustion and expiry checks still run.
+  const located=reviewFreshPullbackContinuation({
+    candidate:earlyTurn,quoteHistory,quoteAt,now,price,durationMs
   });
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
