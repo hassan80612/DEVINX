@@ -60,7 +60,7 @@ test('a received support rejection, higher low and CURRENT high break issues CAL
   assert.equal(confirmedLevelReversal({...a,quoteHistory:late,quoteAt:late.at(-1).ts,now:late.at(-1).ts,price:late.at(-1).price}),null,'do not re-issue a reversal after price has already travelled');
  }
 });
-test('the complete runtime emits the confirmed contrary signal through probability, expiry review and one-shot lifecycle at all seven expiries',()=>{
+test('H207 blocks weak 30s/1m structural entries while 5m retains its fully confirmed reversal',()=>{
  const vertices=[103,101,102,100,101,100.5,101.5],q=[];
  for(let k=0;k<vertices.length-1;k++)for(let j=0;j<5;j++)q.push({ts:T+q.length*1000,price:vertices[k]+(vertices[k+1]-vertices[k])*j/5});
  q.push({ts:T+q.length*1000,price:101.5});
@@ -73,9 +73,16 @@ test('the complete runtime emits the confirmed contrary signal through probabili
    candleLevelMap:{observedCandles:50,asOf:T-1000,tolerance:.1,levels:[z],windows:[]}})};
   const out=r._signalValidationGate({analysis:{},settings:r.settings,now:last.ts,
    snap:{provider:'iq_option',price:last.price,quoteTs:last.ts,quoteHistory:quotes,candles:[],historicalCandlesVerified:true,payout:null}});
-  assert.equal(out.analysis.vnext.futureEntryAnchor.side,mirror?'PUT':'CALL');
-  assert.equal(out.analysis.vnext.futureEntryAnchor.exitAt,last.ts+durationMs);
-  assert.equal(out.analysis.vnext.nowObservation.reason,'confirmed-level-structure-reversal');
+  if(durationMs===30000||durationMs===60000){
+   // The analyst still identifies the structural turn, but H207 deliberately
+   // does NOT convert this weak historical family into a physical order.
+   assert.equal(out.analysis.vnext.futureEntryAnchor?.side??null,null);
+   assert.match(out.analysis.vnext.nowObservation.reason,/H207: reversão estrutural/);
+  }else{
+   assert.equal(out.analysis.vnext.futureEntryAnchor.side,mirror?'PUT':'CALL');
+   assert.equal(out.analysis.vnext.futureEntryAnchor.exitAt,last.ts+durationMs);
+   assert.equal(out.analysis.vnext.nowObservation.reason,'confirmed-level-structure-reversal');
+  }
  }
 });
 
