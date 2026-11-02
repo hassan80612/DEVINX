@@ -1,5 +1,5 @@
-name: Sentinel 225 one-minute reversal safety checks
-# Only independently verified old-level microturns may pass the H207 1m veto.
+name: Sentinel 225 visual graph-condition and original 224 timing regression
+# Preserve every entry/admission timing byte from the published version 224.
 on:
   push:
     branches: 
@@ -20,10 +20,10 @@ jobs:
       - name: Install site test dependencies
         working-directory: sentinel-trading-lab
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Check 1m H207 exception and unchanged continuation protections
+      - name: Verify original 224 entry behavior and independent visual-only condition
         run: |
           set -euo pipefail
-          node --test tests/sentinel-225-one-minute-reversal-h207.test.mjs tests/sentinel-220-h207-unified-admission.test.mjs tests/sentinel-222-30s-parity-pre-entry.test.mjs tests/sentinel-222-last-mile-evidence.test.mjs tests/sentinel-201-closed-price-admission.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs
+          node --test tests/sentinel-225-market-condition-overlay.test.mjs tests/sentinel-225-one-minute-reversal-h207.test.mjs tests/sentinel-220-h207-unified-admission.test.mjs tests/sentinel-222-30s-parity-pre-entry.test.mjs tests/sentinel-222-last-mile-evidence.test.mjs tests/sentinel-201-closed-price-admission.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs
       - name: Run full historical prebuild safety regression
         working-directory: sentinel-trading-lab
         run: npm run prebuild
