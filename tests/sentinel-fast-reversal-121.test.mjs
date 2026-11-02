@@ -19,7 +19,7 @@ function oneMinuteFixture(f){
  for(const [i,price] of raw.entries())quoteHistory.push({ts:T+1750+i*250,price});
  const last=quoteHistory.at(-1);return {...f,quoteHistory,quoteAt:last.ts,now:last.ts,price:last.price};
 }
-test('204: rapid V keeps 30s admission and 5m proof; 1m additionally reviews the opposing dominant leg',()=>{
+test('223: rapid V needs supporting structure in 30s and 1m; 5m proof unchanged',()=>{
  for(const mirror of [false,true])for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest'])for(const durationMs of [30000,60000,300000]){
   const base=fixture(mirror),f=durationMs===60000?oneMinuteFixture(base):base,
    rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
@@ -31,7 +31,12 @@ test('204: rapid V keeps 30s admission and 5m proof; 1m additionally reviews the
   }else if(durationMs===60000){
    assert.equal(out.analysis.vnext.futureEntryAnchor,null);
    assert.equal(out.analysis.vnext.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
-  }else assert.equal(out.analysis.vnext.futureEntryAnchor?.side,f.side,`${engine} ${durationMs} ${f.side}`);
+  }else {
+   // 223: 30s now runs the same dominant-leg reversal review as 1m.
+   // A shallow fast V against the established leg is NOT a confirmed entry.
+   assert.equal(out.analysis.vnext.futureEntryAnchor,null,`${engine} ${durationMs} ${f.side}`);
+   assert.equal(out.analysis.vnext.nowObservation.reason,'Reversão rápida contra fluxo dominante sem mudança estrutural.');
+  }
  }
 });
 test('future prices and receipt times never confirm or revise the current reversal',()=>{
