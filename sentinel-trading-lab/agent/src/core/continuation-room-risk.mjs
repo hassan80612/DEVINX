@@ -11,7 +11,8 @@ const qualifyingReasons=new Set([
  'break-retest-continuation',
  'rejection-followthrough-clear-room',
  'observed-multi-interval-trend-correction',
- 'locally-verified-opposite-direction'
+ 'locally-verified-opposite-direction',
+ 'fresh-pullback-continuation'
 ]);
 export function continuationRoomRisk({candidate,structure,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
  const shortHorizonNearWallEntry=[30000,60000].includes(Number(durationMs))&&
