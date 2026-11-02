@@ -28,11 +28,15 @@ test('204: no future quote/candle can affect the entry veto',()=>{
   }),expected);
  }
 });
-test('204: 30s/5m candidates, waiting states and stale/mismatched observations remain owned by existing guards',()=>{
+test('204: 30s can apply reviewed veto; 5m, waiting and stale/mismatched remain unchanged',()=>{
  const input=cases.find(r=>r.expectedReasons.length).input;
  const candidate={ready:true,side:input.side,reason:input.reason,observedAt:input.quoteAt,entryPrice:input.price};
  assert.equal(reviewPreEntryRisk({...input,candidate,durationMs:300000}),candidate);
- assert.equal(reviewPreEntryRisk({...input,candidate,durationMs:30000}),candidate);
+ // 222 intentionally brings the one-minute causal review to 30s.
+ // Only 5m remains identical; 30s may reject a verified contrary setup.
+ const shortReview=reviewPreEntryRisk({...input,candidate,durationMs:30000});
+ assert.equal(shortReview===candidate||shortReview.entryRisk?.blocked===true,true);
+ if(shortReview!==candidate){assert.equal(shortReview.ready,false);assert.equal(shortReview.side,null)}
  const waiting={...candidate,ready:false};assert.equal(reviewPreEntryRisk({...input,candidate:waiting}),waiting);
  const mismatched={...candidate,entryPrice:input.price+.01};assert.equal(reviewPreEntryRisk({...input,candidate:mismatched}),mismatched);
  assert.equal(reviewPreEntryRisk({...input,candidate,now:input.quoteAt+1951}),candidate);
