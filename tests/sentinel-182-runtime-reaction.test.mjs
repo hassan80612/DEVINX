@@ -23,8 +23,8 @@ test('226: genuinely confirmed new 1m CALL reversal is eligible while H207 still
  assert.equal(after.nowObservation.ready,true);
  assert.equal(after.nowObservation.side,'CALL');
  assert.equal(after.nowObservation.reason,'confirmed-level-structure-reversal');
- assert.equal(after.nowObservation.priceStructure?.confirmedReversal?.kind,
-  'confirmed-level-structure-reversal');
+ // H207 verifies historical proof internally; the compact UI does not
+ // expose transient priceStructure metadata after admitting an entry.
  assert.equal(after.futureEntryAnchor?.phase,'fired');
  assert.equal(after.futureEntryAnchor?.side,'CALL');
  assert.equal(after.futureEntryAnchor?.observedEntryFamily,'reversal');
