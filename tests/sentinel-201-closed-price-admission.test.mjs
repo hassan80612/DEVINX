@@ -54,5 +54,12 @@ test('201: existing 5m policy, unknown history and startup remain available with
 });
 
 test('201: latest expiry persistence, broker controls, stops and the tested price rule are byte-identical to 199',()=>{
- for(const [path,hash] of Object.entries(fixture.preserved))assert.equal(gitSha(read(path)),hash,path);
+ // H207 intentionally changes ONLY the manual expiry bridge and its durable
+ // runtime callback. Keep byte-for-byte guards for all other 199/207 files.
+ const approvedH207={
+  'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'3896405088886724022cc90a43364c5dbb30e4b9',
+  'sentinel-trading-lab/agent/worker/index.mjs':'501f342b428b920a68e09e8d22335467ef7de73a'
+ };
+ for(const [path,hash] of Object.entries(fixture.preserved))
+  assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
 });
