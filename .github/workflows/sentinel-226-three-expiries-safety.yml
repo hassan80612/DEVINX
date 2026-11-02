@@ -50,6 +50,29 @@ jobs:
             tests/sentinel-199-expiry-last-choice.test.mjs \
             tests/sentinel-221-expiry-native-durable.test.mjs \
             tests/sentinel-168-targeted-corrections.test.mjs
+      - name: Broader legacy reversals, continuations, five-minute and native expiry regressions
+        run: |
+          node --test --test-concurrency=6 \
+            tests/sentinel-139146-reversals-only-5m.test.mjs \
+            tests/sentinel-197-one-minute-rejection-regression.test.mjs \
+            tests/sentinel-185-final-turn-veto.test.mjs \
+            tests/sentinel-185-prior-candle-breach.test.mjs \
+            tests/sentinel-reversal-continuation-priority.test.mjs \
+            tests/sentinel-189-5m-reversal-parallel.test.mjs \
+            tests/sentinel-201-closed-price-admission.test.mjs \
+            tests/sentinel-204-pre-entry-reviewer.test.mjs \
+            tests/sentinel-184-current-quote-entry.test.mjs \
+            tests/sentinel-187-blitz-and-impulse.test.mjs \
+            tests/sentinel-193-expiry-timestamp-reload.test.mjs \
+            tests/sentinel-202-reversal-review-freshness.test.mjs \
+            tests/sentinel-139134-live-entry-contradiction.test.mjs \
+            tests/sentinel-shared-pivot-guard-20261022.test.mjs \
+            tests/sentinel-continuation-room-119.test.mjs \
+            tests/sentinel-139100-broker-history-recovery.test.mjs \
+            tests/sentinel-197-timeframe-navigation.test.mjs
+      - name: Verify TypeScript and JSX
+        working-directory: sentinel-trading-lab
+        run: npx tsc --noEmit --pretty false
       - name: Verify selected native expiry implementation was not modified
         run: |
           git fetch --no-tags --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
