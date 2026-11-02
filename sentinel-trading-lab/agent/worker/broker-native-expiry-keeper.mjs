@@ -545,7 +545,13 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
      nativeSelect.value=matches[0].value;
      nativeSelect.dispatchEvent(new Event('input',{bubbles:true}));
      nativeSelect.dispatchEvent(new Event('change',{bubbles:true}));
-     setTimeout(()=>{const actual=discover()?.value;if(actual===preferredMs)mismatchSince=0;repairing=false;notify(actual??null)},480);
+     setTimeout(()=>{
+      const actual=discover()?.value;
+      if(actual===preferredMs){
+       mismatchSince=0;observedMs=actual;observedAt=Date.now();stableCount=1;
+      }
+      repairing=false;notify(actual??null);
+     },480);
     }else repairing=false;
     return;
    }
@@ -608,7 +614,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
      target.click();
      setTimeout(()=>{
       const actual=discover()?.value;
-      if(actual===preferredMs){mismatchSince=0;stableCount=0}
+      // Confirmed native picker wins over a pre-repair 30s snapshot.
+      // Do not claim a corrected duration without observing its real value.
+      if(actual===preferredMs){
+       mismatchSince=0;stableCount=1;observedMs=actual;observedAt=Date.now();
+      }
       repairing=false;verificationPending=false;notify(actual??null);
      },480);
     }catch{repairing=false;verificationPending=false}
