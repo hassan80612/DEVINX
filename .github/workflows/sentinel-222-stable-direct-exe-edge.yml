@@ -1,0 +1,53 @@
+name: Sentinel 222 stable direct EXE Edge regression
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-stable-direct-exe-edge.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  edge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify stable direct EXE in Edge (no redirect and no HTML)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          npm install --no-save playwright-core@1.55.1
+          @'
+          const {chromium}=require('playwright-core');
+          const fs=require('fs'),crypto=require('crypto');
+          const targets=[
+           'https://trading.devinx.com.br/downloads/sentinel-agent-windows.exe',
+           'https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.222.exe'
+          ];
+          (async()=>{
+           const browser=await chromium.launch({channel:'msedge',headless:true});
+           try{
+            const context=await browser.newContext({acceptDownloads:true});
+            for(const url of targets){
+             const head=await context.request.get(url);
+             const ct=head.headers()['content-type']||'';
+             console.log('HTTP',url,head.status(),head.url(),ct,head.headers()['content-disposition'],head.headers()['content-length']);
+             if(head.status()!==200||head.url()!==url||!/octet-stream/.test(ct))throw Error('bad binary route');
+             const page=await context.newPage(),downloadPromise=page.waitForEvent('download',{timeout:45000});
+             await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000}).catch(e=>{if(!/download is starting/i.test(e.message))throw e});
+             const download=await downloadPromise;
+             const err=await download.failure();
+             if(err)throw Error(err);
+             const bytes=fs.readFileSync(await download.path());
+             const sha=crypto.createHash('sha256').update(bytes).digest('hex');
+             console.log('EDGE',url,'name',download.suggestedFilename(),'size',bytes.length,'hash',sha);
+             if(bytes.length!==2863616||sha!=='27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041')throw Error('EXE mismatch');
+             await page.close();
+            }
+           }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          '@ | Set-Content .\sentinel-stable-exe-edge.cjs
+          node .\sentinel-stable-exe-edge.cjs
