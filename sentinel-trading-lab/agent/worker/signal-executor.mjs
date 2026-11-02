@@ -3,6 +3,7 @@
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
+import {reviewLastMileEvidence} from './last-mile-evidence-222.mjs';
 import {liveEntryQuoteReview} from './live-quote-entry-review.mjs';
 import {reviewDirectionBeforeClick} from './entry-direction-before-click.mjs';
 // Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
@@ -406,6 +407,18 @@ export class SignalExecutor{
            at:clockNow,exitAt:clockNow+c.durationMs,entryPrice:price,durationMs:c.durationMs,independent:true};
       else this.message='Ligado · entrada programada pulada: cotação atrasada ou corretora ocupada';
     }
+  }
+  // Only a matching fired tick's explicit negative reversal proof can
+  // veto a click. Consume its ID so the backup pulse cannot retry the trade.
+  if(s&&mode==='automatic'&&freshAudit){
+   const lastMile=reviewLastMileEvidence({signal:s,evidence:freshAudit,mode});
+   if(!lastMile.allowed){
+    this.seen.add(s.id);
+    if(this.seen.size>512)this.seen.delete(this.seen.values().next().value);
+    if(this.queuedSignal?.id===s.id)this.queuedSignal=null;
+    this.message='Ligado · entrada descartada: confirmação de reversão contrária ao vencimento';
+    return;
+   }
   }
   if(s?.engineId&&s.engineId!==c.engine)return;
   if(mode==='automatic'&&s?.entryFamilyExplicit&&c.entryFamily&&s.entryFamily!==c.entryFamily)return;
