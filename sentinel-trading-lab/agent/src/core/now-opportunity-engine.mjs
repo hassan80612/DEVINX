@@ -550,7 +550,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // Reassess the *first real price turn* near an old level before accepting
   // a mature continuation. The older swing need not consume three candles.
   const impulseTurn=reviewFirstImpulseReversal({
-    candidate:earlyTurn,map:structure.candleLevelMap,...input
+    candidate:earlyTurn,map:structure.candleLevelMap,candles,...input
   });
   const located=reviewFreshPullbackContinuation({
     candidate:impulseTurn,quoteHistory,quoteAt,now,price,durationMs
