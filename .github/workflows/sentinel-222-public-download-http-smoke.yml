@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base='https://sentinel.devinx.com.br/downloads'
+          base='https://trading.devinx.com.br/downloads'
           mkdir -p /tmp/sentinel222
           cd /tmp/sentinel222
           for file in Sentinel-Agent-13.9.222.exe Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222-Alternativo.zip; do
