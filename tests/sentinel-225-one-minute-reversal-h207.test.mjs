@@ -14,7 +14,7 @@ const c=(side='CALL')=>({ready:true,side,reason:'confirmed-level-structure-rever
 const review=(candidate,durationMs=60000)=>reviewH207UnifiedAdmission({candidate,quoteHistory:tape,quoteAt:at,now:at,price,durationMs});
 test('225: preserve 224 runtime exactly, including timing, order admission, all H207 rules',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url));
- const sha=createHash('sha1').update('blob '+source.length+'\\0').update(source).digest('hex');
+ const sha=createHash('sha1').update('blob '+source.length+String.fromCharCode(0)).update(source).digest('hex');
  assert.equal(sha,'1f4a453b3c5609a50dd0c7b36687e0ae26fc2d8d');
 });
 test('225: 1m and 30s structural reversals still follow existing H207 exclusion, no new early clicks',()=>{
