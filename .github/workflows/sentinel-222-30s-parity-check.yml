@@ -1,4 +1,5 @@
 name: Sentinel 222 Short Entry Review Parity Tests
+# Recheck async broker reload receipt after late-bridge test synchronization.
 on:
   push:
     branches:
