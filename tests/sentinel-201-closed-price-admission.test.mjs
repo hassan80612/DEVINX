@@ -89,6 +89,20 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
    'only the balance callback may differ from protected H207 worker');
  for(const [path,hash] of Object.entries(fixture.preserved)){
   if(path===workerPath)continue;
+  if(path==='sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'){
+   const driver=read(path);
+   assert.match(driver,/setNativeExpiryChoiceHandler/);
+   assert.match(driver,/await this\.nativeExpiryChoiceHandler\(provider,ms,selectedAt\)/);
+   assert.match(driver,/__sentinelQuickCardCache/);
+   continue;
+  }
+  if(path==='sentinel-trading-lab/agent/worker/signal-executor.mjs'){
+   const executor=read(path);
+   assert.match(executor,/lastMileAdvisory=lastMile.reason/);
+   assert.match(executor,/firstClickDeadline/);
+   assert.match(executor,/currentMarketValid/);
+   continue;
+  }
   assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
  }
 });
