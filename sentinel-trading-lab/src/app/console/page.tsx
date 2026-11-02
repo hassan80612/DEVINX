@@ -432,21 +432,6 @@ function Scheduler({s,act}:{s:Status,act:any}){
 }
 function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}){
  const {t,language}=useSentinelLocale();
- // UI-only preview: never registers a broker or changes the running Agent.
- const[otherVisible,setOtherVisible]=useState(false);
- const[otherUrl,setOtherUrl]=useState('');
- const[otherError,setOtherError]=useState('');
- const openOtherSite=()=>{
-   try{
-     const url=new URL(otherUrl.trim());
-     if(url.protocol!=='https:'||!url.hostname||url.username||url.password)
-       throw new Error('invalid_url');
-     const popup=window.open(url.href,'_blank','noopener,noreferrer');
-     // Browsers may return null even when noopener opens successfully.
-     void popup;
-     setOtherError('');
-   }catch{setOtherError(language==='en'?'Enter a valid HTTPS website.':'Informe um endereço HTTPS válido.')}
- };
  const allowed=account?.profile?.role==='master'||account?.profile?.access_active===true;
  const live=s?.liveBroker||{};
  const local=s?.runtimeKind==='persistent-worker';
@@ -463,26 +448,10 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
      <div className="actions topgap">
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('iq_option')}>{t('Abrir IQ Option')}</button>
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('exnova')}>{t('Abrir Exnova')}</button>
-       <button className="secondary" disabled={!allowed} aria-expanded={otherVisible}
-         onClick={()=>{setOtherVisible(v=>!v);setOtherError('')}}>{language==='en'?'Other broker':'Outra corretora'}</button>
      </div>
-     {otherVisible&&<div className="stack topgap" style={{maxWidth:560}}>
-       <p className="muted">{language==='en'
-         ?'Compatibility preview only. This opens the broker website in a separate tab; the Agent cannot read or trade on this broker yet.'
-         :'Prévia de compatibilidade. O site abre em outra aba; o Agent ainda não lê nem executa operações nessa corretora.'}</p>
-       <label htmlFor="sentinel-other-broker-url">{language==='en'?'Broker website (HTTPS)':'Site da corretora (HTTPS)'}</label>
-       <div className="actions">
-         <input id="sentinel-other-broker-url" type="url" inputMode="url"
-           autoComplete="url" placeholder="https://..." value={otherUrl}
-           onChange={e=>{setOtherUrl(e.target.value);setOtherError('')}}
-           style={{flex:'1 1 240px',minWidth:0}}/>
-         <button className="secondary" onClick={openOtherSite}>{language==='en'?'Open website':'Abrir site'}</button>
-       </div>
-       {otherError&&<p className="formerror" role="alert">{otherError}</p>}
-       <small className="muted">{language==='en'
-         ?'CALL/PUT mapping will only be enabled after quotes, expiry and trade results have been validated. Existing brokers are unaffected.'
-         :'O mapeamento CALL/PUT só será habilitado após validar cotações, expiração e resultados. As corretoras atuais permanecem intactas.'}</small>
-     </div>}
+     <small className="muted">{language==='en'
+       ?'Other brokers require a verified Agent integration. Only IQ Option and Exnova can currently read quotes, expiry and execute orders.'
+       :'Outras corretoras exigem integração verificada com o Agent. Atualmente apenas IQ Option e Exnova leem cotações, expiração e executam operações.'}</small>
    </section>
    <section className="card span12">
      <div className="split"><h3>{t('Conexão do PC')}</h3>
