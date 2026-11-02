@@ -1,0 +1,35 @@
+name: Sentinel 224 public downloads HTTP integrity
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-224-public-download-verify.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download 224 EXE and both ZIPs from active trading domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://trading.devinx.com.br/downloads'
+          mkdir -p /tmp/sentinel224
+          cd /tmp/sentinel224
+          for f in Sentinel-Agent-13.9.224.exe Sentinel-Agent-13.9.224-EXE.zip Sentinel-Agent-13.9.224-Alternativo.zip; do
+            curl --fail --location --silent --show-error --retry 2 --max-time 60 \
+              --dump-header "$f.headers" "$base/$f" --output "$f"
+            test "$(wc -c < "$f")" -gt 100000
+            echo "$f: $(wc -c < "$f") bytes"
+          done
+          test "$(wc -c < Sentinel-Agent-13.9.224.exe)" = 2864640
+          test "$(sha256sum Sentinel-Agent-13.9.224.exe | cut -d' ' -f1)" = ced0105cae8ec5627bb0d01c7baa9c157327c97caf81d87054b0138459b90237
+          test "$(head -c 2 Sentinel-Agent-13.9.224.exe)" = 'MZ'
+          unzip -tq Sentinel-Agent-13.9.224-EXE.zip
+          unzip -tq Sentinel-Agent-13.9.224-Alternativo.zip
+          cmp Sentinel-Agent-13.9.224.exe <(unzip -p Sentinel-Agent-13.9.224-EXE.zip Sentinel-Agent-13.9.224.exe)
+          for file in Instalar-Sentinel.cmd LEIA-ME.txt agent_payload_v88.zip install-agent-v88.ps1; do unzip -Z1 Sentinel-Agent-13.9.224-Alternativo.zip | grep -Fx "$file"; done
+          echo 'PASS: three Sentinel 224 public assets deliver full, verified bytes.'
