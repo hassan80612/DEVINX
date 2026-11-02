@@ -74,7 +74,7 @@ export function reviewPreEntryRisk({candidate,original,...input}={}){
  const proof=candidate.priceStructure?.reactionProof||
   (matchingOriginal?original.priceStructure?.reactionProof:null);
  const reviewedDuration=Number(input.durationMs);
- const selectiveRule=candidate.reason='closed-range-extreme-reversal-confirmed'&&
+ const selectiveRule=candidate.reason==='closed-range-extreme-reversal-confirmed'&&
    candidate.regime==='observed-range-turn'?'one-minute-observed-range-turn':
   candidate.reason==='historical-level-rejection'&&proof?.confirmed===true&&
    proof?.kind==='sustained-level-reversal'&&proof?.side===candidate.side&&
