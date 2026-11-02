@@ -15,6 +15,34 @@ const pkg=JSON.parse(readFileSync(join(agent,'package.json'),'utf8'));
 if(release.version!==pkg.version||!/^\d+\.\d+\.\d+$/.test(release.version))throw Error('agent_release_mismatch');
 mkdirSync(dl,{recursive:true});
 
+// Sentinel 226 release: the exact Windows-tested EXE and matching Agent ZIP
+// are committed by the 226 CI only after the non-installing Windows check.
+// Verify both files instead of rebuilding an untested installer at deploy.
+// CI build is the only phase permitted to create the initial artifacts.
+if(release.version==='13.9.226'&&process.env.SENTINEL_226_BUILD_VERIFIED_ASSETS!=='1'){
+ const proofPath=join(dl,'sentinel-226-verified.json');
+ const proof=JSON.parse(readFileSync(proofPath,'utf8'));
+ if(proof.version!==release.version||proof.build!==release.build)
+  throw Error('sentinel_226_release_provenance_mismatch');
+ const fingerprint=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
+ for(const name of ['Sentinel-Agent-13.9.226.exe','Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
+  if(statSync(join(dl,name)).size<1000000||fingerprint(name)!==proof.exeSha256)
+   throw Error('sentinel_226_windows_tested_exe_mismatch:'+name);
+ }
+ if(statSync(join(dl,'agent_payload_v88.zip')).size<50000||
+    fingerprint('agent_payload_v88.zip')!==proof.zipSha256)
+   throw Error('sentinel_226_agent_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||
+    manifest.zipSha256!==proof.zipSha256)
+  throw Error('sentinel_226_manifest_mismatch');
+ for(const name of ['Sentinel-Agent-13.9.226-EXE.zip','Sentinel-Agent-13.9.226-Alternativo.zip']){
+  if(statSync(join(dl,name)).size<50000)throw Error('sentinel_226_download_archive_missing:'+name);
+ }
+ console.log('Sentinel 226: deploy uses exactly the Windows-tested, attested EXE and matching Agent source ZIP.');
+ process.exit(0);
+}
+
 if(release.version==='13.9.224'){
  // The 224 EXE was built from this reviewed source and EXECUTED on
  // windows-latest. Do not silently replace that tested binary during the
