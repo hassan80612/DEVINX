@@ -30,7 +30,34 @@ if(release.version==='13.9.222'){
  const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
  if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==zipHash)
   throw Error('sentinel_222_windows_tested_manifest_mismatch');
- console.log('Sentinel 222: retaining EXACT Windows-smoke-tested EXE, same-origin asset and embedded ZIP.');
+ // The 222 website has two independent public download options. Generate
+ // BOTH from the already Windows-tested files. Prior 222 prebuild skipped
+ // this step, leaving its ZIP button pointed at a nonexistent archive.
+ const exeZip='Sentinel-Agent-13.9.222-EXE.zip';
+ const offlineZip='Sentinel-Agent-13.9.222-Alternativo.zip';
+ const createZip=(name,files,cwd=dl)=>{
+  const result=spawnSync('zip',['-X','-q',join(dl,name),...files],{cwd,encoding:'utf8'});
+  if(result.error||result.status!==0)throw Error('sentinel_222_zip_failed:'+name+':'+String(result.stderr||result.error?.message));
+  if(statSync(join(dl,name)).size<100000)throw Error('sentinel_222_zip_too_small:'+name);
+ };
+ rmSync(join(dl,exeZip),{force:true});
+ createZip(exeZip,['Sentinel-Agent-13.9.222.exe']);
+ const stage=join(root,'.sentinel-222-offline-stage');
+ rmSync(stage,{recursive:true,force:true});mkdirSync(stage,{recursive:true});
+ try{
+  copyFileSync(join(dl,'agent_payload_v88.zip'),join(stage,'agent_payload_v88.zip'));
+  copyFileSync(join(dl,'install-agent-v88.ps1'),join(stage,'install-agent-v88.ps1'));
+  const cmd=[
+   '@echo off','setlocal','cd /d "%~dp0"',
+   'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "13.9.222" -ExpectedBuild "'+release.build+'" -OpenSiteAfterInstall',
+   'if errorlevel 1 (','  echo Falha ao instalar. Consulte %LOCALAPPDATA%\\SentinelTradingLab\\install.log','  pause','  exit /b 1',')','exit /b 0',''
+  ].join('\r\n');
+  writeFileSync(join(stage,'Instalar-Sentinel.cmd'),cmd);
+  writeFileSync(join(stage,'LEIA-ME.txt'),'Sentinel 13.9.222\\r\\nExtraia os quatro arquivos e execute Instalar-Sentinel.cmd no Windows.\\r\\n');
+  rmSync(join(dl,offlineZip),{force:true});
+  createZip(offlineZip,['Instalar-Sentinel.cmd','LEIA-ME.txt','agent_payload_v88.zip','install-agent-v88.ps1'],stage);
+ }finally{rmSync(stage,{recursive:true,force:true});}
+ console.log('Sentinel 222: exact Windows-tested EXE preserved; verified direct and offline ZIP archives built.');
  process.exit(0);
 }
 
