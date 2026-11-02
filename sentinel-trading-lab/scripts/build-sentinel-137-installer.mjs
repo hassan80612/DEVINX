@@ -82,6 +82,13 @@ tool(goBinary,['build','-trimpath','-ldflags=-s -w -buildid=','-o',exe,'agent-la
 if(statSync(exe).size<1000000)throw Error('invalid_windows_executable');
 for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe'])
  copyFileSync(exe,join(dl,alias));
+// Edge accepts the installer distributed as a ZIP on this user's Windows.
+// Store the EXACT SAME 221 EXE in an archive; never alter the launcher or Agent.
+const wrappedExeName='Sentinel-Agent-'+release.version+'-EXE.zip';
+const wrappedExe=join(dl,wrappedExeName);
+rmSync(wrappedExe,{force:true});
+tool('zip',['-X','-q',wrappedExe,'Sentinel-Agent-'+release.version+'.exe'],{cwd:dl,env:{...process.env,TZ:'UTC'}});
+if(statSync(wrappedExe).size<100000)throw Error('invalid_exe_zip');
 // Alternate offline-from-Sentinel installer packaging for Edge / Defender
 // browser-download failures. It contains the same checked payload and the
 // EXISTING PowerShell installer, with no additional runtime logic or new URL.
