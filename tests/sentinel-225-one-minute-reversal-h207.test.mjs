@@ -11,6 +11,7 @@ const ticks=[
 ];
 const candidate=(side='CALL')=>({
  ready:true,side,reason:'confirmed-level-structure-reversal',observedAt:at,entryPrice:spot,
+ earlyTurnEvidence:{kind:'level-microstructure-first-turn',withoutThreeClosedBars:true},
  priceStructure:{confirmedReversal:{kind:'confirmed-level-structure-reversal',side,confirmedAt:at,
    level:{level:1.1001},microTurn:{observedAt:at,extreme:1.0995,firstBreak:1.1004,
     retest:1.1002}}}
@@ -83,4 +84,17 @@ test('225: do not modify separate stretched 1m continuation policy or 30s/5m adm
   quoteAt:at,now:at,price:spot,durationMs:60000}),ready);
  assert.strictEqual(reviewStretchedContinuationEntry({candidate:ready,quoteHistory:ticks,
   quoteAt:at,now:at,price:spot,durationMs:60000}),ready);
+});
+
+test('225: legacy weak pivot crossing remains blocked even with a same-tick higher low',()=>{
+ const c=candidate();
+ delete c.earlyTurnEvidence;
+ c.priceStructure.confirmedReversal={
+  kind:'confirmed-level-structure-reversal',side:'CALL',confirmedAt:at,
+  level:{level:1.1001,confirmedPivots:1,independentRejections:0},
+  pivotPrice:1.1004,turnPrice:1.1002
+ };
+ const o=run(c);
+ assert.equal(o.ready,false);
+ assert.equal(o.entryRisk.kind,'h207-structural-reversal-excluded');
 });
