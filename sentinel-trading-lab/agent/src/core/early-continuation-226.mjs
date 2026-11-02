@@ -57,7 +57,7 @@ export function reviewFreshPullbackContinuation({candidate,quoteHistory=[],quote
  // An aligned observed DMI adds confidence but is never mandatory.
  if(dmi.ready&&dmi.adx>=27&&dmi.direction!==side)return candidate;
  const last=tape.at(-1),prev=tape.at(-2),before=tape.findLast(q=>q.ts<=at-2000);
- if(!before||at-before.ts>1700||sign*(spot-before.price)<=tol*.12||
+ if(!before||(at-2000)-before.ts>1700||sign*(spot-before.price)<=tol*.12||
    sign*(last.price-prev.price)<=0)return candidate;
  return {...candidate,ready:true,side,observedAt:at,entryPrice:spot,
    reason:'fresh-pullback-continuation',strength:Math.min(88,Math.round(63+17*
