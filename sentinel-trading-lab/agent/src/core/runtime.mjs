@@ -56,7 +56,7 @@ import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 // H207 experimental unified admission. 30s/1m share identical decisions,
 // scaled to their own duration; 5m and the physical broker expiry stay unchanged.
 // No timers, quote polling, side flipping or future observations.
-function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
  const duration=Number(durationMs);
  if(![30000,60000].includes(duration)||candidate?.ready!==true||
     !['CALL','PUT'].includes(candidate?.side))return candidate;
