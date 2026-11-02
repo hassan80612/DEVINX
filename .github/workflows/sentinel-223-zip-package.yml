@@ -1,0 +1,49 @@
+name: Sentinel 223 Verified ZIP installers
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-223-zip-package.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-223-zips
+  cancel-in-progress: true
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Agent 223 matches Windows-tested binary and package both ZIPs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+          node sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+          cd sentinel-trading-lab/public/downloads
+          unzip -tq Sentinel-Agent-13.9.223-EXE.zip
+          unzip -tq Sentinel-Agent-13.9.223-Alternativo.zip
+          cmp Sentinel-Agent-13.9.223.exe <(unzip -p Sentinel-Agent-13.9.223-EXE.zip Sentinel-Agent-13.9.223.exe)
+          cmp agent_payload_v88.zip <(unzip -p Sentinel-Agent-13.9.223-Alternativo.zip agent_payload_v88.zip)
+          for f in Instalar-Sentinel.cmd LEIA-ME.txt agent_payload_v88.zip install-agent-v88.ps1; do unzip -Z1 Sentinel-Agent-13.9.223-Alternativo.zip | grep -Fx "$f"; done
+          stat -c '%n: %s bytes' Sentinel-Agent-13.9.223.exe Sentinel-Agent-13.9.223-EXE.zip Sentinel-Agent-13.9.223-Alternativo.zip
+      - name: Commit only ZIP archives on same Sentinel branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="$GITHUB_REF_NAME"
+          remote="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [ "$remote" != "$GITHUB_SHA" ]; then echo "Branch moved before packaging; not publishing stale archives."; exit 1; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-EXE.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.223-Alternativo.zip
+          git diff --cached --quiet && exit 0
+          git commit -m "build(sentinel 223): publish verified current EXE and offline installation ZIPs"
+          git push origin "HEAD:$branch"
