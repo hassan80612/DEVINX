@@ -3,7 +3,7 @@ import {historicalPriceStructure} from './historical-price-structure.mjs';
 import {levelRoleEvidence} from './level-role-evidence.mjs';
 import {assessDirectionalPersistence} from './now-opportunity-engine.mjs';
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
-export const POLICY=Object.freeze({version:'203-selective-one-minute-admission-v1',scopeMs:[60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
+export const POLICY=Object.freeze({version:'203-selective-one-minute-admission-v1',scopeMs:[30000,60000],wallPivots:1,wallRejections:2,roomTolerance:1.25,roomRecentMove:.6,dominantEfficiency:.20,rangeEfficiency:.18,weak20Atr:.20,contraryClosedBodyAtr:.12});
 export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,quoteHistory=[],candles=[],structure=null}){
  const allowed=()=>({blocked:false,reasons:[],details:{}}),d=side==='CALL'?1:side==='PUT'?-1:0;
  if(!d||!POLICY.scopeMs.includes(durationMs)||!(price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=(durationMs===30000?1450:1950)))return allowed();
@@ -18,7 +18,10 @@ export function evaluatePreEntryRisk({side,reason,price,quoteAt,now,durationMs,q
   for(let i=qs.length-1;i>=0;i--)if(qs[i].ts<=target)return target-qs[i].ts<=2500?qs[i].price:null;
   return null;
  };
- const prior6=before(6),prior20=before(20),prior60=before(60);
+ // Match the 1m causal proof windows proportionally at 30s.
+ // Uses only already received quotes; no delay or new broker polling.
+ const evidenceScale=Number(durationMs)===30000?.5:1;
+ const prior6=before(6*evidenceScale),prior20=before(20*evidenceScale),prior60=before(60*evidenceScale);
  const tol=st.tolerance||0,atr=st.atr||0;
  const moves={six:prior6===null?null:d*(price-prior6),twenty:prior20===null?null:d*(price-prior20),sixty:prior60===null?null:d*(price-prior60)};
  const reasons=[],details={};
@@ -59,7 +62,7 @@ const labels={
  'one-minute-confirmed-level-rejection':'Rejeição de nível com prova de 60 s em revisão; entrada suspensa.'
 };
 export function reviewPreEntryRisk({candidate,original,...input}={}){
- if(candidate?.ready!==true||Number(input.durationMs)!==60000||
+ if(candidate?.ready!==true||!POLICY.scopeMs.includes(Number(input.durationMs))||
    !['CALL','PUT'].includes(candidate.side)||Number(candidate.observedAt)!==Number(input.quoteAt)||
    Number(candidate.entryPrice)!==Number(input.price))return candidate;
  // The retrospective sample was weakest for range turns and confirmed
@@ -70,15 +73,18 @@ export function reviewPreEntryRisk({candidate,original,...input}={}){
   Number(original.entryPrice)===Number(candidate.entryPrice);
  const proof=candidate.priceStructure?.reactionProof||
   (matchingOriginal?original.priceStructure?.reactionProof:null);
- const selectiveRule=candidate.reason==='closed-range-extreme-reversal-confirmed'&&
+ const reviewedDuration=Number(input.durationMs);
+ const selectiveRule=candidate.reason='closed-range-extreme-reversal-confirmed'&&
    candidate.regime==='observed-range-turn'?'one-minute-observed-range-turn':
   candidate.reason==='historical-level-rejection'&&proof?.confirmed===true&&
    proof?.kind==='sustained-level-reversal'&&proof?.side===candidate.side&&
-   Number(proof.durationMs)===60000?
+   Number(proof.durationMs)===reviewedDuration?
     'one-minute-confirmed-level-rejection':null;
+ // Mirror the 1m conservative rejection policy on 30s. This is not a
+ // cooldown: only the actual unsupported setup is rejected.
  if(selectiveRule)return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
   reason:labels[selectiveRule],entryRisk:{kind:'selective-one-minute-admission',blocked:true,
-   reasons:[selectiveRule],details:{durationMs:60000,proofKind:proof?.kind||null}}};
+   reasons:[selectiveRule],details:{durationMs:reviewedDuration,proofKind:proof?.kind||null}}};
  const review=evaluatePreEntryRisk({...input,side:candidate.side,reason:candidate.reason});
  if(!review.blocked)return candidate;
  return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
