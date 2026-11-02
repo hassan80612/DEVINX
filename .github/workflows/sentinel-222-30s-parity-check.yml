@@ -1,0 +1,23 @@
+name: Sentinel 222 Short Entry Review Parity Tests
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-30s-parity-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test unchanged 1m + safe 30s gate, existing expiry and last-mile
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/src/core/pre-entry-risk-review.mjs
+          node --test tests/sentinel-222-30s-parity-pre-entry.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-220-h207-unified-admission.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-222-last-mile-evidence.test.mjs tests/sentinel-202-reversal-review-freshness.test.mjs tests/sentinel-204-pre-entry-reviewer.test.mjs
