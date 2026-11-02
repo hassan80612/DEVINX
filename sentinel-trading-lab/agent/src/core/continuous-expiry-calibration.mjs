@@ -109,7 +109,19 @@ export class ContinuousExpiryCalibration{
     finalSide:SIDE.has(finalSide)?finalSide:null,
     reasonClass:reasonClass(structuralReason,strategy,marketShape)};
   }
-  return this._report(state);
+  const report=this._report(state);
+  // A raw Gaussian score must never masquerade as a trained win rate.
+  // Expose a corrected estimate only AFTER chronological independent
+  // holdout improves Brier error. Otherwise show it as uncalibrated.
+  const raw=estimate?.pCall==null?NaN:Number(estimate.pCall);
+  if(report.calibrated&&Number.isFinite(raw)&&raw>=0&&raw<=1){
+   const historical=state.settled.slice(0,-this.minHoldout);
+   const pCall=trainEstimate(historical,raw);
+   return {...report,qualified:true,pCall,pPut:1-pCall,
+    probabilitySource:'chronological-observed-quote-holdout-calibrated-not-trade-settlement'};
+  }
+  return {...report,qualified:false,pCall:null,pPut:null,
+   probabilitySource:'parametric-unvalidated'};
  }
  snapshot(){
   // Bounded local state survives ordinary Agent restarts. No external DB.
