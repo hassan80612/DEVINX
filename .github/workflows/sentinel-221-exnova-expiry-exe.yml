@@ -1,0 +1,66 @@
+name: Sentinel 221 Exnova Expiry Windows EXE
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-221-exnova-expiry-exe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sentinel-221-exnova-expiry-exe
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Verify native expiry and protected runtime
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --test tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-201-closed-price-admission.test.mjs
+      - name: Rebuild self-contained agent EXE with corrected native expiry
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          export RELEASE_SHA="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          python3 -c 'import json,os; r=json.load(open("agent/release.json")); print(json.dumps({"format":"sentinel-agent-update-v1","version":r["version"],"build":r["build"],"zipSha256":os.environ["RELEASE_SHA"]},separators=(",",":")))' > public/downloads/agent-update.json
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe public/downloads/agent_payload_v88.zip
+      - name: Save rebuilt installer to this Sentinel branch only
+        run: |
+          set -euo pipefail
+          branch="$GITHUB_REF_NAME"
+          remote="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [ "$remote" != "$GITHUB_SHA" ]; then
+            echo "Branch moved during build; not publishing stale Agent."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent-update.json
+          if git diff --cached --quiet; then
+            echo "Installer already matches this source."
+            exit 0
+          fi
+          git commit -m "build(sentinel 221): embed corrected Exnova native expiry into Windows EXE"
+          git push origin "HEAD:$branch"
