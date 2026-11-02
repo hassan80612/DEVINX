@@ -1,0 +1,26 @@
+name: Sentinel 225 native Exnova expiry SPA refresh end-to-end
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-225-exnova-refresh-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser driver, no external broker session
+        shell: pwsh
+        run: npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+      - name: Test real Edge native 1m/5m picker restoration after Exnova SPA refresh
+        shell: pwsh
+        env:
+          SENTINEL_TEST_EDGE: '1'
+        run: node --test tests/sentinel-225-expiry-refresh-real-browser.test.mjs
