@@ -62,11 +62,45 @@ export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,no
     !['CALL','PUT'].includes(candidate?.side))return candidate;
  const blocked=(reason,kind,details={})=>({...candidate,ready:false,side:null,
    provisionalSide:candidate.side,reason,entryRisk:{kind,blocked:true,reasons:[kind],details}});
- // Keep weak structural reversal out of automatic 30s/1m trade execution;
- // the analyst can still describe it. No effect on impulse/5m signals.
- if(candidate.reason==='confirmed-level-structure-reversal')
-   return blocked('H207: reversão estrutural não autorizada em 30s/1m',
+ // Preserve the H207 30s reversal veto AND its 30s/1m late-breakout
+ // continuation filter. One-minute-only exception: independent structural
+ // proof at the current quote, old level and TWO real supporting price moves.
+ // The preceding wall, candle, room and price gates are still mandatory.
+ // No extra wait, expiry update, direction flip or broker call.
+ if(candidate.reason==='confirmed-level-structure-reversal'){
+   const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+   const p=candidate.priceStructure?.confirmedReversal;
+   const d=candidate.side==='CALL'?1:-1;
+   const proofCurrent=duration===60000&&at>0&&clock>=at&&clock-at<=1950&&
+     spot>0&&Number(candidate.observedAt)===at&&
+     Number(candidate.entryPrice)===spot&&
+     p?.kind==='confirmed-level-structure-reversal'&&
+     p.side===candidate.side&&
+     Number(p.confirmedAt)>0&&Number(p.confirmedAt)<=at&&
+     at-Number(p.confirmedAt)<=1950&&Number(p.level?.level)>0;
+   const rows=proofCurrent?(Array.isArray(quoteHistory)?quoteHistory:[])
+     .filter(q=>Number(q?.ts)>=at-6000&&Number(q?.ts)<=at&&
+       Number(q?.receivedAt??q?.ts)<=clock&&
+       Number(q?.price)>0&&Number.isFinite(Number(q.price)))
+     .sort((a,b)=>Number(a.ts)-Number(b.ts)):[];
+   const last=rows.at(-1),prior=rows.at(-2),third=rows.at(-3);
+   const rising=rows.length>=3&&Number(last?.ts)===at&&
+     Number(last.price)===spot&&
+     Number(last.ts)-Number(prior?.ts)>0&&Number(last.ts)-Number(prior?.ts)<=2000&&
+     Number(prior.ts)-Number(third?.ts)>0&&Number(prior.ts)-Number(third?.ts)<=2000&&
+     d*(Number(last.price)-Number(prior.price))>0&&
+     d*(Number(prior.price)-Number(third.price))>0;
+   const micro=p?.microTurn;
+   const verifiedOldLevel=micro&&Number(micro.observedAt)===at&&
+     Number(micro.extreme)>0&&Number(micro.firstBreak)>0&&Number(micro.retest)>0&&
+     d*(spot-Number(micro.firstBreak))>0&&
+     d*(spot-Number(micro.retest))>0;
+   const freshPivotBreak=!micro&&Number(p?.pivotPrice)>0&&
+     Number(p?.turnPrice)>0&&d*(spot-Number(p.pivotPrice))>0;
+   if(proofCurrent&&rising&&(verifiedOldLevel||freshPivotBreak))return candidate;
+   return blocked('H207: reversão estrutural sem prova atual suficiente',
                   'h207-structural-reversal-excluded');
+ }
  if(candidate.reason!=='historical-level-breakout')return candidate;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  const maxLag=duration===30000?1450:1950;
