@@ -1,0 +1,27 @@
+name: Sentinel 224 full prebuild and type regression
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-224-full-build-test.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install site build dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test complete legacy safeguards and verified 224 package without deploying
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
+      - name: Check static TypeScript/React declarations
+        working-directory: sentinel-trading-lab
+        run: npx tsc --noEmit --pretty false
