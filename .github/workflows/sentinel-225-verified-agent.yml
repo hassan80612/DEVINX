@@ -15,6 +15,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    # Historical 225 release is archived; never rebuild an old EXE on 226 pushes.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
