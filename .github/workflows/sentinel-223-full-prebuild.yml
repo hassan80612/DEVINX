@@ -1,4 +1,5 @@
 name: Sentinel 223 full production prebuild gate
+# Re-run after preserving the historical 30s fast reversal and exact 223 Windows rebuild.
 on:
   push:
     branches: [fix/sentinel-223-reversal-expiry-cards]
