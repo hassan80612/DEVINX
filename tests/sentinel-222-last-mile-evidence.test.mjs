@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {reviewLastMileEvidence} from '../sentinel-trading-lab/agent/worker/last-mile-evidence-222.mjs';
+import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
 
 const fired=(durationMs,side='PUT')=>({id:'verified-123',at:1234,side,durationMs});
 const evidence=(durationMs,side='PUT',overrides={})=>({
@@ -24,4 +25,22 @@ test('222: manual and independent broker execution unaffected',()=>{
  const s={...fired(60000),independent:true};
  assert.equal(reviewLastMileEvidence({signal:s,evidence:evidence(60000)}).allowed,true);
  assert.equal(reviewLastMileEvidence({signal:fired(60000),evidence:evidence(60000),mode:'call'}).allowed,true);
+});
+
+test('222: rejected same-tick signal never reenters through ordinary post-tick backup',()=>{
+ const anchor={context:'exnova|EURUSD|automatic|60000',engineId:'automatic',phase:'fired',
+  entryTriggeredAt:1234,exitAt:61234,holdingSeconds:60,side:'PUT',entryPrice:1.13,entryFamily:'automatic'};
+ const context={durationMs:60000,engine:'automatic',entryFamily:'automatic',
+  analysis:{vnext:{futureEntryAnchor:anchor}}};
+ const executor=new SignalExecutor({clock:()=>1235,context:()=>context,driver:{}});
+ executor.enabled=true;
+ executor.watch=()=>{};
+ const proof=evidence(60000,'PUT');
+ executor.pulse(anchor,proof);
+ const id=anchor.context+'|'+anchor.entryTriggeredAt;
+ assert.ok(executor.seen.has(id));
+ assert.equal(executor.queuedSignal,null);
+ executor.pulse();
+ assert.equal(executor.queuedSignal,null,'ordinary backup must not retry known contradicted entry');
+ assert.equal(executor.executed,0);
 });
