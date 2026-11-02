@@ -15,6 +15,52 @@ const pkg=JSON.parse(readFileSync(join(agent,'package.json'),'utf8'));
 if(release.version!==pkg.version||!/^\d+\.\d+\.\d+$/.test(release.version))throw Error('agent_release_mismatch');
 mkdirSync(dl,{recursive:true});
 
+if(release.version==='13.9.224'){
+ // The 224 EXE was built from this reviewed source and EXECUTED on
+ // windows-latest. Do not silently replace that tested binary during the
+ // Vercel Next.js prebuild with a different, untested Go build.
+ const fingerprint=file=>createHash('sha256').update(readFileSync(join(dl,file))).digest('hex');
+ const exeHash='ced0105cae8ec5627bb0d01c7baa9c157327c97caf81d87054b0138459b90237';
+ const zipHash='59711829fdd1151e6df10efdfa59a99553d1ae1fc008e8d60962997ace6cfbd6';
+ const expectedNames=['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe','Sentinel-Agent-13.9.224.exe'];
+ for(const name of expectedNames)if(fingerprint(name)!==exeHash)
+  throw Error('sentinel_224_windows_tested_exe_missing_or_mismatch:'+name);
+ if(fingerprint('agent_payload_v88.zip')!==zipHash)
+  throw Error('sentinel_224_windows_tested_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==zipHash)
+  throw Error('sentinel_224_windows_tested_manifest_mismatch');
+ // The 224 website has two independent public download options. Generate
+ // BOTH from the already Windows-tested files. Prior 222 prebuild skipped
+ // this step, leaving its ZIP button pointed at a nonexistent archive.
+ const exeZip='Sentinel-Agent-13.9.224-EXE.zip';
+ const offlineZip='Sentinel-Agent-13.9.224-Alternativo.zip';
+ const createZip=(name,files,cwd=dl)=>{
+  const result=spawnSync('zip',['-X','-q',join(dl,name),...files],{cwd,encoding:'utf8'});
+  if(result.error||result.status!==0)throw Error('sentinel_224_zip_failed:'+name+':'+String(result.stderr||result.error?.message));
+  if(statSync(join(dl,name)).size<100000)throw Error('sentinel_224_zip_too_small:'+name);
+ };
+ rmSync(join(dl,exeZip),{force:true});
+ createZip(exeZip,['Sentinel-Agent-13.9.224.exe']);
+ const stage=join(root,'.sentinel-224-offline-stage');
+ rmSync(stage,{recursive:true,force:true});mkdirSync(stage,{recursive:true});
+ try{
+  copyFileSync(join(dl,'agent_payload_v88.zip'),join(stage,'agent_payload_v88.zip'));
+  copyFileSync(join(dl,'install-agent-v88.ps1'),join(stage,'install-agent-v88.ps1'));
+  const cmd=[
+   '@echo off','setlocal','cd /d "%~dp0"',
+   'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "13.9.224" -ExpectedBuild "'+release.build+'" -OpenSiteAfterInstall',
+   'if errorlevel 1 (','  echo Falha ao instalar. Consulte %LOCALAPPDATA%\\SentinelTradingLab\\install.log','  pause','  exit /b 1',')','exit /b 0',''
+  ].join('\r\n');
+  writeFileSync(join(stage,'Instalar-Sentinel.cmd'),cmd);
+  writeFileSync(join(stage,'LEIA-ME.txt'),'Sentinel 13.9.224\\r\\nExtraia os quatro arquivos e execute Instalar-Sentinel.cmd no Windows.\\r\\n');
+  rmSync(join(dl,offlineZip),{force:true});
+  createZip(offlineZip,['Instalar-Sentinel.cmd','LEIA-ME.txt','agent_payload_v88.zip','install-agent-v88.ps1'],stage);
+ }finally{rmSync(stage,{recursive:true,force:true});}
+ console.log('Sentinel 224: exact Windows-tested EXE preserved; verified direct and offline ZIP archives built.');
+ process.exit(0);
+}
+
 if(release.version==='13.9.223'){
  // The 223 EXE was built from this reviewed source and EXECUTED on
  // windows-latest. Do not silently replace that tested binary during the
