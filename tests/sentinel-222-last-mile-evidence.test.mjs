@@ -38,6 +38,7 @@ test('227: legacy 222 warning is advisory and never consumes a valid analyst sig
  executor.session={accountId:null};
  executor.driver={send:async()=>{}};
  executor.onAuditEvent=null;
+ executor.executing=true; // Verify queue admission without simulated broker clicks.
  const proof=evidence(60000,'PUT');
  executor.pulse(anchor,proof);
  const id=anchor.context+'|'+anchor.entryTriggeredAt;
