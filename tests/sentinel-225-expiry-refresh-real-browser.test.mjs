@@ -51,11 +51,13 @@ for(const [ms,label] of [[60000,'1 min'],[300000,'5 min']]){
    },{ms});
    await page.evaluate(installBrokerNativeExpiryKeeper,{provider:'exnova',requestedMs:ms,requestedAt:Date.now()-3000});
    await page.waitForFunction(label=>document.querySelector('#expiry-toggle')?.textContent===label,label,{timeout:12000});
+   await page.waitForFunction(ms=>window.__sentinelNativeExpiryKeeperV3?.snapshot()?.currentMs===ms,ms,{timeout:12000});
    const before=await page.evaluate(()=>window.__sentinelNativeExpiryKeeperV3.snapshot());
    assert.equal(before.currentMs,ms);assert.equal(before.preferredMs,ms);
    // Broker wipes its native picker on quote/asset refresh without a navigation.
    await page.evaluate(()=>window.mountBrokerPicker('30 s'));
    await page.waitForFunction(label=>document.querySelector('#expiry-toggle')?.textContent===label,label,{timeout:12000});
+   await page.waitForFunction(ms=>window.__sentinelNativeExpiryKeeperV3?.snapshot()?.currentMs===ms,ms,{timeout:12000});
    const after=await page.evaluate(()=>({
     snapshot:window.__sentinelNativeExpiryKeeperV3.snapshot(),
     chart:document.querySelector('#chart-timeframe').textContent,
