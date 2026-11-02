@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/sentinel-227-market-reversal-ui-safety.yml'
       - 'sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs'
+      - 'sentinel-trading-lab/agent/src/core/unified-market-evidence-227.mjs'
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
       - 'sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs'
       - 'sentinel-trading-lab/agent/worker/signal-executor.mjs'
       - 'sentinel-trading-lab/agent/worker/market-totals-readout.mjs'
@@ -31,6 +33,8 @@ jobs:
       - name: Syntax check
         run: |
           node --check sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs
+          node --check sentinel-trading-lab/agent/src/core/unified-market-evidence-227.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
           node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
           node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
           node --check sentinel-trading-lab/agent/worker/market-totals-readout.mjs
