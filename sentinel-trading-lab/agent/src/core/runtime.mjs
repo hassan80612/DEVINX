@@ -56,19 +56,35 @@ import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 // H207 experimental unified admission. 30s/1m share identical decisions,
 // scaled to their own duration; 5m and the physical broker expiry stay unchanged.
 // No timers, quote polling, side flipping or future observations.
-export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs}={}){
+export function reviewH207UnifiedAdmission({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs,allowVerifiedEarlyReversal=false}={}){
  const duration=Number(durationMs);
  if(![30000,60000].includes(duration)||candidate?.ready!==true||
     !['CALL','PUT'].includes(candidate?.side))return candidate;
  const blocked=(reason,kind,details={})=>({...candidate,ready:false,side:null,
    provisionalSide:candidate.side,reason,entryRisk:{kind,blocked:true,reasons:[kind],details}});
- // Keep weak structural reversal out of automatic 30s/1m trade execution;
- // the analyst can still describe it. No effect on impulse/5m signals.
- if(candidate.reason==='confirmed-level-structure-reversal')
-   return blocked('H207: reversão estrutural não autorizada em 30s/1m',
-                  'h207-structural-reversal-excluded');
- if(candidate.reason!=='historical-level-breakout')return candidate;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
+ // Sentinel 226: the OLD H207 policy remains the default. Only the actual
+ // runtime can admit a verified, fresh first turn at an independently mapped
+ // historical level. No timed wait, prediction, expiry override or side flip.
+ if(candidate.reason==='confirmed-level-structure-reversal'){
+   const proof=candidate.priceStructure?.confirmedReversal;
+   const turn=proof?.microTurn;
+   const d=candidate.side==='CALL'?1:-1;
+   const isFresh=at>0&&clock>=at&&clock-at<=(duration===30000?1450:1950)&&spot>0&&
+     Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot;
+   const strong=allowVerifiedEarlyReversal===true&&isFresh&&
+     candidate.earlyTurnEvidence?.kind==='level-microstructure-first-turn'&&
+     proof?.kind==='confirmed-level-structure-reversal'&&
+     proof?.side===candidate.side&&Number(proof?.confirmedAt)===at&&
+     Number(turn?.observedAt)===at&&Number(proof?.level?.level)>0&&
+     Number.isFinite(Number(turn?.retest))&&Number.isFinite(Number(turn?.firstBreak))&&
+     Number.isFinite(Number(turn?.extreme))&&
+     d*(Number(turn.firstBreak)-Number(turn.extreme))>0&&
+     d*(spot-Number(turn.retest))>0;
+   return strong?candidate:blocked('H207: reversão estrutural sem prova atual suficiente',
+                  'h207-structural-reversal-excluded');
+ }
+ if(candidate.reason!=='historical-level-breakout')return candidate;
  const maxLag=duration===30000?1450:1950;
  if(!(at>0&&clock>=at&&clock-at<=maxLag&&spot>0&&
       Number(candidate.observedAt)===at&&Number(candidate.entryPrice)===spot))return candidate;
@@ -1300,7 +1316,8 @@ export class DemoTradingRuntime{
       // H207: shared 30s/1m entry admission; preserve broker and 5m paths.
       eligible=reviewH207UnifiedAdmission({
         candidate:eligible,quoteHistory:snap.quoteHistory,quoteAt:snap.quoteTs,
-        now,price:snap.price,durationMs:settings.orderDurationMs
+        now,price:snap.price,durationMs:settings.orderDurationMs,
+        allowVerifiedEarlyReversal:true
       });
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
