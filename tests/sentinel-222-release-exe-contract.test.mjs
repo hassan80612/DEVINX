@@ -4,17 +4,17 @@ import {readFileSync,statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const root=new URL('../sentinel-trading-lab/',import.meta.url);
 const read=p=>readFileSync(new URL(p,root));
-test('224: same-origin direct versioned Windows EXE is actual complete PE binary',()=>{
+test('225: same-origin direct versioned Windows EXE is actual complete PE binary',()=>{
  const release=JSON.parse(read('agent/release.json').toString());
  const pkg=JSON.parse(read('agent/package.json').toString());
  const next=read('next.config.mjs').toString();
- assert.equal(release.version,'13.9.224');
- assert.equal(release.publicVersion,'13.9.224');
- assert.equal(pkg.version,'13.9.224');
+ assert.equal(release.version,'13.9.225');
+ assert.equal(release.publicVersion,'13.9.225');
+ assert.equal(pkg.version,'13.9.225');
  assert.match(next,/source:'\/downloads\/Sentinel-Agent-'\+currentAgentRelease.version\+'\.exe',headers:agentDownloadHeaders/);
  assert.doesNotMatch(next,/source:'\/downloads\/Sentinel-Agent-13\.9\.222\.exe',destination:/);
  const a=read('public/downloads/Sentinel-Agent-Windows.exe');
- const v=read('public/downloads/Sentinel-Agent-13.9.224.exe');
+ const v=read('public/downloads/Sentinel-Agent-13.9.225.exe');
  assert.equal(a.length,v.length);
  assert.ok(v.length>1000000);
  assert.equal(v.toString('ascii',0,2),'MZ');
