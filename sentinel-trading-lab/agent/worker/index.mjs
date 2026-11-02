@@ -134,7 +134,22 @@ function chooseLive(){
  if(selected&&activeProvider!==selected.k)activeProvider=selected.k;
  return selected;
 }
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordMarketJournal)marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
+// Seed the native broker expiry from the SAVED Sentinel operation period
+// only when the Agent has no durable receipt for that broker. Reconciliation
+// first reads actual page-local receipts; a newer manual selection wins.
+let savedRuntimeExpirySeed=null;
+const nativeExpirySeedAttempted=new Set();
+function seedMissingNativeExpiry(provider){
+ if(!savedRuntimeExpirySeed||nativeExpirySeedAttempted.has(provider)||
+   typeof driver.setNativeExpiryPreference!=='function')return;
+ nativeExpirySeedAttempted.add(provider);
+ void (async()=>{
+  await driver.nativeExpiryPreferenceReady;
+  if(driver.nativeExpiryPreferences.has(provider))return;
+  await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:true});
+ })().catch(e=>console.error('native_expiry_seed_error',String(e?.message||e)));
+}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;seedMissingNativeExpiry(k);const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordMarketJournal)marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -392,7 +407,12 @@ async function enforceAccessLease(){
   // entitlement resume only a session which was running before the loss.
   return false;
 }
-async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
+async function loadState(){try{
+ const saved=JSON.parse(await readFile(STATE_FILE,'utf8'));
+ runtime.restore(saved);
+ const duration=Number(saved?.settings?.orderDurationMs);
+ if([30000,60000,300000].includes(duration))savedRuntimeExpirySeed=duration;
+}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 // Serialize periodic and UI writes to prevent racing over the same .tmp file,
 // which could silently revert a saved user-selected expiration on restart.
 let stateSaveQueue=Promise.resolve();
