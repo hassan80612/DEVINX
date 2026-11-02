@@ -1,0 +1,51 @@
+name: Sentinel 227 - 30s 1m 5m decision and visual safety
+on:
+  push:
+    branches:
+      - fix/sentinel-227-decision-quality-bot-visuals-20261102
+    paths:
+      - '.github/workflows/sentinel-227-market-reversal-ui-safety.yml'
+      - 'sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs'
+      - 'sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs'
+      - 'sentinel-trading-lab/agent/worker/signal-executor.mjs'
+      - 'sentinel-trading-lab/agent/worker/market-totals-readout.mjs'
+      - 'tests/sentinel-222-last-mile-evidence.test.mjs'
+      - 'tests/sentinel-227-impulse-reversal-and-visuals.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install site deps without compiling or publishing EXE
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Syntax check
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/worker/signal-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/market-totals-readout.mjs
+      - name: Targeted 227 + complete legacy prebuild regressions
+        working-directory: sentinel-trading-lab
+        run: |
+          node --test ../tests/sentinel-227-impulse-reversal-and-visuals.test.mjs ../tests/sentinel-222-last-mile-evidence.test.mjs
+          npm run prebuild
+          npx tsc --noEmit --pretty false
+      - name: Require exact original 226 native expiry and browser driver
+        run: |
+          git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
+          node --input-type=module -e "
+          import {execFileSync} from 'node:child_process';
+          const changed=execFileSync('git',['diff','--name-only','FETCH_HEAD','HEAD'],{encoding:'utf8'}).split('\n').filter(Boolean);
+          const prohibited=changed.filter(f=>/native-expiry|expiry-keeper|local-playwright-driver\.mjs|signal-executor\/broker/.test(f));
+          if(prohibited.length)throw Error('Protected files changed: '+prohibited.join(', '));
+          "
