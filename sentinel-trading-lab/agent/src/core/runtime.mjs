@@ -1403,9 +1403,11 @@ export class DemoTradingRuntime{
           rangePosition:original66.position??null,
           structuralConflict:original66.structuralDisagreement===undefined?null:
             original66.structuralDisagreement,
-          probabilityCall:preliminary?.pCall??null,
-          probabilityPut:preliminary?.pPut??null,
-          probabilitySource:preliminary?.source??null
+          probabilityCall:expiryCalibration?.qualified===true?expiryCalibration.pCall:(preliminary?.pCall??null),
+          probabilityPut:expiryCalibration?.qualified===true?expiryCalibration.pPut:(preliminary?.pPut??null),
+          probabilityQualified:expiryCalibration?.qualified===true,
+          probabilitySamples:expiryCalibration?.qualified===true?expiryCalibration.samples:0,
+          probabilitySource:expiryCalibration?.qualified===true?expiryCalibration.probabilitySource:(preliminary?.source??null)
         });
       }
       const persistenceDuration=Number(settings.orderDurationMs);
@@ -1455,12 +1457,12 @@ export class DemoTradingRuntime{
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
           observedAt:eligible.observedAt,quoteAt:snap.quoteTs,strength:eligible.strength,
           price:Number(snap.price)||null,evaluatedAt:now,
-          probabilityCall:preliminary?.pCall??null,probabilityPut:preliminary?.pPut??null,
+          probabilityCall:expiryCalibration?.qualified===true?expiryCalibration.pCall:(preliminary?.pCall??null),probabilityPut:expiryCalibration?.qualified===true?expiryCalibration.pPut:(preliminary?.pPut??null),
           // Calibration flag reflects actual independent quote outcomes, not
           // simply runtime uptime. The raw estimate is never advertised as a
           // calibrated WIN rate or substituted into broker trade logic.
-          probabilityCalibrated:expiryCalibration?.calibrated===true,
-          probabilitySource:preliminary?.source??null,
+          probabilityCalibrated:expiryCalibration?.qualified===true,
+          probabilitySource:expiryCalibration?.qualified===true?expiryCalibration.probabilitySource:(preliminary?.source??null),
           probabilityInfluenced:observation.probabilityOverride===true,
           precision:precision||null,
           probabilitySamples:expiryCalibration?.samples??0,
