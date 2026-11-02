@@ -291,8 +291,6 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
      const value=readDuration(el);if(value){candidates.push({el,value,score:10});break;}
     }
    }
-   candidates.sort((a,b)=>b.score-a.score);
-   if(!candidates.length){discoveryReason='field-not-found';discoverySource=null;return null;}
    // Exnova can render "Expiration" and "1 min" as separate plain
    // unlabelled nodes in the narrow RIGHT trade sidebar. Inspect one
    // exact label next to one exact value; never read the chart's 1m,
@@ -322,6 +320,10 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     }
     if(scoped.length===1)candidates.push(scoped[0]);
    }
+   // Include the Exnova adjacent-label fallback before declaring the native
+   // expiry unreadable; 30s/1m/5m preferences remain independent of chart time.
+   candidates.sort((a,b)=>b.score-a.score);
+   if(!candidates.length){discoveryReason='field-not-found';discoverySource=null;return null;}
    // A tie between disjoint native controls is ambiguous: never guess.
    const top=candidates[0],other=candidates.find(z=>
     z!==top&&z.score===top.score&&!top.el.contains(z.el)&&!z.el.contains(top.el));
