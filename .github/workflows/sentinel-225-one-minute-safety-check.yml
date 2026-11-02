@@ -1,4 +1,5 @@
 name: Sentinel 225 one-minute reversal safety checks
+# Only independently verified old-level microturns may pass the H207 1m veto.
 on:
   push:
     branches: 
