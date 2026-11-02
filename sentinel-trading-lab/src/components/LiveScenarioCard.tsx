@@ -102,6 +102,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const settingsEditing=useRef(false);
   // Display cache only. Never reuse expired information as a live signal.
   const lastTotals=useRef<{asset:string,market:number,strategies:number,combined:number,average:number,at:number}|null>(null);
+  // Visual-only snapshot. Never use past market totals as live trade signals.
+  const lastVnextTotals=useRef<{key:string,cards:ReturnType<typeof presentableMarketCards>,at:number}|null>(null);
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
   const[entryFamily,setEntryFamily]=useState(normalizeEntryFamily(s?.settings?.entryFamily));
   const entryFamilyEditing=useRef(false);
@@ -343,17 +345,32 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     </div>
     <small className="vnextForwardHorizonsNote">{t("Entrada prevista no horário de cada célula; período posterior igual ao prazo.")}</small>
   </details>:null;
-  const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
-    <strong className="vnextReadingsHeading">{t("TOTAIS DO MERCADO")}</strong>
+  const currentMarketCards=presentableMarketCards(s?.lastResult?.analysis?.vnext?.cards);
+  const marketCardsKey=[s?.liveBroker?.provider||'',m.asset,s?.settings?.engine||'',s?.settings?.orderDurationMs||''].join('|');
+  const currentMarketCardsReady=m.fresh&&s?.lastResult?.analysis?.vnext?.engineId===s?.settings?.engine&&
+    currentMarketCards.length===3&&currentMarketCards.every(c=>c.callPct!==null&&c.putPct!==null);
+  useEffect(()=>{
+    if(currentMarketCardsReady){
+      lastVnextTotals.current={key:marketCardsKey,cards:currentMarketCards.map(c=>({...c})),at:now};
+    }else if(!m.online||!m.running||lastVnextTotals.current?.key!==marketCardsKey){
+      lastVnextTotals.current=null;
+    }
+  },[currentMarketCardsReady,marketCardsKey,m.online,m.running,s?.lastResult?.analysis?.vnext?.cards,now]);
+  const lastMarketCards=lastVnextTotals.current;
+  const retainedMarketCards=!currentMarketCardsReady&&m.online&&m.running&&lastMarketCards?.key===marketCardsKey&&
+    now-lastMarketCards.at<=30000?lastMarketCards.cards:null;
+  const displayMarketCards=currentMarketCardsReady?currentMarketCards:(retainedMarketCards||currentMarketCards);
+  const marketCardsHistorical=!currentMarketCardsReady&&retainedMarketCards!==null;
+  const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings" data-history-only={marketCardsHistorical?'true':'false'}>
+    <strong className="vnextReadingsHeading">{t(marketCardsHistorical?'ÚLTIMA LEITURA · NÃO OPERAR':'TOTAIS DO MERCADO')}</strong>
     <div className="vnextMobileReadingsGrid">
-      {presentableMarketCards(s?.lastResult?.analysis?.vnext?.cards).map((c,i)=>{
-        // Only the PC's current quote can make a reading live. An incomplete
-        // incoming cycle has the same stable slot but no borrowed old values.
-        const current=m.quoteFresh&&s?.lastResult?.analysis?.vnext?.engineId===s?.settings?.engine&&
-          c.callPct!==null&&c.putPct!==null;
-        return <div key={c.id}><small>{t(['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i])}</small>
-          <strong>{t(current?c.side:'AGUARDAR')}</strong>
-          <span>CALL {current?c.callPct+'%':'—'} · PUT {current?c.putPct+'%':'—'}</span>
+      {displayMarketCards.map((c,i)=>{
+        // Brief missing push packets never erase the last visual snapshot.
+        // Historical percentages NEVER authorize a fresh CALL/PUT.
+        const readable=(currentMarketCardsReady||marketCardsHistorical)&&c.callPct!==null&&c.putPct!==null;
+        return <div key={c.id} data-history-only={marketCardsHistorical?'true':'false'}><small>{t(['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i])}</small>
+          <strong>{marketCardsHistorical?t('ÚLTIMA LEITURA · ')+t(c.side):t(readable?c.side:'AGUARDAR')}</strong>
+          <span>CALL {readable?c.callPct+'%':'—'} · PUT {readable?c.putPct+'%':'—'}</span>
         </div>;
       })}
     </div>
