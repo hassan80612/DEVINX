@@ -1,5 +1,5 @@
 name: Sentinel 223 Windows Agent Verified Release
-# Protected native-expiry bridge SHA now pinned in historical regression.
+# Historical integrity now pins both the expiry bridge and PC-only totals display changes.
 on:
   push:
     branches:
