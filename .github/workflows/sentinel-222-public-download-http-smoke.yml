@@ -1,0 +1,43 @@
+name: Sentinel 222 Public Download HTTP Smoke
+
+on:
+  push:
+    branches:
+      - fix/sentinel-221-github-direct-no-vercel-hop-20261102
+    paths:
+      - .github/workflows/sentinel-222-public-download-http-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-http:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all three production installers and verify exact contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://sentinel.devinx.com.br/downloads'
+          mkdir -p /tmp/sentinel222
+          cd /tmp/sentinel222
+          for file in Sentinel-Agent-13.9.222.exe Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222-Alternativo.zip; do
+            echo "Checking public $file"
+            curl --fail --location --silent --show-error --retry 2 --max-time 45 \
+              --dump-header "$file.headers" "$base/$file" --output "$file"
+            test "$(wc -c < "$file")" -gt 100000
+            echo "File: $file $(wc -c < "$file") bytes"
+            sed -n '1,12p' "$file.headers" | sed -E 's/(set-cookie:).*/\1 [redacted]/I'
+          done
+          expected='27305fbf487ee8f1884c17d5956eb97fc2cb52675d1b0b38987d1ac059f66041'
+          actual="$(sha256sum Sentinel-Agent-13.9.222.exe | cut -d' ' -f1)"
+          test "$actual" = "$expected"
+          test "$(head -c 2 Sentinel-Agent-13.9.222.exe)" = "MZ"
+          unzip -tq Sentinel-Agent-13.9.222-EXE.zip
+          unzip -tq Sentinel-Agent-13.9.222-Alternativo.zip
+          cmp Sentinel-Agent-13.9.222.exe <(unzip -p Sentinel-Agent-13.9.222-EXE.zip Sentinel-Agent-13.9.222.exe)
+          unzip -Z1 Sentinel-Agent-13.9.222-Alternativo.zip | grep -Fx 'Instalar-Sentinel.cmd'
+          unzip -Z1 Sentinel-Agent-13.9.222-Alternativo.zip | grep -Fx 'install-agent-v88.ps1'
+          unzip -Z1 Sentinel-Agent-13.9.222-Alternativo.zip | grep -Fx 'agent_payload_v88.zip'
+          echo "HTTP DOWNLOAD PASS: three public artifacts deliver correct files."
