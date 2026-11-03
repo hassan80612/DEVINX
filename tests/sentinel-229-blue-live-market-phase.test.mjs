@@ -60,8 +60,9 @@ test('229: blue market-phase line stays visible even when entry is not active',(
  assert.doesNotMatch(driver,/phaseValue\.textContent=active\?/);
  assert.doesNotMatch(driver,/nowMode&&entryPlanActive\?esc\(tr\(observation\?\.marketReading/);
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
- assert.match(runtime,/liveVisualPhase229/);
- assert.match(runtime,/Visual-only 229/);
+ const overlay=readFileSync(new URL('../sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs',import.meta.url),'utf8');
+ assert.doesNotMatch(runtime,/liveVisualPhase229|presentLiveMarketReadout229/,'trading runtime must stay byte-identical');
+ assert.match(overlay,/presentLiveMarketReadout229/,'overlay alone may interpret short history');
 });
 
 test('229: before 14s trading history is ready, valid real ticks appear in BLUE as provisional CALL while runtime stays WAIT',()=>{
