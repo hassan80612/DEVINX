@@ -4,20 +4,20 @@
 // adds no broker request, timer, waiting candle, or click path.
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
-// A 1m reversal must not need the 3rd completed 5s pivot AFTER the price
+// A 30s/1m reversal must not need the 3rd completed 5s pivot AFTER the price
 // already rejected a proven historical wall. Verify the recorded FIRST
 // counter-move against ACTUAL quote receipts, not a reason label. This is
 // deliberately narrower than relaxing the ordinary trend/pivot veto.
 export function verifiedFirstQuoteTurnAtLevel({
   reversalEvidence:e,quoteHistory=[],quoteAt,price,side,now=quoteAt,durationMs
 }={}){
- if(Number(durationMs)!==60000||e?.kind!=='confirmed-level-structure-reversal'||
+ if(![30000,60000].includes(Number(durationMs))||e?.kind!=='confirmed-level-structure-reversal'||
     e?.side!==side||!['CALL','PUT'].includes(side)||
     !e?.microTurn||!e?.earlyLevelProof)return false;
  const at=Number(quoteAt),clock=Number(now),spot=Number(price),
   tol=Number(e.earlyLevelProof.tolerance),level=e.level||{},turn=e.microTurn,
   d=side==='CALL'?1:-1;
- if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&tol>0&&
+ if(!(at>0&&clock>=at&&clock-at<=(Number(durationMs)===30000?1450:1950)&&spot>0&&tol>0&&
    Number(e.confirmedAt)===at&&Number(turn.observedAt)===at&&
    Number(level.level)>0&&Number(level.independentTests)>=2&&
    Number(level.oldestTestAge)>=10&&
@@ -27,7 +27,8 @@ export function verifiedFirstQuoteTurnAtLevel({
  if(!(extremeAt>=at-8000&&extremeAt<=at-1800&&extreme>0&&
    Number.isFinite(Number(level.low))&&Number.isFinite(Number(level.high))&&
    extreme>=Number(level.low)-tol*.55&&extreme<=Number(level.high)+tol*.55&&
-   d*(spot-extreme)>=(e.earlyLevelProof.source==='independent-first-wave-237'?tol*.28:tol*.55)&&
+   d*(spot-extreme)>=(e.earlyLevelProof.source==='terminal-spike-first-wave-239'?tol*.18:
+    e.earlyLevelProof.source==='independent-first-wave-237'?tol*.28:tol*.55)&&
    d*(spot-extreme)<=tol*1.7&&
    d*(spot-Number(level.level))>=-tol*.35&&
    d*(spot-Number(level.level))<=tol*1.7))return false;
@@ -44,6 +45,18 @@ export function verifiedFirstQuoteTurnAtLevel({
    rows.some((q,i)=>i>0&&(q.ts<=rows[i-1].ts||q.ts-rows[i-1].ts>2500)))return false;
  const touch=rows.find(q=>q.ts===extremeAt&&q.price===extreme);
  if(!touch)return false;
+ // The lower .18 tolerance for a terminal spike is valid ONLY when
+ // the historical barrier has at least two independent rejections AND
+ // the recorded approach really accelerated into it before the turn.
+ if(e.earlyLevelProof.source==='terminal-spike-first-wave-239'){
+  if(Number(level.directionalRejections)<2)return false;
+  const idx=rows.findIndex(q=>q.ts===extremeAt&&q.price===extreme);
+  if(idx<3)return false;
+  const past=rows[Math.max(0,idx-3)],origin=rows[0];
+  const burst=-d*(extreme-past.price),approach=-d*(extreme-origin.price);
+  if(!(burst>=tol*.42&&approach>=tol*.75&&burst>=approach*.32))
+   return false;
+ }
  const last=rows.at(-1),prev=rows.at(-2),before=rows.at(-3);
  if(!(prev.ts>extremeAt&&d*(last.price-prev.price)>0&&
        d*(prev.price-before.price)>0))return false;
