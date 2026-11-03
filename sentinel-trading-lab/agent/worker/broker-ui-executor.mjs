@@ -205,7 +205,12 @@ export class BrokerUiExecutor{
   const state=this.driver.state(provider);
   const token=String(state?.activeId)+'|'+clean(state?.symbol);
   const cached=this.cachedHtmlControls.get(provider);
-  if(cached&&cached.page===page&&cached.token===token&&Date.now()-cached.at<=15000){
+  // Same page + active instrument and a successful live DOM validation are
+  // authoritative. Expiring the cache every 15s forced a slow full-iframe
+  // rescan exactly when a fresh CALL/PUT signal needed its first click.
+  // On removed/recreated buttons the strict selector check below fails
+  // closed and triggers normal re-discovery.
+  if(cached&&cached.page===page&&cached.token===token){
    try{
     // Validate both cached controls in ONE browser evaluation instead of
     // six separate Playwright roundtrips on every physical click. Keep the
@@ -228,8 +233,14 @@ export class BrokerUiExecutor{
   }
   this.cachedHtmlControls.delete(provider);
   let found=null,frame=null,reason=null;
-  for(const f of page.frames()){
-   let v;try{v=await f.evaluate(inspectTradeControls,{marker:randomUUID()});}catch{continue;}
+  // A cache miss used to scan each broker iframe SEQUENTIALLY. On Exnova
+  // several slow iframes could exhaust the first-click freshness window.
+  // Inspect independently in parallel, then apply EXACTLY the prior
+  // uniqueness/error checks. No button is clicked during discovery.
+  const inspected=await Promise.all(page.frames().map(async f=>({
+   frame:f,value:await f.evaluate(inspectTradeControls,{marker:randomUUID()}).catch(()=>null)
+  })));
+  for(const {frame:f,value:v} of inspected){
    if(v?.error)reason=v.error;
    if(v?.callSelector){if(found)throw errorBefore('Mais de um painel de negociação aberto.');found=v;frame=f;}
   }
