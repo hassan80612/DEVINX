@@ -1,6 +1,6 @@
 {
-  "version": "13.9.234",
-  "build": "13.9.234-fast-decision-lane-preserved-admission-and-native-expiry",
+  "version": "13.9.235",
+  "build": "13.9.235-verified-first-countertrend-level-turn-preserved-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.234"
+  "publicVersion": "13.9.235"
 }
