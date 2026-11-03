@@ -35,10 +35,10 @@ test('230: no made-up direction when historical proof is absent',()=>{
  assert.equal(read,'OBSERVANDO PREÇO ATUAL');
  assert.doesNotMatch(read,/AGUARDANDO HISTÓRICO SUFICIENTE/);
 });
-test('240: primary EXE restores the working 239 direct GitHub download method',()=>{
+test('241: primary EXE preserves the working GitHub raw direct download',()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const page=readFileSync(new URL('src/app/console/page.tsx',root),'utf8');
- assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/603ecf58522b5ecded2cf9e08dead5e68b3287ae/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
+ assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-241-direction-inversion-test-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
  assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });

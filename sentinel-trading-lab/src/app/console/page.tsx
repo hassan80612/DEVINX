@@ -19,9 +19,9 @@ type Status=any;
 const WEB_RELEASE_VERSION=agentRelease.publicVersion||agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
 // Restore the known-working 239 download transport (direct GitHub raw).
-// Pin the exact Windows-tested 240 installer commit and immutable EXE bytes.
+// The separate 241 experiment branch holds the matching Windows-tested installer.
 // The previous Vercel-hosted path remains available only as a fallback.
-const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/603ecf58522b5ecded2cf9e08dead5e68b3287ae/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-241-direction-inversion-test-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();

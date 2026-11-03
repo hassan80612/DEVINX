@@ -47,15 +47,14 @@ test('225: one-tick readout cannot flip good to bad and vice versa',()=>{
  const other=smoothMarketCondition(v,good,{at:19000,context:'exnova|GBPUSD|30000'});
  assert.equal(other.state,'watch','new asset/expiry invalidates the previous favorable readout');
 });
-test('225: compact fixed-height WIN / market status / Session all stay on the original row',()=>{
+test('241: compact fixed-height WIN / Session remain without the graph warning',()=>{
  const markup=executorMonitor({sessionWins:2,sessionLosses:1,netPnl:13.25,config:{},enabled:true},'pt',
    {state:'good',reason:'Leituras atuais alinhadas'});
  assert.match(markup,/<b data-sentinel-executor-wl>WIN:/);
- assert.match(markup,/data-sentinel-market-condition data-condition="good"/);
- assert.match(markup,/GRÁFICO: FAVORÁVEL/);
+ assert.doesNotMatch(markup,/data-sentinel-market-condition|GRÁFICO:|GRAPH:/);
  assert.match(markup,/Sessão: 13\.25/);
- const positions=['data-sentinel-executor-wl','data-sentinel-market-condition','data-sentinel-executor-session'].map(x=>markup.indexOf(x));
- assert.ok(positions[0]<positions[1]&&positions[1]<positions[2]);
+ const positions=['data-sentinel-executor-wl','data-sentinel-executor-session'].map(x=>markup.indexOf(x));
+ assert.ok(positions[0]<positions[1]);
  assert.match(PREMIUM_OVERLAY_CSS,/grid-template-columns:minmax\(0,1\.04fr\) minmax\(0,1\.08fr\) minmax\(0,\.97fr\)/);
  assert.match(PREMIUM_OVERLAY_CSS,/height:36px;min-height:36px;max-height:36px/);
  assert.match(PREMIUM_OVERLAY_CSS,/font:850 11\.7px\/15px system-ui/);

@@ -7,7 +7,10 @@ export function marketReading({phase,label,trendSide,candidate={},observation={}
   return marketReading({phase,label,trendSide,candidate:observation,quoteAt,now,indicatorEvidence,historicalCandlesVerified});
  // Freshness belongs to the technical line, never to order permission.
  let text=label||'ANALISANDO',direction=side(trendSide);
- if(candidate.ready===true){
+ if(candidate.ready===true&&candidate.experimentalDirectionInversion===true){
+  text='TESTE INVERSO';
+  direction=side(candidate.side);
+ }else if(candidate.ready===true){
   const reversal=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
    'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection']);
   text=reversal.has(candidate.reason)?'REVERSÃO CONFIRMADA':'CONTINUIDADE';direction=side(candidate.side);

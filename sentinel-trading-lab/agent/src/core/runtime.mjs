@@ -1,4 +1,5 @@
 import {ENTRY_FAMILIES,normalizeEntryFamily,reviewEntryFamily,reactionLevel,entryFamilyOf} from './entry-family.mjs';
+import {invertApprovedDirection241} from './experimental-opposite-direction-241.mjs';
 import {ReactionOpportunityMemory} from './reaction-opportunity-memory.mjs';
 import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
@@ -1346,6 +1347,10 @@ export class DemoTradingRuntime{
         now,price:snap.price,durationMs:settings.orderDurationMs,
         allowVerifiedEarlyReversal:true
       });
+      // Sentinel 241: reverse only an already-approved direction once, before
+      // the shared signal, bot, journal and visible entry are constructed.
+      // No broker expiry or executor changes.
+      eligible=invertApprovedDirection241(eligible);
       // Read-only admission latency telemetry. A valid structural proposal
       // blocked by a final guard must be distinguished from CPU slowness.
       // This does NOT authorize, delay or change any trade or expiry.
