@@ -48,8 +48,13 @@ test('228: last persisted native 1m/5m always beats an unchosen browser 30s afte
  assert.equal(lastTrustedExpiryForResume({
   nativeDurationMs:300000,nativeSelectedAt:now-500,currentDurationMs:30000}),300000);
  assert.equal(lastTrustedExpiryForResume({
-  nativeDurationMs:30000,nativeSelectedAt:now-100,currentDurationMs:60000}),30000,
+  nativeDurationMs:30000,nativeSelectedAt:now-100,nativeExplicit30:true,
+  currentDurationMs:60000}),30000,
   'a genuine newer manual 30s choice must remain selectable');
+ assert.equal(lastTrustedExpiryForResume({
+  nativeDurationMs:30000,nativeSelectedAt:now-100,nativeExplicit30:false,
+  currentDurationMs:60000}),null,
+  'an inherited 30s with a timestamp is not a manual selection');
  assert.equal(lastTrustedExpiryForResume({
   nativeDurationMs:30000,nativeSelectedAt:0,currentDurationMs:60000}),null,
   'broker default 30s is never a trusted choice');
