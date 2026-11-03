@@ -40,6 +40,19 @@ test('235: proven resistance allows first two-tick counterturn on a still-uptren
   'existing 1m final admission continues to require the current microturn');
 });
 
+test('235: mirrored support CALL is allowed against a still-falling candle with same proof',()=>{
+ const mirror=x=>2.2-x;
+ const mirrored=quotes.map(q=>({...q,price:mirror(q.price)}));
+ const mirroredProof={...proof,side:'CALL',
+  level:{...level,level:mirror(level.level),low:mirror(level.high),high:mirror(level.low)},
+  microTurn:{...turn,extreme:mirror(turn.extreme),
+   firstBreak:mirror(turn.firstBreak),retest:mirror(turn.retest)}};
+ const ctx={...options,side:'CALL',price:mirror(spot),quoteHistory:mirrored};
+ assert.equal(countertrendPivotRisk({...ctx,reversalEvidence:null}),true);
+ assert.equal(verifiedFirstQuoteTurnAtLevel({...ctx,reversalEvidence:mirroredProof}),true);
+ assert.equal(countertrendPivotRisk({...ctx,reversalEvidence:mirroredProof}),false);
+});
+
 test('235: no reversal from a label, unsupported level, old quote, or only one opposite tick',()=>{
  const check=(e,x={})=>verifiedFirstQuoteTurnAtLevel({...options,...x,reversalEvidence:e});
  assert.equal(check({...proof,earlyLevelProof:null}),false);
