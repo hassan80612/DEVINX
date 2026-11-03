@@ -34,7 +34,7 @@ test('238: legacy 30s timestamp is NOT evidence of an explicit 30s user choice',
  }finally{rmSync(dir,{force:true,recursive:true})}
 });
 
-test('238: explicitly chosen 30s is still respected and persists across restart',async()=>{
+test('241: stored native 30s may remain native but cannot silently replace Sentinel selected 1m on restart',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'sentinel-238-manual-'));
  try{
   const driver=new LocalPlaywrightDriver({dataDir:dir});
@@ -47,7 +47,9 @@ test('238: explicitly chosen 30s is still respected and persists across restart'
   await restart.nativeExpiryPreferenceReady;
   assert.equal(restart.nativeExpiryExplicitThirty.get('iq_option'),true);
   assert.equal(lastTrustedExpiryForResume({nativeDurationMs:30000,
-   nativeSelectedAt:record.selectedAt,nativeExplicit30:true,currentDurationMs:60000}),30000);
+   nativeSelectedAt:record.selectedAt,nativeExplicit30:true,currentDurationMs:60000}),null);
+  assert.equal(lastTrustedExpiryForResume({nativeDurationMs:30000,
+    nativeSelectedAt:record.selectedAt,nativeExplicit30:true,currentDurationMs:30000}),null);
  }finally{rmSync(dir,{force:true,recursive:true})}
 });
 
@@ -81,7 +83,7 @@ test('238: click checks fresh native picker before broker submits CALL/PUT',()=>
  assert.match(src,/measuredOnClickFrame:true/);
  const worker=readFileSync(new URL('index.mjs',root),'utf8');
  assert.match(worker,/nativeExplicit30:explicitlySelected30/);
- assert.match(worker,/stored===30000&&savedRuntimeExpirySeed>30000&&!explicitlySelected30/);
+ assert.match(worker,/stored===30000&&savedRuntimeExpirySeed>30000/);
  assert.match(worker,/savedRuntimeExpirySeed>30000/);
  // The last choice remains the actual analyst duration in operation context.
  assert.match(worker,/durationMs:Number\(runtime.settings.orderDurationMs\)/);

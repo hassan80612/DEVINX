@@ -83,6 +83,13 @@ driver.setNativeExpiryPermissionSource?.(provider=>
 driver.setNativeExpiryChoiceHandler?.(async(provider,ms,selectedAt)=>{
  if(provider!==activeProvider||![30000,60000,300000].includes(Number(ms)))return;
  if(Number(driver.nativeExpirySelectedAt?.get(provider)||0)>Number(selectedAt||0))return;
+ // Native 30s is also the broker's bootstrap/reset default. It is NOT
+ // permission to downgrade an existing Sentinel 1m/5m choice. The only
+ // deliberate 30s selection is the Sentinel Duration selector itself.
+ if(ms===30000&&Number(runtime.settings.orderDurationMs)>30000){
+   await driver.setNativeExpiryPreference?.(provider,Number(runtime.settings.orderDurationMs),{preserveExisting:false});
+   return;
+ }
  if(Number(runtime.settings.orderDurationMs)===ms)return;
  runtime.patchSettings({orderDurationMs:ms},'native-broker-manual-choice');
  await saveState();
@@ -169,7 +176,7 @@ function seedMissingNativeExpiry(provider){
    const explicitlySelected30=driver.nativeExpiryExplicitThirty?.get(provider)===true;
    // A legacy native 30s receipt is NOT proof of a manual user selection.
    // Keep the stored 1m/5m analyst horizon when restoring this broker.
-   if(stored===30000&&savedRuntimeExpirySeed>30000&&!explicitlySelected30&&
+   if(stored===30000&&savedRuntimeExpirySeed>30000&&
       Number(runtime.settings.orderDurationMs)===startingDuration){
     await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:false});
     return;

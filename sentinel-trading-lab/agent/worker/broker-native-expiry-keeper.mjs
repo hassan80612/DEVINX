@@ -703,7 +703,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    // an existing document. Never roll back a newer trusted manual click.
    if(!explicit&&at>0&&localAt>at&&!(ms>30000&&preferredMs===30000&&!explicitDefault))return true;
    // Unauthenticated default 30s must never replace the selected 1m/5m.
-   if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault)return true;
+   if(ms===30000&&!explicit&&preferredMs>30000)return true;
    // Passive bridge installation is repeated by broker recovery. An identical
    // receipt must not erase a trusted opener/choice that is still being handled.
    if(!explicit&&ms===preferredMs&&at<=localAt)return true;
