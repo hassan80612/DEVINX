@@ -1,4 +1,5 @@
 name: Sentinel 230 verified Windows Agent release
+# Freeze source for Windows attestation: fast broker history + trusted native expiry
 on:
   push:
     branches:
