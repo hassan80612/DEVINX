@@ -1,6 +1,6 @@
 {
-  "version": "13.9.230",
-  "build": "13.9.230-fast-startup-no-global-14s-history-direct-github-exe",
+  "version": "13.9.232",
+  "build": "13.9.232-safe-fast-broker-click-trusted-expiry-blue-231-core",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.230"
+  "publicVersion": "13.9.232"
 }

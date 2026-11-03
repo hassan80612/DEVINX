@@ -3,7 +3,9 @@
 // a few seconds. It NEVER enters the executor or the trade runtime.
 import {liveVisualPhase229} from '../src/core/live-visual-phase-229.mjs';
 import {marketReading} from '../src/core/market-reading.mjs';
-const waiting=/^(AGUARDANDO|ANALISANDO|COLETANDO MICROESTRUTURA|HISTÓRICO NÃO VALIDADO|LEITURA EM ATUALIZAÇÃO)/i;
+// The blue line is a continuous observation, not just a placeholder for
+// missing history. It follows the latest VERIFIED tick as long as an entry
+// has not been confirmed, while never changing the real analyst decision.
 const phaseLabels={
  continuing:'CONTINUIDADE',weakening:'CONTINUIDADE PERDENDO FORÇA',
  'reversal-testing':'REVERSÃO EM TESTE',range:'LATERAL',mixed:'INCONCLUSIVO'
@@ -11,14 +13,20 @@ const phaseLabels={
 export function presentLiveMarketReadout229({view,analysis,now=Date.now(),asset}={}){
  const old=analysis?.vnext||null;
  if(view?.state!=='running'||!view?.settings?.engine)return old;
- // A classified analyst reading has priority, even while no operation
- // is executing. We supplement ONLY the insufficient/no-readout case.
- const previous=String(old?.nowObservation?.marketReading||'');
- if(previous&&!waiting.test(previous))return old;
+ // A genuine actionable analyst signal retains priority, including its
+ // CALL/PUT and historical reversal evidence. Otherwise update the BLUE
+ // visual market phase on every fresh broker quote, even if its prior text
+ // was "OBSERVANDO" or the previous provisional "CONTINUIDADE CALL".
+ // This NEVER mutates the real engine result or authorizes an entry.
+ if(old?.nowObservation?.ready===true)return old;
  const broker=view?.liveBroker;
- const actualAsset=String(broker?.validatedSymbol||broker?.symbol||'').trim().toUpperCase();
+ // The same real OTC instrument can be written EUR/GBP (OTC) in
+ // the broker and EURGBP-OTC in the analyst. Preserve OTC identity while
+ // comparing; never allow a different instrument or unvalidated feed.
+ const instrumentKey=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const actualAsset=instrumentKey(broker?.validatedSymbol||broker?.symbol);
  if(!broker||broker.quoteFeedValidated!==true||broker.assetValidated!==true||
-  !actualAsset||String(asset||'').trim().toUpperCase()!==actualAsset)return old;
+  !actualAsset||instrumentKey(asset)!==actualAsset)return old;
  const quoteAt=Number(broker.lastQuoteAt||broker.quoteTs);
  const price=Number(broker.quote);
  const state=liveVisualPhase229({quoteHistory:broker.quoteHistory||[],
