@@ -23,6 +23,7 @@ import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 import {reviewFreshPullbackContinuation} from './early-continuation-226.mjs';
 import {reviewFirstImpulseReversal} from './impulse-lifecycle-227.mjs';
 import {reviewFirstWaveCounterturn} from './first-wave-counterturn-237.mjs';
+import {decisiveMarketRegime240} from './decisive-market-regime-240.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -127,7 +128,13 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
   recent=before(rows,at-recentMs,1500);
  if(!old||!mid||!recent)return{phase:'insufficient',side:null,windowMs};
  const net=Math.log(spot/old.price),side=sideOf(net);
- if(!side)return{phase:'range',side:null,windowMs};
+ // A nearly-flat 12s/20s net may be a small pullback INSIDE a real 60s
+ // directional sequence. The longer completed-bar key outranks a noisy
+ // short-tick net, but never grants an order by itself.
+ const decisive=decisiveMarketRegime240({quoteHistory,quoteAt,now,price,durationMs});
+ if(!side)return decisive.kind==='trend'?
+  {phase:'weakening',side:decisive.side,windowMs,decisiveRegime:decisive}:
+  {phase:'range',side:null,windowMs,decisiveRegime:decisive};
  const direction=sign(side),early=direction*Math.log(mid.price/old.price),
   late=direction*Math.log(spot/mid.price),fast=direction*Math.log(spot/recent.price);
  let travel=0;
@@ -143,7 +150,9 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  // before applying the low-net-efficiency lateral classification.
  if(early>threshold*1.5&&late< -threshold*1.5&&
     fast< -threshold&&retracement>=.25)phase='reversal-testing';
- else if(efficiency<.18||Math.abs(net)<=threshold)phase='range';
+ else if((efficiency<.18||Math.abs(net)<=threshold)&&decisive.kind!=='trend')phase='range';
+ else if((efficiency<.18||Math.abs(net)<=threshold)&&decisive.kind==='trend')
+  phase=decisive.side===side&&fast>=-threshold?'continuing':'weakening';
  else if(late< -threshold&&fast< -threshold&&retracement>=.16)phase='reversal-testing';
  else if(early>threshold&&(late<=Math.max(threshold,early*.35)||fast< -threshold))
   phase='weakening';
@@ -151,7 +160,7 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  return{phase,side,windowMs,netMove:Number(net.toPrecision(6)),
   earlyMove:Number(early.toPrecision(6)),lateMove:Number(late.toPrecision(6)),
   latestMove:Number(fast.toPrecision(6)),efficiency:Number(efficiency.toFixed(3)),
-  retracement:Number(retracement.toFixed(3))};
+  retracement:Number(retracement.toFixed(3)),decisiveRegime:decisive};
 }
 function confirmedReversalCandidate(candidate){
  const reason=String(candidate?.reason||'');
@@ -325,6 +334,13 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
  }
  if(closes.length<10)return null;
+ // An independently confirmed 5s-bar trend MUST NOT be trapped by the
+ // stationary-range gate merely because 1-second quote noise is high.
+ // This is a regime disambiguation, not permission to chase a peak; the
+ // 239 wall/spike arbitration still reviews any subsequent continuation.
+ const regime=decisiveMarketRegime240({
+  quoteHistory:last,quoteAt:last.at(-1).ts,now,price:spot,durationMs:holdingMs});
+ if(regime.kind==='trend')return null;
  // A directional trend with small pullbacks has high total path efficiency.
  // A long oscillation traverses both directions, returning near its origin.
  let travelled=0;
@@ -717,7 +733,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   if(route[i].ts-route[i-1].ts>3000)continue;
   travelled+=Math.abs(Math.log(route[i].price/route[i-1].price));
  }
- if(!(travelled>0)||Math.abs(net)/travelled<.20)
+ // Use closed 5s structure as a tie-break ONLY when the raw 1s path
+ // efficiency is low. A noisy rise/fall is not a stationary range.
+ const decisive=decisiveMarketRegime240({
+  quoteHistory:quotes,quoteAt,now,price,durationMs});
+ if(!(travelled>0)||(Math.abs(net)/travelled<.20&&
+    !(decisive.kind==='trend'&&decisive.side===sideOf(net))))
   return waiting('choppy-sideways-structure');
  const side=sideOf(net);
  if(!side)return waiting('neutral-closed-structure');
