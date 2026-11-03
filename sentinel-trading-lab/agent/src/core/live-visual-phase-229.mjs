@@ -6,9 +6,10 @@ export function liveVisualPhase229({quoteHistory=[],quoteAt,now=quoteAt,price,du
  const at=Number(quoteAt),clock=Number(now),spot=Number(price);
  const empty={ready:false,phase:'insufficient',legSide:null,turnSide:null};
  if(!(at>0&&clock>=at&&clock-at<=2500&&spot>0))return empty;
- // Read the observed last 20-25 seconds despite a few dropped ticks. A gap
- // that is too large still means insufficient observation, NOT sideways.
- const windowMs=Number(durationMs)===30000?12000:25000;
+ // Read the first 4-5 seconds of real live quotes as a PROVISIONAL
+ // graphical phase; admission still requires its strict 14s+ verified
+ // history and other existing structural checks. No synthetic history.
+ const windowMs=Number(durationMs)===30000?12000:18000;
  const seen=new Map();
  for(const q of Array.isArray(quoteHistory)?quoteHistory:[]){
   const ts=Number(q?.ts),received=Number(q?.receivedAt??ts),p=Number(q?.price);
@@ -18,7 +19,7 @@ export function liveVisualPhase229({quoteHistory=[],quoteAt,now=quoteAt,price,du
  const rows=[...seen].sort((a,b)=>a[0]-b[0]).map(([ts,p])=>({ts,price:p}));
  if(rows.length<5||rows.at(-1).ts!==at||rows.at(-1).price!==spot)return empty;
  const earliest=rows[0];
- if(at-earliest.ts<Math.min(7000,windowMs*.60))return empty;
+ if(at-earliest.ts<3500)return empty;
  const maxGap=Number(durationMs)===30000?6500:8500;
  if(rows.some((r,i)=>i>0&&r.ts-rows[i-1].ts>maxGap))return empty;
  const movements=rows.slice(1).map((q,i)=>q.price-rows[i].price);
