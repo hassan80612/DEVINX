@@ -1,6 +1,6 @@
 {
   "version": "13.9.244",
-  "build": "13.9.244-verified-lateral-peak-expiry-preserved",
+  "build": "13.9.244-native-expiry-persistence-hotfix",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
