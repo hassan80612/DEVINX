@@ -9,8 +9,11 @@ export function marketReading({phase,label,trendSide,candidate={},observation={}
  let text=label||'ANALISANDO',direction=side(trendSide);
  if(candidate.ready===true){
   const reversal=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
-   'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection','observed-spike-exhaustion-reversal-242']);
-  text=reversal.has(candidate.reason)?'REVERSÃO CONFIRMADA':'CONTINUIDADE';direction=side(candidate.side);
+   'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection','observed-spike-exhaustion-reversal-242','active-spike-countertrade-243']);
+  text=candidate.reason==='active-spike-countertrade-243'?
+   'PICO ACELERADO · REVERSÃO ANTECIPADA':
+   reversal.has(candidate.reason)?'REVERSÃO CONFIRMADA':'CONTINUIDADE';
+  direction=side(candidate.side);
  }else if(candidate.entryRisk?.kind==='same-reaction-after-better-missed-price'){
   text='REVERSÃO JÁ AVANÇOU';direction=side(candidate.provisionalSide);
  }else if(candidate.entryRisk?.kind==='range-turn-inside-persistent-directional-leg'){

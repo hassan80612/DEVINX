@@ -23,6 +23,27 @@ export function assessSpikeExhaustion242({candidate,quoteHistory=[],quoteAt,now=
  const diff=q.slice(1).map((x,i)=>x.price-q[i].price),abs=diff.map(Math.abs).filter(x=>x>0);
  if(abs.length<8)return none;
  const typical=Math.max(med(abs),spot*1e-8);
+ // The current candle may STILL be accelerating in the original direction.
+ // An exceptional terminal impulse can be countertraded BEFORE any negative
+ // tick exists. This is an explicitly speculative active-climax hypothesis,
+ // NOT a verified reversal. Ordinary, evenly paced trends never qualify.
+ const oldAbs=diff.slice(0,-4).map(Math.abs).filter(v=>v>0);
+ const baseline=Math.max(med(oldAbs),spot*1e-8);
+ const tail=diff.slice(-4).map(v=>s*v);
+ const last2=tail[2]+tail[3],first2=tail[0]+tail[1];
+ const sprint=tail.reduce((a,b)=>a+b,0),progress=s*(spot-q[0].price);
+ const livePeak= q.every(x=>s*(spot-x.price)>=-baseline*.05);
+ const activeClimax=oldAbs.length>=6&&livePeak&&
+   tail[2]>baseline*.95&&tail[3]>baseline*1.55&&
+   tail[3]>=tail[2]*1.12&&
+   last2>=baseline*6.5&&last2>=Math.max(first2,baseline)*1.7&&
+   sprint>=baseline*8.5&&progress>=baseline*13.5&&
+   sprint/Math.max(progress,baseline)>=.52;
+ if(activeClimax)return {kind:'flip',side:candidate.side==='CALL'?'PUT':'CALL',
+   impulseSide:candidate.side,peak:spot,peakAt:at,
+   at,slowing:false,nearWall:false,activeClimax:true,
+   sprintVsBaseline:Number((sprint/baseline).toFixed(2)),
+   source:'active-spike-overextension-243-no-opposite-quote'};
  const peakIndex=q.reduce((i,x,j)=>s*x.price>s*q[i].price?j:i,0),
   peak=q[peakIndex],age=at-peak.ts;
  if(!(peakIndex>=5&&peakIndex<=q.length-2&&age>=250&&age<=6500))return none;
@@ -62,8 +83,12 @@ export function reviewBoldSpikeReversal242(input={}){
  if(evidence.kind!=='flip')return evidence.kind==='watch'?{...candidate,spikeWatch:evidence}:candidate;
  return {...candidate,side:evidence.side,
   originalDecisionSide:candidate.side,originalDecisionReason:candidate.reason,
-  reason:'observed-spike-exhaustion-reversal-242',
-  experimentalSpikeReversal:true,spikeExhaustion:evidence,
-  marketPhase:'reversal-confirmed',
-  marketPhaseLabel:'PICO PERDENDO FORÇA · '+evidence.side,marketTrendSide:evidence.side};
+  reason:evidence.activeClimax?'active-spike-countertrade-243':
+    'observed-spike-exhaustion-reversal-242',
+  experimentalSpikeReversal:true,experimentalActiveClimax:evidence.activeClimax===true,
+  spikeExhaustion:evidence,
+  marketPhase:evidence.activeClimax?'reversal-forming':'reversal-confirmed',
+  marketPhaseLabel:(evidence.activeClimax?'PICO ACELERADO · CONTRA-TENDÊNCIA · ':
+    'PICO PERDENDO FORÇA · ')+evidence.side,
+  marketTrendSide:evidence.side};
 }

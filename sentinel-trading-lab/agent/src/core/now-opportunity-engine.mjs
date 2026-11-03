@@ -135,7 +135,9 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  const decisive=decisiveMarketRegime240({quoteHistory,quoteAt,now,price,durationMs});
  if(!side)return decisive.kind==='trend'?
   {phase:'weakening',side:decisive.side,windowMs,decisiveRegime:decisive}:
-  {phase:'range',side:null,windowMs,decisiveRegime:decisive};
+  decisive.kind==='range'?
+  {phase:'range',side:null,windowMs,decisiveRegime:decisive}:
+  {phase:'insufficient',side:null,windowMs,decisiveRegime:decisive};
  const direction=sign(side),early=direction*Math.log(mid.price/old.price),
   late=direction*Math.log(spot/mid.price),fast=direction*Math.log(spot/recent.price);
  let travel=0;
@@ -156,7 +158,7 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  // before applying the low-net-efficiency lateral classification.
  if(early>threshold*1.5&&late< -threshold*1.5&&
     fast< -threshold&&retracement>=.25)phase='reversal-testing';
- else if(legacyLowNet&&decisive.kind!=='trend')phase='range';
+ else if(legacyLowNet&&decisive.kind==='range')phase='range';
  else if(legacyLowNet&&decisive.kind==='trend')
   phase=decisive.side===side&&fast>=-threshold?'continuing':'weakening';
  else if(late< -threshold&&fast< -threshold&&retracement>=.16)phase='reversal-testing';
@@ -196,7 +198,7 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  const proof=candidate.priceStructure?.reactionProof;
  if([30000,60000].includes(horizon)&&
    ['failed-breakout-structure-change','closed-range-extreme-reversal-confirmed'].includes(candidate.reason)&&
-   state.phase==='range'&&proof?.confirmed===false&&
+   proof?.confirmed===false&&
    proof.reason==='last-move-not-supporting')
   return {...candidate,trendPersistence:state,marketPhase:state.phase,
    marketPhaseLabel:phaseLabel(state.phase),marketTrendSide:state.side||null,
@@ -606,11 +608,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const roleConflict=!located.ready&&specialist?.ready===true&&(
    levelEvent?.roleMismatch===true&&levelEvent.side===specialist.side||
    specialistLevelRoleRisk({candidate:specialist,structure,...input}));
-  const proposed=located.ready?located:roleConflict?{
+  const initialProposal=located.ready?located:roleConflict?{
    ...located,ready:false,side:null,reason:'shared-base-level-role-conflict'
   }:(specialist?.ready===true?{
    ...specialist,priceStructure:located.priceStructure??specialist.priceStructure
   }:located);
+  // Compare the *active* price climax while the current tick still moves
+  // with the old impulse. It must compete before legacy continuation
+  // exhaustion vetoes, never after the candidate has been blocked.
+  const proposed=reviewBoldSpikeReversal242({
+   candidate:initialProposal,quoteHistory,quoteAt,now,price,durationMs,structure
+  });
   // The final shared base checks confirmed historical swing direction for
   // EVERY proposal (automatic or specialist), before it can reach the
   // probability, expiry adjudicator or bot. Only already-received quotes.
@@ -645,13 +653,12 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    liveRisk?{...proposed,ready:false,side:null,
     reason:'shared-base-live-evidence-conflict',entryRisk:liveRisk}:proposed;
   const structuralDecision=fiveMinuteReversalOnly({candidate:final,durationMs,quoteAt,now,price,quoteHistory,entryFamily,structure});
+  // Countertrend climax has already been evaluated from the current quote
+  // before the final common risk screens. Do not wait for contrary ticks.
   const persistenceDecision=reviewDirectionalPersistence({
    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
   });
-  const spikeDecision=reviewBoldSpikeReversal242({
-   candidate:persistenceDecision,quoteHistory,quoteAt,now,price,durationMs,structure
-  });
-  return {...spikeDecision,engineId,qualityPolicy,
+  return {...persistenceDecision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
