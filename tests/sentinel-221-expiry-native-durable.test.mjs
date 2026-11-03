@@ -97,7 +97,8 @@ test('221: Exnova split-label expiry is discoverable without a saved field mappi
 test('221: runtime seed only executes for missing durable native preference',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.match(source,/if\(driver\.nativeExpiryPreferences\.has\(provider\)\)\{/);
- assert.match(source,/nativeDurationMs:driver\.nativeExpiryPreferences\.get\(provider\)/);
+ assert.match(source,/nativeDurationMs:stored/);
+ assert.match(source,/recoverMissingRuntimeExpiryFromNative/);
  assert.match(source,/lastTrustedExpiryForResume/);
  assert.match(source,/setNativeExpiryPreference\(provider,savedRuntimeExpirySeed,\{preserveExisting:true\}\)/);
  assert.match(source,/if\(\[30000,60000,300000\]\.includes\(duration\)\)savedRuntimeExpirySeed=duration/);
