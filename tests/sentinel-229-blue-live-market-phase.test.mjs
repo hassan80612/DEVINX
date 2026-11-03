@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {liveVisualPhase229} from '../sentinel-trading-lab/agent/src/core/live-visual-phase-229.mjs';
 import {marketReading} from '../sentinel-trading-lab/agent/src/core/market-reading.mjs';
+import {lightweightOverlayView} from '../sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs';
 const at=1800000000000;
 const quotes=prices=>prices.map((price,i)=>({ts:at-(prices.length-i-1)*2000,
  receivedAt:at-(prices.length-i-1)*2000,price}));
@@ -61,4 +62,47 @@ test('229: blue market-phase line stays visible even when entry is not active',(
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
  assert.match(runtime,/liveVisualPhase229/);
  assert.match(runtime,/Visual-only 229/);
+});
+
+test('229: before 14s trading history is ready, valid real ticks appear in BLUE as provisional CALL while runtime stays WAIT',()=>{
+ const end=Date.now();
+ const prices=[1.1000,1.1001,1.1002,1.1004,1.1006,1.1008];
+ const ticks=prices.map((price,i)=>({ts:end-(prices.length-i-1)*1000,
+  receivedAt:end-(prices.length-i-1)*1000,price}));
+ const original={
+  asset:'EUR/USD OTC',action:'WAIT',analysis:{asset:'EUR/USD OTC',side:'WAIT',
+   confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']}
+ };
+ const runtime={stateName:'running',settings:{mode:'real',engine:'automatic',orderDurationMs:60000},
+  lastResult:original,lastEvalMs:0,nextEvalMs:0,
+  externalMarket:{provider:'exnova',symbol:'EUR/USD OTC',validatedSymbol:'EUR/USD OTC',
+   assetValidated:true,quoteFeedValidated:true,lastQuoteAt:end,quote:prices.at(-1),quoteHistory:ticks}};
+ const snapshot=lightweightOverlayView(runtime);
+ assert.equal(snapshot.lastResult.analysis.vnext.nowObservation.marketReading,'CONTINUIDADE · CALL');
+ assert.equal(snapshot.lastResult.analysis.vnext.nowObservation.visualOnly,true);
+ assert.equal(snapshot.lastResult.analysis.vnext.nowObservation.ready,undefined);
+ assert.strictEqual(runtime.lastResult,original,'motor WAIT stays untouched');
+ assert.equal(original.analysis.vnext,undefined,'no new real broker signal is synthesized');
+});
+test('229: if live asset is not validated, visual supplement cannot fabricate direction',()=>{
+ const end=Date.now(),tick=Array.from({length:7},(_,i)=>({ts:end-(6-i)*1000,
+  receivedAt:end-(6-i)*1000,price:1.1+i*.0001}));
+ const original={asset:'EUR/USD OTC',analysis:{asset:'EUR/USD OTC',side:'WAIT'}};
+ const runtime={stateName:'running',settings:{engine:'automatic',orderDurationMs:60000},
+  lastResult:original,externalMarket:{provider:'exnova',quote:tick.at(-1).price,
+   lastQuoteAt:end,quoteHistory:tick,quoteFeedValidated:true,assetValidated:false,
+   validatedSymbol:'EUR/USD OTC'}};
+ assert.strictEqual(lightweightOverlayView(runtime).lastResult,original);
+ runtime.externalMarket.assetValidated=true;
+ runtime.externalMarket.validatedSymbol='GBP/USD OTC';
+ assert.strictEqual(lightweightOverlayView(runtime).lastResult,original);
+});
+test('229: presentation fix never changes byte-identical 228 runtime, native expiry, or bot executor',()=>{
+ const files=['agent/src/core/runtime.mjs','agent/worker/index.mjs',
+  'agent/worker/broker-native-expiry-keeper.mjs','agent/worker/signal-executor.mjs'];
+ const root=new URL('../sentinel-trading-lab/',import.meta.url);
+ for(const file of files){
+  const s=readFileSync(new URL(file,root),'utf8');
+  assert.doesNotMatch(s,/import \{liveVisualPhase229\}|presentLiveMarketReadout229/,file);
+ }
 });
