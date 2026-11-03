@@ -25,6 +25,7 @@ import {reviewFirstImpulseReversal} from './impulse-lifecycle-227.mjs';
 import {reviewFirstWaveCounterturn} from './first-wave-counterturn-237.mjs';
 import {decisiveMarketRegime240} from './decisive-market-regime-240.mjs';
 import {reviewBoldSpikeReversal242} from './spike-exhaustion-counterturn-242.mjs';
+import {analyzeCausalRange244} from './range-opportunity-244.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -714,9 +715,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // four-bar trend waits to qualify, and the next late impulse gets chased.
  // Range reconstruction uses only finished historical 5s bars.
  const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
+ // Independent, verified same-expiry analogues compete inside a real
+ // sideways market; they never change the selected expiry or affect 5m.
+ const rangeAnalogue=()=>analyzeCausalRange244({
+  quoteHistory:quotes,quoteAt,now,price,durationMs
+ });
  const range=noise>0?completedRangeStructure(quotes,now,noise,Number(price),durationMs):null;
  if(range){
-  if(!range.ready)return waiting(range.reason);
+  if(!range.ready){
+   const alternative=rangeAnalogue();
+   return alternative.ready?alternative:waiting(range.reason);
+  }
   return {ready:true,side:range.side,reason:range.reason,
     observedAt:Number(quoteAt),entryPrice:Number(price),
     strength:null,expirySeconds:seconds,rangePosition:range.position,
@@ -739,7 +748,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   Math.log(firstEvidence.at(-1).close/firstEvidence[0].open):0;
  const candleEvidence={observedBars,direction:sideOf(earliestMove),
   displacement:earliestMove,barSeconds:barMs/1000};
- if(!bars)return {...waiting('completed-structure-not-ready'),candleEvidence};
+ if(!bars){
+  const alternative=rangeAnalogue();
+  return alternative.ready?alternative:
+   {...waiting('completed-structure-not-ready'),candleEvidence};
+ }
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const net=Math.log(bars.at(-1).close/bars[0].open);
  if(!(noise>0))return waiting('insufficient-quote-variation');
@@ -758,7 +771,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   quoteHistory:quotes,quoteAt,now,price,durationMs});
  if(!(travelled>0)||(Math.abs(net)/travelled<.20&&
     !(decisive.kind==='trend'&&decisive.side===sideOf(net))))
-  return waiting('choppy-sideways-structure');
+  {const alternative=rangeAnalogue();
+   return alternative.ready?alternative:waiting('choppy-sideways-structure');}
  const side=sideOf(net);
  if(!side)return waiting('neutral-closed-structure');
  // 2m and 5m forecasts need a second, holding-time-scale observation.

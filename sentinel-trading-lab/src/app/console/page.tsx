@@ -19,9 +19,9 @@ type Status=any;
 const WEB_RELEASE_VERSION=agentRelease.publicVersion||agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
 // Restore the known-working 239 download transport (direct GitHub raw).
-// Serve the matching 243 Windows-verified EXE from the dedicated GitHub branch.
+// Serve the matching 244 Windows-verified EXE from the dedicated GitHub branch.
 // The previous Vercel-hosted path remains available only as a fallback.
-const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-243-active-spike-regime-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-244-range-spike-expiry-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();

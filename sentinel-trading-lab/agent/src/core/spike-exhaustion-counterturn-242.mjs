@@ -1,15 +1,25 @@
 // Experimental Sentinel 242: a fast causal reversal signal after a price spike.
 // Based exclusively on quotes already received. No expiry, broker, or timing writes.
 import {entryFamilyOf} from './entry-family.mjs';
+import {assessCarryoverSpike244} from './carryover-spike-244.mjs';
 const dir=s=>s==='CALL'?1:s==='PUT'?-1:0;
 const med=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]||0};
 const continuation=/continuation|followthrough|breakout|trend|impulse|cycle|analogue|forecast/i;
 export function assessSpikeExhaustion242({candidate,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs,structure}={}){
  const none={kind:'none'},ms=Number(durationMs),at=Number(quoteAt),clock=Number(now),spot=Number(price);
  if(![30000,60000].includes(ms)||candidate?.ready!==true||
-    !['CALL','PUT'].includes(candidate?.side)||entryFamilyOf(candidate)==='reversal'||
-    !(entryFamilyOf(candidate)==='continuation'||continuation.test(String(candidate.reason||'')))||
+    !['CALL','PUT'].includes(candidate?.side)||
     !(at>0&&clock>=at&&clock-at<=(ms===30000?1450:1950)&&spot>0))return none;
+ // At a NEW candle opening, a massively extended previous candle takes
+ // priority even if the old signal was mislabeled a "reversal" while still
+ // following the acceleration. Opposite-direction reversals stay intact.
+ const carryover=assessCarryoverSpike244({candidate,quoteHistory,quoteAt,now,price,durationMs});
+ if(carryover.kind==='flip')return carryover;
+ // Other reversal families keep their original decision: only the proven
+ // carry-over condition may contest a same-direction reversal label.
+ if(entryFamilyOf(candidate)==='reversal'||
+    !(entryFamilyOf(candidate)==='continuation'||continuation.test(String(candidate.reason||''))))
+    return none;
  const s=dir(candidate.side),q=[];
  for(let i=quoteHistory.length-1;i>=0;i--){
   const row=quoteHistory[i],ts=Number(row?.ts),received=Number(row?.receivedAt??ts),p=Number(row?.price);
