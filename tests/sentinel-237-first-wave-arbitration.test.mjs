@@ -89,10 +89,13 @@ test('237: no guessed reversal from bare extreme or from missing historical proo
  const noFakeLevel=reviewFirstWaveCounterturn({...ctx,map:map([invalidated])});
  assert.equal(noFakeLevel.side,'CALL');
 });
-test('237: old native expiry and other durations remain unchanged',()=>{
- for(const durationMs of [30000,300000]){
-  assert.deepEqual(reviewFirstWaveCounterturn({...ctx,durationMs,map:map([z()])}),original);
- }
+test('239: 30s first-wave is authorized; 5m and native expiry remain untouched',()=>{
+ const thirty=reviewFirstWaveCounterturn({...ctx,durationMs:30000,map:map([z()])});
+ assert.equal(thirty.side,'PUT','the requested 30s now recognizes the verified first reversal');
+ assert.equal(verifiedFirstQuoteTurnAtLevel({
+  reversalEvidence:thirty.priceStructure.confirmedReversal,quoteHistory:quotes,quoteAt:AT,
+  now:AT,price,side:'PUT',durationMs:30000}),true);
+ assert.deepEqual(reviewFirstWaveCounterturn({...ctx,durationMs:300000,map:map([z()])}),original);
  const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
  const native=readFileSync(new URL('worker/broker-native-expiry-keeper.mjs',root),'utf8');
  const engine=readFileSync(new URL('src/core/now-opportunity-engine.mjs',root),'utf8');
