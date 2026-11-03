@@ -3,6 +3,7 @@ import {patchCurrentQuote} from './current-quote-readout.mjs';
 import {patchMarketTotals} from './market-totals-readout.mjs';
 import {marketDataStatus} from '../src/core/market-reading.mjs';
 import {preserveLiveQuotesOnCandleFailure230} from './same-asset-quote-preservation-230.mjs';
+import {trustedExpiryChoice230} from './native-expiry-choice-proof-230.mjs';
 import {marketReadingRowSizingTexts} from './market-reading-layout.mjs';
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
@@ -1524,10 +1525,16 @@ export class LocalPlaywrightDriver{
         const choice=receipt&&typeof receipt==='object'?receipt:{value:Number(receipt),selectedAt:0,explicitDefault:false};
         if(accepted.has(choice.value/1000))choices.push(choice);
       }
-      choices.sort((a,b)=>b.selectedAt-a.selectedAt||Number(b.explicitDefault)-Number(a.explicitDefault)||Number(b.value!==30000)-Number(a.value!==30000));
+      // 230: localStorage can contain a timestamped *inherited* 30s from
+      // a previous page refresh. Only an explicitly selected 30s receipt is
+      // allowed to overrule a durable 1m/5m Agent preference.
+      const trustedChoices=choices.filter(trustedExpiryChoice230);
+      trustedChoices.sort((a,b)=>b.selectedAt-a.selectedAt||
+       Number(b.explicitDefault)-Number(a.explicitDefault)||
+       Number(b.value!==30000)-Number(a.value!==30000));
       // A broker's unchosen reset to 30s has no selectedAt receipt.
       // Never let that default trump the Agent's last manual choice.
-      const best=choices[0],savedAt=Number(this.nativeExpirySelectedAt.get(provider)||0);
+      const best=trustedChoices[0],savedAt=Number(this.nativeExpirySelectedAt.get(provider)||0);
       // A page's default 30s WITHOUT a manual timestamp is NOT a choice.
       // On first Agent bootstrap this must not erase a saved 1m/5m runtime
       // preference. Timestamped user choices and explicit 30s are respected.
