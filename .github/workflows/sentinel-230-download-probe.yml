@@ -33,3 +33,17 @@ jobs:
             curl --location --head --silent --show-error --max-time 22 -o /tmp/sentinel-230-headers -w 'HTTP:%{http_code} SIZE:%{size_download} URL:%{url_effective}\n' "$url"
             grep -iE '^(HTTP/|location:|content-type:|content-length:|content-disposition:|x-vercel-error:|x-vercel-id:|server:)' /tmp/sentinel-230-headers | tail -18
           done
+
+      - name: Download full EXE from production and validate SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.229.exe
+          echo "Full direct EXE GET..."
+          curl --fail --location --retry 2 --show-error --silent --max-time 45 "$url" -o /tmp/sentinel-prod.exe
+          echo "Production EXE byte count: $(wc -c </tmp/sentinel-prod.exe)"
+          echo "Production EXE SHA256: $(sha256sum /tmp/sentinel-prod.exe | cut -d' ' -f1)"
+          cmp /tmp/sentinel-prod.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.229.exe
+          echo 'PASS: GitHub and production direct EXE byte-identical'
+          echo "Download markup candidates:"
+          git grep -n -E 'Sentinel-Agent-Windows[.]exe|Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+[.]exe|downloadError|download_error' -- sentinel-trading-lab/src | head -70 || true
