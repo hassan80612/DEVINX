@@ -68,7 +68,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: sentinel-246-expiry-only-windows-release-20261103
+  group: sentinel-246-expiry-only-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
