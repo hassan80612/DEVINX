@@ -7,6 +7,7 @@ on:
       - .github/workflows/sentinel-230-final-release-prebuild.yml
       - tests/sentinel-229-blue-live-market-phase.test.mjs
       - tests/sentinel-230-startup-and-download.test.mjs
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
       - sentinel-trading-lab/agent/src/core/runtime.mjs
       - sentinel-trading-lab/src/app/console/page.tsx
       - sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
@@ -28,6 +29,15 @@ jobs:
       - name: Install dependencies
         working-directory: sentinel-trading-lab
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Verify actual 230 EXE download responds with Windows PE binary, not HTML or redirect to login
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://raw.githubusercontent.com/hassan80612/DEVINX/fix/sentinel-230-fast-history-direct-exe-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.230.exe"
+          curl -fsSL --retry 2 --connect-timeout 10 --max-time 90 -r 0-1 -o /tmp/sentinel-230-check.exe "$url"
+          signature="$(head -c 2 /tmp/sentinel-230-check.exe | od -An -tx1 | tr -d ' \n')"
+          test "$signature" = "4d5a"
+          echo "Sentinel 230 direct raw EXE download: HTTP OK, Windows MZ signature verified"
       - name: Run exact production prebuild and Windows-tested EXE contract
         working-directory: sentinel-trading-lab
         run: |
