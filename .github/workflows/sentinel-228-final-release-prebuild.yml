@@ -6,6 +6,9 @@ on:
     paths:
       - .github/workflows/sentinel-228-final-release-prebuild.yml
       - tests/sentinel-228-market-reading-recovery.test.mjs
+      - tests/sentinel-196-189-decisions-expiry-preserved.test.mjs
+      - tests/sentinel-201-closed-price-admission.test.mjs
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
   workflow_dispatch:
 permissions:
   contents: read
