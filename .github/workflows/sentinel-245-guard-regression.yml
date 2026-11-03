@@ -1,0 +1,22 @@
+name: Sentinel 245 Isolated Entry Guard
+on:
+  push:
+    branches:
+      - fix/sentinel-245-fast-terminal-impulse-20261103
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify surgical 245 change
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/src/core/stretched-continuation-admission.mjs
+          node --test tests/sentinel-245-terminal-surge-admission.test.mjs tests/sentinel-236-multilevel-reversal-recognition.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs
