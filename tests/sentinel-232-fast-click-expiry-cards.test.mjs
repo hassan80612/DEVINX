@@ -64,7 +64,7 @@ test('232: all first-click real price, expiry and broker confirmation guards are
  assert.match(click,/if\(!order\.isValid\(\)\)/);
  assert.match(click,/const timeout=clickTimeout\(\);before\(\);await c\.frame\.locator/);
 });
-test('232: retain last verified three cards up to 90s, always labelled historical',()=>{
+test('232: retain historical market readings only within the existing 30s safety window',()=>{
  const body=readFileSync(new URL('../sentinel-trading-lab/agent/worker/market-totals-readout.mjs',import.meta.url),'utf8');
  assert.match(body,/saved\?\.contextKey===contextKey/);
  assert.match(body,/Date\.now\(\)-Number\(saved\.at\)<=90000/);
