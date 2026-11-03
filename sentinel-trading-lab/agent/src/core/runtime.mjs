@@ -1064,12 +1064,12 @@ export class DemoTradingRuntime{
     }this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
   }
   clearExecutionError(actor='master'){if(actor!=='master')throw new Error('master_required');this.state.executionError=false;if(this.stateName==='error')this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'execution_error.clear'});return this.status()}
-  _riskState(now){
+  _riskState(now,snapshot=null){
     const tz=this.settings.schedule.timezone||'UTC',today=dayKey(now,tz);
     const todayTrades=this.trades.filter(t=>dayKey(new Date(t.closedAt||t.openedAt).getTime(),tz)===today),hourAgo=now-3600000;
     const sessionBase=Math.max(0,Number(this.state.sessionTradeStartCount||0)),tradesSession=Math.max(0,this.trades.length-sessionBase);
     return{killSwitch:this.killSwitch,botFrozen:this.masterFrozen,brokerConnected:this.settings.requireLiveBroker?!!this.externalMarket?.provider&&this.externalMarket?.feedValidated!==false:this.broker.connected,engineHealthy:now-this.lastHeartbeat<10_000,
-      feedLatencyMs:Math.max(0,now-(this._marketSnapshot().quoteTs||now)),tradesToday:todayTrades.length,tradesLastHour:this.trades.filter(t=>new Date(t.openedAt).getTime()>=hourAgo).length,tradesSession,
+      feedLatencyMs:Math.max(0,now-((snapshot||this._marketSnapshot()).quoteTs||now)),tradesToday:todayTrades.length,tradesLastHour:this.trades.filter(t=>new Date(t.openedAt).getTime()>=hourAgo).length,tradesSession,
       maxTradesPerSession:this.settings.risk.maxTradesPerSession,maxTradesPerDay:this.settings.risk.maxTradesPerDay,maxTradesPerHour:this.settings.risk.maxTradesPerHour,consecutiveLosses:this.state.consecutiveLosses,maxConsecutiveLosses:this.settings.risk.maxConsecutiveLosses,
       dailyPnl:todayTrades.reduce((s,t)=>s+Number(t.pnl||0),0),maxDailyLoss:this.settings.risk.maxDailyLoss,dailyProfitTarget:this.settings.risk.dailyProfitTarget,drawdownPct:this.state.drawdownPct,
       maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
@@ -1847,6 +1847,9 @@ export class DemoTradingRuntime{
     return
   }
   _settleDue(now){
+    // No settlement is due on most live quote ticks. Avoid cloning the full
+    // 1m/5m broker history when this function has nothing to settle.
+    if(!this.pending.some(p=>Number(p.settleAt)<=now))return;
     const price=this._marketSnapshot().price;
     for(const p of [...this.pending]){
       if(p.settleAt>now)continue;
@@ -1889,13 +1892,15 @@ export class DemoTradingRuntime{
     if(liveContinuous&&this.nextEvalMs>now+1000)this.nextEvalMs=now;
     if(now<this.nextEvalMs)return reply();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=this.immediateEvaluationSerial!==requestSerialAtStart?0:nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return reply()}if(!this.externalMarket)this.feed.tick(now);
     try{
-      const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
+      // Reuse the SAME immutable market snapshot for the whole quote decision.
+      // A new broker tick will request a fresh cycle, not mutate this receipt.
+      const snap=this.externalMarket?market:this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
       const brokerMode=String(this.externalMarket?.brokerMode||this.externalMarket?.mode||'').toLowerCase();
       const canUseExternalDemo=this.settings.mode==='demo'&&brokerMode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;
       const pendingExternalDemo=this.pending.some(p=>p.external===true&&Number(p.settleAt||0)>now);
       const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;
       const cycleSettings={...this.settings,demoAutopilot:false};
-      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
+      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now,snap),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       let strategyPanel=null;
       if(result.analysis&&!result.analysis.operationalSignal){
         strategyPanel=this._strategyPanel(snap,now);
