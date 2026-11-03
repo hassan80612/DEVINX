@@ -12,7 +12,7 @@ const fileName='Sentinel-Agent-'+release.version+'.exe';
 const url='/downloads/'+fileName;
 const page=read('src/app/console/page.tsx').toString('utf8');
 
-test('240: all three visible PC EXE buttons download from the site itself',()=>{
+test('240: primary EXE uses 239-tested GitHub raw transport and 240 pinned binary',()=>{
  assert.equal(release.version,'13.9.240');
  assert.match(page,/const AGENT_DOWNLOAD_URL=`\/downloads\/Sentinel-Agent-\$\{encodeURIComponent\(AVAILABLE_AGENT_VERSION\)\}\.exe`/);
  assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`https?:/);
@@ -32,7 +32,7 @@ test('240: same-origin URL is a versioned immutable REAL Windows PE and matches 
  assert.equal(proof.version,release.version);
 });
 
-test('240: site config delivers binary with download headers and does not redirect it',async()=>{
+test('240: same-origin fallback still has binary headers and no redirect',async()=>{
  const [headers,redirects]=await Promise.all([nextConfig.headers(),nextConfig.redirects()]);
  const matching=headers.find(x=>x.source===url);
  assert.ok(matching,'missing exact versioned EXE headers');
