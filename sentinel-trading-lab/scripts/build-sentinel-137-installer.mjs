@@ -31,7 +31,7 @@ mkdirSync(dl,{recursive:true});
 // 247: keep 244 trading motor unchanged; web deploy must use only its matching
 // Windows-tested 247 executable and ZIP, never rebuild or relabel old assets.
 if(release.version==='13.9.247'&&process.env.SENTINEL_247_BUILD_VERIFIED_ASSETS!=='1'){
- const proof=JSON.parse(readFileSync(join(dl,'sentinel-244-verified.json'),'utf8'));
+ const proof=JSON.parse(readFileSync(join(dl,'sentinel-247-verified.json'),'utf8'));
  if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
   throw Error('sentinel_247_release_provenance_mismatch');
  const hash=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
