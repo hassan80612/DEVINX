@@ -113,6 +113,12 @@ export function reviewFirstWaveCounterturn({
      candidate.side!==arming[0].side)
    return {...candidate,ready:false,side:null,provisionalSide:arming[0].side,
      reason:'terminal-spike-at-proven-wall-awaiting-first-rejection',
+     // One decisive market assessment in the UI: the old impulse is still
+     // rising/falling but a verified wall is ARMED. This is observation,
+     // never CALL/PUT AGORA and never a broker order before rejection.
+     marketPhase:'reversal-testing',
+     marketPhaseLabel:'REVERSÃO CONTRÁRIA EM OBSERVAÇÃO',
+     marketTrendSide:arming[0].side,
      spikeAnticipation:{state:'armed',side:arming[0].side,
       at,level:arming[0].level,velocity3:arming[0].velocity3}};
   return candidate;
