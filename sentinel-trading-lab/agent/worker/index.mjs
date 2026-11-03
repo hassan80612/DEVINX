@@ -573,6 +573,24 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // selection, synthetic quote, order click, or extra waiting for valid trades.
   retryAlreadyOpenMarketIfMissing(loopNow);
   executor.pulse();
+  // Measure decision timing before any deferred UI or persistence work.
+  const tickElapsed=Date.now()-tickStarted;
+  evaluationPerformance.lastMs=tickElapsed;
+  evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?
+    evaluationPerformance.averageMs*.8+tickElapsed*.2:tickElapsed);
+  if(tickElapsed>500)evaluationPerformance.slowCount++;
+  const liveQuoteAt=Number(runtime.externalMarket?.lastQuoteAt||0);
+  evaluationPerformance.lastQuoteToDecisionAgeMs=liveQuoteAt>0?
+    Math.max(0,Date.now()-liveQuoteAt):null;
+  const fired=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor;
+  if(fired?.phase==='fired'&&Number(fired.entryTriggeredAt)>evaluationPerformance.lastEntryEventAt){
+    evaluationPerformance.lastEntryEventAt=Number(fired.entryTriggeredAt);
+    // Previous plannedEntryAt was assigned equal to entryTriggeredAt, so it
+  // always reported 0ms even if a genuine broker quote became stale. Measure
+  // the real source quote -> analyst release instead (no entry gating).
+  evaluationPerformance.lastEntryTimingDelayMs=Number(fired.sourceQuoteAt)>0?
+      Math.max(0,Number(fired.entryTriggeredAt)-Number(fired.sourceQuoteAt)):null;
+  }
   // Push the post-decision state before optional broker maintenance so a
   // mobile viewer never waits for a DOM recovery pass.
   void publishLiveFrame();
@@ -606,23 +624,6 @@ function runPostDecisionWork(tickStarted){
       lastBrokerMaintainAt=maintenanceNow;
       scheduleBrokerMaintenance(activeProvider);
     }
-  }
-  const tickElapsed=Date.now()-tickStarted;
-  evaluationPerformance.lastMs=tickElapsed;
-  evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?
-    evaluationPerformance.averageMs*.8+tickElapsed*.2:tickElapsed);
-  if(tickElapsed>500)evaluationPerformance.slowCount++;
-  const liveQuoteAt=Number(runtime.externalMarket?.lastQuoteAt||0);
-  evaluationPerformance.lastQuoteToDecisionAgeMs=liveQuoteAt>0?
-    Math.max(0,Date.now()-liveQuoteAt):null;
-  const fired=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor;
-  if(fired?.phase==='fired'&&Number(fired.entryTriggeredAt)>evaluationPerformance.lastEntryEventAt){
-    evaluationPerformance.lastEntryEventAt=Number(fired.entryTriggeredAt);
-    // Previous plannedEntryAt was assigned equal to entryTriggeredAt, so it
-  // always reported 0ms even if a genuine broker quote became stale. Measure
-  // the real source quote -> analyst release instead (no entry gating).
-  evaluationPerformance.lastEntryTimingDelayMs=Number(fired.sourceQuoteAt)>0?
-      Math.max(0,Number(fired.entryTriggeredAt)-Number(fired.sourceQuoteAt)):null;
   }
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,
       runtime.settings.engine?null:runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
@@ -794,7 +795,7 @@ setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal||recordTradeAudit,fullMarketEnabled:recordMarketJournal,tradeAuditEnabled:recordTradeAudit},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
-    timingDiagnostics:{evaluation:{...evaluationPerformance},brokerMaintenance:{...brokerMaintenancePerformance}},
+    timingDiagnostics:{evaluation:{...evaluationPerformance},admission:runtime.entryLatencyEvidence||null,brokerMaintenance:{...brokerMaintenancePerformance}},
     sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app','https://trading.devinx.com.br','https://sentinel.devinx.com.br'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
