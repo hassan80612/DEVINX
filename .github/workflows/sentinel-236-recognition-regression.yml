@@ -1,0 +1,28 @@
+name: Sentinel 236 Early Counterturn Recognition
+on:
+  push:
+    branches:
+      - fix/sentinel-236-multilevel-early-turn-recognition-20261103
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/early-reversal-transition.mjs'
+      - 'sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs'
+      - 'tests/sentinel-236-multilevel-reversal-recognition.test.mjs'
+      - '.github/workflows/sentinel-236-recognition-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check first-turn recognizers
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/src/core/early-reversal-transition.mjs
+          node --check sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs
+          node --test tests/sentinel-236-multilevel-reversal-recognition.test.mjs tests/sentinel-235-first-turn-before-candle-flip.test.mjs tests/sentinel-227-impulse-reversal-and-visuals.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs
