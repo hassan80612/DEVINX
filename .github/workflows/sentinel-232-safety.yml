@@ -1,0 +1,42 @@
+name: Sentinel 232 - fast safe click and persistent expiry safety
+on:
+  push:
+    branches:
+      - fix/sentinel-232-fast-safe-click-blue-20261102
+    paths:
+      - '.github/workflows/sentinel-232-safety.yml'
+      - 'sentinel-trading-lab/agent/worker/broker-ui-executor.mjs'
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
+      - 'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'
+      - 'sentinel-trading-lab/agent/worker/market-totals-readout.mjs'
+      - 'sentinel-trading-lab/agent/worker/live-market-readout-229.mjs'
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
+      - 'tests/sentinel-232-fast-click-expiry-cards.test.mjs'
+      - 'tests/sentinel-231-blue-readout-separation.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fast broker click, expiry and UI regression
+        run: |
+          node --check sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-232-fast-click-expiry-cards.test.mjs tests/sentinel-231-blue-readout-separation.test.mjs tests/sentinel-229-blue-live-market-phase.test.mjs tests/sentinel-230-startup-and-download.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs
+      - name: Full legacy engine and site prebuild
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run prebuild
+          npx tsc --noEmit --pretty false
+      - name: Preserve exact 230 trading runtime, signal decision, expiry selection and risk logic
+        run: |
+          git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
+          git diff --exit-code FETCH_HEAD -- sentinel-trading-lab/agent/src/core/runtime.mjs sentinel-trading-lab/agent/worker/index.mjs sentinel-trading-lab/agent/worker/signal-executor.mjs sentinel-trading-lab/agent/worker/live-quote-entry-review.mjs sentinel-trading-lab/agent/worker/entry-direction-before-click.mjs sentinel-trading-lab/agent/worker/native-expiry-resume-228.mjs
