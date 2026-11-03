@@ -5,13 +5,14 @@ const SUPABASE_URL=process.env.SENTINEL_SUPABASE_URL||'https://vwczyqvptziyseage
 const PUBLIC_KEY='sb_publishable_ubJ_fSkmRa68XPdrV_8Q5A_dcYTRWWj';
 const wsUrl=SUPABASE_URL.replace(/^http/,'ws')+'/realtime/v1/websocket?apikey='+encodeURIComponent(PUBLIC_KEY)+'&vsn=1.0.0';
 
+const take=(obj,keys)=>Object.fromEntries(keys.filter(k=>obj?.[k]!==undefined).map(k=>[k,obj[k]]));
+
 export function analystSnapshot(runtimeStatus,live){
   const analysis=runtimeStatus?.lastResult?.analysis||{};
   const op=analysis.operationalSignal||{};
   const gc=analysis.generalConsensus||{};
   const horizon=runtimeStatus?.settings?.engine?Number(runtimeStatus?.settings?.orderDurationMs||60000)/1000:Number(runtimeStatus?.settings?.forecastHorizonSeconds||60);
   const forecast=analysis.entryPlanner?.horizons?.[String(horizon)]||null;
-  const take=(obj,keys)=>Object.fromEntries(keys.filter(k=>obj?.[k]!==undefined).map(k=>[k,obj[k]]));
   const allowed=v=>v!=null&&typeof v==='object'?v:{};
   const scenario=take(op.scenario,['side','status','closed','createdAt','deadline','confidence']);
   const sub=take(op.subanalyst,['mode','active','status','checkedAt']);
