@@ -7,6 +7,9 @@ on:
       - .github/workflows/sentinel-230-final-release-prebuild.yml
       - tests/sentinel-229-blue-live-market-phase.test.mjs
       - tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs
+      - tests/sentinel-230-native-expiry-default-proof.test.mjs
+      - sentinel-trading-lab/agent/worker/native-expiry-choice-proof-230.mjs
+      - sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
       - sentinel-trading-lab/agent/src/core/verified-market-warmup-230.mjs
       - sentinel-trading-lab/agent/worker/same-asset-quote-preservation-230.mjs
       - tests/helpers/sentinel-230-normalize-warmup.mjs
@@ -33,7 +36,7 @@ jobs:
         working-directory: sentinel-trading-lab
         run: |
           npm run prebuild
-          node --test ../tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs ../tests/sentinel-229-blue-live-market-phase.test.mjs ../tests/sentinel-228-market-reading-recovery.test.mjs ../tests/sentinel-227-impulse-reversal-and-visuals.test.mjs
+          node --test ../tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs ../tests/sentinel-230-native-expiry-default-proof.test.mjs ../tests/sentinel-229-blue-live-market-phase.test.mjs ../tests/sentinel-228-market-reading-recovery.test.mjs ../tests/sentinel-227-impulse-reversal-and-visuals.test.mjs
           npx tsc --noEmit --pretty false
       - name: Check 230 provenance and 30s 1m 5m expiry files
         run: |
