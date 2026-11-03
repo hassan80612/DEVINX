@@ -10,6 +10,11 @@ on:
       - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
       - 'sentinel-trading-lab/agent/worker/same-asset-quote-preservation-230.mjs'
       - 'tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs'
+      - 'tests/sentinel-230-native-expiry-default-proof.test.mjs'
+      - 'tests/helpers/sentinel-230-normalize-expiry-keeper.mjs'
+      - 'tests/sentinel-201-closed-price-admission.test.mjs'
+      - 'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'
+      - 'sentinel-trading-lab/agent/worker/native-expiry-choice-proof-230.mjs'
       - 'tests/sentinel-196-189-decisions-expiry-preserved.test.mjs'
       - 'tests/sentinel-201-closed-price-admission.test.mjs'
   workflow_dispatch:
@@ -31,7 +36,7 @@ jobs:
         run: |
           node --check sentinel-trading-lab/agent/src/core/runtime.mjs
           node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
-          node --test tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs tests/sentinel-228-market-reading-recovery.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs
+          node --test tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs tests/sentinel-230-native-expiry-default-proof.test.mjs tests/sentinel-228-market-reading-recovery.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs
       - name: Full production prebuild and TypeScript
         working-directory: sentinel-trading-lab
         run: |
@@ -40,4 +45,13 @@ jobs:
       - name: Require original native expiry modules untouched
         run: |
           git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
-          git diff --exit-code FETCH_HEAD -- sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs sentinel-trading-lab/agent/worker/index.mjs sentinel-trading-lab/agent/worker/signal-executor.mjs sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+          git diff --exit-code FETCH_HEAD -- sentinel-trading-lab/agent/worker/index.mjs sentinel-trading-lab/agent/worker/signal-executor.mjs sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          import {normalize230NativeKeeper} from './tests/helpers/sentinel-230-normalize-expiry-keeper.mjs';
+          const p='sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
+          const original=execFileSync('git',['show','FETCH_HEAD:'+p],{encoding:'utf8'});
+          const actual=normalize230NativeKeeper(readFileSync(p,'utf8'));
+          if(actual!==original)throw Error('Native expiry keeper changed beyond reviewed 30s proof');
+          NODE
