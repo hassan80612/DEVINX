@@ -1,6 +1,6 @@
 {
-  "version": "13.9.242",
-  "build": "13.9.242-bold-spike-reversal-expiry-durable",
+  "version": "13.9.243",
+  "build": "13.9.243-active-spike-regime-early-reversal",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.242"
+  "publicVersion": "13.9.243"
 }
