@@ -22,6 +22,7 @@ import {observedQuoteWindow} from './observed-quote-window.mjs';
 import {specialistLevelRoleRisk} from './level-role-evidence.mjs';
 import {reviewFreshPullbackContinuation} from './early-continuation-226.mjs';
 import {reviewFirstImpulseReversal} from './impulse-lifecycle-227.mjs';
+import {reviewFirstWaveCounterturn} from './first-wave-counterturn-237.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -552,8 +553,14 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const impulseTurn=reviewFirstImpulseReversal({
     candidate:earlyTurn,map:structure.candleLevelMap,candles,...input
   });
+  // An independent first observed counter-wave at a historically proven wall
+  // must compete BEFORE the former continuation gets final admission. Still
+  // require real current quote rejection; no opposite order from proximity.
+  const firstWave=reviewFirstWaveCounterturn({
+    candidate:impulseTurn,map:structure.candleLevelMap,...input
+  });
   const located=reviewFreshPullbackContinuation({
-    candidate:impulseTurn,quoteHistory,quoteAt,now,price,durationMs
+    candidate:firstWave,quoteHistory,quoteAt,now,price,durationMs
   });
   delete located.pendingForecast;
   const sequenceReaction=located.priceStructure?.observedSequence;
