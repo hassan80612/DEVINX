@@ -2,6 +2,7 @@
 // Only REAL, already-observed negative evidence may veto a candidate.
 // No timers, quote polling, synthetic opposite signals or broker UI writes.
 import {proveLevelRejectionAtExpiry} from './causal-level-rejection-proof.mjs';
+import {verifiedFirstQuoteTurnAtLevel} from './shared-pivot-guard.mjs';
 const HORIZONS=new Set([30000,60000,300000]);
 const SIDES=new Set(['CALL','PUT']);
 const REVERSALS=new Set([
@@ -99,7 +100,17 @@ export function reviewOneMinuteRejectionProof({
  }
  // Already-qualified independent fast/structural 30s reversals are not
  // blocked for missing horizon proof; only explicit fresh opposing price.
- if(liveContradiction({side:candidate.side,quoteHistory,quoteAt:at,now:clock,price:spot,durationMs:ms}))
+ // The old 3/6/12s or 4/10/20s trend is expected to oppose the FIRST
+ // reversal tick at a proven wall. It must not veto a separately verified
+ // two-tick 239 terminal-spike rejection. All other reversals retain the
+ // previous horizon-specific negative-evidence protection.
+ const spikeProof=candidate.priceStructure?.confirmedReversal;
+ const earlySpike=candidate.reason==='confirmed-level-structure-reversal'&&
+  spikeProof?.earlyLevelProof?.source==='terminal-spike-first-wave-239'&&
+  candidate.earlyTurnEvidence?.firstWave===true&&
+  verifiedFirstQuoteTurnAtLevel({reversalEvidence:spikeProof,
+   quoteHistory,quoteAt:at,now:clock,price:spot,side:candidate.side,durationMs:ms});
+ if(liveContradiction({side:candidate.side,quoteHistory,quoteAt:at,now:clock,price:spot,durationMs:ms})&&!earlySpike)
   return veto(candidate,ms,'current-price-opposes-reversal',null);
  return candidate;
 }
