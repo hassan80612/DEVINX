@@ -2,7 +2,7 @@ name: Sentinel 234 verified Windows Agent release
 on:
   push:
     branches:
-      - fix/sentinel-234-direct-signal-mobile-blue-20261102
+      - fix/sentinel-234-early-decision-latency-20261102
     paths:
       - .github/workflows/sentinel-234-verified-agent-release.yml
       - .github/workflows/sentinel-234-safety.yml
