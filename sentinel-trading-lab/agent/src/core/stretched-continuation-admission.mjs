@@ -6,7 +6,8 @@ import {entryFamilyOf} from './entry-family.mjs';
 
 export const STRETCHED_CONTINUATION_POLICY=Object.freeze({
   durationMs:60000, quoteMaxAgeMs:1950, historyMs:60000,
-  minimumSamples:40, extremeFraction:.10, twentySecondRangeFraction:.40
+  minimumSamples:40, extremeFraction:.10, twentySecondRangeFraction:.40,
+  twelveSecondRangeFraction:.25
 });
 const atOrBefore=(rows,target)=>{
   for(let i=rows.length-1;i>=0;i--)if(rows[i].ts<=target)return rows[i];
@@ -31,7 +32,8 @@ export function reviewStretchedContinuationEntry({
     .sort((a,b)=>a.ts-b.ts);
   if(rows.length<STRETCHED_CONTINUATION_POLICY.minimumSamples||
      rows.at(-1).ts!==at||rows.at(-1).price!==spot)return candidate;
-  const a60=atOrBefore(rows,at-60000),a20=atOrBefore(rows,at-20000);
+  const a60=atOrBefore(rows,at-60000),a20=atOrBefore(rows,at-20000),
+    a12=atOrBefore(rows,at-12000);
   if(!a60||!a20||at-60000-a60.ts>2500||at-20000-a20.ts>2500)return candidate;
   const window=rows.filter(q=>q.ts>=at-60000);
   const uniqueTimes=new Set(window.map(q=>q.ts));
@@ -45,7 +47,12 @@ export function reviewStretchedContinuationEntry({
   const nearEdge=distanceFromDirectionalEdge>=0&&
     distanceFromDirectionalEdge<=range*STRETCHED_CONTINUATION_POLICY.extremeFraction;
   const stretched=recentMove>=range*STRETCHED_CONTINUATION_POLICY.twentySecondRangeFraction;
-  if(!nearEdge||!stretched)return candidate;
+  // Fast terminal surges can cover most of a 1m local swing in ~12s,
+  // while the previous 20s gate misses a recent direction change.
+  // This is a VETO on chasing the present edge, never an opposite trade.
+  const fastSurge=a12&&at-12000-a12.ts<=2500&&
+    dir*(spot-a12.price)>=range*STRETCHED_CONTINUATION_POLICY.twelveSecondRangeFraction;
+  if(!nearEdge||!(stretched||fastSurge))return candidate;
   // WAIT for this specific quote, not a timed lock. A subsequent independently
   // qualified setup (including a confirmed reversal) can be reconsidered.
   return {...candidate,ready:false,side:null,provisionalSide:candidate.side,
@@ -53,5 +60,6 @@ export function reviewStretchedContinuationEntry({
     entryRisk:{kind:'causal-stretched-continuation',blocked:true,
       details:{durationMs:60000,range60:Number(range.toPrecision(8)),
         edgeFraction:Number((distanceFromDirectionalEdge/range).toFixed(4)),
-        movement20Fraction:Number((recentMove/range).toFixed(4))}}};
+        movement20Fraction:Number((recentMove/range).toFixed(4)),
+        fastSurge12s:Boolean(fastSurge)}}};
 }
