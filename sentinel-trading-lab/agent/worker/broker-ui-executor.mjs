@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {normalizeCanvasBinding,canvasControlBridge} from './canvas-executor-targets.mjs';
 import {readBrokerTradeStake,locateBrokerInvestRecovery} from './broker-trade-stake.mjs';
-import {observeNativeExpiryForClick,verifyBrokerExpiryForOrder} from './broker-native-expiry-keeper.mjs';
+import {inspectNativeExpiryBeforeClick,observeNativeExpiryForClick,verifyBrokerExpiryForOrder} from './broker-native-expiry-keeper.mjs';
 const finite=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x));
 const clean=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const errorBefore=message=>Object.assign(new Error(message),{beforeClick:true});
@@ -301,9 +301,24 @@ export class BrokerUiExecutor{
    this.checkContext(provider,order);const c=await this.controls(provider);
    // Picker observations never authorize or veto an order. Suspend idle
    // maintenance and copy its already cached telemetry, if available.
-   let nativeExpiry=null;
+   // The broker can silently reset to 30s AFTER the last idle report.
+   // Re-read the actual expiry field on the click-owning frame NOW, then
+   // merge it with the already available cross-frame observations. This
+   // read never clicks/changes the picker or adds a waiting timer.
+   let directNativeExpiry=null,nativeExpiry=null;
+   try{directNativeExpiry=await c.frame.evaluate(inspectNativeExpiryBeforeClick,
+    {requiredDurationMs:Number(order.durationMs)})}catch{}
    try{nativeExpiry=await c.frame.evaluate(observeNativeExpiryForClick,
     {provider,requiredDurationMs:Number(order.durationMs)})}catch{}
+   // A fresh known native duration outranks a possibly stale 5s status.
+   // Unknown never overwrites a known direct reading, and a known 30s
+   // cannot pass as a 1m/5m order merely because another frame said 1m.
+   if(Number(directNativeExpiry?.currentMs)>0)
+    nativeExpiry={...(nativeExpiry||{}),currentMs:Number(directNativeExpiry.currentMs),
+      observedAt:directNativeExpiry.observedAt,
+      preferredMs:directNativeExpiry.preferredMs??nativeExpiry?.preferredMs??null,
+      discoveryReason:directNativeExpiry.reason??nativeExpiry?.discoveryReason??null,
+      measuredOnClickFrame:true};
    // Manual/fixed-direction operation path is preserved. Automatic signals
    // may be analysed without a mapped field, but cannot wager against a
    // guessed expiration (live audits showed selected 1m, actual ~30s).
