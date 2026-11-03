@@ -1,0 +1,28 @@
+name: Sentinel 240 direct Windows EXE download regression
+on:
+  push:
+    branches:
+      - fix/sentinel-240-direct-exe-same-origin-20261103
+    paths:
+      - '.github/workflows/sentinel-240-direct-download-check.yml'
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'tests/sentinel-230-startup-and-download.test.mjs'
+      - 'tests/sentinel-240-same-origin-exe-download.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate same-origin direct EXE and unchanged installer bytes
+        run: |
+          set -euo pipefail
+          node --check tests/sentinel-240-same-origin-exe-download.test.mjs
+          node --check tests/sentinel-230-startup-and-download.test.mjs
+          node --test tests/sentinel-240-same-origin-exe-download.test.mjs tests/sentinel-230-startup-and-download.test.mjs tests/sentinel-222-release-exe-contract.test.mjs tests/sentinel-1395-installer-download-middleware.test.mjs
