@@ -28,6 +28,29 @@ mkdirSync(dl,{recursive:true});
 // Sentinel 238: refuse EXE/ZIP replacement unless Windows-run hashes match exactly.
 // Sentinel 239: refuse site deployment without exact 239 Windows-tested EXE and ZIP.
 // Sentinel 240: refuse deployment without matching Windows-tested binaries and manifest.
+// Version 246 web builds may only reuse exact Windows-tested binaries.
+// No fallback recompilation or version masquerading is permitted on Vercel.
+if(release.version==='13.9.246'&&process.env.SENTINEL_246_BUILD_VERIFIED_ASSETS!=='1'){
+ const proof=JSON.parse(readFileSync(join(dl,'sentinel-244-verified.json'),'utf8'));
+ if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
+  throw Error('sentinel_246_release_provenance_mismatch');
+ const hash=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
+ for(const name of ['Sentinel-Agent-13.9.246.exe','Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
+  if(statSync(join(dl,name)).size<1000000||hash(name)!==proof.exeSha256)
+   throw Error('sentinel_246_windows_tested_exe_mismatch:'+name);
+ }
+ if(statSync(join(dl,'agent_payload_v88.zip')).size<50000||hash('agent_payload_v88.zip')!==proof.zipSha256)
+  throw Error('sentinel_246_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==proof.zipSha256)
+  throw Error('sentinel_246_manifest_mismatch');
+ for(const name of ['Sentinel-Agent-13.9.246-EXE.zip','Sentinel-Agent-13.9.246-Alternativo.zip']){
+  if(statSync(join(dl,name)).size<50000)throw Error('sentinel_246_download_archive_missing:'+name);
+ }
+ console.log('Sentinel 246: exact Windows-tested EXE and verified matching Agent ZIP preserved for site deployment.');
+ process.exit(0);
+}
+
 if(release.version==='13.9.244'&&process.env.SENTINEL_244_BUILD_VERIFIED_ASSETS!=='1'){
  const proof=JSON.parse(readFileSync(join(dl,'sentinel-244-verified.json'),'utf8'));
  if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
