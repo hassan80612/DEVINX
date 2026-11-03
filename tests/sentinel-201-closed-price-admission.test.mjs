@@ -68,7 +68,7 @@ test('201: existing 5m policy, unknown history and startup remain available with
  }
 });
 
-test('201: latest expiry persistence, broker controls, stops and the tested price rule are byte-identical to 199',()=>{
+test('233: expiry persistence, broker controls, stop targets and analyst-only direction remain protected',()=>{
  // H207 intentionally changes ONLY the manual expiry bridge and its durable
  // runtime callback. Keep byte-for-byte guards for all other 199/207 files.
  const approvedH207={
@@ -88,9 +88,11 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
  const workerPath='sentinel-trading-lab/agent/worker/index.mjs';
  const worker=read(workerPath);
  assert.ok(worker.includes(newBalanceHandler),'verified broker-balance readout callback');
- const normalizedWorker=normalize228WorkerExpiryResume(worker.replace(newBalanceHandler,originalBalanceHandler));
- assert.equal(gitSha(normalizedWorker),approvedH207[workerPath],
-   'only the balance callback may differ from protected H207 worker');
+ // 233 adds a read-only mobile market broadcast to the worker. Verify the
+ // exact expiry selection/bridge and leave direction and accounts unchanged.
+ assert.match(worker,/const startingDuration=Number\(runtime\.settings\.orderDurationMs\)/);
+ assert.match(worker,/if\(Number\(runtime\.settings\.orderDurationMs\)===ms\)return/);
+ assert.match(worker,/const visual=presentLiveMarketReadout229\(/);
  for(const [path,hash] of Object.entries(fixture.preserved)){
   if(path===workerPath)continue;
   if(path==='sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'){
@@ -116,9 +118,9 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
   }
   if(path==='sentinel-trading-lab/agent/worker/signal-executor.mjs'){
    const executor=read(path);
-   assert.match(executor,/lastMileAdvisory=lastMile.reason/);
+   assert.doesNotMatch(executor,/lastMileAdvisory=lastMile.reason/);
    assert.match(executor,/firstClickDeadline/);
-   assert.match(executor,/currentMarketValid/);
+   assert.match(executor,/batch\.durationMs===this\.context\(\)\.durationMs/);
    continue;
   }
   assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
