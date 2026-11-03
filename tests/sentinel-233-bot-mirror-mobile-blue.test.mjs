@@ -19,7 +19,10 @@ for(const side of ['CALL','PUT'])test('233: bot mirrors confirmed '+side+' witho
  }};
  const bot=new SignalExecutor({clock:()=>T,context:()=>context,driver});
  bot.configure({directionMode:'automatic',amount:1,stopLoss:0,stopWin:0,martingaleEnabled:false});
- await bot.start();bot.pulse();await bot.inflight;
+ const signal=context.analysis.vnext.futureEntryAnchor;
+ context.analysis.vnext.futureEntryAnchor=null;
+ await bot.start();context.analysis.vnext.futureEntryAnchor=signal;
+ bot.pulse();await bot.inflight;
  assert.deepEqual(actual,[side]);
  bot.pulse();await bot.inflight;assert.deepEqual(actual,[side],'never duplicate');
 });
