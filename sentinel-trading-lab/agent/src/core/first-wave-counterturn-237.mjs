@@ -6,6 +6,13 @@ import {entryFamilyOf} from './entry-family.mjs';
 const direction=x=>x==='CALL'?1:x==='PUT'?-1:0;
 const median=values=>{const a=[...values].sort((x,y)=>x-y);return a[Math.floor(a.length/2)]||0;};
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
+// The 30s selected-cycle forecast is a CONTINUATION, not an independent
+// structural reversal. Its historical reason was missing from the family
+// table, so it bypassed the 239 first-wave arbitration altogether.
+// Fix only local arbitration: do NOT alter saved entry-family preferences.
+const isContinuation=c=>entryFamilyOf(c)==='continuation'||
+ ['observed-trend-and-30s-cycle-projection','causal-completed-pattern-outcomes',
+  'validated-structure-over-cycle'].includes(String(c?.reason||''));
 export function reviewFirstWaveCounterturn({
  candidate,map,quoteHistory=[],quoteAt,now=quoteAt,price,durationMs
 }={}){
@@ -13,7 +20,7 @@ export function reviewFirstWaveCounterturn({
  // Only the 30s/1m first-wave routes; 5m, older approved reversals and
  // expiry selection remain unchanged. Never guess a side from speed alone.
  if(![30000,60000].includes(Number(durationMs))||!candidate||
-    (candidate.ready===true&&entryFamilyOf(candidate)!=='continuation')||
+    (candidate.ready===true&&!isContinuation(candidate))||
     !positive(spot)||!(at>0&&clock>=at&&clock-at<=(Number(durationMs)===30000?1450:1950))||
     !(map?.observedCandles>=20&&Number(map.asOf)>0&&Number(map.asOf)<=at&&
       at-Number(map.asOf)<=180000&&tol>0&&Array.isArray(map.levels)))return candidate;
@@ -102,7 +109,7 @@ export function reviewFirstWaveCounterturn({
   // BEFORE the peak. No forced PUT/CALL until the first price rejection.
   if(signals.length===0&&arming.length&&
      new Set(arming.map(x=>x.side)).size===1&&
-     candidate.ready===true&&entryFamilyOf(candidate)==='continuation'&&
+     candidate.ready===true&&isContinuation(candidate)&&
      candidate.side!==arming[0].side)
    return {...candidate,ready:false,side:null,provisionalSide:arming[0].side,
      reason:'terminal-spike-at-proven-wall-awaiting-first-rejection',
