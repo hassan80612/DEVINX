@@ -35,6 +35,7 @@ test('234: overlay, journal and maintenance leave the busy quote-decision lock',
 });
 test('234: admission telemetry is read-only and measures source quote age and final-block waiting',()=>{
   assert.match(runtime,/const blockedProposal=proposalReady&&eligible\.ready!==true/);
+  assert.match(runtime,/sourceQuoteAgeMs:Math\.max\(0,now-Number\(snap\.quoteTs\|\|now\)\)/);
   assert.match(runtime,/status:blockedProposal\?'final-guard-blocked'/);
   assert.match(runtime,/waitingMs:blockedProposal\?Math\.max\(0,now-firstSeenAt\):0/);
   assert.match(worker,/admission:runtime\.entryLatencyEvidence\|\|null/);
