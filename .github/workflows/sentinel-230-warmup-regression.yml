@@ -1,0 +1,43 @@
+name: Sentinel 230 - fast real market warmup and 3-expiry safety
+on:
+  push:
+    branches:
+      - fix/sentinel-230-rapid-feed-recovery-direct-exe-20261102
+    paths:
+      - '.github/workflows/sentinel-230-warmup-regression.yml'
+      - 'sentinel-trading-lab/agent/src/core/runtime.mjs'
+      - 'sentinel-trading-lab/agent/src/core/verified-market-warmup-230.mjs'
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
+      - 'sentinel-trading-lab/agent/worker/same-asset-quote-preservation-230.mjs'
+      - 'tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs'
+      - 'tests/sentinel-196-189-decisions-expiry-preserved.test.mjs'
+      - 'tests/sentinel-201-closed-price-admission.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies without Windows rebuild
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Focused actual broker historical read, quote freshness and expiry
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-230-market-warmup-and-quote-preservation.test.mjs tests/sentinel-228-market-reading-recovery.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs
+      - name: Full production prebuild and TypeScript
+        working-directory: sentinel-trading-lab
+        run: |
+          npm run prebuild
+          npx tsc --noEmit --pretty false
+      - name: Require original native expiry modules untouched
+        run: |
+          git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
+          git diff --exit-code FETCH_HEAD -- sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs sentinel-trading-lab/agent/worker/index.mjs sentinel-trading-lab/agent/worker/signal-executor.mjs sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
