@@ -27,7 +27,8 @@ export function verifiedFirstQuoteTurnAtLevel({
  if(!(extremeAt>=at-8000&&extremeAt<=at-1800&&extreme>0&&
    Number.isFinite(Number(level.low))&&Number.isFinite(Number(level.high))&&
    extreme>=Number(level.low)-tol*.55&&extreme<=Number(level.high)+tol*.55&&
-   d*(spot-extreme)>=tol*.55&&d*(spot-extreme)<=tol*1.7&&
+   d*(spot-extreme)>=(e.earlyLevelProof.source==='independent-first-wave-237'?tol*.28:tol*.55)&&
+   d*(spot-extreme)<=tol*1.7&&
    d*(spot-Number(level.level))>=-tol*.35&&
    d*(spot-Number(level.level))<=tol*1.7))return false;
  const rows=[];
