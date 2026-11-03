@@ -51,6 +51,7 @@ import {reviewPreviousClosedCandlePrice} from './previous-closed-price-admission
 import {reviewPreEntryRisk} from './pre-entry-risk-review.mjs';
 import {marketReading} from './market-reading.mjs';
 import {unifiedMarketEvidence227} from './unified-market-evidence-227.mjs';
+import {liveVisualPhase229} from './live-visual-phase-229.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 
@@ -1470,6 +1471,16 @@ export class DemoTradingRuntime{
       let readoutIndicators=null;
       const quoteAt=Number(snap.quoteTs),quoteAge=now-quoteAt;
       const displayPhase=eligible.marketPhase||observation.marketPhase||derivedPhase;
+      // Visual-only 229: recover phase from the actual recent tape even when
+      // strict entry microstructure rejected a sparse tick interval.
+      // This changes no eligibility, anchor, guard, order or native expiration.
+      const visualTape=displayPhase==='insufficient'?
+       liveVisualPhase229({quoteHistory:snap.quoteHistory,quoteAt,now,
+        price:snap.price,durationMs:settings.orderDurationMs}):null;
+      const visualPhase=visualTape?.ready&&visualTape.phase!=='insufficient'?
+       visualTape.phase:displayPhase;
+      const visualTrendSide=visualTape?.legSide||null;
+      const visualProvisionalSide=visualTape?.turnSide||null;
       if(displayPhase==='insufficient'&&quoteAt>0&&quoteAge>=0&&quoteAge<=2500){
        const key=[snap.provider||'',settings.asset,settings.engine,
         settings.orderDurationMs,snap.historicalCandlesVerified].join('|');
@@ -1511,10 +1522,13 @@ export class DemoTradingRuntime{
           marketPhase:eligible.marketPhase||observation.marketPhase||derivedPhase,
           marketPhaseLabel:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase]||'OBSERVANDO',
           marketTrendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side||null,
-          marketReading:marketReading({phase:eligible.marketPhase||observation.marketPhase||derivedPhase,
-            label:eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase],
-            trendSide:eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
-            candidate:eligible,observation,quoteAt:snap.quoteTs,now,
+          marketReading:marketReading({phase:visualPhase,
+            label:visualPhase!==displayPhase?phaseLabels[visualPhase]:
+             eligible.marketPhaseLabel||observation.marketPhaseLabel||phaseLabels[derivedPhase],
+            trendSide:visualTrendSide||
+             eligible.marketTrendSide||observation.marketTrendSide||trendPersistence?.side,
+            candidate:visualProvisionalSide?{...eligible,provisionalSide:visualProvisionalSide}:eligible,
+            observation,quoteAt:snap.quoteTs,now,
             indicatorEvidence:readoutIndicators,
             historicalCandlesVerified:snap.historicalCandlesVerified}),
           trendPersistence:eligible.trendPersistence||observation.trendPersistence||trendPersistence,
