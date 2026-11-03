@@ -88,3 +88,41 @@ test('238: click checks fresh native picker before broker submits CALL/PUT',()=>
  // The last choice remains the actual analyst duration in operation context.
  assert.match(worker,/durationMs:Number\(runtime.settings.orderDurationMs\)/);
 });
+
+test('244: legacy 30s page receipt without manual marker cannot defeat saved Agent 1m after refresh',()=>{
+ const b=browser('30 s',30000);
+ try{
+  b.storage.set('sentinel-broker-native-expiration-preference-v3:iq_option:selectedAt','200000');
+  installBrokerNativeExpiryKeeper({provider:'iq_option',requestedMs:60000,requestedAt:0});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+  b.step();b.step();b.step();
+  assert.equal(b.control._text,'1 min');
+  assert.equal(b.storage.get('sentinel-broker-native-expiration-preference-v3:iq_option'),'60000');
+ }finally{b.restore()}
+});
+
+test('244: an explicit manual 30s choice remains valid against an old untimestamped Agent 1m',()=>{
+ const b=browser('30 s',30000);
+ try{
+  b.storage.set('sentinel-broker-native-expiration-preference-v3:iq_option:selectedAt','200000');
+  b.storage.set('sentinel-broker-native-explicit-default-v4:iq_option','30000');
+  installBrokerNativeExpiryKeeper({provider:'iq_option',requestedMs:60000,requestedAt:0});
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,30000);
+  b.step();b.step();
+  assert.equal(b.control._text,'30 s');
+ }finally{b.restore()}
+});
+
+test('244: late Agent bridge with timestamp-free 1m corrects a broker default 30s',async()=>{
+ const b=browser('30 s',30000);
+ try{
+  b.storage.set('sentinel-broker-native-expiration-preference-v3:iq_option:selectedAt','200000');
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  window.__sentinelGetNativeExpiryChoice=async()=>({durationMs:60000,selectedAt:0});
+  installBrokerNativeExpiryKeeper({provider:'iq_option'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(window.__sentinelNativeExpiryKeeperV3.snapshot().preferredMs,60000);
+  b.step();b.step();b.step();
+  assert.equal(b.control._text,'1 min');
+ }finally{b.restore()}
+});
