@@ -2,6 +2,7 @@ import {PREMIUM_OVERLAY_CSS} from './premium-overlay-controls.mjs';
 import {patchCurrentQuote} from './current-quote-readout.mjs';
 import {patchMarketTotals} from './market-totals-readout.mjs';
 import {marketDataStatus} from '../src/core/market-reading.mjs';
+import {preserveLiveQuotesOnCandleFailure230} from './same-asset-quote-preservation-230.mjs';
 import {marketReadingRowSizingTexts} from './market-reading-layout.mjs';
 import {patchExecutorReadouts} from './executor-readouts.mjs';
 // V13 deployment checkpoint: preserved reading driver + V3 forecast UI
@@ -1622,16 +1623,8 @@ export class LocalPlaywrightDriver{
       await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
     const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     if(st.candles.length&&(!integrity.ok||st.candleActiveId==null||st.activeId==null||Number(st.candleActiveId)!==Number(st.activeId))){
-      const candleIdentityMatches=st.candleActiveId!=null&&st.activeId!=null&&
-       Number(st.candleActiveId)===Number(st.activeId);
-      const safeToKeepLivePrices=!integrity.ok&&candleIdentityMatches&&
-       !!st.symbol&&!st.screenCandidateSymbol&&
-       pairKey(st.symbol)===pairKey(st.uiSymbol||st.symbol)&&
-       Number(st.quote)>0&&Number(st.lastQuoteAt)>0&&
-       Date.now()-Number(st.lastQuoteAt)<=2500&&
-       Array.isArray(st.quoteHistory)&&st.quoteHistory.length>0&&
-       Number(st.quoteHistory.at(-1)?.ts)<=Date.now()+300&&
-       Math.abs(Number(st.quoteHistory.at(-1)?.ts)-Number(st.lastQuoteAt))<=2000;
+      const safeToKeepLivePrices=preserveLiveQuotesOnCandleFailure230({
+       st,integrity,now:Date.now(),pairKey});
       st.lastIntegrityError={...integrity,reason:integrity.ok?'active_id_do_historico_divergente':integrity.reason,at:Date.now(),activeId:st.activeId,candleActiveId:st.candleActiveId,symbol:st.symbol};
       // 230: A malformed/stale CANDLE from the SAME known active ID must not
       // erase fresh authenticated market quotes. Otherwise each 2.5s
