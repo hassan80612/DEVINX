@@ -35,11 +35,11 @@ test('230: no made-up direction when historical proof is absent',()=>{
  assert.equal(read,'OBSERVANDO PREÇO ATUAL');
  assert.doesNotMatch(read,/AGUARDANDO HISTÓRICO SUFICIENTE/);
 });
-test('240: primary EXE restores the working 239 direct GitHub download method',()=>{
+test('240: primary EXE downloads directly from verified Sentinel origin',()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const page=readFileSync(new URL('src/app/console/page.tsx',root),'utf8');
- assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-244-range-spike-expiry-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
- assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
+ assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}.exe`;'));
+ assert.doesNotMatch(page,/raw[.]githubusercontent[.]com/);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
 test('230: expiry selector and executor are unchanged',()=>{
