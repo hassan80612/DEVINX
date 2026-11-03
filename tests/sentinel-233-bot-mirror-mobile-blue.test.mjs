@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SignalExecutor} from '../sentinel-trading-lab/agent/worker/signal-executor.mjs';
+import {fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
 const T=1800000000000;
 for(const side of ['CALL','PUT'])test('233: bot mirrors confirmed '+side+' without reversing it',async()=>{
  const actual=[];
@@ -43,4 +44,22 @@ test('233: broker expiry, account, and order confirmation remain mandatory',()=>
  assert.match(keeper,/source==='manual'\|\|source==='analyst'\|\|explicitDefault/);
  assert.match(bot,/batch\.durationMs===this\.context\(\)\.durationMs/);
  assert.match(ui,/verifyBrokerExpiryForOrder\(/);
+});
+
+test('233: saturated signed frame still forwards current PC blue reading, never old observation',()=>{
+ const snapshot={v:1,at:T,seq:1,agentVersion:'13.9.233',state:'running',
+  killSwitch:false,masterFrozen:false,lastEvalMs:T,
+  settings:{engine:'automatic',orderDurationMs:60000,forecastMode:'continuous'},
+  liveBroker:{symbol:'EURGBPOTC',validatedSymbol:'EURGBPOTC',
+   assetValidated:true,analysisFeedValidated:true,lastQuoteAt:T,quote:1.1},
+  feed:{price:1.1,quoteTs:T},
+  lastResult:{asset:'EURGBPOTC',analysis:{operationalSignal:{side:'WAIT'},
+   vnext:{mode:'now',engineId:'automatic',expirySeconds:60,
+    nowObservation:{ready:false,quoteAt:T,observedAt:T,evaluatedAt:T,
+     marketReading:'CONTINUIDADE · CALL',rawReason:'large'.repeat(700)},
+    ea:null,ow:null,er:[],hf:[],hm:[],cards:[]}}}};
+ const reduced=fitAnalystFrame(snapshot,1600);
+ assert.ok(reduced,'large optional metadata does not drop signed packet');
+ assert.equal(reduced.lastResult.analysis.vnext.nowObservation.marketReading,'CONTINUIDADE · CALL');
+ assert.equal(reduced.settings.orderDurationMs,60000);
 });
