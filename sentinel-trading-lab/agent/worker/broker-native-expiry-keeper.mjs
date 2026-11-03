@@ -511,7 +511,11 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
   const save=(v,source=null,selectedAt=0)=>{
    const at=source==='agent'?Number(selectedAt)||0:Date.now();
    preferredMs=v;
-   explicitDefault=v===30000&&(source==='manual'||source==='analyst'||source==='agent'||explicitDefault);
+   // An Agent/bootstrap 30s with NO trusted selection timestamp is the
+   // broker's DEFAULT, not a manual 30s choice. Previous code marked every
+   // Agent 30s as explicit and made it override a user's later 1m/5m.
+   explicitDefault=v===30000&&(source==='manual'||source==='analyst'||
+    (source==='agent'&&at>0)||explicitDefault);
    try{
     localStorage.setItem(key,String(v));
     localStorage.setItem(defaultChoiceKey,explicitDefault?'30000':'');
