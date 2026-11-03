@@ -628,7 +628,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
- constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map();this.chartPeriodPreferences=new Map();
+ constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.nativeExpiryPreferences=new Map();this.nativeExpiryExplicitPreferences=new Map();this.nativeExpiryExplicitThirty=new Map();this.nativeExpiryRequestedDurations=new Map();this.nativeExpiryPreferenceRevisions=new Map();this.nativeExpiryPendingApply=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map();this.chartPeriodPreferences=new Map();
    this.nativeExpirySelectedAt=new Map();
    this.nativeExpiryPrefFile=join(this.dataDir,'native-expiry-preferences.json');
    this.nativeExpirySaveQueue=Promise.resolve();
@@ -639,6 +639,9 @@ export class LocalPlaywrightDriver{
      if([30000,60000,300000].includes(value)){
       this.nativeExpiryPreferences.set(provider,value);
       this.nativeExpirySelectedAt.set(provider,selectedAt);
+      // Older files had no source-of-choice bit. A timestamp alone may have
+      // come from broker bootstrap; it is never proof of explicit 30s.
+      this.nativeExpiryExplicitThirty.set(provider,value===30000&&saved?.[provider]?.explicit30===true);
      }
     }
    }).catch(()=>{});
@@ -1540,12 +1543,16 @@ export class LocalPlaywrightDriver{
         (!savedAt&&(best.value!==30000||explicitNative30)))){
         ms=best.value;
         this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);
+        this.nativeExpiryExplicitThirty.set(provider,best.value===30000&&explicitNative30);
       }
     }
     if(!current())return false;
     const previouslySaved=this.nativeExpiryPreferences.get(provider);
     this.nativeExpiryPreferences.set(provider,ms);
     if(!preserveExisting){
+      // Only a direct analyst/native-picker action supplies a trustworthy
+      // explicit 30s receipt. Automatic page resets cannot create it.
+      this.nativeExpiryExplicitThirty.set(provider,ms===30000);
       this.nativeExpirySelectedAt.set(provider,receiptAt||Math.max(Date.now(),priorSelectedAt+1));
     }
     // A more recent native manual selection discovered after a frame
@@ -1557,7 +1564,8 @@ export class LocalPlaywrightDriver{
         await mkdir(this.dataDir,{recursive:true});
         const tmp=this.nativeExpiryPrefFile+'.tmp';
         const records=Object.fromEntries([...this.nativeExpiryPreferences].map(([key,value])=>
-          [key,{durationMs:value,selectedAt:this.nativeExpirySelectedAt.get(key)||0}]));
+          [key,{durationMs:value,selectedAt:this.nativeExpirySelectedAt.get(key)||0,
+          explicit30:value===30000&&this.nativeExpiryExplicitThirty.get(key)===true}]));
         await writeFile(tmp,JSON.stringify(records)+'\n');
         await rename(tmp,this.nativeExpiryPrefFile);
       });
