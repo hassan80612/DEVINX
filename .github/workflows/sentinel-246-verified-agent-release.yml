@@ -61,6 +61,9 @@ on:
       - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
       - tests/sentinel-228-market-reading-recovery.test.mjs
       - tests/sentinel-221-expiry-native-durable.test.mjs
+  pull_request:
+    branches:
+      - fix/sentinel-244-match-243-exe-headers-20261103
   workflow_dispatch:
 permissions:
   contents: write
@@ -153,6 +156,7 @@ jobs:
           & $exe
           if($LASTEXITCODE -ne 0){throw "246 Windows EXE verification failed: $LASTEXITCODE"}
   publish-assets:
+    if: github.event_name == 'push'
     needs: verify-on-windows
     runs-on: ubuntu-latest
     timeout-minutes: 10
