@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {reviewPreviousClosedCandlePrice} from '../sentinel-trading-lab/agent/src/core/previous-closed-price-admission.mjs';
 import {normalize228RuntimeReadout,normalize228WorkerExpiryResume} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
 import {normalize230RuntimeWarmup} from './helpers/sentinel-230-normalize-warmup.mjs';
+import {normalize230NativeKeeper} from './helpers/sentinel-230-normalize-expiry-keeper.mjs';
 const root=new URL('../',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
 const fixture=JSON.parse(read('tests/fixtures/sentinel-201-recorded-admission.json'));
@@ -104,6 +105,12 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
    assert.match(executor,/lastMileAdvisory=lastMile.reason/);
    assert.match(executor,/firstClickDeadline/);
    assert.match(executor,/currentMarketValid/);
+   continue;
+  }
+  if(path==='sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'){
+   const keeper=read(path);
+   assert.match(keeper,/source==='agent'&&at>0/);
+   assert.equal(gitSha(normalize230NativeKeeper(keeper)),approvedH207[path],path);
    continue;
   }
   assert.equal(gitSha(read(path)),approvedH207[path]||hash,path);
