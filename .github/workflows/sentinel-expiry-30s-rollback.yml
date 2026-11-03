@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - fix/sentinel-244-expiry-persistence-native-20261103
+  pull_request:
+    branches:
+      - fix/sentinel-244-match-243-exe-headers-20261103
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Agent test dependencies
+        run: npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
       - name: Verify expiry isolation and no 30s fallback
         run: |
           set -euo pipefail
