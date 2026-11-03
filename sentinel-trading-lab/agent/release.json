@@ -1,6 +1,6 @@
 {
-  "version": "13.9.235",
-  "build": "13.9.235-verified-first-countertrend-level-turn-preserved-expiry",
+  "version": "13.9.236",
+  "build": "13.9.236-multilevel-early-turn-recognition-preserved-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.235"
+  "publicVersion": "13.9.236"
 }

@@ -27,7 +27,7 @@ const AVAILABLE_AGENT_VERSION=agentRelease.version;
 // 230: direct GitHub raw asset (no Vercel binary/CDN or site redirect).
 // Every version has a unique immutable filename. The binary itself is
 // built and executed on Windows in CI before being committed to this branch.
-const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/fix/sentinel-235-early-countertrend-verified-level-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/fix/sentinel-236-multilevel-early-turn-recognition-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();

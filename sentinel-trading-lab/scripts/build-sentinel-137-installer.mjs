@@ -23,6 +23,28 @@ mkdirSync(dl,{recursive:true});
 // The initial EXE compilation happens only inside the isolated release CI.
 // Sentinel 234: require exact Windows-tested binaries on Vercel, never rebuild them in a site deploy.
 // Sentinel 235: site builds require an identical Windows-tested EXE and matching payload.
+// Sentinel 236: refuse unverified direct EXE and ZIP in web-only builds.
+if(release.version==='13.9.236'&&process.env.SENTINEL_236_BUILD_VERIFIED_ASSETS!=='1'){
+ const proof=JSON.parse(readFileSync(join(dl,'sentinel-236-verified.json'),'utf8'));
+ if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
+  throw Error('sentinel_236_release_provenance_mismatch');
+ const hash=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
+ for(const name of ['Sentinel-Agent-13.9.236.exe','Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
+  if(statSync(join(dl,name)).size<1000000||hash(name)!==proof.exeSha256)
+   throw Error('sentinel_236_windows_tested_exe_mismatch:'+name);
+ }
+ if(statSync(join(dl,'agent_payload_v88.zip')).size<50000||hash('agent_payload_v88.zip')!==proof.zipSha256)
+  throw Error('sentinel_236_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==proof.zipSha256)
+  throw Error('sentinel_236_manifest_mismatch');
+ for(const name of ['Sentinel-Agent-13.9.236-EXE.zip','Sentinel-Agent-13.9.236-Alternativo.zip']){
+  if(statSync(join(dl,name)).size<50000)throw Error('sentinel_236_download_archive_missing:'+name);
+ }
+ console.log('Sentinel 236: exact Windows-tested EXE and verified matching Agent ZIP preserved for site deployment.');
+ process.exit(0);
+}
+
 if(release.version==='13.9.235'&&process.env.SENTINEL_235_BUILD_VERIFIED_ASSETS!=='1'){
  const proof=JSON.parse(readFileSync(join(dl,'sentinel-235-verified.json'),'utf8'));
  if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
