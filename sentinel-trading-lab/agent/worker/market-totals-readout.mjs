@@ -66,7 +66,10 @@ export function patchMarketTotals(frame){
   const saved=window.__sentinelLastConfirmedMarketTotals;
   const historical=!fresh||!allValid;
   const retained=historical&&saved?.contextKey===contextKey&&
-   Date.now()-Number(saved.at)<=30000?saved.cards:null;
+   // Keep the last VERIFIED reading visible across a brief market-feed
+   // gap. It is explicitly labelled "ÚLTIMA LEITURA", not live probabilities.
+   // Never reuse across a different provider/asset/expiry/strategy/session.
+   Date.now()-Number(saved.at)<=90000?saved.cards:null;
   for(const id of ids){
    const liveCard=known(id),card=retained?.find(c=>c.id===id)||liveCard;
    const node=p.querySelector('[data-sentinel-summary="'+id+'"]');
