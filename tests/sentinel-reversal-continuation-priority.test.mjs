@@ -25,7 +25,7 @@ test('a verified current structural reversal is evaluated even when an older con
  }
 });
 
-test('H207 blocks weak 30s/1m reversals while 5m retains prior strategy behaviour',()=>{
+test('241: H207 blocks weak 30s/1m while approved 5m side is inverted experimentally',()=>{
  for(const mirror of [false,true])for(const durationMs of [30000,60000,300000])
  for(const engine of ['automatic','trend','support_resistance','smart_confluence','fibonacci_retest']){
   const a=fixture(mirror),rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'short-probability-v1'});
@@ -37,7 +37,7 @@ test('H207 blocks weak 30s/1m reversals while 5m retains prior strategy behaviou
    assert.equal(result.analysis.vnext.futureEntryAnchor?.side??null,null,
      'H207 rejects the structural entry: '+[mirror,durationMs,engine].join('|'));
   }else{
-   assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'PUT':'CALL',[mirror,durationMs,engine].join('|'));
+   assert.equal(result.analysis.vnext.futureEntryAnchor?.side,mirror?'CALL':'PUT',[mirror,durationMs,engine].join('|'));
   }
  }
 });
