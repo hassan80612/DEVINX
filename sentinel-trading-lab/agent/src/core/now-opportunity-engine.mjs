@@ -142,6 +142,11 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  const prices=rows.map(q=>q.price),range=Math.log(Math.max(...prices)/Math.min(...prices));
  const threshold=Math.max(range*.06,travel*.008,1e-12);
  const efficiency=travel>0?Math.abs(net)/travel:0;
+ // Preserve the old admission rule for a pre-existing 30s cycle vote.
+ // The new broader regime classification is allowed to improve READOUT,
+ // but not retrospectively veto cycle entries unless a verified wall
+ // actually enters the dedicated 239 first-wave arbitration.
+ const legacyLowNet=(efficiency<.18||Math.abs(net)<=threshold);
  const retracement=range>0?Math.max(0,direction>0?
   Math.log(Math.max(...prices)/spot):Math.log(spot/Math.min(...prices)))/range:0;
  let phase='mixed';
@@ -150,8 +155,8 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  // before applying the low-net-efficiency lateral classification.
  if(early>threshold*1.5&&late< -threshold*1.5&&
     fast< -threshold&&retracement>=.25)phase='reversal-testing';
- else if((efficiency<.18||Math.abs(net)<=threshold)&&decisive.kind!=='trend')phase='range';
- else if((efficiency<.18||Math.abs(net)<=threshold)&&decisive.kind==='trend')
+ else if(legacyLowNet&&decisive.kind!=='trend')phase='range';
+ else if(legacyLowNet&&decisive.kind==='trend')
   phase=decisive.side===side&&fast>=-threshold?'continuing':'weakening';
  else if(late< -threshold&&fast< -threshold&&retracement>=.16)phase='reversal-testing';
  else if(early>threshold&&(late<=Math.max(threshold,early*.35)||fast< -threshold))
@@ -160,7 +165,7 @@ export function assessDirectionalPersistence({quoteHistory=[],quoteAt,now=quoteA
  return{phase,side,windowMs,netMove:Number(net.toPrecision(6)),
   earlyMove:Number(early.toPrecision(6)),lateMove:Number(late.toPrecision(6)),
   latestMove:Number(fast.toPrecision(6)),efficiency:Number(efficiency.toFixed(3)),
-  retracement:Number(retracement.toFixed(3)),decisiveRegime:decisive};
+  retracement:Number(retracement.toFixed(3)),decisiveRegime:decisive,legacyLowNet};
 }
 function confirmedReversalCandidate(candidate){
  const reason=String(candidate?.reason||'');
@@ -221,7 +226,13 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  if(candidate.side===state.side&&continuation&&fading)
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.'};
- if(candidate.side!==state.side&&continuation&&state.phase==='continuing')
+ // Only the 239 proven-wall / observed first-rejection logic may alter an
+ // older 30s cycle forecast. The decisive 240 trend display must not add
+ // an unrelated veto to a vote previously accepted on low-net noisy tape.
+ const oldCycleVote=Number(durationMs)===30000&&
+  candidate.reason==='observed-trend-and-30s-cycle-projection'&&
+  state.legacyLowNet===true&&state.decisiveRegime?.kind==='trend';
+ if(candidate.side!==state.side&&continuation&&state.phase==='continuing'&&!oldCycleVote)
   return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
    reason:'Fluxo anterior ainda persistente; reversão contrária sem confirmação estrutural.'};
  return candidate;
