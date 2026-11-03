@@ -24,12 +24,6 @@ export async function middleware(req:NextRequest){
   // Retire the legacy hostname without touching the Agent, chart, or database.
   // Preserve paths, query parameters and 308 semantics for installed clients.
   const host=(req.headers.get('x-forwarded-host')||req.headers.get('host')||'').split(':')[0].toLowerCase();
-  if(host==='sentinel-trading-lab.vercel.app'){
-    const target=req.nextUrl.clone();
-    target.protocol='https:';
-    target.host='trading.devinx.com.br';
-    return NextResponse.redirect(target,308);
-  }
   const p=req.nextUrl.pathname;
   // The versioned Windows EXE and its offline fallback ZIP only install the
   // same Agent. They do NOT grant access to paid analysis, APIs or updates.
@@ -41,6 +35,17 @@ export async function middleware(req:NextRequest){
   const fileName=p.startsWith('/downloads/')?p.slice('/downloads/'.length):'';
   const alternativeInstaller=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-Alternativo[.]zip$/i.test(fileName);
   const executableWrappedZip=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-EXE[.]zip$/i.test(fileName);
+  // Legacy hostname ordinarily redirects, but NEVER redirect a download:
+  // Next config attaches Content-Disposition: attachment to .exe before
+  // this middleware runs. A 308 with that EXE attachment header and a
+  // text/plain body can make a browser fail the transfer.
+  if(host==='sentinel-trading-lab.vercel.app'&&
+     !(installerFile||alternativeInstaller||executableWrappedZip)){
+    const target=req.nextUrl.clone();
+    target.protocol='https:';
+    target.host='trading.devinx.com.br';
+    return NextResponse.redirect(target,308);
+  }
   if(alternativeInstaller||executableWrappedZip)return NextResponse.next();
   if(p==='/'||p==='/planos'||p==='/como-usar-bot'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
