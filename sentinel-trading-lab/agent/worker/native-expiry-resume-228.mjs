@@ -20,3 +20,13 @@ export function lastTrustedExpiryForResume({nativeDurationMs=null,nativeSelected
  if(!valid(current)||nativeMs!==current)return nativeMs;
  return null;
 }
+
+// Recover the last native 1m/5m choice only when the runtime state file is
+// absent or unreadable. In that case the constructor's 30s is a DEFAULT,
+// not a timestamped manual choice. Never infer a new 30s from a broker reset.
+export function recoverMissingRuntimeExpiryFromNative({nativeDurationMs,
+ currentDurationMs,changedDuringRecovery=false}={}){
+ const native=Number(nativeDurationMs),current=Number(currentDurationMs);
+ if(changedDuringRecovery||current!==30000)return null;
+ return native===60000||native===300000?native:null;
+}
