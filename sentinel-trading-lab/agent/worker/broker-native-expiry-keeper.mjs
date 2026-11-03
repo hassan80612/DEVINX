@@ -111,9 +111,12 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    const storedAt=Number(localStorage.getItem(nativeKey+':selectedAt')||0);
    // A running keeper must not discard a newer Agent preference just
    // because it had already read an older 30s page-local preference.
+   // A legacy page-local 30s DEFAULT is not a user choice. An Agent 1m/5m
+   // record may predate selectedAt receipts, and still wins over this default.
+   const inherited30=current===30000&&chosen>30000&&
+     Number(localStorage.getItem('sentinel-broker-native-explicit-default-v4:'+provider))!==30000;
    if([30000,60000,300000].includes(chosen)&&
-     (!(current>0)||at>storedAt||
-       (at===0&&storedAt===0&&current===30000&&chosen>30000)))
+     (!(current>0)||at>storedAt||inherited30))
     keeper.setPreferred?.(chosen,{selectedAt:at});
    // The earliest document script may run BEFORE the Agent's durable-choice
    // bridge is exposed. After a broker SPA/frame rebuild this fast path must
@@ -122,7 +125,10 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     Promise.resolve().then(()=>window.__sentinelGetNativeExpiryChoice()).then(choice=>{
      const ms=Number(choice?.durationMs),receiptAt=Number(choice?.selectedAt)||0;
      const savedAt=Number(localStorage.getItem(nativeKey+':selectedAt')||0);
-     if([30000,60000,300000].includes(ms)&&receiptAt>0&&receiptAt>=savedAt&&
+     const inherited30=ms>30000&&Number(keeper.snapshot?.().preferredMs)===30000&&
+       Number(localStorage.getItem('sentinel-broker-native-explicit-default-v4:'+provider))!==30000;
+     if([30000,60000,300000].includes(ms)&&
+       ((receiptAt>0&&receiptAt>=savedAt)||inherited30)&&
        window.__sentinelNativeExpiryKeeperV3===keeper)
       keeper.setPreferred?.(ms,{selectedAt:receiptAt});
     }).catch(()=>{});
@@ -729,15 +735,20 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
   // Agent's more recent selected state before the first regular poll.
   const agentAt=Number(requestedAt)||0,storedAt=Number(localStorage.getItem(key+':selectedAt')||0);
   if(ACCEPT.has(Number(requestedMs)/1000)&&
-    (agentAt>storedAt||(!agentAt&&!storedAt&&preferredMs===30000&&Number(requestedMs)>30000)))
+    (agentAt>storedAt||
+     (preferredMs===30000&&Number(requestedMs)>30000&&!explicitDefault)))
    setPreferred(Number(requestedMs),{selectedAt:agentAt});
   // Every new document can recover even if broker storage was cleared or
   // belongs to a different embedded origin. Pull the CURRENT durable receipt;
   // never close over the value from the first addInitScript installation.
   if(typeof window.__sentinelGetNativeExpiryChoice==='function')
    Promise.resolve().then(()=>window.__sentinelGetNativeExpiryChoice()).then(choice=>{
-    if(!disposed&&choice&&Number(choice.selectedAt)>0)
-     setPreferred(choice.durationMs,{selectedAt:choice.selectedAt});
+    const chosen=Number(choice?.durationMs),at=Number(choice?.selectedAt)||0;
+    // Do not lose a legacy Agent 1m/5m choice when the refreshed broker
+    // advertises an unmarked 30s default with a stale timestamp.
+    if(!disposed&&ACCEPT.has(chosen/1000)&&
+      (at>0||(chosen>30000&&preferredMs===30000&&!explicitDefault)))
+     setPreferred(chosen,{selectedAt:at});
    }).catch(()=>{});
   poll();
   const timer=setInterval(poll,2500);
