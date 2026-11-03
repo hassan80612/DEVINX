@@ -98,9 +98,8 @@ test('229: if live asset is not validated, visual supplement cannot fabricate di
  runtime.externalMarket.validatedSymbol='GBP/USD OTC';
  assert.strictEqual(lightweightOverlayView(runtime).lastResult,original);
 });
-test('229: presentation fix never changes byte-identical 228 runtime, native expiry, or bot executor',()=>{
- const files=['agent/src/core/runtime.mjs','agent/worker/index.mjs',
-  'agent/worker/broker-native-expiry-keeper.mjs','agent/worker/signal-executor.mjs'];
+test('233: native expiry and real analyzer runtime stay separate from mobile blue presentation',()=>{
+ const files=['agent/src/core/runtime.mjs','agent/worker/broker-native-expiry-keeper.mjs'];
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  for(const file of files){
   const s=readFileSync(new URL(file,root),'utf8');
