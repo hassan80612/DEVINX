@@ -6,6 +6,7 @@ import {reviewFirstImpulseReversal} from '../sentinel-trading-lab/agent/src/core
 import {verifiedFirstQuoteTurnAtLevel,countertrendPivotRisk} from '../sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs';
 import {reviewH207UnifiedAdmission} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {entryFamilyOf} from '../sentinel-trading-lab/agent/src/core/entry-family.mjs';
+import {analyzeNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 
 const AT=1800000000000,TOL=.00012;
 const prices=[1.10020,1.10022,1.10024,1.10026,1.10028,1.10030,1.10032,
@@ -35,6 +36,20 @@ test('237: first small opposite wave can select PUT while current candle remains
   quoteHistory:quotes,quoteAt:AT,now:AT,price,side:'PUT',durationMs:60000}),true);
  assert.equal(reviewH207UnifiedAdmission({...ctx,candidate:result,allowVerifiedEarlyReversal:true}).ready,true);
 });
+test('237: complete analyzer route gives the independent first-wave signal priority',()=>{
+ const levels=[z()],candleLevelMap=map(levels);
+ const st={candles:65,averages:[],zones:[],tolerance:TOL,atr:TOL,
+  periodMs:60000,candleLevelMap,asOf:AT-60000};
+ const result=analyzeNowOpportunity({
+  quoteHistory:quotes,quoteAt:AT,now:AT,price,
+  durationMs:60000,engineId:'automatic',qualityPolicy:'adaptive-market-v17',
+  entryFamily:'automatic',candles:[],structureCache:{get:()=>st}
+ });
+ assert.equal(result.ready,true,'shared analyzer must issue qualified first-wave reversal');
+ assert.equal(result.side,'PUT');
+ assert.equal(result.reason,'confirmed-level-structure-reversal');
+});
+
 test('237: the same first-wave recognition works for CALL at support while prior leg remains red',()=>{
  const mirror=p=>2.2-p,rows=quotes.map(q=>({...q,price:mirror(q.price)}));
  const level=z(),support={...level,level:mirror(level.level),
