@@ -14,8 +14,8 @@ const page=read('src/app/console/page.tsx').toString('utf8');
 
 test('240: primary EXE uses 239-tested GitHub raw transport and 240 pinned binary',()=>{
  assert.equal(release.version,'13.9.240');
- assert.match(page,/const AGENT_DOWNLOAD_URL=`\/downloads\/Sentinel-Agent-\$\{encodeURIComponent\(AVAILABLE_AGENT_VERSION\)\}\.exe`/);
- assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`https?:/);
+ assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/603ecf58522b5ecded2cf9e08dead5e68b3287ae/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
+ assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
 
