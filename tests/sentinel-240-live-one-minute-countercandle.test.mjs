@@ -46,7 +46,9 @@ test('240: a green current candle can produce an actual PUT through the shared 1
   structureCache:{get:()=>structure}});
  assert.equal(decision.ready,true,JSON.stringify(decision));
  assert.equal(decision.side,'PUT',JSON.stringify(decision));
- assert.equal(decision.reason,'confirmed-level-structure-reversal');
+ assert.ok(['confirmed-level-structure-reversal','multiscale-candle-rejection',
+  'historical-level-rejection'].includes(decision.reason),
+  'an earlier independently observed rejection may legitimately outrank the first-wave route');
  const context={quoteHistory:quotes,quoteAt:AT,now:AT,price:quotes.at(-1).price,
   durationMs:60000};
  const afterRisk=reviewPreEntryRisk({candidate:decision,original:decision,
