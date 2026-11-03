@@ -1,0 +1,35 @@
+name: Sentinel 230 verify production EXE HTTP and raw backup
+on:
+  push:
+    branches:
+      - fix/sentinel-230-rapid-feed-recovery-direct-exe-20261102
+    paths:
+      - '.github/workflows/sentinel-230-download-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check real 229 EXE size on source GitHub
+        shell: bash
+        run: |
+          git cat-file -s HEAD:sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.229.exe
+          sha256sum sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.229.exe
+      - name: Test Vercel EXE and ZIP HTTP versus GitHub immutable EXE
+        shell: bash
+        run: |
+          set +e
+          for url in \
+            'https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.229.exe' \
+            'https://trading.devinx.com.br/downloads/Sentinel-Agent-Windows.exe' \
+            'https://trading.devinx.com.br/downloads/Sentinel-Agent-13.9.229-EXE.zip' \
+            'https://raw.githubusercontent.com/hassan80612/DEVINX/adb73ceb2f8ed12629bba814a0b53297206a7500/sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.229.exe'
+          do
+            echo "PROBE $url"
+            curl --location --head --silent --show-error --max-time 22 -o /tmp/sentinel-230-headers -w 'HTTP:%{http_code} SIZE:%{size_download} URL:%{url_effective}\n' "$url"
+            grep -iE '^(HTTP/|location:|content-type:|content-length:|content-disposition:|x-vercel-error:|x-vercel-id:|server:)' /tmp/sentinel-230-headers | tail -18
+          done
