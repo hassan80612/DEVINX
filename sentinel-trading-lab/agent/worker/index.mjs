@@ -268,10 +268,9 @@ driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(runtime.stateName==='running'){
     if(event.quote>0&&event.lastQuoteAt>0&&event.symbol)
       quoteReadoutUpdates.publish(provider,{provider,asset:event.symbol,price:Number(event.quote),quoteAt:Number(event.lastQuoteAt)});
-    // Send the observed quote immediately, BEFORE the potentially expensive
-    // forecast evaluation. The existing receipt still keeps its real timestamp.
-    // This does not create a signal, read the broker twice, or write to the DB.
-    void publishLiveFrame();
+    // Queue analysis FIRST. The existing 220ms signed mobile publisher and
+    // urgent post-decision publish deliver the same blue reading without
+    // serializing a mobile packet ahead of the quote->decision path.
     realtimeQuotes.request();
   }
 });
@@ -577,9 +576,27 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // Push the post-decision state before optional broker maintenance so a
   // mobile viewer never waits for a DOM recovery pass.
   void publishLiveFrame();
+  // Non-critical maintenance, overlay rendering and journaling are coalesced
+  // OUTSIDE the quote-decision busy lock. The confirmed bot click remains first.
+  schedulePostDecisionWork(tickStarted);
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}
+let postDecisionScheduled=false,latestPostDecisionTickStarted=0;
+function schedulePostDecisionWork(tickStarted){
+  latestPostDecisionTickStarted=tickStarted;
+  if(postDecisionScheduled)return;
+  postDecisionScheduled=true;
+  // A short deferral lets the already-issued broker click microtasks run first.
+  // This does not defer or skip any analyst confirmation or native expiry check.
+  const timer=setTimeout(()=>{
+    postDecisionScheduled=false;
+    try{runPostDecisionWork(latestPostDecisionTickStarted)}
+    catch(e){console.error('worker_post_decision_error',e)}
+  },25);
+  timer.unref?.();
+}
+function runPostDecisionWork(tickStarted){
   // Do maintenance only AFTER the current quote has reached the engine and
-  // immediate click dispatcher. This preserves the existing 2.5s cadence
-  // without allowing a heavy broker DOM scan to preempt this decision.
+  // immediate click dispatcher. The normal cadence and overlay content remain unchanged.
   if(activeProvider&&brokers[activeProvider]?.connected){
     const maintenanceNow=Date.now();
     const maintenanceCadence=brokerMaintenanceCadenceMs({
@@ -601,8 +618,11 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   const fired=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor;
   if(fired?.phase==='fired'&&Number(fired.entryTriggeredAt)>evaluationPerformance.lastEntryEventAt){
     evaluationPerformance.lastEntryEventAt=Number(fired.entryTriggeredAt);
-    evaluationPerformance.lastEntryTimingDelayMs=Number.isFinite(Number(fired.plannedEntryAt))?
-      Number(fired.entryTriggeredAt)-Number(fired.plannedEntryAt):null;
+    // Previous plannedEntryAt was assigned equal to entryTriggeredAt, so it
+  // always reported 0ms even if a genuine broker quote became stale. Measure
+  // the real source quote -> analyst release instead (no entry gating).
+  evaluationPerformance.lastEntryTimingDelayMs=Number(fired.sourceQuoteAt)>0?
+      Math.max(0,Number(fired.entryTriggeredAt)-Number(fired.sourceQuoteAt)):null;
   }
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,
       runtime.settings.engine?null:runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
@@ -767,10 +787,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     }
     }
   }
-  // Persist in its existing serial queue without holding the quote scheduler
-  // open on Windows filesystem latency. Explicit start/stop still await saves.
+  // Persist in the existing serialized queue without holding the quote lock.
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();void saveState()}
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
+}
+setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,autoExecutor:remoteExecutorState(),marketJournal:{...marketJournal.status(),enabled:recordMarketJournal||recordTradeAudit,fullMarketEnabled:recordMarketJournal,tradeAuditEnabled:recordTradeAudit},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
