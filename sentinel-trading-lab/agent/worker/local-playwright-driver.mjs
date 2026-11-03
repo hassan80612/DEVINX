@@ -1539,7 +1539,8 @@ export class LocalPlaywrightDriver{
       // On first Agent bootstrap this must not erase a saved 1m/5m runtime
       // preference. Timestamped user choices and explicit 30s are respected.
       const explicitNative30=best?.value===30000&&best?.explicitDefault===true;
-      if(best&&(Number(best.selectedAt||0)>savedAt||
+      if(best&&!(best.value===30000&&requested>30000)&&
+       (Number(best.selectedAt||0)>savedAt||
         (!savedAt&&(best.value!==30000||explicitNative30)))){
         ms=best.value;
         this.nativeExpirySelectedAt.set(provider,Number(best.selectedAt)||0);

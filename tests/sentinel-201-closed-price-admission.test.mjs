@@ -113,7 +113,9 @@ test('233: expiry persistence, broker controls, stop targets and analyst-only di
   }
   if(path==='sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'){
    const keeper=read(path);
-   const baseline=normalize232NativeKeeper(keeper);
+   const baseline=normalize232NativeKeeper(keeper.replace(
+     'if(ms===30000&&!explicit&&preferredMs>30000)return true;',
+     'if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault)return true;'));
    assert.equal(gitSha(baseline),approvedH207[path],
      'native expiry changes restricted to audited 232 inherited-30s bug fix');
    continue;

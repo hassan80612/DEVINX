@@ -31,10 +31,10 @@ test('221: a browser default 30s with NO manual receipt cannot erase saved 1m',a
   assert.equal(evaluations.at(-1).preferredMs,60000);
  });
 });
-test('221: a trusted manual 30s is kept as the actual last user choice',async()=>{
+test('241: a prior native 30s receipt cannot replace the selected Sentinel 1m after recovery',async()=>{
  await withDriver({value:30000,selectedAt:99000,explicitDefault:true},({driver,reloaded})=>{
-  assert.equal(driver.nativeExpiryPreferences.get('iq_option'),30000);
-  assert.equal(reloaded.nativeExpiryPreferences.get('iq_option'),30000);
+  assert.equal(driver.nativeExpiryPreferences.get('iq_option'),60000);
+  assert.equal(reloaded.nativeExpiryPreferences.get('iq_option'),60000);
  });
 });
 test('221: stored native 5m from old page wins over runtime fallback 1m',async()=>{

@@ -27,10 +27,13 @@ function replay(rows,analyze,{selector=null}={}){
  }
  return entries;
 }
-test('13.9.59 only admits decisions from actually observed quotes; an old unqualified setup stays unqualified',()=>{
+test('242 admits only causal current-price reversal and newly freed continuation families',()=>{
  for(const rows of [fine,coarse])for(let i=0;i<rows.length;i++){
   const input=inputFor(rows,i),old=before(input),next=after(input);
-  if(!old.ready&&next.ready)assert.equal(next.reason,'closed-range-extreme-reversal-confirmed');
+  if(!old.ready&&next.ready)assert.ok(
+    ['closed-range-extreme-reversal-confirmed','fresh-pullback-continuation',
+     'observed-spike-exhaustion-reversal-242'].includes(next.reason),
+    'unexpected new admission: '+next.reason);
   if(next.ready){
    assert.equal(next.observedAt,input.quoteAt);
    assert.equal(next.entryPrice,input.price);

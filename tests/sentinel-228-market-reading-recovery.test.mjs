@@ -49,8 +49,8 @@ test('228: last persisted native 1m/5m always beats an unchosen browser 30s afte
   nativeDurationMs:300000,nativeSelectedAt:now-500,currentDurationMs:30000}),300000);
  assert.equal(lastTrustedExpiryForResume({
   nativeDurationMs:30000,nativeSelectedAt:now-100,nativeExplicit30:true,
-  currentDurationMs:60000}),30000,
-  'a genuine newer manual 30s choice must remain selectable');
+  currentDurationMs:60000}),null,
+  'old broker 30s receipt cannot override the Sentinel 1m selection');
  assert.equal(lastTrustedExpiryForResume({
   nativeDurationMs:30000,nativeSelectedAt:now-100,nativeExplicit30:false,
   currentDurationMs:60000}),null,

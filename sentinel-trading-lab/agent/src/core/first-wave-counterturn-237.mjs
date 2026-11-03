@@ -72,7 +72,7 @@ export function reviewFirstWaveCounterturn({
   for(let i=1;i<q.length-2;i++)
    if(d*q[i].price<d*q[extremeIndex].price)extremeIndex=i;
   const extreme=q[extremeIndex],age=at-extreme.ts;
-  if(!(extremeIndex>=3&&extremeIndex<=q.length-3&&age>=1800&&age<=8000))continue;
+  if(!(extremeIndex>=3&&extremeIndex<=q.length-3&&age>=1000&&age<=8000))continue;
   const approach=-d*(extreme.price-q[0].price),retreat=d*(spot-extreme.price);
   // A prior burst at the wall can produce a genuine FIRST counterwave
   // before the normal .28*tolerance retracement. Never lower the number
@@ -82,9 +82,9 @@ export function reviewFirstWaveCounterturn({
   const terminalSpike=burst>=Math.max(tol*.42,typical*2.8)&&
     approach>=Math.max(tol*.75,typical*4)&&
     burst>=Math.max(typical*2,approach*.32);
-  if(!(approach>=Math.max(tol*.38,typical*2)&&
-       retreat>=Math.max(terminalSpike?tol*.18:tol*.28,
-                        typical*(terminalSpike?1.2:1.8))&&
+  if(!(approach>=Math.max(tol*.30,typical*1.7)&&
+       retreat>=Math.max(terminalSpike?tol*.10:tol*.18,
+                        typical*(terminalSpike?.85:1.2))&&
        retreat<=tol*1.45))continue;
   if(q.slice(extremeIndex+1,-2).some(r=>d*(r.price-extreme.price)>tol*1.5))continue;
   for(const zone of map.levels){
@@ -111,14 +111,15 @@ export function reviewFirstWaveCounterturn({
      new Set(arming.map(x=>x.side)).size===1&&
      candidate.ready===true&&isContinuation(candidate)&&
      candidate.side!==arming[0].side)
-   return {...candidate,ready:false,side:null,provisionalSide:arming[0].side,
-     reason:'terminal-spike-at-proven-wall-awaiting-first-rejection',
+   return {...candidate,
+     reversalWatch:{state:'armed',side:arming[0].side,level:arming[0].level,at},
+     reason:candidate.reason,
      // One decisive market assessment in the UI: the old impulse is still
      // rising/falling but a verified wall is ARMED. This is observation,
      // never CALL/PUT AGORA and never a broker order before rejection.
-     marketPhase:'reversal-testing',
-     marketPhaseLabel:'REVERSÃO CONTRÁRIA EM OBSERVAÇÃO',
-     marketTrendSide:arming[0].side,
+     marketPhase:candidate.marketPhase,
+     marketPhaseLabel:candidate.marketPhaseLabel,
+     marketTrendSide:candidate.marketTrendSide,
      spikeAnticipation:{state:'armed',side:arming[0].side,
       at,level:arming[0].level,velocity3:arming[0].velocity3}};
   return candidate;

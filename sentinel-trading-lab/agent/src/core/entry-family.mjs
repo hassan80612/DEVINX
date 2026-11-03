@@ -3,7 +3,7 @@
 export const ENTRY_FAMILIES=Object.freeze(['automatic','continuation','reversal']);
 export function normalizeEntryFamily(value){return ENTRY_FAMILIES.includes(value)?value:'automatic';}
 const reversals=new Set(['closed-range-extreme-reversal-confirmed','confirmed-level-structure-reversal',
- 'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection']);
+ 'confirmed-fast-level-reversal','failed-breakout-structure-change','historical-level-rejection','multiscale-candle-rejection','observed-spike-exhaustion-reversal-242']);
 const continuations=new Set(['closed-structure-and-live-impulse','historical-level-breakout',
  'break-retest-continuation','rejection-followthrough-clear-room','historical-trend-and-live-forecast',
  'observed-multi-interval-trend-correction','locally-verified-opposite-direction','causal-expiry-analogue',

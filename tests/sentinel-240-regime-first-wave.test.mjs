@@ -78,18 +78,18 @@ const resistance={low:LEVEL-.00003,high:LEVEL+.00003,level:LEVEL,
 const map={observedCandles:65,asOf:AT-60000,tolerance:TOL,levels:[resistance]};
 const forecast={ready:true,side:'CALL',reason:'observed-trend-and-30s-cycle-projection',
  observedAt:AT,entryPrice:spike.at(-1).price};
-test('240: 30s projected continuation cannot override proven pre-spike PUT preparation',()=>{
+test('242: 30s projected continuation stays actionable while a proven PUT is prepared, then yields to actual rejection',()=>{
  const rising=spike.slice(0,12),at=rising.at(-1).ts;
  const result=reviewFirstWaveCounterturn({candidate:{...forecast,observedAt:at,
    entryPrice:rising.at(-1).price},map,quoteHistory:rising,quoteAt:at,now:at,
    price:rising.at(-1).price,durationMs:30000});
- assert.equal(result.ready,false,JSON.stringify(result));
- assert.equal(result.reason,'terminal-spike-at-proven-wall-awaiting-first-rejection');
- assert.equal(result.provisionalSide,'PUT');
- assert.equal(result.marketPhase,'reversal-testing');
- assert.equal(result.marketPhaseLabel,'REVERSÃO CONTRÁRIA EM OBSERVAÇÃO');
+ assert.equal(result.ready,true,JSON.stringify(result));
+ assert.equal(result.side,'CALL');
+ assert.equal(result.reason,forecast.reason);
+ assert.equal(result.reversalWatch.side,'PUT');
+ assert.equal(result.spikeAnticipation.state,'armed');
  assert.match(marketReading({phase:result.marketPhase,label:result.marketPhaseLabel,
-  trendSide:result.marketTrendSide,candidate:result}),/REVERSÃO EM TESTE.*PUT/);
+  trendSide:result.marketTrendSide,candidate:result}),/CONTINUIDADE.*CALL/);
  const fired=reviewFirstWaveCounterturn({candidate:forecast,map,
    quoteHistory:spike,quoteAt:AT,now:AT,price:spike.at(-1).price,
    durationMs:30000});

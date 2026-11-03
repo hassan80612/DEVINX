@@ -8,7 +8,7 @@ const newIsolatedDriver=()=>new LocalPlaywrightDriver({dataDir:mkdtempSync(join(
 import {observeNativeExpiryForClick} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 for(const [name,receipts,expected] of [
  ['newest manual choice across frames',[{value:30000,selectedAt:10},{value:60000,selectedAt:20}],60000],
- ['explicit manual 30s after 5m',[{value:300000,selectedAt:10},{value:30000,selectedAt:20,explicitDefault:true}],30000],
+ ['242: stale broker 30s cannot override Sentinel selected 1m',[{value:300000,selectedAt:10},{value:30000,selectedAt:20,explicitDefault:true}],60000],
  ['inherited default cannot dominate a saved non-default choice',[{value:30000,selectedAt:0},{value:300000,selectedAt:0}],300000]
 ])test(name,async()=>{
  const received=[],frames=receipts.map(receipt=>({evaluate:async(fn,arg)=>{if(fn.name==='updateBrokerNativeExpiryPreference'){received.push(arg);return true;}return receipt;}}));

@@ -25,14 +25,14 @@ function check(quoteHistory,durationMs,side='CALL',map=makeMap()){
   map,quoteHistory,quoteAt:quoteHistory.at(-1).ts,
   now:quoteHistory.at(-1).ts,price:quoteHistory.at(-1).price,durationMs});
 }
-test('239: engine arms opposite PUT BEFORE bullish velocity peak reverses on BOTH horizons',()=>{
+test('242: pre-spike PUT is observed without blocking a valid continuing CALL on both horizons',()=>{
  const stillRising=rows.slice(0,12);
  for(const ms of [30000,60000]){
   const armed=check(stillRising,ms);
-  assert.equal(armed.ready,false);
-  assert.equal(armed.side,null);
-  assert.equal(armed.provisionalSide,'PUT');
-  assert.equal(armed.reason,'terminal-spike-at-proven-wall-awaiting-first-rejection');
+  assert.equal(armed.ready,true);
+  assert.equal(armed.side,'CALL');
+  assert.equal(armed.reversalWatch.side,'PUT');
+  assert.equal(armed.reason,'historical-level-breakout');
   assert.equal(armed.spikeAnticipation.state,'armed');
   assert.equal(armed.spikeAnticipation.level,LEVEL);
  }

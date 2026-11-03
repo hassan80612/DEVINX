@@ -24,6 +24,7 @@ import {reviewFreshPullbackContinuation} from './early-continuation-226.mjs';
 import {reviewFirstImpulseReversal} from './impulse-lifecycle-227.mjs';
 import {reviewFirstWaveCounterturn} from './first-wave-counterturn-237.mjs';
 import {decisiveMarketRegime240} from './decisive-market-regime-240.mjs';
+import {reviewBoldSpikeReversal242} from './spike-exhaustion-counterturn-242.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -223,9 +224,9 @@ export function reviewDirectionalPersistence({candidate,quoteHistory,quoteAt,now
  const continuation=entryFamilyOf(candidate)==='continuation'||
    CONTINUATION_SETUP.test(String(candidate.reason||''));
  const fading=['weakening','reversal-testing'].includes(state.phase);
+ // Fading is a diagnostic, not an independent continuation veto.
  if(candidate.side===state.side&&continuation&&fading)
-  return{...candidate,...diagnostic,ready:false,side:null,provisionalSide:candidate.side,
-   reason:'Continuidade perdendo força; aguardando retomada ou reversão estrutural confirmada.'};
+  return {...candidate,...diagnostic,possibleReversal:true};
  // Only the 239 proven-wall / observed first-rejection logic may alter an
  // older 30s cycle forecast. The decisive 240 trend display must not add
  // an unrelated veto to a vote previously accepted on low-net noisy tape.
@@ -647,7 +648,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const persistenceDecision=reviewDirectionalPersistence({
    candidate:structuralDecision,quoteHistory,quoteAt,now,price,durationMs
   });
-  return {...persistenceDecision,engineId,qualityPolicy,
+  const spikeDecision=reviewBoldSpikeReversal242({
+   candidate:persistenceDecision,quoteHistory,quoteAt,now,price,durationMs,structure
+  });
+  return {...spikeDecision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
    signalOwner:'shared-market-base',
