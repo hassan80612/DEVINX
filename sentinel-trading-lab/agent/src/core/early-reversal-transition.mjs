@@ -84,10 +84,17 @@ export function reviewEarlyVerifiedTurn({candidate,map,quoteHistory=[],quoteAt,
    }
   }
  }
- // Two possible signals / conflicting zones are insufficient evidence.
- const uniq=new Map(proofs.map(p=>[p.side+'|'+p.level,p]));
- if(uniq.size!==1)return candidate;
- const proof=[...uniq.values()][0];
+ // Distinct CONFIRMED levels can support the SAME first-turn direction.
+ // Earlier versions rejected both as "multiple signals". Only genuinely
+ // OPPOSITE directions conflict; additional same-side proof is corroboration.
+ const unique=[...new Map(proofs.map(p=>[p.side+'|'+p.level,p])).values()];
+ const directions=new Set(unique.map(p=>p.side));
+ if(directions.size!==1)return candidate;
+ const proof=unique.sort((a,b)=>
+  (Number(b.levelEvidence.directionalPivots)-Number(a.levelEvidence.directionalPivots))||
+  (Number(b.levelEvidence.directionalRejections)-Number(a.levelEvidence.directionalRejections))||
+  (Math.abs(a.extreme-a.level)-Math.abs(b.extreme-b.level))||
+  (a.level-b.level))[0];
  if(candidate.ready===true&&candidate.side===proof.side)return candidate;
  // The original lifecycle still vets this against actual quotes, price
  // structure, 30s/1m expiry, and the broker before any physical click.
