@@ -61,7 +61,9 @@ test('235: no reversal from a label, unsupported level, old quote, or only one o
  assert.equal(check({...proof,level:{...level,oldestTestAge:1}}),false);
  assert.equal(check({...proof,microTurn:{...turn,extremeAt:AT-18000}}),false);
  assert.equal(check(proof,{now:AT+2000}),false);
- assert.equal(check(proof,{durationMs:30000}),false);
+ // Sentinel 239 intentionally extends this *same* independently verified
+ // two-tick structural proof to the newly requested 30s horizon.
+ assert.equal(check(proof,{durationMs:30000}),true);
  assert.equal(check(proof,{durationMs:300000}),false);
  const wrongQuotes=quotes.map(x=>({...x}));
  wrongQuotes[119].price=wrongQuotes[118].price;
