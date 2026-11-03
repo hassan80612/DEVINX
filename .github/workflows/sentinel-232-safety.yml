@@ -12,6 +12,10 @@ on:
       - 'sentinel-trading-lab/agent/worker/live-market-readout-229.mjs'
       - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
       - 'tests/sentinel-232-fast-click-expiry-cards.test.mjs'
+      - 'tests/sentinel-201-closed-price-admission.test.mjs'
+      - 'tests/sentinel-13989-expiry-probability-broker-latency.test.mjs'
+      - 'tests/helpers/sentinel-232-normalize-broker-click.mjs'
+      - 'tests/helpers/sentinel-232-normalize-native-expiry.mjs'
       - 'tests/sentinel-231-blue-readout-separation.test.mjs'
   workflow_dispatch:
 permissions:
