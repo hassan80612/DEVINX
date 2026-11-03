@@ -9,18 +9,18 @@ const read=path=>readFileSync(new URL(path,root));
 const release=JSON.parse(read('agent/release.json').toString('utf8'));
 const proof=JSON.parse(read('public/downloads/sentinel-244-verified.json').toString('utf8'));
 const fileName='Sentinel-Agent-'+release.version+'.exe';
-const url='/downloads/'+fileName;
+const url='/downloads/Sentinel-Agent-'+release.version+'-Direto.exe';
 const page=read('src/app/console/page.tsx').toString('utf8');
 
 test('240: primary EXE uses pinned verified same-origin transport',()=>{
  assert.equal(release.version,'13.9.244');
- assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}.exe`;'));
+ assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Direto.exe`;'));
  assert.doesNotMatch(page,/raw[.]githubusercontent[.]com/);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
 
 test('240: same-origin URL is a versioned immutable REAL Windows PE and matches tested sha256',()=>{
- const actual=read('public/downloads/'+fileName);
+ const actual=read('public/downloads/Sentinel-Agent-'+release.version+'-Direto.exe');
  const stable=read('public/downloads/Sentinel-Agent-Windows.exe');
  const sha=buffer=>createHash('sha256').update(buffer).digest('hex');
  assert.ok(actual.length>1_000_000);
@@ -38,7 +38,7 @@ test('240: same-origin fallback still has binary headers and no redirect',async(
  assert.ok(matching,'missing exact versioned EXE headers');
  const get=name=>matching.headers.find(x=>x.key===name)?.value;
  assert.equal(get('Content-Type'),'application/octet-stream');
- assert.equal(get('Content-Disposition'),'attachment; filename="'+fileName+'"');
+ assert.equal(get('Content-Disposition'),'attachment; filename="Sentinel-Agent-'+release.version+'-Direto.exe"');
  assert.equal(get('Cache-Control'),'private, no-store');
  assert.equal(redirects.some(r=>r.source===url),false);
  const middleware=read('src/middleware.ts').toString('utf8');

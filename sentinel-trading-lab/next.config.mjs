@@ -20,6 +20,12 @@ const nextConfig={
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
     // Direct same-origin versioned executable: NO 302 and exact filename.
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
+    // Exact ZIP-extracted Windows EXE under a fresh direct-download URL.
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Direto.exe',headers:[
+      {key:'Content-Type',value:'application/octet-stream'},
+      {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'-Direto.exe"'},
+      {key:'Cache-Control',value:'private, no-store'}
+    ]},
     // A redirect response must not advertise itself as a downloadable EXE.
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
