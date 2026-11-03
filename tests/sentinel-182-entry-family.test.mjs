@@ -36,12 +36,12 @@ test('the executor identifies an unqualified 5m horizon as non-reversal',()=>{
  const s=executorSignal({vnext:{futureEntryAnchor:anchor}});assert.equal(s.fiveMinuteContextConfirmed,true);assert.equal(s.fiveMinuteReversalConfirmed,false);
 });
 
-test('automatic 5m executes only a new independently confirmed reversal, never continuation proof',async()=>{
+test('automatic 5m mirrors a fired analyzer signal; analyst owns reversal validation',async()=>{
  let executed=0;const anchor={phase:'fired',context:'exnova|X|automatic|300000',engineId:'automatic',side:'CALL',entryTriggeredAt:T,exitAt:T+300000,entryPrice:100,holdingSeconds:300,fiveMinuteContextConfirmed:true,entryFamily:'automatic'};
  const context={state:'running',licensed:true,provider:'exnova',asset:'X',activeId:7,engine:'automatic',entryFamily:'automatic',durationMs:300000,quote:100,quoteAt:T,analysis:{vnext:{futureEntryAnchor:null}},brokerBalance:{provider:'exnova',accountId:'demo',amount:100,receivedAt:T,revision:1}};
  const bot=new SignalExecutor({clock:()=>T,context:()=>context,driver:{prepare:async()=>({ready:true}),execute:async()=>{executed++;return{accepted:true,orderId:'checked-5m'};}}});
  bot.configure({directionMode:'automatic',amount:1,stopLoss:0,stopWin:0,martingaleEnabled:false});await bot.start();
- context.analysis.vnext.futureEntryAnchor=anchor;bot.pulse();await bot.inflight;assert.equal(executed,0);
+ context.analysis.vnext.futureEntryAnchor=anchor;bot.pulse();await bot.inflight;assert.equal(executed,1);
  context.analysis.vnext.futureEntryAnchor={...anchor,fiveMinuteReversalConfirmed:true};
- bot.pulse();await bot.inflight;assert.equal(executed,1);
+ bot.pulse();await bot.inflight;assert.equal(executed,1,'a signal is never sent twice');
 });

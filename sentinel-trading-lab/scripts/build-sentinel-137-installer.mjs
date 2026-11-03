@@ -21,6 +21,27 @@ mkdirSync(dl,{recursive:true});
 // CI build is the only phase permitted to create the initial artifacts.
 // 232: on production builds, never silently replace the Windows-tested EXE.
 // The initial EXE compilation happens only inside the isolated release CI.
+if(release.version==='13.9.233'&&process.env.SENTINEL_233_BUILD_VERIFIED_ASSETS!=='1'){
+ const proof=JSON.parse(readFileSync(join(dl,'sentinel-233-verified.json'),'utf8'));
+ if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
+  throw Error('sentinel_233_release_provenance_mismatch');
+ const hash=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
+ for(const name of ['Sentinel-Agent-13.9.233.exe','Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
+  if(statSync(join(dl,name)).size<1000000||hash(name)!==proof.exeSha256)
+   throw Error('sentinel_233_windows_tested_exe_mismatch:'+name);
+ }
+ if(statSync(join(dl,'agent_payload_v88.zip')).size<50000||hash('agent_payload_v88.zip')!==proof.zipSha256)
+  throw Error('sentinel_233_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==proof.zipSha256)
+  throw Error('sentinel_233_manifest_mismatch');
+ for(const name of ['Sentinel-Agent-13.9.233-EXE.zip','Sentinel-Agent-13.9.233-Alternativo.zip']){
+  if(statSync(join(dl,name)).size<50000)throw Error('sentinel_233_download_archive_missing:'+name);
+ }
+ console.log('Sentinel 233: exact Windows-tested EXE and verified matching Agent ZIP preserved for site deployment.');
+ process.exit(0);
+}
+
 if(release.version==='13.9.232'&&process.env.SENTINEL_232_BUILD_VERIFIED_ASSETS!=='1'){
  const proof=JSON.parse(readFileSync(join(dl,'sentinel-232-verified.json'),'utf8'));
  if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)

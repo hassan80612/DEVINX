@@ -50,5 +50,6 @@ test('only broker-start and final-order validation are wired to new helpers',()=
  const worker=readFileSync(new URL('index.mjs',root),'utf8');
  const executor=readFileSync(new URL('signal-executor.mjs',root),'utf8');
  assert.match(worker,/return recoverAlreadyOpenMarket\(\{driver,provider,force:true\}\);/);
- assert.match(executor,/return reviewDirectionBeforeClick\(\{signal:queued,context:current,now\}\)\.ok;/);
+ assert.doesNotMatch(executor,/return reviewDirectionBeforeClick\(\{signal:queued,context:current,now\}\)\.ok;/);
+ assert.match(executor,/const valid=\(clickIndex=0\)=>this\.enabled/);
 });

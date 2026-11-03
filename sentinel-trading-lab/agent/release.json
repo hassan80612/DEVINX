@@ -1,6 +1,6 @@
 {
-  "version": "13.9.232",
-  "build": "13.9.232-safe-fast-broker-click-trusted-expiry-blue-231-core",
+  "version": "13.9.233",
+  "build": "13.9.233-direct-analyzer-execution-mobile-blue-trusted-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.232"
+  "publicVersion": "13.9.233"
 }

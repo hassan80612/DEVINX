@@ -58,8 +58,8 @@ test('232: all first-click real price, expiry and broker confirmation guards are
  const base=new URL('../sentinel-trading-lab/agent/worker/',import.meta.url);
  const executor=readFileSync(new URL('signal-executor.mjs',base),'utf8');
  const click=readFileSync(new URL('broker-ui-executor.mjs',base),'utf8');
- assert.match(executor,/liveEntryQuoteReview\(\{signal:queued,context:current,now\}\)/);
- assert.match(executor,/reviewDirectionBeforeClick\(\{signal:queued,context:current,now\}\)/);
+ assert.doesNotMatch(executor,/liveEntryQuoteReview\(\{signal:queued,context:current,now\}\)/);
+ assert.doesNotMatch(executor,/reviewDirectionBeforeClick\(\{signal:queued,context:current,now\}\)/);
  assert.match(click,/verifyBrokerExpiryForOrder\(/);
  assert.match(click,/if\(!order\.isValid\(\)\)/);
  assert.match(click,/const timeout=clickTimeout\(\);before\(\);await c\.frame\.locator/);
