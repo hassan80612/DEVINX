@@ -54,8 +54,12 @@ test('231: overlay observation is read-only, leaves market runtime, order and se
  const p=[1.10,1.1001,1.1002,1.1003,1.1004,1.1005,1.1006];
  const original={asset:'EURGBP-OTC',analysis:{asset:'EURGBP-OTC',vnext:{
   nowObservation:{ready:false,marketReading:'OBSERVANDO PREÇO ATUAL'}}}};
+ const t=Date.now();
+ const realMarket={...broker(p),lastQuoteAt:t,
+  quoteHistory:p.map((price,i)=>({ts:t-(p.length-i-1)*1000,
+   receivedAt:t-(p.length-i-1)*1000,price}))};
  const runtime={stateName:'running',settings:{engine:'automatic',mode:'real',orderDurationMs:60000},
-  lastResult:original,externalMarket:broker(p)};
+  lastResult:original,externalMarket:realMarket};
  const view=lightweightOverlayView(runtime);
  assert.notStrictEqual(view.lastResult,original);
  assert.strictEqual(runtime.lastResult,original);
