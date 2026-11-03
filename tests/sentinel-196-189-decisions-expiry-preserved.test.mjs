@@ -6,6 +6,7 @@ import {POST_EXPIRY_REASSESS_MS,advanceNowOpportunity,fiveMinuteReversalOnly} fr
 import {reviewEarlyDistantReversal} from '../sentinel-trading-lab/agent/src/core/historical-extreme-timing.mjs';
 import {verifyBrokerExpiryForOrder} from '../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs';
 import {normalize228RuntimeReadout} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
+import {normalize230RuntimeWarmup} from './helpers/sentinel-230-normalize-warmup.mjs';
 const root=new URL('../sentinel-trading-lab/agent/',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
 test('204: preserves the 197 runtime except the three explicit admission reviews',()=>{
@@ -14,7 +15,7 @@ test('204: preserves the 197 runtime except the three explicit admission reviews
  assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(/);
  // Preserve the published 197 SHA guard: subtract only the audited H207 additions.
  assert.match(runtime,/indicatorEvidence:readoutIndicators/);
- const withoutH207=normalize228RuntimeReadout(runtime)
+ const withoutH207=normalize228RuntimeReadout(normalize230RuntimeWarmup(runtime))
   .replace(/\n\/\/ H207 experimental unified admission\.[\s\S]*?\n\}\n\n(?=function iso)/,'')
   .replace(/      \/\/ H207: shared 30s\/1m entry admission; preserve broker and 5m paths\.\n      eligible=reviewH207UnifiedAdmission\(\{[\s\S]*?      \}\);\n/,'');
  assert.ok(!withoutH207.includes('reviewH207UnifiedAdmission'));
