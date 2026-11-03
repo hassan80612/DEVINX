@@ -156,7 +156,9 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
       operationalSignal:{side:op.side||'WAIT',state:op.state||'ANALISANDO',
         ready:op.ready===true,actionable:op.actionable===true},
       vnext:{...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
-        ...(v.mode==='now'?{nowObservation:v.nowObservation}:{}),
+        ...(v.mode==='now'?{nowObservation:take(v.nowObservation,
+          ['side','ready','reason','marketReading','marketPhase','marketTrendSide',
+           'observedAt','quoteAt','evaluatedAt','probabilityCall','probabilityPut'])}:{}),
         receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
     }}
   };
