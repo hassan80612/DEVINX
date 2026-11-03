@@ -78,6 +78,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -130,6 +131,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/download-artifact@v4
         with:
           name: sentinel-246-built-installer
@@ -156,7 +159,7 @@ jobs:
           & $exe
           if($LASTEXITCODE -ne 0){throw "246 Windows EXE verification failed: $LASTEXITCODE"}
   publish-assets:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/sentinel-246-expiry-no-30-reset-20261103')
     needs: verify-on-windows
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -164,6 +167,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/download-artifact@v4
         with:
           name: sentinel-246-built-installer
