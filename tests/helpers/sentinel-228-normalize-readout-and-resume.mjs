@@ -33,7 +33,7 @@ export function normalize228WorkerExpiryResume(text){
 // A single globally imposed 14s startup threshold was removed in 230.
 // Continue checking all prior runtime bytes, expiry gates and 228 recovery.
 export function normalize230StartupHistory(text){
- const start="    // Sentinel 230: remove the GLOBAL 15-tick/14-second startup wait.";
+ const start="// Sentinel 230: remove the GLOBAL 15-tick/14-second startup wait.";
  const end="const ready=verified&&historyReady";
  const old="const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;";
  const a=text.indexOf(start),b=text.indexOf(end,a);
