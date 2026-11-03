@@ -17,7 +17,8 @@ const z=(offset=0)=>({level:peak+offset,low:peak+offset-.00003,
  high:peak+offset+.00003,resistancePivots:2,resistanceRejections:1,
  supportPivots:0,supportRejections:0,independentTests:3,
  confirmedPivots:2,independentRejections:1,tests:[{age:22},{age:15}]});
-const map=levels=>({observedCandles:65,asOf:AT-60000,tolerance:TOL,levels});
+const map=levels=>({observedCandles:65,asOf:AT-60000,tolerance:TOL,levels,
+ windows:[3,10,20,50,100].map(size=>({size,available:true,observed:65,levels:levels.map(x=>x.level)}))});
 const original={ready:true,side:'CALL',reason:'historical-level-breakout',
  observedAt:AT,entryPrice:price};
 const ctx={candidate:original,quoteHistory:quotes,quoteAt:AT,now:AT,price,durationMs:60000};
