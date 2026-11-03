@@ -174,7 +174,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch="$GITHUB_REF_NAME"
+          branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          expected="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
           remote="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [ "$remote" != "$expected" ]; then echo 'Branch changed during Windows verification; refusing stale asset publication.'; exit 1; fi
           python3 - <<'PY'
