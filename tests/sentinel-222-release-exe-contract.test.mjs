@@ -11,7 +11,8 @@ test('released same-origin direct versioned Windows EXE is actual complete PE bi
  assert.match(release.version,/^13\.9\.\d+$/);
  assert.equal(release.publicVersion,release.version);
  assert.equal(pkg.version,release.version);
- assert.match(next,/source:'\/downloads\/Sentinel-Agent-'\+currentAgentRelease.version\+'\.exe',headers:agentDownloadHeaders/);
+ assert.doesNotMatch(next,/source:'\/downloads\/Sentinel-Agent-'\+currentAgentRelease.version\+'\.exe',headers:agentDownloadHeaders/);
+ assert.doesNotMatch(next,/source:'\/downloads\/Sentinel-Agent-'\+currentAgentRelease.version\+'-Direto\.exe',headers:/);
  assert.doesNotMatch(next,/source:'\/downloads\/Sentinel-Agent-13\.9\.222\.exe',destination:/);
  const a=read('public/downloads/Sentinel-Agent-Windows.exe');
  const v=read('public/downloads/Sentinel-Agent-'+release.version+'.exe');

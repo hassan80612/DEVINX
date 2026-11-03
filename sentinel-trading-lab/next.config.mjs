@@ -18,14 +18,11 @@ const nextConfig={
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    // Direct same-origin versioned executable: NO 302 and exact filename.
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
-    // Exact ZIP-extracted Windows EXE under a fresh direct-download URL.
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Direto.exe',headers:[
-      {key:'Content-Type',value:'application/octet-stream'},
-      {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-'+currentAgentRelease.version+'-Direto.exe"'},
-      {key:'Cache-Control',value:'private, no-store'}
-    ]},
+    // Intentionally no header overrides for versioned EXEs, including -Direto.
+    // The working 243 binary is served by Vercel as application/x-msdos-program,
+    // Content-Disposition: inline and public,max-age=0,must-revalidate.
+    // Applying attachment + octet-stream + private,no-store only to 244
+    // changed the browser download path despite identical first-party origin.
     // A redirect response must not advertise itself as a downloadable EXE.
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},

@@ -32,15 +32,12 @@ test('240: same-origin URL is a versioned immutable REAL Windows PE and matches 
  assert.equal(proof.version,release.version);
 });
 
-test('240: same-origin fallback still has binary headers and no redirect',async()=>{
+test('244: versioned EXEs use same unmodified static-file headers as working 243',async()=>{
  const [headers,redirects]=await Promise.all([nextConfig.headers(),nextConfig.redirects()]);
- const matching=headers.find(x=>x.source===url);
- assert.ok(matching,'missing exact versioned EXE headers');
- const get=name=>matching.headers.find(x=>x.key===name)?.value;
- assert.equal(get('Content-Type'),'application/octet-stream');
- assert.equal(get('Content-Disposition'),'attachment; filename="Sentinel-Agent-'+release.version+'-Direto.exe"');
- assert.equal(get('Cache-Control'),'private, no-store');
- assert.equal(redirects.some(r=>r.source===url),false);
+ for(const path of [url,'/downloads/'+fileName,'/downloads/Sentinel-Agent-13.9.243.exe']){
+  assert.equal(headers.some(x=>x.source===path),false,'do not override PE headers for '+path);
+  assert.equal(redirects.some(x=>x.source===path),false,'do not redirect '+path);
+ }
  const middleware=read('src/middleware.ts').toString('utf8');
  assert.match(middleware,/if\(installerFile\)return NextResponse\.next\(\)/);
  assert.match(middleware,/const installerFile=/);
