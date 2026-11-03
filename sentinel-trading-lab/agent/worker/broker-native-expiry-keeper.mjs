@@ -113,7 +113,8 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    // because it had already read an older 30s page-local preference.
    // A legacy page-local 30s DEFAULT is not a user choice. An Agent 1m/5m
    // record may predate selectedAt receipts, and still wins over this default.
-   const inherited30=current===30000&&chosen>30000;
+   const inherited30=current===30000&&chosen>30000&&
+     Number(localStorage.getItem('sentinel-broker-native-explicit-default-v4:'+provider))!==30000;
    if([30000,60000,300000].includes(chosen)&&
      (!(current>0)||at>storedAt||inherited30))
     keeper.setPreferred?.(chosen,{selectedAt:at});
@@ -124,7 +125,8 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     Promise.resolve().then(()=>window.__sentinelGetNativeExpiryChoice()).then(choice=>{
      const ms=Number(choice?.durationMs),receiptAt=Number(choice?.selectedAt)||0;
      const savedAt=Number(localStorage.getItem(nativeKey+':selectedAt')||0);
-     const inherited30=ms>30000&&Number(keeper.snapshot?.().preferredMs)===30000;
+     const inherited30=ms>30000&&Number(keeper.snapshot?.().preferredMs)===30000&&
+       Number(localStorage.getItem('sentinel-broker-native-explicit-default-v4:'+provider))!==30000;
      if([30000,60000,300000].includes(ms)&&
        ((receiptAt>0&&receiptAt>=savedAt)||inherited30)&&
        window.__sentinelNativeExpiryKeeperV3===keeper)
@@ -705,7 +707,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
    const localAt=Number(localStorage.getItem(key+':selectedAt')||0);
    // Only the timestamped, newer choice from the Agent may reconcile
    // an existing document. Never roll back a newer trusted manual click.
-   if(!explicit&&at>0&&localAt>at&&!(ms>30000&&preferredMs===30000))return true;
+   if(!explicit&&at>0&&localAt>at&&!(ms>30000&&preferredMs===30000&&!explicitDefault))return true;
    // Unauthenticated default 30s must never replace the selected 1m/5m.
    if(ms===30000&&!explicit&&preferredMs>30000)return true;
    // Passive bridge installation is repeated by broker recovery. An identical
@@ -734,7 +736,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
   const agentAt=Number(requestedAt)||0,storedAt=Number(localStorage.getItem(key+':selectedAt')||0);
   if(ACCEPT.has(Number(requestedMs)/1000)&&
     (agentAt>storedAt||
-     (preferredMs===30000&&Number(requestedMs)>30000)))
+     (preferredMs===30000&&Number(requestedMs)>30000&&!explicitDefault)))
    setPreferred(Number(requestedMs),{selectedAt:agentAt});
   // Every new document can recover even if broker storage was cleared or
   // belongs to a different embedded origin. Pull the CURRENT durable receipt;
@@ -745,7 +747,7 @@ export function installBrokerNativeExpiryKeeper({provider,requestedMs=null,reque
     // Do not lose a legacy Agent 1m/5m choice when the refreshed broker
     // advertises an unmarked 30s default with a stale timestamp.
     if(!disposed&&ACCEPT.has(chosen/1000)&&
-      (at>0||(chosen>30000&&preferredMs===30000)))
+      (at>0||(chosen>30000&&preferredMs===30000&&!explicitDefault)))
      setPreferred(chosen,{selectedAt:at});
    }).catch(()=>{});
   poll();
