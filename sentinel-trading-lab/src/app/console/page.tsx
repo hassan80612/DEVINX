@@ -24,9 +24,10 @@ const AVAILABLE_AGENT_VERSION=agentRelease.version;
 // The 222 EXE is hosted as a public GitHub Release asset rather than
 // relying on the Vercel binary endpoint, which some Edge clients reject.
 // Other releases keep their existing same-origin route until verified.
-const AGENT_DOWNLOAD_URL=AVAILABLE_AGENT_VERSION==='13.9.222'
-  ?'https://github.com/hassan80612/DEVINX/releases/download/sentinel-agent-13.9.222/Sentinel-Agent-13.9.222.exe'
-  :`/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+// 230: direct GitHub raw asset (no Vercel binary/CDN or site redirect).
+// Every version has a unique immutable filename. The binary itself is
+// built and executed on Windows in CI before being committed to this branch.
+const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/fix/sentinel-221-github-direct-no-vercel-hop-20261102/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();

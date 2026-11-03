@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {reviewPreviousClosedCandlePrice} from '../sentinel-trading-lab/agent/src/core/previous-closed-price-admission.mjs';
-import {normalize228RuntimeReadout,normalize228WorkerExpiryResume} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
+import {normalize230StartupHistory,normalize228RuntimeReadout,normalize228WorkerExpiryResume} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
 const root=new URL('../',import.meta.url);
 const read=p=>readFileSync(new URL(p,root),'utf8');
 const fixture=JSON.parse(read('tests/fixtures/sentinel-201-recorded-admission.json'));
@@ -14,7 +14,7 @@ test('204: explicit reviewer and closed-price admission preserve the published 1
  // Normalize ONLY the expressly authorized H207 additions before comparing
  // the historic 199 baseline. Preserve the original SHA-based regression gate.
  assert.match(runtime,/indicatorEvidence:readoutIndicators/);
- const withoutH207=normalize228RuntimeReadout(runtime)
+ const withoutH207=normalize228RuntimeReadout(normalize230StartupHistory(runtime))
   .replace(/\n\/\/ H207 experimental unified admission\.[\s\S]*?\n\}\n\n(?=function iso)/,'')
   .replace(/      \/\/ H207: shared 30s\/1m entry admission; preserve broker and 5m paths\.\n      eligible=reviewH207UnifiedAdmission\(\{[\s\S]*?      \}\);\n/,'');
  assert.ok(!withoutH207.includes('reviewH207UnifiedAdmission'),'H207 helper and gate normalized');

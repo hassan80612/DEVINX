@@ -55,7 +55,7 @@ export function marketReading({phase,label,trendSide,candidate={},observation={}
   }else if(/completed-structure-not-ready/.test(reason))
    text='COLETANDO MICROESTRUTURA';
   else
-   text='AGUARDANDO HISTÓRICO SUFICIENTE';
+   text='OBSERVANDO PREÇO ATUAL';
  }
  return text+(direction?' · '+direction:'');
 }
