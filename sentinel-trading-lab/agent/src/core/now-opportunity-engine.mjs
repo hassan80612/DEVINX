@@ -345,13 +345,10 @@ export function completedRangeStructure(quotes,now,noise,spot,holdingMs=30000){
   closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
  }
  if(closes.length<10)return null;
- // An independently confirmed 5s-bar trend MUST NOT be trapped by the
- // stationary-range gate merely because 1-second quote noise is high.
- // This is a regime disambiguation, not permission to chase a peak; the
- // 239 wall/spike arbitration still reviews any subsequent continuation.
- const regime=decisiveMarketRegime240({
-  quoteHistory:last,quoteAt:last.at(-1).ts,now,price:spot,durationMs:holdingMs});
- if(regime.kind==='trend')return null;
+ // The confirmed multi-swing range evidence is more authoritative than a
+ // 60s segment's trend fit: part of a 95s oscillation can resemble a trend.
+ // Keep prior range turns byte-for-byte in decision logic. The new longer
+ // regime key is only a tie-break for the noisy closed-candle trend path.
  // A directional trend with small pullbacks has high total path efficiency.
  // A long oscillation traverses both directions, returning near its origin.
  let travelled=0;
