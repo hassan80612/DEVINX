@@ -1,0 +1,32 @@
+name: Sentinel 239 First-wave Spike 30s and 1m Regression
+on:
+  push:
+    branches:
+      - fix/sentinel-239-pre-spike-first-wave-30s-1m-20261103
+    paths:
+      - '.github/workflows/sentinel-239-pre-spike-regression.yml'
+      - 'sentinel-trading-lab/agent/src/core/first-wave-counterturn-237.mjs'
+      - 'sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs'
+      - 'sentinel-trading-lab/agent/src/core/one-minute-rejection-admission.mjs'
+      - 'tests/sentinel-239-pre-spike-arbitration.test.mjs'
+      - 'tests/sentinel-237-first-wave-arbitration.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify first-wave reversal, countertrend and expiry invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/src/core/first-wave-counterturn-237.mjs
+          node --check sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs
+          node --check sentinel-trading-lab/agent/src/core/one-minute-rejection-admission.mjs
+          node --test tests/sentinel-239-pre-spike-arbitration.test.mjs tests/sentinel-237-first-wave-arbitration.test.mjs tests/sentinel-236-multilevel-reversal-recognition.test.mjs tests/sentinel-235-first-turn-before-candle-flip.test.mjs tests/sentinel-238-no-30s-rollback.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs
