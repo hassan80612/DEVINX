@@ -20,9 +20,13 @@ export function presentLiveMarketReadout229({view,analysis,now=Date.now(),asset}
  // This NEVER mutates the real engine result or authorizes an entry.
  if(old?.nowObservation?.ready===true)return old;
  const broker=view?.liveBroker;
- const actualAsset=String(broker?.validatedSymbol||broker?.symbol||'').trim().toUpperCase();
+ // The same real OTC instrument can be written EUR/GBP (OTC) in
+ // the broker and EURGBP-OTC in the analyst. Preserve OTC identity while
+ // comparing; never allow a different instrument or unvalidated feed.
+ const instrumentKey=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const actualAsset=instrumentKey(broker?.validatedSymbol||broker?.symbol);
  if(!broker||broker.quoteFeedValidated!==true||broker.assetValidated!==true||
-  !actualAsset||String(asset||'').trim().toUpperCase()!==actualAsset)return old;
+  !actualAsset||instrumentKey(asset)!==actualAsset)return old;
  const quoteAt=Number(broker.lastQuoteAt||broker.quoteTs);
  const price=Number(broker.quote);
  const state=liveVisualPhase229({quoteHistory:broker.quoteHistory||[],
