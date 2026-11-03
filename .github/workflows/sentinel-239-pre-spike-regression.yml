@@ -10,6 +10,7 @@ on:
       - 'sentinel-trading-lab/agent/src/core/one-minute-rejection-admission.mjs'
       - 'tests/sentinel-239-pre-spike-arbitration.test.mjs'
       - 'tests/sentinel-237-first-wave-arbitration.test.mjs'
+      - 'tests/sentinel-235-first-turn-before-candle-flip.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
