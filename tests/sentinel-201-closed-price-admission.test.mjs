@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {normalize232NativeKeeper} from './helpers/sentinel-232-normalize-native-expiry.mjs';
 import {normalize232BrokerClick} from './helpers/sentinel-232-normalize-broker-click.mjs';
+import {normalize238BrokerClick} from './helpers/sentinel-238-normalize-expiry-click.mjs';
 import {reviewPreviousClosedCandlePrice} from '../sentinel-trading-lab/agent/src/core/previous-closed-price-admission.mjs';
 import {normalize234FastLaneRuntime} from './helpers/sentinel-234-normalize-fast-lane.mjs';
 import {normalize230StartupHistory,normalize228RuntimeReadout,normalize228WorkerExpiryResume} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
@@ -106,7 +107,7 @@ test('233: expiry persistence, broker controls, stop targets and analyst-only di
   if(path==='sentinel-trading-lab/agent/worker/broker-ui-executor.mjs'){
    const click=read(path);
    assert.match(click,/Promise\.all\(page\.frames\(\)\.map/);
-   assert.equal(gitSha(normalize232BrokerClick(click)),hash,
+   assert.equal(gitSha(normalize232BrokerClick(normalize238BrokerClick(click))),hash,
      'broker click changes restricted to audited 232 cache+iframe speed edits');
    continue;
   }
