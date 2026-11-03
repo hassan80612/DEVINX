@@ -2571,14 +2571,17 @@ export class LocalPlaywrightDriver{
           'precision-opposite-forecast-required':'PREVISÃO CONTRÁRIA INSUFICIENTE',
           'precision-directional-score-below-100':'AGUARDANDO TODOS OS CRITÉRIOS'
         }[admission?.reason]||(admission?.ready?'ENTRADA LIBERADA':duration===300000?'AGUARDANDO EXTREMO + REVERSÃO':'AGUARDANDO REVERSÃO LOCAL CONFIRMADA');
-        const scanningLabel=observation?.marketReading|| (scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+        // Main status is the entry state. The BLUE line below independently
+        // owns dynamic continuation/weakening/reversal classification.
+        const scanningLabel=(observation?.ready===true&&['CALL','PUT'].includes(observation.side)?
+          'SINAL IDENTIFICADO · '+observation.side:scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
           scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
           /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
           /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
           /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
           /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
           scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
-          'ANALISANDO');
+          'OBSERVANDO PREÇO ATUAL');
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
@@ -2928,14 +2931,17 @@ export class LocalPlaywrightDriver{
             const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
               (observation?.side||observation?.provisionalSide):null;
             const scanReason=String(observation?.reason||'');
-            const scanningLabel=observation?.marketReading|| (scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
+            // Main status is the entry state. The BLUE line below independently
+        // owns dynamic continuation/weakening/reversal classification.
+        const scanningLabel=(observation?.ready===true&&['CALL','PUT'].includes(observation.side)?
+          'SINAL IDENTIFICADO · '+observation.side:scanReason==='range-expiry-exceeds-observed-swing'?'OSCILAÇÃO CURTA PARA O PRAZO':
           scanReason==='range-awaiting-third-confirmed-turn'?'AGUARDANDO 3ª VIRADA':
               /range-extreme-awaiting|irregular-range-awaiting/.test(scanReason)?'AGUARDANDO REVERSÃO':
               /choppy-sideways|lateral-or-mixed|neutral-closed/.test(scanReason)?'MERCADO LATERAL':
               /rapid-countertrend|current-price-retracing/.test(scanReason)?'RETRAÇÃO EM ANDAMENTO':
               /stale-live-quote|live-quote-unverified/.test(scanReason)?'AGUARDANDO COTAÇÃO':
               scanReason==='completed-structure-not-ready'?'AGUARDANDO ESTRUTURA':
-              'ANALISANDO');
+              'OBSERVANDO PREÇO ATUAL');
             const phaseText=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-market-phase]');
             if(nowAnalysisMode&&phaseText){
               const age=nowClock-Number(observation?.quoteAt||observation?.observedAt||0),
