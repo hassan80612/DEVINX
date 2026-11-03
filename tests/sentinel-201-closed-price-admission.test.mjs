@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {normalize232NativeKeeper} from './helpers/sentinel-232-normalize-native-expiry.mjs';
+import {normalize232BrokerClick} from './helpers/sentinel-232-normalize-broker-click.mjs';
 import {reviewPreviousClosedCandlePrice} from '../sentinel-trading-lab/agent/src/core/previous-closed-price-admission.mjs';
 import {normalize230StartupHistory,normalize228RuntimeReadout,normalize228WorkerExpiryResume} from './helpers/sentinel-228-normalize-readout-and-resume.mjs';
 const root=new URL('../',import.meta.url);
@@ -97,6 +98,13 @@ test('201: latest expiry persistence, broker controls, stops and the tested pric
    assert.match(driver,/setNativeExpiryChoiceHandler/);
    assert.match(driver,/await this\.nativeExpiryChoiceHandler\(provider,ms,selectedAt\)/);
    assert.match(driver,/__sentinelQuickCardCache/);
+   continue;
+  }
+  if(path==='sentinel-trading-lab/agent/worker/broker-ui-executor.mjs'){
+   const click=read(path);
+   assert.match(click,/Promise\.all\(page\.frames\(\)\.map/);
+   assert.equal(gitSha(normalize232BrokerClick(click)),hash,
+     'broker click changes restricted to audited 232 cache+iframe speed edits');
    continue;
   }
   if(path==='sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs'){
