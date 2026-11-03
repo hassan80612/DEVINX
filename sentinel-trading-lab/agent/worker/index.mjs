@@ -25,6 +25,7 @@ import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {dashboardTransportState} from './remote-status.mjs';
 import {analystSnapshot} from './live-bridge.mjs';
+import {presentLiveMarketReadout229} from './live-market-readout-229.mjs';
 import {SignedLiveBridge} from './signed-live-bridge.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
@@ -230,11 +231,22 @@ async function publishLiveFrame(){
     // Fast path: the remote phone needs the already-computed analyst state,
     // not a second full balance/broker/history/status sweep every second.
     // The authenticated periodic status API still carries full details.
+    // Same read-only blue-line interpretation as the PC. It cannot
+    // alter the operational analyst decision, signal, or native expiry.
+    const visual=presentLiveMarketReadout229({
+      view:{state:runtime.stateName,settings:runtime.settings,liveBroker:chosen.m},
+      analysis:runtime.lastResult?.analysis||null,
+      asset:String(runtime.lastResult?.asset||runtime.settings.asset||''),
+      now:Date.now()
+    });
+    const mobileResult=visual&&visual!==runtime.lastResult?.analysis?.vnext?
+      {...runtime.lastResult,analysis:{...(runtime.lastResult?.analysis||{}),vnext:visual}}:
+      runtime.lastResult;
     const snapshot={
       agentVersion:VERSION,state:runtime.stateName,bot:packExecutor(remoteExecutorState()),
       killSwitch:runtime.killSwitch,masterFrozen:runtime.masterFrozen,
       settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
-      lastResult:runtime.lastResult
+      lastResult:mobileResult
     };
     if(liveBridge.publish(analystSnapshot(snapshot,chosen.m),{urgent,sourceEvent})){
       lastLiveSentDecisionKey=decisionKey;
