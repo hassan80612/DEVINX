@@ -1346,6 +1346,28 @@ export class DemoTradingRuntime{
         now,price:snap.price,durationMs:settings.orderDurationMs,
         allowVerifiedEarlyReversal:true
       });
+      // Read-only admission latency telemetry. A valid structural proposal
+      // blocked by a final guard must be distinguished from CPU slowness.
+      // This does NOT authorize, delay or change any trade or expiry.
+      const proposalReady=observation.ready===true&&['CALL','PUT'].includes(observation.side);
+      const proposalKey=proposalReady?[
+        String(snap.provider||''),String(settings.asset||''),Number(settings.orderDurationMs),
+        observation.side,String(observation.reason||'')].join('|'):null;
+      const previousPending=this.entryLatencyEvidence?.pending;
+      const blockedProposal=proposalReady&&eligible.ready!==true;
+      const firstSeenAt=blockedProposal&&previousPending?.key===proposalKey?
+        Number(previousPending.firstSeenAt):now;
+      this.entryLatencyEvidence={
+        status:blockedProposal?'final-guard-blocked':eligible.ready===true?'ready':'awaiting-structural-evidence',
+        proposalSide:proposalReady?observation.side:null,
+        structuralReason:String(original66.reason||''),
+        finalReason:String(eligible.reason||''),
+        blockingReason:blockedProposal?String(eligible.reason||'unknown'):null,
+        waitingMs:blockedProposal?Math.max(0,now-firstSeenAt):0,
+        sourceQuoteAgeMs:Math.max(0,now-Number(snap.quoteTs||now)),
+        pending:blockedProposal?{key:proposalKey,firstSeenAt}:null,
+        evaluatedAt:now
+      };
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,engineId:settings.engine,durationMs:settings.orderDurationMs
