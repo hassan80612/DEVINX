@@ -1,4 +1,4 @@
-import {lastTrustedExpiryForResume} from './native-expiry-resume-228.mjs';
+import {lastTrustedExpiryForResume,recoverMissingRuntimeExpiryFromNative} from './native-expiry-resume-228.mjs';
 import {executorReadoutKey} from './executor-readouts.mjs';
 import {packExecutor,unpackExecutor,dispatchExecutor} from './executor-remote.mjs';
 import {SignalExecutor} from './signal-executor.mjs';
@@ -162,7 +162,7 @@ function chooseLive(){
 let savedRuntimeExpirySeed=null;
 const nativeExpirySeedAttempted=new Set();
 function seedMissingNativeExpiry(provider){
- if(!savedRuntimeExpirySeed||nativeExpirySeedAttempted.has(provider)||
+ if(nativeExpirySeedAttempted.has(provider)||
    typeof driver.setNativeExpiryPreference!=='function')return;
  nativeExpirySeedAttempted.add(provider);
  // Capture the loaded preference before async storage recovery. A new manual
@@ -181,13 +181,18 @@ function seedMissingNativeExpiry(provider){
     await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:false});
     return;
    }
-   const latest=lastTrustedExpiryForResume({
-    nativeDurationMs:driver.nativeExpiryPreferences.get(provider),
-    nativeSelectedAt:driver.nativeExpirySelectedAt.get(provider),
-    nativeExplicit30:explicitlySelected30,
-    currentDurationMs:runtime.settings.orderDurationMs,
-    changedDuringRecovery:Number(runtime.settings.orderDurationMs)!==startingDuration
-   });
+   const changedDuringRecovery=Number(runtime.settings.orderDurationMs)!==startingDuration;
+   // A missing/corrupted runtime state used to silently leave its hardcoded
+   // 30s constructor default active, even when the Agent still held 1m/5m.
+   const latest=savedRuntimeExpirySeed==null?
+    recoverMissingRuntimeExpiryFromNative({nativeDurationMs:stored,
+     currentDurationMs:runtime.settings.orderDurationMs,changedDuringRecovery}):
+    lastTrustedExpiryForResume({
+     nativeDurationMs:stored,
+     nativeSelectedAt:driver.nativeExpirySelectedAt.get(provider),
+     nativeExplicit30:explicitlySelected30,
+     currentDurationMs:runtime.settings.orderDurationMs,changedDuringRecovery
+    });
    if(latest!=null){
     runtime.patchSettings({orderDurationMs:latest},'restore-last-trusted-native-expiry');
     savedRuntimeExpirySeed=latest;
@@ -196,7 +201,8 @@ function seedMissingNativeExpiry(provider){
    }
    return;
   }
-  await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:true});
+  if(savedRuntimeExpirySeed!=null)
+   await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:true});
  })().catch(e=>console.error('native_expiry_seed_error',String(e?.message||e)));
 }
 function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;seedMissingNativeExpiry(k);const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordMarketJournal)marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
