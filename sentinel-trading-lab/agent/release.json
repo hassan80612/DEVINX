@@ -1,6 +1,6 @@
 {
-  "version": "13.9.237",
-  "build": "13.9.237-first-wave-countertrend-arbitration-preserved-expiry",
+  "version": "13.9.238",
+  "build": "13.9.238-durable-native-expiry-and-first-wave-preserved",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -29,5 +29,5 @@
       "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   },
-  "publicVersion": "13.9.237"
+  "publicVersion": "13.9.238"
 }
