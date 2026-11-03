@@ -114,8 +114,16 @@ export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],candle
      oldestTestAge:Math.max(...level.tests.map(t=>Number(t.age)||0))}});
   }
  }
- if(options.length!==1)return candidate;
- const proof=options[0];
+ // Multiple independent zones confirming the SAME first counter-move
+ // are not two contradictory reversals. Reject only opposite directions.
+ // Keep all original quote, historical role and age requirements unchanged.
+ const directions=new Set(options.map(p=>p.side));
+ if(directions.size!==1)return candidate;
+ const proof=options.sort((a,b)=>
+  (Number(b.levelEvidence.directionalPivots)-Number(a.levelEvidence.directionalPivots))||
+  (Number(b.levelEvidence.directionalRejections)-Number(a.levelEvidence.directionalRejections))||
+  (Math.abs(a.extreme-a.level)-Math.abs(b.extreme-b.level))||
+  (a.level-b.level))[0];
  if(candidate.ready===true&&candidate.side===proof.side)return candidate;
  // Compare the two hypotheses using all independently available evidence:
  // closed-candle EMA/RSI/structure + 5s EMA/RSI/ADX/DMI/divergence +
