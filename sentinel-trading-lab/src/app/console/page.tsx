@@ -18,11 +18,10 @@ type Status=any;
 // authenticated worker/manager status and may legitimately be older.
 const WEB_RELEASE_VERSION=agentRelease.publicVersion||agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
-// Versioned Windows EXE is already bundled in public/downloads and verified
-// on Windows in CI. Keep this link SAME-ORIGIN with no GitHub raw redirect.
-// next.config.mjs attaches octet-stream + Content-Disposition to this path;
-// the public installer path is narrowly allowed by middleware.
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
+// Restore the known-working 239 download transport (direct GitHub raw).
+// Pin the exact Windows-tested 240 installer commit and immutable EXE bytes.
+// The previous Vercel-hosted path remains available only as a fallback.
+const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/603ecf58522b5ecded2cf9e08dead5e68b3287ae/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();
