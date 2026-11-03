@@ -29,7 +29,7 @@ export function marketWarmup230({broker={},quoteHistory=[],now=Date.now()}={}){
  if(recent.some((q,i)=>{
   const t=Number(q?.ts),p=Number(q?.price);
   return !Number.isFinite(t)||!Number.isFinite(p)||p<=0||
-    (i>0&&(t<=Number(recent[i-1].ts)||t-Number(recent[i-1].ts)>3200));
+    (i>0&&(t<=Number(recent[i-1].ts)||t-Number(recent[i-1].ts)>2200));
  }))return {ready:false,path:'short-quote-sequence-incomplete',quoteCount:quotes.length,spanMs:span};
  const recentSpan=end-Number(recent[0].ts);
  if(recentSpan<4000)return {ready:false,path:'collecting-recent-ticks',quoteCount:quotes.length,spanMs:recentSpan};
