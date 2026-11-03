@@ -1,6 +1,6 @@
 {
   "version": "13.9.243",
-  "build": "13.9.243-active-spike-regime-early-reversal",
+  "build": "13.9.243-original-expiry-persistence-repair",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

@@ -38,7 +38,7 @@ test('230: no made-up direction when historical proof is absent',()=>{
 test('240: primary EXE restores the working 239 direct GitHub download method',()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const page=readFileSync(new URL('src/app/console/page.tsx',root),'utf8');
- assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-243-active-spike-regime-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
+ assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-243-expiry-persistence-only-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
  assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });

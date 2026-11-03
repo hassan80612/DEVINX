@@ -71,12 +71,12 @@ test('201: existing 5m policy, unknown history and startup remain available with
 });
 
 test('233: expiry persistence, broker controls, stop targets and analyst-only direction remain protected',()=>{
- // H207 intentionally changes ONLY the manual expiry bridge and its durable
- // runtime callback. Keep byte-for-byte guards for all other 199/207 files.
+ // Sentinel 243 expiry-only repair explicitly approves the exact updated
+ // native keeper fingerprint. All unrelated 199/207 files remain byte-guarded.
  const approvedH207={
   'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs':'25d67271aee1e407e40a27d46604ef335c2eaff3',
   'sentinel-trading-lab/agent/worker/index.mjs':'6bd46cd85a427ee0b749c0b838103ed697ab5dd9',
-  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'6fd1cf45912373343181bc342fb314945b759e1a',
+  'sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs':'1de5ec9b9f9bcf6e71282ef2161ea2569b07865e',
   // 222: only the reviewed final-entry proof veto; other workers remain frozen.
   'sentinel-trading-lab/agent/worker/signal-executor.mjs':'534529f15a8d9e8ea34ae1662ec5f1ff0ad91707'
  };
@@ -117,7 +117,7 @@ test('233: expiry persistence, broker controls, stop targets and analyst-only di
      'if(ms===30000&&!explicit&&preferredMs>30000)return true;',
      'if(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault)return true;'));
    assert.equal(gitSha(baseline),approvedH207[path],
-     'native expiry changes restricted to audited 232 inherited-30s bug fix');
+     'native expiry keeper must match precisely reviewed 243 expiry-only repair');
    continue;
   }
   if(path==='sentinel-trading-lab/agent/worker/signal-executor.mjs'){
