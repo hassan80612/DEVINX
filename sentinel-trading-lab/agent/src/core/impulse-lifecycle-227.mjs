@@ -106,8 +106,12 @@ export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],candle
    if(side==='CALL'&&rows.slice(extreme).some(q=>q.price<lo-tol*.48))continue;
    if(side==='PUT'&&rows.slice(extreme).some(q=>q.price>hi+tol*.48))continue;
    if(!(sign*(spot-priceLevel)>=-tol*.35&&sign*(spot-priceLevel)<=tol*1.65))continue;
-   options.push({side,level:priceLevel,extreme:peak.price,firstBreak:rows[extreme+1].price,
-    retest:rows.at(-2).price,observedAt:at,velocity:quick,departure});
+   options.push({side,level:priceLevel,extreme:peak.price,extremeAt:peak.ts,
+    firstBreak:rows[extreme+1].price,retest:rows.at(-2).price,observedAt:at,
+    velocity:quick,departure,levelEvidence:{low:lo,high:hi,
+     directionalPivots:role.pivots,directionalRejections:role.rejections,
+     independentTests:Number(level.independentTests),
+     oldestTestAge:Math.max(...level.tests.map(t=>Number(t.age)||0))}});
   }
  }
  if(options.length!==1)return candidate;
@@ -133,7 +137,9 @@ export function reviewFirstImpulseReversal({candidate,map,quoteHistory=[],candle
   predictedPrice:null,expectedLogMove:null,reason:'confirmed-level-structure-reversal',
   priceStructure:{...(candidate.priceStructure||{}),confirmedReversal:{
    kind:'confirmed-level-structure-reversal',side:proof.side,confirmedAt:at,
-   level:{level:proof.level},microTurn:{extreme:proof.extreme,
+   level:{level:proof.level,...proof.levelEvidence},
+   earlyLevelProof:{tolerance:tol,verifiedAt:at},
+   microTurn:{extreme:proof.extreme,extremeAt:proof.extremeAt,
     firstBreak:proof.firstBreak,retest:proof.retest,observedAt:at}}},
   earlyTurnEvidence:{kind:'level-microstructure-first-turn',
    withoutThreeClosedBars:true,impulsePhase:'observed-first-turn'}};
