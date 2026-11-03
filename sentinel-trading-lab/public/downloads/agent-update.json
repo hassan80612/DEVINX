@@ -1,1 +1,1 @@
-{"format":"sentinel-agent-update-v1","version":"13.9.244","build":"13.9.244-verified-lateral-peak-expiry-preserved","zipSha256":"69d867d29052ffd0a0c5b282f0ec43d5c66700d5e4a3235767f3565d8c7372d3"}
+{"format":"sentinel-agent-update-v1","version":"13.9.244","build":"13.9.244-native-expiry-persistence-hotfix","zipSha256":"fe6a10e6a4f5763fc237db78d83b1a650c0030fe0c845a41498ec089b5e1b0d4"}
