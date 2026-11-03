@@ -1,0 +1,196 @@
+name: Sentinel 246 verified Windows Agent release
+on:
+  push:
+    branches:
+      - fix/sentinel-246-expiry-no-30-reset-20261103
+    paths:
+      - .github/workflows/sentinel-246-verified-agent-release.yml
+      - .github/workflows/sentinel-240-safety.yml
+      - sentinel-trading-lab/agent/release.json
+      - sentinel-trading-lab/agent/package.json
+      - sentinel-trading-lab/package.json
+      - sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+      - sentinel-trading-lab/agent/src/core/market-reading.mjs
+      - sentinel-trading-lab/agent/src/core/runtime.mjs
+      - sentinel-trading-lab/agent/worker/index.mjs
+      - sentinel-trading-lab/agent/worker/native-expiry-resume-228.mjs
+      - sentinel-trading-lab/agent/src/core/live-visual-phase-229.mjs
+      - sentinel-trading-lab/agent/worker/live-market-readout-229.mjs
+      - sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
+      - tests/sentinel-229-blue-live-market-phase.test.mjs
+      - tests/sentinel-231-blue-readout-separation.test.mjs
+      - tests/sentinel-232-fast-click-expiry-cards.test.mjs
+      - tests/helpers/sentinel-233-normalize-broker-click.mjs
+      - tests/helpers/sentinel-233-normalize-native-expiry.mjs
+      - sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+      - sentinel-trading-lab/agent/worker/signal-executor.mjs
+      - sentinel-trading-lab/agent/worker/live-bridge.mjs
+      - sentinel-trading-lab/src/components/LiveScenarioCard.tsx
+      - tests/sentinel-233-bot-mirror-mobile-blue.test.mjs
+      - tests/sentinel-234-fast-lane-diagnostics.test.mjs
+      - tests/sentinel-235-first-turn-before-candle-flip.test.mjs
+      - tests/sentinel-236-multilevel-reversal-recognition.test.mjs
+      - tests/sentinel-237-first-wave-arbitration.test.mjs
+      - tests/sentinel-239-pre-spike-arbitration.test.mjs
+      - tests/sentinel-240-regime-first-wave.test.mjs
+      - tests/sentinel-240-live-one-minute-countercandle.test.mjs
+      - sentinel-trading-lab/agent/src/core/decisive-market-regime-240.mjs
+      - sentinel-trading-lab/agent/src/core/market-reading.mjs
+      - sentinel-trading-lab/agent/src/core/one-minute-rejection-admission.mjs
+      - tests/sentinel-238-no-30s-rollback.test.mjs
+      - sentinel-trading-lab/agent/src/core/first-wave-counterturn-237.mjs
+      - sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+      - sentinel-trading-lab/agent/src/core/spike-exhaustion-counterturn-242.mjs
+      - sentinel-trading-lab/agent/worker/executor-panel.mjs
+      - tests/sentinel-242-spike-reversal.test.mjs
+      - tests/sentinel-243-active-peak-and-regime.test.mjs
+      - tests/sentinel-244-lateral-and-accelerated-spike.test.mjs
+      - sentinel-trading-lab/agent/src/core/range-opportunity-244.mjs
+      - sentinel-trading-lab/agent/src/core/carryover-spike-244.mjs
+      - tests/sentinel-225-market-condition-overlay.test.mjs
+      - sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs
+      - sentinel-trading-lab/agent/src/core/early-reversal-transition.mjs
+      - sentinel-trading-lab/agent/src/core/impulse-lifecycle-227.mjs
+      - tests/sentinel-222-release-exe-contract.test.mjs
+      - sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+      - tests/sentinel-201-closed-price-admission.test.mjs
+      - sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - tests/sentinel-230-startup-and-download.test.mjs
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
+      - sentinel-trading-lab/src/app/console/page.tsx
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
+      - tests/sentinel-228-market-reading-recovery.test.mjs
+      - tests/sentinel-221-expiry-native-durable.test.mjs
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-246-expiry-only-windows-release-20261103
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.9'
+      - name: Check 246 identity and native expiry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p 'JSON.parse(require("fs").readFileSync("sentinel-trading-lab/agent/release.json")).version')" = 13.9.246
+          node --check sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/src/core/decisive-market-regime-240.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/src/core/spike-exhaustion-counterturn-242.mjs
+          node --check sentinel-trading-lab/agent/src/core/market-reading.mjs
+          node --check sentinel-trading-lab/agent/src/core/first-wave-counterturn-237.mjs
+          node --check sentinel-trading-lab/agent/src/core/shared-pivot-guard.mjs
+          node --check sentinel-trading-lab/agent/src/core/one-minute-rejection-admission.mjs
+          node --test tests/sentinel-245-rollback-30s-recovery.test.mjs tests/sentinel-107-range-preservation.test.mjs tests/sentinel-202-reversal-review-freshness.test.mjs tests/sentinel-240-regime-first-wave.test.mjs tests/sentinel-242-spike-reversal.test.mjs tests/sentinel-243-active-peak-and-regime.test.mjs tests/sentinel-244-lateral-and-accelerated-spike.test.mjs tests/sentinel-225-market-condition-overlay.test.mjs tests/sentinel-240-live-one-minute-countercandle.test.mjs tests/sentinel-239-pre-spike-arbitration.test.mjs tests/sentinel-238-no-30s-rollback.test.mjs tests/sentinel-237-first-wave-arbitration.test.mjs tests/sentinel-236-multilevel-reversal-recognition.test.mjs tests/sentinel-235-first-turn-before-candle-flip.test.mjs tests/sentinel-232-fast-click-expiry-cards.test.mjs tests/sentinel-231-blue-readout-separation.test.mjs tests/sentinel-233-bot-mirror-mobile-blue.test.mjs tests/sentinel-234-fast-lane-diagnostics.test.mjs tests/sentinel-230-startup-and-download.test.mjs tests/sentinel-228-market-reading-recovery.test.mjs tests/sentinel-229-blue-live-market-phase.test.mjs tests/sentinel-227-impulse-reversal-and-visuals.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-222-last-mile-evidence.test.mjs
+      - name: Build matching 246 Windows EXE, Agent ZIP and both offline options
+        shell: bash
+        env:
+          SENTINEL_246_BUILD_VERIFIED_ASSETS: '1'
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          node scripts/build-sentinel-137-installer.mjs
+          cp public/downloads/Sentinel-Agent-13.9.246.exe public/downloads/Sentinel-Agent-13.9.246-Direto.exe
+          node --test ../tests/sentinel-222-release-exe-contract.test.mjs
+          sha256sum public/downloads/Sentinel-Agent-13.9.246.exe public/downloads/agent_payload_v88.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-246-built-installer
+          if-no-files-found: error
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-Direto.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-EXE.zip
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-Alternativo.zip
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+  verify-on-windows:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-246-built-installer
+          path: sentinel-trading-lab/public/downloads
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check analyst overlay and native expiry logic on Windows
+        shell: pwsh
+        env:
+          SENTINEL_TEST_EDGE: '1'
+        run: |
+          npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+          node --test tests/sentinel-245-rollback-30s-recovery.test.mjs tests/sentinel-107-range-preservation.test.mjs tests/sentinel-202-reversal-review-freshness.test.mjs tests/sentinel-240-regime-first-wave.test.mjs tests/sentinel-240-live-one-minute-countercandle.test.mjs tests/sentinel-239-pre-spike-arbitration.test.mjs tests/sentinel-238-no-30s-rollback.test.mjs tests/sentinel-237-first-wave-arbitration.test.mjs tests/sentinel-236-multilevel-reversal-recognition.test.mjs tests/sentinel-235-first-turn-before-candle-flip.test.mjs tests/sentinel-232-fast-click-expiry-cards.test.mjs tests/sentinel-231-blue-readout-separation.test.mjs tests/sentinel-233-bot-mirror-mobile-blue.test.mjs tests/sentinel-234-fast-lane-diagnostics.test.mjs tests/sentinel-222-card-stability-broker-support.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-168-targeted-corrections.test.mjs tests/sentinel-live-market-totals-117.test.mjs tests/sentinel-228-market-reading-recovery.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs
+      - name: Execute 246 Windows EXE without installation
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe=Join-Path $PWD 'sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246.exe'
+          if(-not (Test-Path $exe)){throw 'Missing 246 EXE'}
+          & $exe
+          if($LASTEXITCODE -ne 0){throw "246 Windows EXE verification failed: $LASTEXITCODE"}
+  publish-assets:
+    needs: verify-on-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-246-built-installer
+          path: sentinel-trading-lab/public/downloads
+      - name: Attest and commit exact tested 246 assets, never alter existing expiry code
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="$GITHUB_REF_NAME"
+          remote="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [ "$remote" != "$GITHUB_SHA" ]; then echo 'Branch changed during Windows verification; refusing stale asset publication.'; exit 1; fi
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('sentinel-trading-lab')
+          release=json.loads((root/'agent/release.json').read_text())
+          dl=root/'public/downloads'
+          def digest(name): return hashlib.sha256((dl/name).read_bytes()).hexdigest()
+          exe=digest('Sentinel-Agent-13.9.246.exe')
+          assert exe==digest('Sentinel-Agent-Windows.exe')==digest('sentinel-agent-windows.exe')
+          ziphash=digest('agent_payload_v88.zip')
+          manifest=json.loads((dl/'agent-update.json').read_text())
+          assert manifest['version']==release['version']=='13.9.246'
+          assert manifest['build']==release['build']
+          assert manifest['zipSha256']==ziphash
+          proof={'version':release['version'],'build':release['build'],'exeSha256':exe,'zipSha256':ziphash,'windowsTested':True}
+          (dl/'sentinel-246-verified.json').write_text(json.dumps(proof,sort_keys=True)+'\n')
+          print('Validated 246 EXE hash:',exe)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-Direto.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-EXE.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.246-Alternativo.zip sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json sentinel-trading-lab/public/downloads/sentinel-246-verified.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'build(sentinel 246): Windows-tested matching EXE and Agent ZIP with SHA256 provenance'
+          git push origin "HEAD:$branch"
