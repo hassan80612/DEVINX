@@ -38,7 +38,7 @@ test('230: no made-up direction when historical proof is absent',()=>{
 test('240: primary EXE downloads directly from verified Sentinel origin',()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const page=readFileSync(new URL('src/app/console/page.tsx',root),'utf8');
- assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Direto.exe`;'));
+ assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}.exe`;'));
  assert.doesNotMatch(page,/raw[.]githubusercontent[.]com/);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
