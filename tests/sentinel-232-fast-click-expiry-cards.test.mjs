@@ -51,7 +51,7 @@ test('232: old inherited 30s page receipts are not accepted as user-selected 30s
  const keeper=readFileSync(new URL('../sentinel-trading-lab/agent/worker/broker-native-expiry-keeper.mjs',import.meta.url),'utf8');
  assert.match(driver,/choice\.value!==30000\|\|\(choice\.explicitDefault===true&&choice\.selectedAt>0\)/);
  assert.match(keeper,/source==='manual'\|\|source==='analyst'\|\|explicitDefault/);
- assert.match(keeper,/if\(ms===30000&&!explicit&&preferredMs>30000&&!explicitDefault\)return true/);
+ assert.match(keeper,/if\(ms===30000&&!explicit&&preferredMs>30000\)return true/);
  assert.match(keeper,/if\(ms===30000&&!explicit&&Number\(localStorage\.getItem\(key\)\)>30000\)return true/);
 });
 test('232: all first-click real price, expiry and broker confirmation guards are preserved',()=>{
