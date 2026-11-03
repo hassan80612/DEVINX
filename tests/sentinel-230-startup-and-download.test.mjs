@@ -35,12 +35,11 @@ test('230: no made-up direction when historical proof is absent',()=>{
  assert.equal(read,'OBSERVANDO PREÇO ATUAL');
  assert.doesNotMatch(read,/AGUARDANDO HISTÓRICO SUFICIENTE/);
 });
-test('240: site primary EXE is a same-origin direct file, not an external GitHub hop',()=>{
+test('240: primary EXE restores the working 239 direct GitHub download method',()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const page=readFileSync(new URL('src/app/console/page.tsx',root),'utf8');
- assert.match(page,/const AGENT_DOWNLOAD_URL=\`\/downloads\/Sentinel-Agent-/);
- assert.match(page,/Sentinel-Agent-\$\{encodeURIComponent\(AVAILABLE_AGENT_VERSION\)\}\.exe/);
- assert.doesNotMatch(page,/AGENT_DOWNLOAD_URL=\`https?:/);
+ assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/603ecf58522b5ecded2cf9e08dead5e68b3287ae/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
+ assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
 test('230: expiry selector and executor are unchanged',()=>{
