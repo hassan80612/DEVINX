@@ -63,16 +63,21 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
   t(scanningLabel)):t(view.label);
  const activityFresh=sourceNow>=evaluatedAt&&sourceNow-evaluatedAt<5000&&
   sourceNow>=quoteAt&&sourceNow-quoteAt<5000;
+ // A verified blue observation is displayed even during SCANNING without
+ // a confirmed entry window; it never grants permission to execute.
+ const readingQuoteAt=Number(observation?.quoteAt||observation?.observedAt||0);
+ const readingFresh=readingQuoteAt>0&&sourceNow-readingQuoteAt<=3500&&
+   sourceNow-readingQuoteAt>=-2500;
  const technicalStatus=marketDataStatus({quoteAt:observation?.quoteAt||quoteAt,evaluatedAt,now:sourceNow,durationMs:holdingSeconds*1000});
  return <>
   <div className="vnextFutureDirection" data-await-entry={view.withinDeadline&&phase==='open'&&!moment?'true':undefined}>
    <strong data-testid="future-entry-decision">
    {nowMode&&!running&&<span className="sentinelAnalysisSpinner" data-testid="analysis-spinner" data-active={activityFresh?'1':'0'} aria-hidden="true"/>}
    {direction}</strong>
-   {nowMode&&<small className="marketReadingRow" data-testid="market-reading-detail" title={(running&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
+   {nowMode&&<small className="marketReadingRow" data-testid="market-reading-detail" title={(readingFresh&&observation?.marketReading?t(observation.marketReading):'')+(technicalStatus?' · '+t(technicalStatus):'')} style={{minHeight:16,lineHeight:'16px',whiteSpace:'normal',overflowWrap:'anywhere',fontSize:12,fontWeight:600,color:'var(--blue)',marginTop:4,flexBasis:'100%'}}>
     <span className="marketReadingSlot">
       {marketReadingRowSizingTexts(t,'market').map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
-      <span data-testid="market-reading-text">{running&&observation?.marketReading?t(observation.marketReading):''}</span>
+      <span data-testid="market-reading-text">{readingFresh&&observation?.marketReading?t(observation.marketReading):''}</span>
     </span>
     <span className="marketReadingSlot">
       {marketReadingRowSizingTexts(t,'technical').map(text=><span key={text} aria-hidden="true" className="marketReadingRowSizer">{text}</span>)}
