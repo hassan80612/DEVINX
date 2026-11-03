@@ -7,13 +7,13 @@ import nextConfig from '../sentinel-trading-lab/next.config.mjs';
 const root=new URL('../sentinel-trading-lab/',import.meta.url);
 const read=path=>readFileSync(new URL(path,root));
 const release=JSON.parse(read('agent/release.json').toString('utf8'));
-const proof=JSON.parse(read('public/downloads/sentinel-244-verified.json').toString('utf8'));
+const proof=JSON.parse(read('public/downloads/sentinel-246-verified.json').toString('utf8'));
 const fileName='Sentinel-Agent-'+release.version+'.exe';
 const url='/downloads/Sentinel-Agent-'+release.version+'-Direto.exe';
 const page=read('src/app/console/page.tsx').toString('utf8');
 
 test('240: primary EXE uses pinned verified same-origin transport',()=>{
- assert.equal(release.version,'13.9.244');
+ assert.equal(release.version,'13.9.246');
  assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Direto.exe`;'));
  assert.doesNotMatch(page,/raw[.]githubusercontent[.]com/);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
