@@ -55,6 +55,7 @@ test('234: original 1m no-duplicate windows, confirmation requirements and expir
   assert.equal(expiry.phase,'scanning','cannot reuse quote from before expiry');
   const late=advanceNowOpportunity({...args,previous:issued,now:q+60001,quoteAt:q+60001});
   assert.equal(late.phase,'scanning','old observedAt proof cannot be reused as confirmation');
+  assert.match(runtime,/const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs/);
   assert.match(runtime,/eligible=reviewH207UnifiedAdmission\(\{/);
   assert.match(runtime,/eligible=reviewLateImpulseEntry\(\{/);
   assert.match(runtime,/eligible=reviewStretchedContinuationEntry\(\{/);
