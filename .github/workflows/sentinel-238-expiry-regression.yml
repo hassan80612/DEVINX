@@ -1,0 +1,31 @@
+name: Sentinel 238 Native Expiry and First-wave Regression
+on:
+  push:
+    branches:
+      - fix/sentinel-238-expiry-durable-verified-20261103
+    paths:
+      - .github/workflows/sentinel-238-expiry-regression.yml
+      - sentinel-trading-lab/agent/worker/native-expiry-resume-228.mjs
+      - sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+      - sentinel-trading-lab/agent/worker/index.mjs
+      - tests/sentinel-238-no-30s-rollback.test.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test expiry persistence and first-wave reversals
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --check sentinel-trading-lab/agent/worker/broker-ui-executor.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --test tests/sentinel-238-no-30s-rollback.test.mjs tests/sentinel-221-expiry-native-durable.test.mjs tests/sentinel-199-expiry-last-choice.test.mjs tests/sentinel-237-first-wave-arbitration.test.mjs tests/sentinel-236-multilevel-reversal-recognition.test.mjs
