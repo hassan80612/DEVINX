@@ -165,9 +165,19 @@ function seedMissingNativeExpiry(provider){
   await driver.nativeExpiryPreferenceReady;
   if(activeProvider!==provider)return;
   if(driver.nativeExpiryPreferences.has(provider)){
+   const stored=Number(driver.nativeExpiryPreferences.get(provider));
+   const explicitlySelected30=driver.nativeExpiryExplicitThirty?.get(provider)===true;
+   // A legacy native 30s receipt is NOT proof of a manual user selection.
+   // Keep the stored 1m/5m analyst horizon when restoring this broker.
+   if(stored===30000&&savedRuntimeExpirySeed>30000&&!explicitlySelected30&&
+      Number(runtime.settings.orderDurationMs)===startingDuration){
+    await driver.setNativeExpiryPreference(provider,savedRuntimeExpirySeed,{preserveExisting:false});
+    return;
+   }
    const latest=lastTrustedExpiryForResume({
     nativeDurationMs:driver.nativeExpiryPreferences.get(provider),
     nativeSelectedAt:driver.nativeExpirySelectedAt.get(provider),
+    nativeExplicit30:explicitlySelected30,
     currentDurationMs:runtime.settings.orderDurationMs,
     changedDuringRecovery:Number(runtime.settings.orderDurationMs)!==startingDuration
    });
