@@ -1622,9 +1622,31 @@ export class LocalPlaywrightDriver{
       await this.requestBaseData(provider,{balancesOnly:passiveStreamHealthy}).catch(()=>{});
     const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     if(st.candles.length&&(!integrity.ok||st.candleActiveId==null||st.activeId==null||Number(st.candleActiveId)!==Number(st.activeId))){
+      const candleIdentityMatches=st.candleActiveId!=null&&st.activeId!=null&&
+       Number(st.candleActiveId)===Number(st.activeId);
+      const safeToKeepLivePrices=!integrity.ok&&candleIdentityMatches&&
+       !!st.symbol&&!st.screenCandidateSymbol&&
+       pairKey(st.symbol)===pairKey(st.uiSymbol||st.symbol)&&
+       Number(st.quote)>0&&Number(st.lastQuoteAt)>0&&
+       Date.now()-Number(st.lastQuoteAt)<=2500&&
+       Array.isArray(st.quoteHistory)&&st.quoteHistory.length>0&&
+       Number(st.quoteHistory.at(-1)?.ts)<=Date.now()+300&&
+       Math.abs(Number(st.quoteHistory.at(-1)?.ts)-Number(st.lastQuoteAt))<=2000;
       st.lastIntegrityError={...integrity,reason:integrity.ok?'active_id_do_historico_divergente':integrity.reason,at:Date.now(),activeId:st.activeId,candleActiveId:st.candleActiveId,symbol:st.symbol};
-      st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;
-      st.marketStatus='recovering';st.marketReason='Feed isolado: descartando histórico incompatível com o ativo atual';st.lastCandleRequest=null;
+      // 230: A malformed/stale CANDLE from the SAME known active ID must not
+      // erase fresh authenticated market quotes. Otherwise each 2.5s
+      // maintenance pass resets the independent 14s analyst quote warmup.
+      // Wrong/unknown active IDs still wipe every quote as before.
+      st.candles=[];st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;
+      if(!safeToKeepLivePrices){
+       st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;
+      }
+      st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;
+      st.marketStatus='recovering';
+      st.marketReason=safeToKeepLivePrices?
+       'Recuperando candles inválidos do ativo atual; cotações recentes preservadas':
+       'Feed isolado: descartando histórico incompatível com o ativo atual';
+      st.lastCandleRequest=null;
     }
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
     // When the selected broker instrument is already delivering genuine
