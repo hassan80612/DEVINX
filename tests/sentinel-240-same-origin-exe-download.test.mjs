@@ -12,10 +12,10 @@ const fileName='Sentinel-Agent-'+release.version+'.exe';
 const url='/downloads/'+fileName;
 const page=read('src/app/console/page.tsx').toString('utf8');
 
-test('240: primary EXE uses 239-tested GitHub raw transport and 240 pinned binary',()=>{
+test('240: primary EXE uses pinned verified same-origin transport',()=>{
  assert.equal(release.version,'13.9.244');
- assert.ok(page.includes("const AGENT_DOWNLOAD_URL=`https://raw.githubusercontent.com/hassan80612/DEVINX/refs/heads/fix/sentinel-244-range-spike-expiry-20261103/sentinel-trading-lab/public/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe`"));
- assert.doesNotMatch(page,/const AGENT_DOWNLOAD_URL=`\/downloads\//);
+ assert.ok(page.includes('const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}.exe`;'));
+ assert.doesNotMatch(page,/raw[.]githubusercontent[.]com/);
  assert.equal((page.match(/href=\{AGENT_DOWNLOAD_URL\} download=\{/g)||[]).length,3);
 });
 
