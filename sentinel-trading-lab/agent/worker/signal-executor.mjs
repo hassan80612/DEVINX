@@ -3,9 +3,7 @@
 // Absolute bankroll targets, with pending stake reservations kept separate from confirmed losses.
 import {ExecutorBalanceRisk,validBrokerBalance} from './executor-balance-risk.mjs';
 import {decisionAudit,acceptedAudit,settlementAudit} from './trade-audit.mjs';
-import {reviewLastMileEvidence} from './last-mile-evidence-222.mjs';
-import {liveEntryQuoteReview} from './live-quote-entry-review.mjs';
-import {reviewDirectionBeforeClick} from './entry-direction-before-click.mjs';
+// Bot follows the analyzer's confirmed direction without re-scoring it.
 // Exactly one recovery: base 1 click, then 2 clicks once after a LOSS.
 // A WIN or completed second LOSS resets the next batch to 1 click.
 export const MAX_MARTINGALE_LEVELS=1;
@@ -377,18 +375,11 @@ export class SignalExecutor{
   const c=this.context(),mode=this.config.directionMode||'automatic';
   const clockNow=this.clock();let s;
   if(mode==='automatic'||Number(c.durationMs)===300000){
-    // Five-minute execution requires a genuinely confirmed reversal; horizon
-    // alignment or a continuation alone cannot bypass the 5m structural gate.
-    // The original forced cadence remains untouched for 30s and 1m.
+    // The analyzer alone confirms CALL/PUT, including its 5m entry policy.
     s=freshAnchor?executorSignal({vnext:{futureEntryAnchor:freshAnchor}}):executorSignal(c.analysis);
-    if(Number(c.durationMs)===300000){
-      if(!(s?.fiveMinuteReversalConfirmed===true)){
-        s=null;
-        if(mode!=='automatic')this.message='Ligado · 5m apenas reversões confirmadas · aguardando';
-      }else if(mode!=='automatic'&&s.side!==(mode==='call'?'CALL':'PUT')){
-        s=null;
-        this.message='Ligado · aguardando reversão 5m na direção escolhida';
-      }
+    if(mode!=='automatic'&&s&&s.side!==(mode==='call'?'CALL':'PUT')){
+      s=null;
+      this.message='Ligado · aguardando sinal na direção escolhida';
     }
   }else {
     // Below 5m, periodic CALL/PUT retains its established behavior.
@@ -408,21 +399,9 @@ export class SignalExecutor{
       else this.message='Ligado · entrada programada pulada: cotação atrasada ou corretora ocupada';
     }
   }
-  // 227: an unconfirmed legacy horizon reaction is NOT evidence that the
-  // analyst's independently validated 226 direction is wrong. Previously it
-  // cancelled ready signals here and could suppress subsequent valid trades.
-  // This advisory is never an executor veto; the actual analyst's structural,
-  // price, exhaustion, stale-quote, expiry and broker-risk gates remain intact.
-  if(s&&mode==='automatic'&&freshAudit){
-   const lastMile=reviewLastMileEvidence({signal:s,evidence:freshAudit,mode});
-   if(!lastMile.allowed)s.lastMileAdvisory=lastMile.reason;
-  }
+  // A fired analyst signal is authoritative. No independent bot trend,
+  // candle, entry-family or directional vote may cancel it.
   if(s?.engineId&&s.engineId!==c.engine)return;
-  if(mode==='automatic'&&s?.entryFamilyExplicit&&c.entryFamily&&s.entryFamily!==c.entryFamily)return;
-  if(mode==='automatic'&&s?.entryFamilyExplicit&&s.entryFamily!=='automatic'&&s.observedEntryFamily&&s.observedEntryFamily!==s.entryFamily)return;
-  // Last mile: never queue a 5m signal without the current quote's proof.
-  if(Number(c.durationMs)===300000&&s&&
-     (Number(s.durationMs)!==300000||!(s.fiveMinuteReversalConfirmed===true)))return;
   // Diagnostic metadata is never part of order acceptance/validation.
   if(mode==='automatic'&&freshAnchor&&freshAudit&&s)s.auditEvidence=freshAudit;
   if(s&&!this.seen.has(s.id)){
@@ -516,29 +495,13 @@ export class SignalExecutor{
   // they can never continue beyond this operation's selected expiry.
   const firstClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxSignalAgeMs(queued.durationMs));
   const batchClickDeadline=Math.min(Number(queued.exitAt),Number(queued.at)+maxBatchDispatchMs(queued.durationMs));
-  const currentMarketValid=(clickIndex=0)=>{
-   if(mode!=='automatic'||clickIndex!==0)return true;
-   const current=this.context();
-   if(queued.entryFamilyExplicit&&current.entryFamily&&queued.entryFamily!==current.entryFamily)return false;
-   if(queued.entryFamilyExplicit&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return false;
-   const now=this.clock();
-   if(Number(queued.sourceQuoteAt)>0&&!liveEntryQuoteReview({signal:queued,context:current,now}).ok)return false;
-   return reviewDirectionBeforeClick({signal:queued,context:current,now}).ok;
-  };
-  const valid=(clickIndex=0)=>currentMarketValid(clickIndex)&&this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
+  const valid=(clickIndex=0)=>this.enabled&&generation===this.generation&&this.pending===batch&&this.config.directionMode===mode&&this.sameContext(this.session,this.context())&&batch.durationMs===this.context().durationMs&&batch.engine===this.context().engine&&this.context().state==='running'&&this.context().licensed===true&&this.accountCompatible(this.context().brokerBalance)&&(!this.context().brokerBalance||batch.accountId==null||String(this.context().brokerBalance.accountId)===String(batch.accountId))&&(this.config.stopLoss===0||batch.amount<=this.lossBudgetRemaining()+0.000001)&&this.clock()>=queued.at&&this.clock()<queued.exitAt&&this.clock()<=(clickIndex===0?firstClickDeadline:batchClickDeadline)&&(!this.deadlineAt||this.clock()<this.deadlineAt);
   const invalidReason=(clickIndex=0)=>{
    const current=this.context(),at=this.clock(),age=at-Number(queued.at);
    if(!this.enabled||generation!==this.generation)return 'bot desligado ou sessão alterada';
    if(this.pending!==batch)return 'operação pendente mudou antes do clique';
    if(this.config.directionMode!==mode)return 'modo do bot mudou antes do clique';
-   if(mode==='automatic'&&clickIndex===0){
-    if(queued.entryFamilyExplicit&&current.entryFamily&&queued.entryFamily!==current.entryFamily)return 'tipo de entrada mudou antes do clique';
-    if(queued.entryFamilyExplicit&&queued.entryFamily!=='automatic'&&queued.observedEntryFamily&&queued.observedEntryFamily!==queued.entryFamily)return 'tipo de entrada não corresponde ao sinal';
-    if(Number(queued.sourceQuoteAt)>0){const review=liveEntryQuoteReview({signal:queued,context:current,now:at});
-     if(!review.ok)return 'leitura de preço mudou antes do clique: '+review.reason;}
-    const direction=reviewDirectionBeforeClick({signal:queued,context:current,now:at});
-    if(!direction.ok)return 'continuidade perdeu validade antes do clique: '+direction.reason;
-   }
+   // Keep broker, expiry and money checks; never reinterpret CALL/PUT.
    if(at<Number(queued.at)||at>=(clickIndex===0?firstClickDeadline:batchClickDeadline)||at>=Number(queued.exitAt))
     return 'sinal venceu na preparação ('+Math.max(0,Math.round(age))+'ms; limite '+maxSignalAgeMs(queued.durationMs)+'ms)';
    if(!this.sameContext(this.session,current))return 'corretora ou ativo mudou antes do clique';
