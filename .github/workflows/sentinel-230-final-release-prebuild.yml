@@ -1,0 +1,47 @@
+name: Sentinel 230 final release prebuild + versioned EXE
+on:
+  push:
+    branches:
+      - fix/sentinel-230-fast-history-direct-exe-20261103
+    paths:
+      - .github/workflows/sentinel-230-final-release-prebuild.yml
+      - tests/sentinel-229-blue-live-market-phase.test.mjs
+      - tests/sentinel-230-startup-and-download.test.mjs
+      - sentinel-trading-lab/agent/src/core/runtime.mjs
+      - sentinel-trading-lab/src/app/console/page.tsx
+      - sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
+      - tests/sentinel-196-189-decisions-expiry-preserved.test.mjs
+      - tests/sentinel-201-closed-price-admission.test.mjs
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run exact production prebuild and Windows-tested EXE contract
+        working-directory: sentinel-trading-lab
+        run: |
+          npm run prebuild
+          node --test ../tests/sentinel-230-startup-and-download.test.mjs ../tests/sentinel-229-blue-live-market-phase.test.mjs ../tests/sentinel-228-market-reading-recovery.test.mjs ../tests/sentinel-227-impulse-reversal-and-visuals.test.mjs
+          npx tsc --noEmit --pretty false
+      - name: Check 230 provenance and 30s 1m 5m expiry files
+        run: |
+          node --input-type=module -e "
+          import {readFileSync} from 'node:fs';
+          const root='sentinel-trading-lab/';
+          const r=JSON.parse(readFileSync(root+'agent/release.json'));
+          const a=JSON.parse(readFileSync(root+'public/downloads/sentinel-230-verified.json'));
+          const m=JSON.parse(readFileSync(root+'public/downloads/agent-update.json'));
+          if(r.version!=='13.9.230'||r.version!==a.version||r.build!==a.build||m.zipSha256!==a.zipSha256||a.windowsTested!==true)
+           throw Error('Wrong Agent version or unverified Windows binary');
+          "
