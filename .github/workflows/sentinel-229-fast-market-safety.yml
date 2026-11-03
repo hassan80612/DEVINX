@@ -1,0 +1,51 @@
+name: Sentinel 229 - readout-only fast market safety
+on:
+  push:
+    branches:
+      - fix/sentinel-229-live-market-phase-readout-20261102
+    paths:
+      - '.github/workflows/sentinel-229-fast-market-safety.yml'
+      - 'sentinel-trading-lab/agent/src/core/live-visual-phase-229.mjs'
+      - 'sentinel-trading-lab/agent/worker/live-market-readout-229.mjs'
+      - 'sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs'
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
+      - 'tests/sentinel-229-blue-live-market-phase.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install site dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Syntax and read-only blue market-phase behavior
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/live-visual-phase-229.mjs
+          node --check sentinel-trading-lab/agent/worker/live-market-readout-229.mjs
+          node --check sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-229-blue-live-market-phase.test.mjs
+      - name: All legacy site tests including original broker expiry
+        working-directory: sentinel-trading-lab
+        run: |
+          npm run prebuild
+          npx tsc --noEmit --pretty false
+      - name: Prevent changes to protected agent decisions and expiry
+        run: |
+          git fetch --depth=1 origin fix/sentinel-221-github-direct-no-vercel-hop-20261102
+          node --input-type=module -e "
+          import {execFileSync} from 'node:child_process';
+          const names=execFileSync('git',['diff','--name-only','FETCH_HEAD','HEAD'],{encoding:'utf8'}).trim().split('\n');
+          const protectedFile=/^sentinel-trading-lab\/agent\/(src\/core\/runtime\.mjs|worker\/(index|broker-native-expiry-keeper|signal-executor|broker-ui-executor)\.mjs)$/;
+          const bad=names.filter(f=>protectedFile.test(f));
+          if(bad.length)throw Error('Unexpected changes in protected agent files: '+bad.join(', '));
+          "

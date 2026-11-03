@@ -19,6 +19,29 @@ mkdirSync(dl,{recursive:true});
 // are committed by the 226 CI only after the non-installing Windows check.
 // Verify both files instead of rebuilding an untested installer at deploy.
 // CI build is the only phase permitted to create the initial artifacts.
+// 229: on production builds, never silently replace the Windows-tested EXE.
+// The initial EXE compilation happens only inside the isolated release CI.
+if(release.version==='13.9.229'&&process.env.SENTINEL_229_BUILD_VERIFIED_ASSETS!=='1'){
+ const proof=JSON.parse(readFileSync(join(dl,'sentinel-229-verified.json'),'utf8'));
+ if(proof.version!==release.version||proof.build!==release.build||proof.windowsTested!==true)
+  throw Error('sentinel_229_release_provenance_mismatch');
+ const hash=name=>createHash('sha256').update(readFileSync(join(dl,name))).digest('hex');
+ for(const name of ['Sentinel-Agent-13.9.229.exe','Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
+  if(statSync(join(dl,name)).size<1000000||hash(name)!==proof.exeSha256)
+   throw Error('sentinel_229_windows_tested_exe_mismatch:'+name);
+ }
+ if(statSync(join(dl,'agent_payload_v88.zip')).size<50000||hash('agent_payload_v88.zip')!==proof.zipSha256)
+  throw Error('sentinel_229_payload_mismatch');
+ const manifest=JSON.parse(readFileSync(join(dl,'agent-update.json'),'utf8'));
+ if(manifest.version!==release.version||manifest.build!==release.build||manifest.zipSha256!==proof.zipSha256)
+  throw Error('sentinel_229_manifest_mismatch');
+ for(const name of ['Sentinel-Agent-13.9.229-EXE.zip','Sentinel-Agent-13.9.229-Alternativo.zip']){
+  if(statSync(join(dl,name)).size<50000)throw Error('sentinel_229_download_archive_missing:'+name);
+ }
+ console.log('Sentinel 229: exact Windows-tested EXE and verified matching Agent ZIP preserved for site deployment.');
+ process.exit(0);
+}
+
 // 228: on production builds, never silently replace the Windows-tested EXE.
 // The initial EXE compilation happens only inside the isolated release CI.
 if(release.version==='13.9.228'&&process.env.SENTINEL_228_BUILD_VERIFIED_ASSETS!=='1'){
