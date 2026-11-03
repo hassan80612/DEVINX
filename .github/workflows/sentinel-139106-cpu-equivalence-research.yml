@@ -37,18 +37,6 @@ jobs:
           set -euo pipefail
           git diff --name-only 0ab0a3fb5f48645be8c474088353981eebcf4b4a HEAD |
             grep -E '^sentinel-trading-lab/(agent/|src/app/api/|src/components/)' |
-            grep -v -e '^sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+            grep -Ev '^sentinel-trading-lab/agent/src/core/(now-opportunity-engine|expiry-trend-adjudicator)\\.mjs$|^sentinel-trading-lab/agent/worker/(index|broker-maintenance-cadence)\\.mjs$' > /tmp/unexpected || true
           if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU, strict rejection review and low-impact broker maintenance changed.'
- -e '^sentinel-trading-lab/agent/src/core/expiry-trend-adjudicator.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- -e '^sentinel-trading-lab/agent/worker/index.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- -e '^sentinel-trading-lab/agent/worker/broker-maintenance-cadence.mjs
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
- > /tmp/unexpected || true
-          if test -s /tmp/unexpected; then cat /tmp/unexpected; exit 1; fi
-          echo 'Only causal range CPU and strict rejection-vs-expiry correction changed.'
+          echo 'Only approved research and low-impact broker maintenance changed.'
