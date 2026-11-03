@@ -35,7 +35,11 @@ export function marketReading({phase,label,trendSide,candidate={},observation={}
   // only: never use cached indicators to authorize CALL or PUT.
   if(/stale-live-quote|live-quote-unverified|waiting-fresh-quote/.test(reason))
    text='AGUARDANDO COTAÇÃO ATUAL';
-  else if(/variation|noise|lateral|choppy|neutral-closed/.test(reason))
+  // Missing movement/noise is NOT proof that price oscillates in a range.
+  // Reserve LATERAL for a structurally assessed sideways context.
+  else if(/insufficient-quote-variation|closed-movement-below-noise|recent-movement-not-ready/.test(reason))
+   text='MOVIMENTO SEM CONFIRMAÇÃO';
+  else if(/lateral|choppy|neutral-closed/.test(reason))
    text='MERCADO LATERAL';
   else if(/current-price-retracing|current-impulse-against/.test(reason))
    text='RETRAÇÃO EM ANDAMENTO';
