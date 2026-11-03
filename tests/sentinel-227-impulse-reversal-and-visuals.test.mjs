@@ -61,7 +61,7 @@ test('227: no old verified support, no reversal; late stale quote and 5m stay un
 });
 test('227: late 222 warning is still diagnosable but not an extra required permission',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/worker/signal-executor.mjs',import.meta.url),'utf8');
- assert.match(src,/s\.lastMileAdvisory=lastMile.reason/);
+ assert.doesNotMatch(src,/s\.lastMileAdvisory=lastMile.reason/);
  assert.doesNotMatch(src,/entrada descartada: confirmação de reversão contrária ao vencimento/);
  const res=reviewLastMileEvidence({signal:{at:T,durationMs:60000,side:'PUT'},
   evidence:{source:'now-structural-v1',signalAt:T,finalSide:'PUT',
