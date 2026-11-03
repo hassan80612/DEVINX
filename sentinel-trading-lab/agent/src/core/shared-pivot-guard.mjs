@@ -4,6 +4,55 @@
 // adds no broker request, timer, waiting candle, or click path.
 import {currentQuoteStructureTurn} from './observed-level-sequence.mjs';
 import {verifiedFastLevelReversal} from './fast-level-reversal.mjs';
+// A 1m reversal must not need the 3rd completed 5s pivot AFTER the price
+// already rejected a proven historical wall. Verify the recorded FIRST
+// counter-move against ACTUAL quote receipts, not a reason label. This is
+// deliberately narrower than relaxing the ordinary trend/pivot veto.
+export function verifiedFirstQuoteTurnAtLevel({
+  reversalEvidence:e,quoteHistory=[],quoteAt,price,side,now=quoteAt,durationMs
+}={}){
+ if(Number(durationMs)!==60000||e?.kind!=='confirmed-level-structure-reversal'||
+    e?.side!==side||!['CALL','PUT'].includes(side)||
+    !e?.microTurn||!e?.earlyLevelProof)return false;
+ const at=Number(quoteAt),clock=Number(now),spot=Number(price),
+  tol=Number(e.earlyLevelProof.tolerance),level=e.level||{},turn=e.microTurn,
+  d=side==='CALL'?1:-1;
+ if(!(at>0&&clock>=at&&clock-at<=1450&&spot>0&&tol>0&&
+   Number(e.confirmedAt)===at&&Number(turn.observedAt)===at&&
+   Number(level.level)>0&&Number(level.independentTests)>=2&&
+   Number(level.oldestTestAge)>=10&&
+   Number(level.directionalPivots)>=1&&
+   (Number(level.directionalPivots)>=2||Number(level.directionalRejections)>=1)))return false;
+ const extremeAt=Number(turn.extremeAt),extreme=Number(turn.extreme);
+ if(!(extremeAt>=at-8000&&extremeAt<=at-1800&&extreme>0&&
+   Number.isFinite(Number(level.low))&&Number.isFinite(Number(level.high))&&
+   extreme>=Number(level.low)-tol*.55&&extreme<=Number(level.high)+tol*.55&&
+   d*(spot-extreme)>=tol*.55&&d*(spot-extreme)<=tol*1.7&&
+   d*(spot-Number(level.level))>=-tol*.35&&
+   d*(spot-Number(level.level))<=tol*1.7))return false;
+ const rows=[];
+ for(let i=quoteHistory.length-1;i>=0;i--){
+   const q=quoteHistory[i],ts=Number(q?.ts),recv=Number(q?.receivedAt??ts),p=Number(q?.price);
+   if(ts<at-9000)break;
+   if(ts>at||recv>clock)continue;
+   if(!(ts>0&&p>0&&Number.isFinite(p)))return false;
+   rows.push({ts,price:p});
+ }
+ rows.reverse();
+ if(rows.length<7||rows.at(-1).ts!==at||rows.at(-1).price!==spot||
+   rows.some((q,i)=>i>0&&(q.ts<=rows[i-1].ts||q.ts-rows[i-1].ts>2500)))return false;
+ const touch=rows.find(q=>q.ts===extremeAt&&q.price===extreme);
+ if(!touch)return false;
+ const last=rows.at(-1),prev=rows.at(-2),before=rows.at(-3);
+ if(!(prev.ts>extremeAt&&d*(last.price-prev.price)>0&&
+       d*(prev.price-before.price)>0))return false;
+ // A genuine historical rejection, not a breakout through the old wall.
+ const after=rows.filter(q=>q.ts>=extremeAt);
+ if(after.some(q=>d>0?q.price<Number(level.low)-tol*.48:
+                         q.price>Number(level.high)+tol*.48))return false;
+ return true;
+}
+
 export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=quoteAt,reversalEvidence=null,durationMs=30000}={}){
  const ts=Number(quoteAt),spot=Number(price),clock=Number(now);
  const levelTurn=['failed-breakout-structure-change','confirmed-level-structure-reversal'].includes(reversalEvidence?.kind)&&
@@ -12,6 +61,7 @@ export function countertrendPivotRisk({quoteHistory=[],quoteAt,price,side,now=qu
   (Number(reversalEvidence.level?.confirmedPivots)>0||Number(reversalEvidence.level?.independentRejections)>=2);
  if(!['CALL','PUT'].includes(side)||!(ts>0&&spot>0&&clock>=ts&&clock-ts<=2500))return false;
  if(verifiedFastLevelReversal({reversalEvidence,quoteHistory,quoteAt,price,side,now,durationMs}))return false;
+ if(verifiedFirstQuoteTurnAtLevel({reversalEvidence,quoteHistory,quoteAt,price,side,now,durationMs}))return false;
  const end=Math.floor(ts/5000)*5000;
  const bucket=new Map();
  for(const q of quoteHistory){
