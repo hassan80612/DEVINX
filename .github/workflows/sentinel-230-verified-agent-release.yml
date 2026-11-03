@@ -19,6 +19,7 @@ on:
       - sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
       - tests/sentinel-229-blue-live-market-phase.test.mjs
       - tests/sentinel-230-startup-and-download.test.mjs
+      - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
       - sentinel-trading-lab/src/app/console/page.tsx
       - tests/helpers/sentinel-228-normalize-readout-and-resume.mjs
       - tests/sentinel-228-market-reading-recovery.test.mjs
