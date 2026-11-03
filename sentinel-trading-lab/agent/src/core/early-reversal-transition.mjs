@@ -76,8 +76,11 @@ export function reviewEarlyVerifiedTurn({candidate,map,quoteHistory=[],quoteAt,
     if(side==='CALL'&&rows.slice(extremeIndex).some(q=>q.price<=low-tol*.49))continue;
     const departure=d*(spot-level);
     if(!(departure>=-tol*.35&&departure<=tol*1.7))continue;
-    proofs.push({side,level,extreme:extreme.price,first:rows[first].price,
-      retest:retest.price,at,departure,tol});
+    proofs.push({side,level,extreme:extreme.price,extremeAt:extreme.ts,
+      first:rows[first].price,retest:retest.price,at,departure,tol,
+      levelEvidence:{low,high,directionalPivots:role.pivots,
+       directionalRejections:role.rejections,independentTests:Number(zone.independentTests),
+       oldestTestAge:Math.max(...zone.tests.map(t=>Number(t.age)||0))}});
    }
   }
  }
@@ -93,8 +96,10 @@ export function reviewEarlyVerifiedTurn({candidate,map,quoteHistory=[],quoteAt,
    reason:'confirmed-level-structure-reversal',
    priceStructure:{...(candidate.priceStructure||{}),confirmedReversal:{
      kind:'confirmed-level-structure-reversal',side:proof.side,confirmedAt:at,
-     level:{level:proof.level},microTurn:{
-      extreme:proof.extreme,firstBreak:proof.first,retest:proof.retest,
+     level:{level:proof.level,...proof.levelEvidence},
+     earlyLevelProof:{tolerance:tol,verifiedAt:at},microTurn:{
+      extreme:proof.extreme,extremeAt:proof.extremeAt,
+      firstBreak:proof.first,retest:proof.retest,
       observedAt:at,departure:proof.departure}}},
    earlyTurnEvidence:{kind:'level-microstructure-first-turn',withoutThreeClosedBars:true}};
 }
