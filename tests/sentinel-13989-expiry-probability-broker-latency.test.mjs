@@ -86,6 +86,10 @@ test('no change to broker expiry, native Digital reopen, WIN/LOSS, or chart-navi
  assert.match(broker,/async recoverDigitalAfterClose\(_provider\)\{return false;\}/);
  assert.match(worker,/runtime\.patchSettings\(\{orderDurationMs:n,forecastHorizonSeconds:30\}/);
  assert.match(panel,/data-sentinel-executor-clock-wl/);
- assert.match(broker,/Date\.now\(\)-cached\.at<=15000/);
+ // Live DOM uniqueness/visibility still checked before every click;
+ // arbitrary age eviction no longer forces costly iframe rescans.
+ assert.match(broker,/if\(cached&&cached\.page===page&&cached\.token===token\)\{/);
+ assert.match(broker,/if\(usable\)return\{frame:cached\.frame/);
+ assert.match(broker,/Promise\.all\(page\.frames\(\)\.map/);
  assert.match(broker,/if\(remaining<=80\)throw errorBefore/);
 });
