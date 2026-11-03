@@ -33,7 +33,7 @@ test('236: recognizer returns PUT before green candle changes color, with a sing
  assert.equal(result.priceStructure?.confirmedReversal?.microTurn?.extremeAt,AT-6000);
 });
 
-test('236: two independent nearby resistances confirming PUT are NOT conflicting directions',()=>{
+// Regression: one genuine early PUT can be supported by several old resistance\n// zones. This test invokes the recognizer, not a fabricated confirmed signal.\ntest('236: two independent nearby resistances confirming PUT are NOT conflicting directions',()=>{
  const selected=reviewFirstImpulseReversal({...args,map:map([z(),z(.000018)]),candles:[]});
  assert.equal(selected.ready,true);
  assert.equal(selected.side,'PUT');
