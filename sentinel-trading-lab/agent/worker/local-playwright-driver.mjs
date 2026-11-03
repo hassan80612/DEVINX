@@ -1521,7 +1521,12 @@ export class LocalPlaywrightDriver{
         },key).catch(()=>null);
         if(!current())return false;
         const choice=receipt&&typeof receipt==='object'?receipt:{value:Number(receipt),selectedAt:0,explicitDefault:false};
-        if(accepted.has(choice.value/1000))choices.push(choice);
+        // A timestamp on a broker page's inherited 30s is not proof of a
+      // deliberate manual choice. Only the explicit user-choice marker can
+      // beat a durable 1m/5m receipt; unlike 30s, verified 1m/5m remains valid.
+      if(accepted.has(choice.value/1000)&&
+        (choice.value!==30000||(choice.explicitDefault===true&&choice.selectedAt>0)))
+       choices.push(choice);
       }
       choices.sort((a,b)=>b.selectedAt-a.selectedAt||Number(b.explicitDefault)-Number(a.explicitDefault)||Number(b.value!==30000)-Number(a.value!==30000));
       // A broker's unchosen reset to 30s has no selectedAt receipt.
