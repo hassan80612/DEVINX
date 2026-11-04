@@ -199,6 +199,12 @@ export function AdminMaster(){
 
     <MasterLivePresence/>
     <SiteVisibilityAdminCard/>
+    <section className="panel masterSectionCard" aria-label="Sentinel Trading Lab · acesso Master">
+      <div className="sectionTitleRow">
+        <div><small>ACESSO RESTRITO · MASTER</small><h2>Sentinel Trading Lab</h2><p>Produto pausado para o público. Acesso exclusivo pela Master do Financeiro.</p></div>
+        <div className="sectionActions"><a className="secondary compactButton" href="https://trading.devinx.com.br/painel" target="_blank" rel="noopener noreferrer">Abrir Sentinel</a></div>
+      </div>
+    </section>
 
     <section className={'panel masterSectionCard '+(openPanels.has('grant')?'expanded':'collapsed')}>
       <button className="collapseHeader masterSectionHeader" type="button" onClick={()=>togglePanel('grant')}><div><small>{t('master.manualAccess')}</small><h2>{t('master.grantByEmail')}</h2></div><em>{openPanels.has('grant')?'−':'＋'}</em></button>
